@@ -4,33 +4,19 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>CashFlow Budget</title>
-<!-- React 18 -->
 <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-<!-- Recharts — jsdelivr primary, unpkg fallback -->
-<script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"
   onerror="var s=document.createElement('script');s.src='https://unpkg.com/recharts@2.12.7/umd/Recharts.js';document.head.appendChild(s)"></script>
-<!-- Google APIs (for Drive sync) -->
-<script src="https://apis.google.com/js/api.js" defer></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>*{box-sizing:border-box}body{margin:0;background:#F7F4EF}</style>
 </head>
 <body>
-<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">Loading CashFlow…</div></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#888;font-size:14px">Loading CashFlow…</div></div>
 <script>
-/* ── Google Drive Client ID ── */
-window.CASHFLOW_CLIENT_ID = "726237880395-1jtn428culabkkk0vq2lgcn5cvufjuj8.apps.googleusercontent.com";
-</script>
-<script>
-/* ── App (pre-compiled, no Babel needed) ── */
 window.addEventListener('load', function() {
-  if (typeof React === 'undefined') {
-    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px"><b>Error:</b> React failed to load. Check internet connection and hard-refresh (Ctrl+Shift+R).</p>';
-    return;
-  }
-  if (typeof Recharts === 'undefined') {
-    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px"><b>Error:</b> Recharts failed to load. Disable any ad blockers for this page, then hard-refresh (Ctrl+Shift+R).</p>';
+  if (typeof React === 'undefined' || typeof Recharts === 'undefined') {
+    document.getElementById('root').innerHTML =
+      '<p style="font-family:sans-serif;color:red;padding:40px"><b>A required library failed to load.</b><br>Disable ad blockers for this page and hard-refresh (Ctrl+Shift+R).</p>';
     return;
   }
   try {
@@ -1632,7 +1618,7 @@ window.addEventListener('load', function() {
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => /* @__PURE__ */ React.createElement(AlertRow, { key: ev.id, ev, i }))));
   }
-  function GDriveSync({
+  function GistSync({
     entries,
     setEntries,
     overridesByYr,
@@ -1648,52 +1634,25 @@ window.addEventListener('load', function() {
     darkMode,
     setDarkMode
   }) {
-    const CLIENT_ID = window.CASHFLOW_CLIENT_ID || "";
-    const [status, setStatus] = useState(!CLIENT_ID ? "no-client-id" : "idle");
+    const [token, setToken] = useState(() => localStorage.getItem("cf_gist_token") || "");
+    const [gistId, setGistId] = useState(() => localStorage.getItem("cf_gist_id") || "");
+    const [status, setStatus] = useState("idle");
     const [msg, setMsg] = useState("");
-    const [fileId, setFileId] = useState(null);
-    const tc = useRef(null);
-    useEffect(() => {
-      if (!CLIENT_ID) return;
-      const t = setInterval(() => {
-        var _a;
-        if ((_a = window.google) == null ? void 0 : _a.accounts) {
-          clearInterval(t);
-          tc.current = window.google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: "https://www.googleapis.com/auth/drive.file",
-            callback: async (resp) => {
-              if (resp.error) {
-                setStatus("error");
-                setMsg("Auth failed: " + resp.error);
-                return;
-              }
-              try {
-                await window.gapi.client.init({});
-                await window.gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
-                setStatus("ready");
-                setMsg("Signed in \u2713");
-              } catch (e) {
-                setStatus("error");
-                setMsg("Init failed: " + e.message);
-              }
-            }
-          });
-          setStatus("idle");
-        }
-      }, 400);
-      return () => clearInterval(t);
-    }, []);
-    const findFile = async () => {
-      var _a;
-      const r = await window.gapi.client.drive.files.list({
-        q: "name='CashFlow_Data.json' and trashed=false",
-        fields: "files(id)",
-        spaces: "drive"
-      });
-      return ((_a = r.result.files) == null ? void 0 : _a.length) > 0 ? r.result.files[0].id : null;
-    };
+    const [showCfg, setShowCfg] = useState(false);
+    const [tmpToken, setTmpToken] = useState("");
+    const [tmpId, setTmpId] = useState("");
+    const FILE_NAME = "CashFlow_Data.json";
+    const headers = (tok) => ({
+      "Authorization": `token ${tok}`,
+      "Accept": "application/vnd.github+json",
+      "Content-Type": "application/json"
+    });
     const saveData = async () => {
+      const tok = token.trim();
+      if (!tok) {
+        setShowCfg(true);
+        return;
+      }
       setStatus("syncing");
       setMsg("Saving\u2026");
       try {
@@ -1707,30 +1666,31 @@ window.addEventListener('load', function() {
           darkMode,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
-        let fid = fileId || await findFile();
-        if (fid) {
-          await window.gapi.client.request({
-            path: `https://www.googleapis.com/upload/drive/v3/files/${fid}`,
+        let gid = gistId.trim();
+        if (gid) {
+          const r = await fetch(`https://api.github.com/gists/${gid}`, {
             method: "PATCH",
-            params: { uploadType: "media" },
-            headers: { "Content-Type": "application/json" },
-            body: payload
+            headers: headers(tok),
+            body: JSON.stringify({ files: { [FILE_NAME]: { content: payload } } })
           });
+          if (!r.ok) throw new Error(`GitHub API ${r.status}: ${await r.text()}`);
         } else {
-          const m = await window.gapi.client.drive.files.create(
-            { resource: { name: "CashFlow_Data.json", mimeType: "application/json" }, fields: "id" }
-          );
-          fid = m.result.id;
-          await window.gapi.client.request({
-            path: `https://www.googleapis.com/upload/drive/v3/files/${fid}`,
-            method: "PATCH",
-            params: { uploadType: "media" },
-            headers: { "Content-Type": "application/json" },
-            body: payload
+          const r = await fetch("https://api.github.com/gists", {
+            method: "POST",
+            headers: headers(tok),
+            body: JSON.stringify({
+              description: "CashFlow Budget Data",
+              public: false,
+              files: { [FILE_NAME]: { content: payload } }
+            })
           });
+          if (!r.ok) throw new Error(`GitHub API ${r.status}: ${await r.text()}`);
+          const data = await r.json();
+          gid = data.id;
+          setGistId(gid);
+          localStorage.setItem("cf_gist_id", gid);
         }
-        setFileId(fid);
-        setStatus("ready");
+        setStatus("ok");
         setMsg("\u2705 Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
         setStatus("error");
@@ -1738,18 +1698,28 @@ window.addEventListener('load', function() {
       }
     };
     const loadData = async () => {
+      var _a, _b;
+      const tok = token.trim();
+      const gid = gistId.trim();
+      if (!tok) {
+        setShowCfg(true);
+        return;
+      }
+      if (!gid) {
+        setMsg("No Gist ID \u2014 Save first to create one.");
+        return;
+      }
       setStatus("syncing");
       setMsg("Loading\u2026");
       try {
-        let fid = fileId || await findFile();
-        if (!fid) {
-          setStatus("ready");
-          setMsg("No Drive file yet \u2014 Save first.");
-          return;
-        }
-        setFileId(fid);
-        const r = await window.gapi.client.drive.files.get({ fileId: fid, alt: "media" });
-        const d = typeof r.result === "string" ? JSON.parse(r.result) : r.result;
+        const r = await fetch(`https://api.github.com/gists/${gid}`, {
+          headers: headers(tok)
+        });
+        if (!r.ok) throw new Error(`GitHub API ${r.status}: ${await r.text()}`);
+        const data = await r.json();
+        const raw = (_b = (_a = data.files) == null ? void 0 : _a[FILE_NAME]) == null ? void 0 : _b.content;
+        if (!raw) throw new Error(`File "${FILE_NAME}" not found in Gist`);
+        const d = JSON.parse(raw);
         if (d.entries) setEntries(d.entries);
         if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
         if (d.yearConfigs) setYearConfigs(d.yearConfigs);
@@ -1757,23 +1727,32 @@ window.addEventListener('load', function() {
         if (d.activeYear) setActiveYear(d.activeYear);
         if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
         if (d.darkMode != null) setDarkMode(d.darkMode);
-        setStatus("ready");
+        setStatus("ok");
         setMsg("\u2705 Loaded " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
         setStatus("error");
         setMsg("\u274C " + e.message);
       }
     };
-    const signIn = () => {
-      var _a;
-      setStatus("signing-in");
-      (_a = tc.current) == null ? void 0 : _a.requestAccessToken({ prompt: "consent" });
+    const saveConfig = () => {
+      const tok = tmpToken.trim();
+      const gid = tmpId.trim();
+      if (!tok) {
+        return;
+      }
+      setToken(tok);
+      localStorage.setItem("cf_gist_token", tok);
+      setGistId(gid);
+      localStorage.setItem("cf_gist_id", gid);
+      setShowCfg(false);
+      setMsg("Token saved. Click Save to sync.");
     };
-    const btnSt = (bg) => ({
+    const isConfigured = !!token.trim();
+    const btnSt = (bg, small) => ({
       fontFamily: "Inter,sans-serif",
-      fontSize: 11,
+      fontSize: small ? 10 : 11,
       fontWeight: 600,
-      padding: "5px 12px",
+      padding: small ? "3px 8px" : "5px 12px",
       borderRadius: 6,
       border: "none",
       cursor: "pointer",
@@ -1782,28 +1761,95 @@ window.addEventListener('load', function() {
       opacity: status === "syncing" ? 0.6 : 1,
       whiteSpace: "nowrap"
     });
-    if (status === "no-client-id") return null;
-    return /* @__PURE__ */ React.createElement("div", { style: {
+    const inp = {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      padding: "5px 8px",
+      border: "1px solid rgba(255,255,255,0.25)",
+      borderRadius: 6,
+      background: "rgba(255,255,255,0.1)",
+      color: "#fff",
+      outline: "none",
+      width: "100%"
+    };
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
-      gap: 8,
-      padding: "6px 14px",
+      gap: 6,
+      padding: "5px 10px",
       background: "rgba(255,255,255,0.07)",
       borderRadius: 8,
       border: "1px solid rgba(255,255,255,0.13)",
       flexWrap: "wrap"
     } }, /* @__PURE__ */ React.createElement("span", { style: {
       fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 700,
-      color: "rgba(255,255,255,0.7)",
-      whiteSpace: "nowrap"
-    } }, "\u2601 Drive"), status === "idle" && /* @__PURE__ */ React.createElement("button", { style: btnSt("#4285F4"), onClick: signIn }, "Sign in"), status === "signing-in" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "rgba(255,255,255,0.5)" } }, "Signing in\u2026"), (status === "ready" || status === "syncing" || status === "error") && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: btnSt("#27AE73"), onClick: saveData, disabled: status === "syncing" }, "\u2B06 Save"), /* @__PURE__ */ React.createElement("button", { style: btnSt("#2F5496"), onClick: loadData, disabled: status === "syncing" }, "\u2B07 Load")), status === "syncing" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "rgba(255,255,255,0.5)" } }, "\u27F3"), msg && /* @__PURE__ */ React.createElement("span", { style: {
-      fontFamily: "Inter,sans-serif",
       fontSize: 10,
-      color: msg.startsWith("\u274C") ? "#FF8A7A" : "rgba(255,255,255,0.55)",
-      maxWidth: 180
-    } }, msg));
+      fontWeight: 700,
+      color: "rgba(255,255,255,0.65)",
+      whiteSpace: "nowrap"
+    } }, isConfigured ? "\u2601 Gist" : "\u2601 Sync"), !isConfigured && /* @__PURE__ */ React.createElement("button", { style: btnSt("#4285F4"), onClick: () => {
+      setTmpToken("");
+      setTmpId("");
+      setShowCfg(true);
+    } }, "Connect"), isConfigured && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: btnSt("#27AE73"), onClick: saveData, disabled: status === "syncing" }, "\u2B06 Save"), /* @__PURE__ */ React.createElement("button", { style: btnSt("#2F5496"), onClick: loadData, disabled: status === "syncing" }, "\u2B07 Load"), /* @__PURE__ */ React.createElement("button", { style: btnSt("rgba(255,255,255,0.15)", true), onClick: () => {
+      setTmpToken(token);
+      setTmpId(gistId);
+      setShowCfg((v) => !v);
+    } }, "\u2699")), status === "syncing" && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "rgba(255,255,255,0.5)" } }, "\u27F3"), msg && /* @__PURE__ */ React.createElement("span", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 9,
+      maxWidth: 140,
+      color: msg.startsWith("\u274C") ? "#FF8A7A" : msg.startsWith("\u2705") ? "#6EE7B7" : "rgba(255,255,255,0.5)"
+    } }, msg)), showCfg && /* @__PURE__ */ React.createElement("div", { style: {
+      position: "absolute",
+      top: 70,
+      right: 16,
+      zIndex: 1e3,
+      background: "var(--navy)",
+      border: "1px solid rgba(255,255,255,0.2)",
+      borderRadius: 12,
+      padding: 16,
+      width: 320,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.4)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 12 } }, "GitHub Gist Sync"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 10, lineHeight: 1.5 } }, "1. Go to ", /* @__PURE__ */ React.createElement("strong", { style: { color: "#fff" } }, "github.com \u2192 Settings \u2192 Developer settings \u2192 Personal access tokens \u2192 Tokens (classic)"), /* @__PURE__ */ React.createElement("br", null), "2. Click ", /* @__PURE__ */ React.createElement("strong", { style: { color: "#fff" } }, "Generate new token"), ", tick ", /* @__PURE__ */ React.createElement("strong", { style: { color: "#fff" } }, "gist"), " scope, copy the token", /* @__PURE__ */ React.createElement("br", null), "3. Paste it below and click Save"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 3 } }, "GitHub Personal Access Token *"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        style: inp,
+        type: "password",
+        placeholder: "ghp_xxxxxxxxxxxxxxxxxxxx",
+        value: tmpToken,
+        onChange: (e) => setTmpToken(e.target.value)
+      }
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 3 } }, "Gist ID (leave blank to auto-create on first Save)"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        style: inp,
+        type: "text",
+        placeholder: "auto-created on first save",
+        value: tmpId,
+        onChange: (e) => setTmpId(e.target.value)
+      }
+    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 4 } }, /* @__PURE__ */ React.createElement("button", { onClick: saveConfig, style: {
+      flex: 1,
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      fontWeight: 600,
+      padding: "7px 0",
+      borderRadius: 6,
+      border: "none",
+      cursor: "pointer",
+      background: "#27AE73",
+      color: "#fff"
+    } }, "Save Settings"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowCfg(false), style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      padding: "7px 14px",
+      borderRadius: 6,
+      border: "1px solid rgba(255,255,255,0.2)",
+      cursor: "pointer",
+      background: "transparent",
+      color: "rgba(255,255,255,0.6)"
+    } }, "Cancel")))));
   }
   function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries }) {
     const [newCat, setNewCat] = useState("");
@@ -2302,8 +2348,8 @@ window.addEventListener('load', function() {
         }
       },
       "+ / \u2212"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
-      GDriveSync,
+    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, position: "relative" } }, /* @__PURE__ */ React.createElement(
+      GistSync,
       {
         entries,
         setEntries,
@@ -2532,7 +2578,8 @@ window.addEventListener('load', function() {
 })();
 
   } catch(e) {
-    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px"><b>App error:</b> ' + e.message + '<br><br>Open browser console (F12) for details.</p>';
+    document.getElementById('root').innerHTML =
+      '<p style="font-family:sans-serif;color:red;padding:40px"><b>App error:</b> ' + e.message + '</p>';
   }
 });
 </script>
