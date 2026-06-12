@@ -4,23 +4,96 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>CashFlow Budget</title>
-<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"
-  onerror="var s=document.createElement('script');s.src='https://unpkg.com/recharts@2.12.7/umd/Recharts.js';document.head.appendChild(s)"></script>
-<style>*{box-sizing:border-box}body{margin:0;background:#F7F4EF}</style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F7F4EF; font-family: Inter, sans-serif; }
+  #loading {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100vh; gap: 16px; color: #888;
+  }
+  #loading-bar {
+    width: 200px; height: 4px; background: #E8E4DD; border-radius: 2px; overflow: hidden;
+  }
+  #loading-fill {
+    height: 100%; background: #1C2B3A; border-radius: 2px;
+    animation: loading 1.5s ease-in-out infinite;
+  }
+  @keyframes loading { 0%{width:0%} 50%{width:70%} 100%{width:100%} }
+</style>
 </head>
 <body>
-<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#888;font-size:14px">Loading CashFlow…</div></div>
+
+<div id="root">
+  <div id="loading">
+    <div style="font-size:14px">Loading CashFlow…</div>
+    <div id="loading-bar"><div id="loading-fill"></div></div>
+    <div id="loading-status" style="font-size:11px;color:#aaa">Initialising…</div>
+  </div>
+</div>
+
 <script>
-window.addEventListener('load', function() {
-  if (typeof React === 'undefined' || typeof Recharts === 'undefined') {
-    document.getElementById('root').innerHTML =
-      '<p style="font-family:sans-serif;color:red;padding:40px"><b>A required library failed to load.</b><br>Disable ad blockers for this page and hard-refresh (Ctrl+Shift+R).</p>';
-    return;
-  }
-  try {
-(() => {
+// ── Promise-based sequential script loader ────────────────────────────────────
+// Loads each library one at a time with fallbacks.
+// No race conditions — each script is fully loaded before the next starts.
+
+function loadScript(url) {
+  return new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload  = function() { resolve(url); };
+    s.onerror = function() { reject(new Error('Failed: ' + url)); };
+    document.head.appendChild(s);
+  });
+}
+
+function loadWithFallback(name, urls) {
+  document.getElementById('loading-status').textContent = 'Loading ' + name + '…';
+  var chain = Promise.reject(new Error('no urls'));
+  urls.forEach(function(url) {
+    chain = chain.catch(function() { return loadScript(url); });
+  });
+  return chain.catch(function() {
+    throw new Error(name + ' failed to load from all sources:\n' + urls.join('\n'));
+  });
+}
+
+function showError(msg) {
+  document.getElementById('root').innerHTML =
+    '<div style="font-family:sans-serif;padding:48px;max-width:600px;margin:0 auto">' +
+    '<h2 style="color:#E85D4A;margin:0 0 12px">CashFlow failed to load</h2>' +
+    '<p style="color:#555;line-height:1.6;white-space:pre-wrap">' + msg + '</p>' +
+    '<hr style="margin:20px 0;border:none;border-top:1px solid #ddd"/>' +
+    '<p style="color:#888;font-size:13px">Try: hard-refresh with <strong>Ctrl+Shift+R</strong> ' +
+    '(Cmd+Shift+R on Mac). If the problem persists, open the browser console (F12) ' +
+    'and share the error with your developer.</p></div>';
+}
+
+// Load libraries sequentially with fallbacks
+loadWithFallback('React', [
+  'https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js',
+  'https://unpkg.com/react@18.2.0/umd/react.production.min.js'
+])
+.then(function() {
+  return loadWithFallback('ReactDOM', [
+    'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js',
+    'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js'
+  ]);
+})
+.then(function() {
+  // Try multiple Recharts versions — 2.1.0 has confirmed UMD builds
+  return loadWithFallback('Recharts', [
+    'https://cdn.jsdelivr.net/npm/recharts@2.1.0/umd/Recharts.js',
+    'https://unpkg.com/recharts@2.1.0/umd/Recharts.js',
+    'https://cdn.jsdelivr.net/npm/recharts@2.5.0/umd/Recharts.js',
+    'https://unpkg.com/recharts@2.5.0/umd/Recharts.js'
+  ]);
+})
+.then(function() {
+  document.getElementById('loading-status').textContent = 'Starting app…';
+  // Small delay to ensure all globals are registered
+  setTimeout(function() {
+    try {
+      (() => {
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
   var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
@@ -2577,10 +2650,13 @@ window.addEventListener('load', function() {
   root.render(React.createElement(App, null));
 })();
 
-  } catch(e) {
-    document.getElementById('root').innerHTML =
-      '<p style="font-family:sans-serif;color:red;padding:40px"><b>App error:</b> ' + e.message + '</p>';
-  }
+    } catch(e) {
+      showError('App crashed on startup:\n\n' + e.message + '\n\n' + (e.stack || ''));
+    }
+  }, 50);
+})
+.catch(function(e) {
+  showError(e.message + '\n\nThis is usually caused by a network or firewall issue blocking the CDN.');
 });
 </script>
 </body>
