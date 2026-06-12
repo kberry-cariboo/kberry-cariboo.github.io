@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CashFlow — Privacy Policy</title>
+<link rel="icon" href="data:,"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    color: #2c3e50;
+    background: #f8f9fa;
+    padding: 40px 20px;
+  }
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 48px 44px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #7f8c8d;
+    margin-bottom: 36px;
+  }
+  .effective-date {
+    background: #f0f4f8;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8e8e8;
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #34495e;
+    margin-top: 24px;
+    margin-bottom: 10px;
+  }
+  p { margin-bottom: 14px; font-size: 15px; }
+  ul { margin: 10px 0 14px 24px; font-size: 15px; }
+  li { margin-bottom: 6px; }
+  code {
+    background: #f0f4f8;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  a { color: #2980b9; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .divider {
+    border: none;
+    border-top: 2px solid #e8e8e8;
+    margin: 44px 0;
+  }
+  .links {
+    text-align: center;
+    margin-top: 36px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .links a {
+    display: inline-block;
+    padding: 10px 24px;
+    background: #2c3e50;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .links a:hover { background: #1a252f; }
+  .links a.secondary {
+    background: #fff;
+    color: #2c3e50;
+    border: 2px solid #2c3e50;
+  }
+  .links a.secondary:hover { background: #f0f4f8; }
+  footer {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 13px;
+    color: #aaa;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>CashFlow</h1>
+  <p class="subtitle">Privacy Policy</p>
+  <div class="effective-date">Effective Date: June 12, 2026</div>
+
+  <!-- ==================== PRIVACY POLICY ==================== -->
+  <h2>Privacy Policy</h2>
+
+  <h3>1. Overview</h3>
+  <p>
+    CashFlow is a personal cash-flow forecasting and budgeting application developed by
+    Kenneth Berry. The app is hosted on GitHub Pages at
+    <a href="https://kberry-cariboo.github.io/">https://kberry-cariboo.github.io/</a>.
+    Your privacy is important, and this policy explains what data the app accesses,
+    how it is stored, and what choices you have.
+  </p>
+
+  <h3>2. Data Storage</h3>
+  <p>
+    All budget data you enter &mdash; including entries, categories, overrides, and
+    preferences &mdash; is stored <strong>locally in your web browser</strong> using the
+    browser&rsquo;s <code>localStorage</code> API.
+  </p>
+  <ul>
+    <li>No data is transmitted to or stored on any external server.</li>
+    <li>No databases or back-end services are used.</li>
+    <li>Clearing your browser data will remove all locally stored CashFlow data.</li>
+  </ul>
+
+  <h3>3. Google Drive Integration (Optional)</h3>
+  <p>
+    CashFlow offers an <strong>optional</strong> Google Drive sync feature that allows you to
+    save and load your budget data to your own Google Drive account. This feature uses
+    the Google Drive API with the following scope:
+  </p>
+  <ul>
+    <li><code>https://www.googleapis.com/auth/drive.file</code> &mdash; allows CashFlow to
+    create, read, and edit <strong>only files it creates</strong> (a single file named
+    <code>CashFlow_Data.json</code>). CashFlow cannot access any other files in your
+    Google Drive.</li>
+  </ul>
+  <p>When you use Google Drive sync:</p>
+  <ul>
+    <li>Authentication is handled entirely by Google&rsquo;s Identity Services. CashFlow
+    never sees, stores, or transmits your Google password.</li>
+    <li>An OAuth access token is held <strong>in memory only</strong> for the duration of
+    your browser session. It is not saved to disk or localStorage.</li>
+    <li>No refresh tokens are stored. You must re-authenticate each session.</li>
+  </ul>
+
+  <h3>4. Information We Collect</h3>
+  <p>CashFlow does <strong>not</strong> collect, store, or transmit any personal information.
+  Specifically:</p>
+  <ul>
+    <li>No analytics or tracking scripts are used.</li>
+    <li>No cookies are set by the application.</li>
+    <li>No personal data is sent to any server.</li>
+    <li>No advertising networks or third-party services are integrated (other than
+    Google Drive, if you opt in).</li>
+  </ul>
+
+  <h3>5. Third-Party Services</h3>
+  <p>CashFlow loads the following third-party resources via CDN:</p>
+  <ul>
+    <li><strong>React &amp; ReactDOM</strong> &mdash; UI framework (cdn.jsdelivr.net)</li>
+    <li><strong>Recharts</strong> &mdash; charting library (cdn.jsdelivr.net)</li>
+    <li><strong>Google Fonts</strong> &mdash; Inter font family (fonts.googleapis.com)</li>
+    <li><strong>Google Identity Services</strong> &mdash; OAuth authentication (accounts.google.com)</li>
+    <li><strong>Google API Client</strong> &mdash; Drive API access (apis.google.com)</li>
+  </ul>
+  <p>
+    These services are governed by their own privacy policies. CashFlow does not control
+    or have access to any data these services may collect.
+  </p>
+
+  <h3>6. Data Retention &amp; Deletion</h3>
+  <ul>
+    <li><strong>Local data:</strong> Persists in your browser until you clear it. You can
+    delete all CashFlow data at any time by clearing your browser&rsquo;s localStorage
+    for this site.</li>
+    <li><strong>Google Drive data:</strong> The <code>CashFlow_Data.json</code> file remains
+    in your Google Drive until you delete it. You can revoke CashFlow&rsquo;s access at
+    any time at
+    <a href="https://myaccount.google.com/permissions">https://myaccount.google.com/permissions</a>.</li>
+  </ul>
+
+  <h3>7. Children&rsquo;s Privacy</h3>
+  <p>
+    CashFlow is not directed at children under the age of 13, and we do not knowingly
+    collect personal information from children.
+  </p>
+
+  <h3>8. Changes to This Policy</h3>
+  <p>
+    This privacy policy may be updated from time to time. Changes will be reflected on
+    this page with an updated effective date.
+  </p>
+
+  <!-- ==================== CONTACT ==================== -->
+  <hr class="divider"/>
+  <h2>Contact</h2>
+  <p>
+    If you have any questions about this Privacy Policy, please reach out via the
+    GitHub repository:
+    <a href="https://github.com/kberry-cariboo/kberry-cariboo.github.io">
+      https://github.com/kberry-cariboo/kberry-cariboo.github.io
+    </a>
+  </p>
+
+  <div class="links">
+    <a href="https://kberry-cariboo.github.io/">&larr; Back to CashFlow</a>
+    <a class="secondary" href="https://kberry-cariboo.github.io/terms.html">Terms of Use</a>
+  </div>
+
+  <footer>
+    &copy; 2026 Kenneth Berry. All rights reserved.
+  </footer>
+
+</div>
+</body>
+</html>
