@@ -4,9 +4,9 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>CashFlow Budget</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/recharts@2.12.7/umd/Recharts.js';document.head.appendChild(s)"></script>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>*{box-sizing:border-box} body{margin:0;background:#F7F4EF}</style>
@@ -23,7 +23,7 @@ window.addEventListener('load', function() {
     return;
   }
   if (typeof Recharts === 'undefined') {
-    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px">Error: Recharts CDN failed to load. Check internet connection and reload.</p>';
+    document.getElementById('root').innerHTML = '<div style="font-family:sans-serif;padding:40px"><p style="color:red;font-size:16px"><b>Error: Recharts chart library failed to load.</b></p><p>This usually means a CDN request was blocked. Try:</p><ul><li>Hard refresh: <b>Ctrl+Shift+R</b> (or Cmd+Shift+R on Mac)</li><li>Disable browser extensions / ad blockers temporarily</li><li>Check browser console (F12) for blocked requests</li></ul></div>';
     return;
   }
 
