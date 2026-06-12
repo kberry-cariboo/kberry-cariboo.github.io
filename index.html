@@ -3,135 +3,36 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="google-site-verification" content="xl6naN7JjTl984bGuX_fV2wl10oVQjIjJwLPx614_lY" />
 <title>CashFlow Budget</title>
+<!-- React 18 -->
 <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/recharts@2.12.7/umd/Recharts.js';document.head.appendChild(s)"></script>
+<!-- Recharts — jsdelivr primary, unpkg fallback -->
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"
+  onerror="var s=document.createElement('script');s.src='https://unpkg.com/recharts@2.12.7/umd/Recharts.js';document.head.appendChild(s)"></script>
+<!-- Google APIs (for Drive sync) -->
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<style>*{box-sizing:border-box} body{margin:0;background:#F7F4EF}</style>
+<style>*{box-sizing:border-box}body{margin:0;background:#F7F4EF}</style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">Loading CashFlow…</div></div>
 <script>
+/* ── Google Drive Client ID ── */
 window.CASHFLOW_CLIENT_ID = "726237880395-1jtn428culabkkk0vq2lgcn5cvufjuj8.apps.googleusercontent.com";
 </script>
 <script>
+/* ── App (pre-compiled, no Babel needed) ── */
 window.addEventListener('load', function() {
   if (typeof React === 'undefined') {
-    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px">Error: React CDN failed to load. Check internet connection and reload.</p>';
+    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px"><b>Error:</b> React failed to load. Check internet connection and hard-refresh (Ctrl+Shift+R).</p>';
     return;
   }
   if (typeof Recharts === 'undefined') {
-    document.getElementById('root').innerHTML = '<div style="font-family:sans-serif;padding:40px"><p style="color:red;font-size:16px"><b>Error: Recharts chart library failed to load.</b></p><p>This usually means a CDN request was blocked. Try:</p><ul><li>Hard refresh: <b>Ctrl+Shift+R</b> (or Cmd+Shift+R on Mac)</li><li>Disable browser extensions / ad blockers temporarily</li><li>Check browser console (F12) for blocked requests</li></ul></div>';
+    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px"><b>Error:</b> Recharts failed to load. Disable any ad blockers for this page, then hard-refresh (Ctrl+Shift+R).</p>';
     return;
   }
-
-
-
-function GDriveSync(props) {
-  const {entries,setEntries,overridesByYr,setOverridesByYr,yearConfigs,setYearConfigs,
-    categories,setCategories,activeYear,setActiveYear,alertThreshold,setAlertThreshold,darkMode,setDarkMode} = props;
-  const CLIENT_ID = window.CASHFLOW_CLIENT_ID || "";
-  const [status,setStatus] = React.useState(!CLIENT_ID ? "no-client-id" : "idle");
-  const [msg,setMsg]       = React.useState("");
-  const [fileId,setFileId] = React.useState(null);
-  const tc = React.useRef(null);
-
-  React.useEffect(()=>{
-    if (!CLIENT_ID) return;
-    const t = setInterval(()=>{
-      if (window.google && window.google.accounts) {
-        clearInterval(t);
-        tc.current = window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: "https://www.googleapis.com/auth/drive.file",
-          callback: (resp) => {
-            if (resp.error) { setStatus("error"); setMsg("Auth failed: "+resp.error); return; }
-            gapi.load("client", async ()=>{
-              await gapi.client.init({});
-              await gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
-              setStatus("ready"); setMsg("Signed in ✓");
-            });
-          }
-        });
-      }
-    }, 300);
-    return ()=>clearInterval(t);
-  },[]);
-
-  const findFile = async()=>{
-    const r = await gapi.client.drive.files.list({q:"name='CashFlow_Data.json' and trashed=false",fields:"files(id)",spaces:"drive"});
-    return r.result.files&&r.result.files.length>0 ? r.result.files[0].id : null;
-  };
-
-  const saveData = async()=>{
-    setStatus("syncing"); setMsg("Saving…");
-    try {
-      const body = JSON.stringify({entries,overridesByYr,yearConfigs,categories,activeYear,
-        alertThreshold,darkMode,savedAt:new Date().toISOString()},null,2);
-      let fid = fileId||await findFile();
-      if (fid) {
-        await gapi.client.request({path:`https://www.googleapis.com/upload/drive/v3/files/${fid}`,
-          method:"PATCH",params:{uploadType:"media"},headers:{"Content-Type":"application/json"},body});
-      } else {
-        const m = await gapi.client.drive.files.create({resource:{name:"CashFlow_Data.json",mimeType:"application/json"},fields:"id"});
-        fid = m.result.id;
-        await gapi.client.request({path:`https://www.googleapis.com/upload/drive/v3/files/${fid}`,
-          method:"PATCH",params:{uploadType:"media"},headers:{"Content-Type":"application/json"},body});
-      }
-      setFileId(fid); setStatus("ready"); setMsg("✅ Saved "+new Date().toLocaleTimeString());
-    } catch(e){ setStatus("error"); setMsg("❌ "+e.message); }
-  };
-
-  const loadData = async()=>{
-    setStatus("syncing"); setMsg("Loading…");
-    try {
-      let fid = fileId||await findFile();
-      if (!fid){ setStatus("ready"); setMsg("No file in Drive yet — Save first."); return; }
-      setFileId(fid);
-      const r = await gapi.client.drive.files.get({fileId:fid,alt:"media"});
-      const d = typeof r.result==="string"?JSON.parse(r.result):r.result;
-      if(d.entries)              setEntries(d.entries);
-      if(d.overridesByYr)        setOverridesByYr(d.overridesByYr);
-      if(d.yearConfigs)          setYearConfigs(d.yearConfigs);
-      if(d.categories)           setCategories(d.categories);
-      if(d.activeYear)           setActiveYear(d.activeYear);
-      if(d.alertThreshold!=null) setAlertThreshold(d.alertThreshold);
-      if(d.darkMode!=null)       setDarkMode(d.darkMode);
-      setStatus("ready"); setMsg("✅ Loaded "+new Date().toLocaleTimeString());
-    } catch(e){ setStatus("error"); setMsg("❌ "+e.message); }
-  };
-
-  const btn=(bg,label,fn)=>React.createElement("button",{onClick:fn,disabled:status==="syncing",
-    style:{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,padding:"6px 14px",
-      borderRadius:6,border:"none",cursor:"pointer",background:bg,color:"#fff",
-      opacity:status==="syncing"?0.6:1}},label);
-
-  if(status==="no-client-id") return React.createElement("div",{
-    style:{background:"#FFF3CD",border:"1px solid #FBBF24",borderRadius:8,padding:"10px 16px",
-      marginBottom:16,fontFamily:"Inter,sans-serif",fontSize:12,color:"#92400E"}},
-    "⚠ Google Drive not configured — see SETUP.md");
-
-  return React.createElement("div",{
-    style:{background:"rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 16px",marginBottom:16,
-      display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",border:"1px solid rgba(255,255,255,0.15)"}},
-    React.createElement("span",{style:{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.8)"}},"☁ Google Drive"),
-    status==="idle"      && btn("#4285F4","Sign in with Google",()=>{setStatus("signing-in");tc.current&&tc.current.requestAccessToken({prompt:"consent"});}),
-    status==="signing-in"&& React.createElement("span",{style:{fontFamily:"Inter,sans-serif",fontSize:12,color:"rgba(255,255,255,0.6)"}},"Signing in…"),
-    (status==="ready"||status==="syncing"||status==="error") && btn("#27AE73","⬆ Save",saveData),
-    (status==="ready"||status==="syncing"||status==="error") && btn("#2F5496","⬇ Load",loadData),
-    status==="syncing"   && React.createElement("span",{style:{fontFamily:"Inter,sans-serif",fontSize:12,color:"rgba(255,255,255,0.6)"}},"⟳ Syncing…"),
-    msg && React.createElement("span",{style:{fontFamily:"Inter,sans-serif",fontSize:11,flex:1,
-      color:msg.startsWith("❌")?"#FF8A7A":"rgba(255,255,255,0.65)"}},msg)
-  );
-}
-
-
-
-
+  try {
 (() => {
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
@@ -1730,6 +1631,179 @@ function GDriveSync(props) {
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => /* @__PURE__ */ React.createElement(AlertRow, { key: ev.id, ev, i }))));
   }
+  function GDriveSync({
+    entries,
+    setEntries,
+    overridesByYr,
+    setOverridesByYr,
+    yearConfigs,
+    setYearConfigs,
+    categories,
+    setCategories,
+    activeYear,
+    setActiveYear,
+    alertThreshold,
+    setAlertThreshold,
+    darkMode,
+    setDarkMode
+  }) {
+    const CLIENT_ID = window.CASHFLOW_CLIENT_ID || "";
+    const [status, setStatus] = useState(!CLIENT_ID ? "no-client-id" : "idle");
+    const [msg, setMsg] = useState("");
+    const [fileId, setFileId] = useState(null);
+    const tc = useRef(null);
+    useEffect(() => {
+      if (!CLIENT_ID) return;
+      const t = setInterval(() => {
+        var _a;
+        if ((_a = window.google) == null ? void 0 : _a.accounts) {
+          clearInterval(t);
+          tc.current = window.google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: "https://www.googleapis.com/auth/drive.file",
+            callback: async (resp) => {
+              if (resp.error) {
+                setStatus("error");
+                setMsg("Auth failed: " + resp.error);
+                return;
+              }
+              try {
+                await window.gapi.client.init({});
+                await window.gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
+                setStatus("ready");
+                setMsg("Signed in \u2713");
+              } catch (e) {
+                setStatus("error");
+                setMsg("Init failed: " + e.message);
+              }
+            }
+          });
+          setStatus("idle");
+        }
+      }, 400);
+      return () => clearInterval(t);
+    }, []);
+    const findFile = async () => {
+      var _a;
+      const r = await window.gapi.client.drive.files.list({
+        q: "name='CashFlow_Data.json' and trashed=false",
+        fields: "files(id)",
+        spaces: "drive"
+      });
+      return ((_a = r.result.files) == null ? void 0 : _a.length) > 0 ? r.result.files[0].id : null;
+    };
+    const saveData = async () => {
+      setStatus("syncing");
+      setMsg("Saving\u2026");
+      try {
+        const payload = JSON.stringify({
+          entries,
+          overridesByYr,
+          yearConfigs,
+          categories,
+          activeYear,
+          alertThreshold,
+          darkMode,
+          savedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }, null, 2);
+        let fid = fileId || await findFile();
+        if (fid) {
+          await window.gapi.client.request({
+            path: `https://www.googleapis.com/upload/drive/v3/files/${fid}`,
+            method: "PATCH",
+            params: { uploadType: "media" },
+            headers: { "Content-Type": "application/json" },
+            body: payload
+          });
+        } else {
+          const m = await window.gapi.client.drive.files.create(
+            { resource: { name: "CashFlow_Data.json", mimeType: "application/json" }, fields: "id" }
+          );
+          fid = m.result.id;
+          await window.gapi.client.request({
+            path: `https://www.googleapis.com/upload/drive/v3/files/${fid}`,
+            method: "PATCH",
+            params: { uploadType: "media" },
+            headers: { "Content-Type": "application/json" },
+            body: payload
+          });
+        }
+        setFileId(fid);
+        setStatus("ready");
+        setMsg("\u2705 Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+      } catch (e) {
+        setStatus("error");
+        setMsg("\u274C " + e.message);
+      }
+    };
+    const loadData = async () => {
+      setStatus("syncing");
+      setMsg("Loading\u2026");
+      try {
+        let fid = fileId || await findFile();
+        if (!fid) {
+          setStatus("ready");
+          setMsg("No Drive file yet \u2014 Save first.");
+          return;
+        }
+        setFileId(fid);
+        const r = await window.gapi.client.drive.files.get({ fileId: fid, alt: "media" });
+        const d = typeof r.result === "string" ? JSON.parse(r.result) : r.result;
+        if (d.entries) setEntries(d.entries);
+        if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
+        if (d.yearConfigs) setYearConfigs(d.yearConfigs);
+        if (d.categories) setCategories(d.categories);
+        if (d.activeYear) setActiveYear(d.activeYear);
+        if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
+        if (d.darkMode != null) setDarkMode(d.darkMode);
+        setStatus("ready");
+        setMsg("\u2705 Loaded " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+      } catch (e) {
+        setStatus("error");
+        setMsg("\u274C " + e.message);
+      }
+    };
+    const signIn = () => {
+      var _a;
+      setStatus("signing-in");
+      (_a = tc.current) == null ? void 0 : _a.requestAccessToken({ prompt: "consent" });
+    };
+    const btnSt = (bg) => ({
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 600,
+      padding: "5px 12px",
+      borderRadius: 6,
+      border: "none",
+      cursor: "pointer",
+      background: bg,
+      color: "#fff",
+      opacity: status === "syncing" ? 0.6 : 1,
+      whiteSpace: "nowrap"
+    });
+    if (status === "no-client-id") return null;
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "6px 14px",
+      background: "rgba(255,255,255,0.07)",
+      borderRadius: 8,
+      border: "1px solid rgba(255,255,255,0.13)",
+      flexWrap: "wrap"
+    } }, /* @__PURE__ */ React.createElement("span", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 700,
+      color: "rgba(255,255,255,0.7)",
+      whiteSpace: "nowrap"
+    } }, "\u2601 Drive"), status === "idle" && /* @__PURE__ */ React.createElement("button", { style: btnSt("#4285F4"), onClick: signIn }, "Sign in"), status === "signing-in" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "rgba(255,255,255,0.5)" } }, "Signing in\u2026"), (status === "ready" || status === "syncing" || status === "error") && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: btnSt("#27AE73"), onClick: saveData, disabled: status === "syncing" }, "\u2B06 Save"), /* @__PURE__ */ React.createElement("button", { style: btnSt("#2F5496"), onClick: loadData, disabled: status === "syncing" }, "\u2B07 Load")), status === "syncing" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "rgba(255,255,255,0.5)" } }, "\u27F3"), msg && /* @__PURE__ */ React.createElement("span", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 10,
+      color: msg.startsWith("\u274C") ? "#FF8A7A" : "rgba(255,255,255,0.55)",
+      maxWidth: 180
+    } }, msg));
+  }
   function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries }) {
     const [newCat, setNewCat] = useState("");
     const [editIdx, setEditIdx] = useState(null);
@@ -2227,7 +2301,25 @@ function GDriveSync(props) {
         }
       },
       "+ / \u2212"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
+      GDriveSync,
+      {
+        entries,
+        setEntries,
+        overridesByYr,
+        setOverridesByYr,
+        yearConfigs,
+        setYearConfigs,
+        categories,
+        setCategories,
+        activeYear,
+        setActiveYear,
+        alertThreshold: alertThresh,
+        setAlertThreshold: setAlertThresh,
+        darkMode,
+        setDarkMode
+      }
+    ), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
       gap: 6,
@@ -2438,8 +2530,9 @@ function GDriveSync(props) {
   root.render(React.createElement(App, null));
 })();
 
-
-
+  } catch(e) {
+    document.getElementById('root').innerHTML = '<p style="font-family:sans-serif;color:red;padding:40px"><b>App error:</b> ' + e.message + '<br><br>Open browser console (F12) for details.</p>';
+  }
 });
 </script>
 </body>
