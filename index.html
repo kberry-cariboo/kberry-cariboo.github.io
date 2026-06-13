@@ -1276,7 +1276,7 @@ function waitForReact(){
         }
       },
       /* @__PURE__ */ React.createElement("option", { value: "all" }, "All Categories"),
-      categories.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+      [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
     ), /* @__PURE__ */ React.createElement(
       "select",
       {
@@ -1500,7 +1500,7 @@ function waitForReact(){
         },
         onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Day", "Description", "Category", "Income", "Expense", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+    )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Day", "Description", "Category", "Income", "Expense", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "budget-col-cat" : "", style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -1518,7 +1518,7 @@ function waitForReact(){
         },
         onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
       }
-    )), /* @__PURE__ */ React.createElement("div", null, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "var(--amber)" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } })), /* @__PURE__ */ React.createElement("div", { style: {
+    )), /* @__PURE__ */ React.createElement("div", null, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "var(--amber)" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
       display: "grid",
       gridTemplateColumns: "60px 1fr 180px",
       borderBottom: "1px solid var(--border)",
@@ -1553,7 +1553,7 @@ function waitForReact(){
         minWidth: 90,
         textAlign: "right"
       } }, ev.type === "income" ? "+" : "-", fmt(ev.amount))
-    )))), /* @__PURE__ */ React.createElement("div", { style: {
+    )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
       display: "flex",
       alignItems: "center",
       justifyContent: "flex-end",
@@ -1596,7 +1596,7 @@ function waitForReact(){
       cursor: "pointer",
       background: horizon === h ? "var(--navy)" : "var(--border)",
       color: horizon === h ? "#fff" : "var(--textMid)"
-    } }, h, " days")))), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)", fontFamily: "Inter,sans-serif" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+    } }, h, " days")))), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)", fontFamily: "Inter,sans-serif" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "budget-col-cat" : "", style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -1699,7 +1699,7 @@ function waitForReact(){
         onChange: setBalView,
         options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
       }
-    ) }, "Running Balance"), /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 200 }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, dot: { r: 4, fill: "#1C2B3A" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement("defs", null, /* @__PURE__ */ React.createElement("linearGradient", { id: "bg", x1: "0", y1: "0", x2: "0", y2: "1" }, /* @__PURE__ */ React.createElement("stop", { offset: "5%", stopColor: "#1C2B3A", stopOpacity: 0.15 }), /* @__PURE__ */ React.createElement("stop", { offset: "95%", stopColor: "#1C2B3A", stopOpacity: 0.01 }))), /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, fill: "url(#bg)", dot: { r: 4, fill: "#1C2B3A" } })))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+    ) }, "Running Balance"), /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 200 }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, dot: { r: 4, fill: "#1C2B3A" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, fill: "rgba(28,43,58,0.12)", dot: { r: 4, fill: "#1C2B3A" } })))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: surplusView,
@@ -1806,12 +1806,9 @@ function waitForReact(){
       {
         value: srView,
         onChange: setSrView,
-        options: [{ id: "rate", icon: "%", label: "Rate" }, { id: "amt", icon: "$", label: "Amount" }]
+        options: [{ id: "cumulative", icon: "\u2197", label: "Cumulative" }, { id: "monthly", icon: "\u25AE", label: "Monthly" }]
       }
-    ) }, "Monthly Savings Rate"), /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 190, style: { marginTop: 4 } }, /* @__PURE__ */ React.createElement(BarChart, { data: savingsRate, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => srView === "rate" ? `${v}%` : `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => srView === "rate" ? `${v}%` : fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: srView === "rate" ? "rate" : "surplus", name: srView === "rate" ? "Savings Rate" : "Surplus", radius: [4, 4, 0, 0] }, savingsRate.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: srView === "rate" ? m.rate >= 20 ? "var(--greenDk)" : m.rate >= 0 ? "var(--amber)" : "var(--red)" : m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, textAlign: "center" } }, "Annual avg savings rate: ", /* @__PURE__ */ React.createElement("strong", { style: {
-      fontFamily: "'IBM Plex Mono',monospace",
-      color: totalIncome > 0 && netSurplus / totalIncome >= 0.2 ? "var(--greenDk)" : netSurplus >= 0 ? "var(--amber)" : "var(--red)"
-    } }, totalIncome > 0 ? (netSurplus / totalIncome * 100).toFixed(1) : 0, "%")))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary"), /* @__PURE__ */ React.createElement(
+    ) }, "Cash Flow Trend"), /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 190, style: { marginTop: 4 } }, srView === "cumulative" ? /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", fill: "rgba(39,174,115,0.1)", strokeWidth: 2 }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", fill: "rgba(232,93,74,0.1)", strokeWidth: 2 })) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => `$${(v / 1e3).toFixed(0)}k`, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: /* @__PURE__ */ React.createElement(ChartTip, null) }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Net Cash Flow", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, textAlign: "center" } }, srView === "cumulative" ? "Income vs Expense trends over the year" : "Monthly net cash flow \u2014 green surplus, red deficit"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary"), /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: summaryView,
@@ -1963,6 +1960,179 @@ function waitForReact(){
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
+  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad, gistCreate }) {
+    const [tok, setTok] = useState(() => localStorage.getItem("cf_gist_token") || "");
+    const [gid, setGid] = useState(() => localStorage.getItem("cf_gist_id") || "");
+    const [editing, setEditing] = useState(false);
+    const [tmpTok, setTmpTok] = useState("");
+    const [tmpGid, setTmpGid] = useState("");
+    const isConfigured = !!(tok && gid);
+    const iStyle = {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      padding: "7px 10px",
+      border: "1px solid var(--border)",
+      borderRadius: 6,
+      background: "var(--inputBg)",
+      color: "var(--text)",
+      outline: "none",
+      width: "100%"
+    };
+    const btnSt = (bg, disabled) => ({
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      fontWeight: 600,
+      padding: "7px 16px",
+      borderRadius: 6,
+      border: "none",
+      cursor: disabled ? "not-allowed" : "pointer",
+      background: bg,
+      color: "#fff",
+      opacity: disabled ? 0.6 : 1
+    });
+    const disconnect = () => {
+      localStorage.removeItem("cf_gist_token");
+      localStorage.removeItem("cf_gist_id");
+      setTok("");
+      setGid("");
+      setEditing(false);
+    };
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 14,
+      padding: "10px 14px",
+      borderRadius: 8,
+      background: isConfigured ? "rgba(39,174,115,0.08)" : "var(--stripe)",
+      border: `1px solid ${isConfigured ? "rgba(39,174,115,0.25)" : "var(--border)"}`
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20 } }, isConfigured ? "\u2601" : "\u2699"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, isConfigured ? "Auto-sync active" : "Not configured"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, isConfigured ? `Gist ID: ${gid.slice(0, 8)}\u2026 \xB7 Changes save automatically` : "Enter your GitHub token to enable auto-save across devices")), gistMsg && /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      textAlign: "right",
+      maxWidth: 160,
+      color: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "var(--amber)" : "var(--greenDk)"
+    } }, gistMsg)), isConfigured && !editing && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => gistSave(false),
+        disabled: gistStatus === "syncing",
+        style: btnSt("var(--greenDk)", gistStatus === "syncing")
+      },
+      "\u2B06 Save Now"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => gistLoad(),
+        disabled: gistStatus === "syncing",
+        style: btnSt("var(--navyMid)", gistStatus === "syncing")
+      },
+      "\u2B07 Load from Gist"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setTmpTok(tok);
+          setTmpGid(gid);
+          setEditing(true);
+        },
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "7px 14px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)"
+        }
+      },
+      "Edit Token"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: disconnect,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "7px 14px",
+          borderRadius: 6,
+          border: "1px solid var(--redLt)",
+          cursor: "pointer",
+          background: "var(--redLt)",
+          color: "var(--red)"
+        }
+      },
+      "Disconnect"
+    )), (!isConfigured || editing) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      color: "var(--textLt)",
+      lineHeight: 1.6,
+      padding: "8px 12px",
+      background: "var(--stripe)",
+      borderRadius: 6
+    } }, "1. Go to ", /* @__PURE__ */ React.createElement("strong", null, "github.com \u2192 Settings \u2192 Developer settings \u2192 Personal access tokens \u2192 Tokens (classic)"), /* @__PURE__ */ React.createElement("br", null), "2. Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate new token"), ", tick ", /* @__PURE__ */ React.createElement("strong", null, "gist"), ", copy the token", /* @__PURE__ */ React.createElement("br", null), "3. Paste below and click Connect"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, "GitHub Personal Access Token *"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        style: iStyle,
+        type: "password",
+        placeholder: "ghp_xxxxxxxxxxxxxxxxxxxx",
+        value: tmpTok,
+        onChange: (e) => setTmpTok(e.target.value)
+      }
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, "Gist ID ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)" } }, "\u2014 leave blank to auto-create on first connect")), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        style: iStyle,
+        type: "text",
+        placeholder: "Auto-created on first connect",
+        value: tmpGid,
+        onChange: (e) => setTmpGid(e.target.value)
+      }
+    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        disabled: !tmpTok.trim() || gistStatus === "syncing",
+        style: __spreadProps(__spreadValues({}, btnSt("var(--navy)", !tmpTok.trim() || gistStatus === "syncing")), { flex: 1 }),
+        onClick: async () => {
+          const t = tmpTok.trim();
+          if (!t) return;
+          localStorage.setItem("cf_gist_token", t);
+          if (tmpGid.trim()) {
+            localStorage.setItem("cf_gist_id", tmpGid.trim());
+            setTok(t);
+            setGid(tmpGid.trim());
+            setEditing(false);
+          } else {
+            const newId = await gistCreate(t);
+            if (newId) {
+              setTok(t);
+              setGid(newId);
+              setEditing(false);
+            }
+          }
+        }
+      },
+      tmpGid.trim() ? "Connect" : "Connect & Create Gist"
+    ), editing && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setEditing(false),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "8px 14px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)"
+        }
+      },
+      "Cancel"
+    ))));
+  }
   function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate }) {
     const [newCat, setNewCat] = useState("");
     const [editIdx, setEditIdx] = useState(null);
@@ -2053,208 +2223,16 @@ function waitForReact(){
       display: "block",
       marginBottom: 8
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 760, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), (() => {
-      const [tok, setTok] = useState(() => localStorage.getItem("cf_gist_token") || "");
-      const [gid, setGid] = useState(() => localStorage.getItem("cf_gist_id") || "");
-      const [editing, setEditing] = useState(false);
-      const [tmpTok, setTmpTok] = useState("");
-      const [tmpGid, setTmpGid] = useState("");
-      const isConfigured = !!(tok && gid);
-      const hasToken = !!tok;
-      const saveConfig = () => {
-        const t = tmpTok.trim();
-        if (!t) return;
-        localStorage.setItem("cf_gist_token", t);
-        if (tmpGid.trim()) localStorage.setItem("cf_gist_id", tmpGid.trim());
-        setTok(t);
-        setGid(tmpGid.trim());
-        setEditing(false);
-      };
-      const disconnect = () => {
-        localStorage.removeItem("cf_gist_token");
-        localStorage.removeItem("cf_gist_id");
-        setTok("");
-        setGid("");
-        setEditing(false);
-      };
-      const iStyle = {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 12,
-        padding: "7px 10px",
-        border: "1px solid var(--border)",
-        borderRadius: 6,
-        background: "var(--inputBg)",
-        color: "var(--text)",
-        outline: "none",
-        width: "100%"
-      };
-      return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        marginBottom: 14,
-        padding: "10px 14px",
-        borderRadius: 8,
-        background: isConfigured ? "rgba(39,174,115,0.08)" : "var(--stripe)",
-        border: `1px solid ${isConfigured ? "rgba(39,174,115,0.25)" : "var(--border)"}`
-      } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20 } }, isConfigured ? "\u2601" : "\u2699"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, isConfigured ? "Auto-sync active" : "Not configured"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, isConfigured ? `Gist ID: ${gid.slice(0, 8)}\u2026 \xB7 Changes save automatically after 2 seconds` : "Enter your GitHub token to enable auto-save across devices")), gistMsg && /* @__PURE__ */ React.createElement("div", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        color: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "var(--amber)" : "var(--greenDk)",
-        textAlign: "right",
-        maxWidth: 160
-      } }, gistMsg)), isConfigured && !editing && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => gistSave(false),
-          disabled: gistStatus === "syncing",
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "7px 16px",
-            borderRadius: 6,
-            border: "none",
-            cursor: "pointer",
-            background: "var(--greenDk)",
-            color: "#fff"
-          }
-        },
-        "\u2B06 Save Now"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => gistLoad(),
-          disabled: gistStatus === "syncing",
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "7px 16px",
-            borderRadius: 6,
-            border: "none",
-            cursor: "pointer",
-            background: "var(--navyMid)",
-            color: "#fff"
-          }
-        },
-        "\u2B07 Load from Gist"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            setTmpTok(tok);
-            setTmpGid(gid);
-            setEditing(true);
-          },
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            padding: "7px 14px",
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-            background: "transparent",
-            color: "var(--textMid)"
-          }
-        },
-        "Edit Token"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: disconnect,
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            padding: "7px 14px",
-            borderRadius: 6,
-            border: "1px solid var(--redLt)",
-            cursor: "pointer",
-            background: "var(--redLt)",
-            color: "var(--red)"
-          }
-        },
-        "Disconnect"
-      )), (!isConfigured || editing) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 12,
-        color: "var(--textLt)",
-        lineHeight: 1.6,
-        padding: "8px 12px",
-        background: "var(--stripe)",
-        borderRadius: 6
-      } }, "1. Go to ", /* @__PURE__ */ React.createElement("strong", null, "github.com \u2192 Settings \u2192 Developer settings \u2192 Personal access tokens \u2192 Tokens (classic)"), /* @__PURE__ */ React.createElement("br", null), "2. Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate new token"), ", tick the ", /* @__PURE__ */ React.createElement("strong", null, "gist"), " scope, copy the token", /* @__PURE__ */ React.createElement("br", null), "3. Paste it below and click Connect"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, "GitHub Personal Access Token *"), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          style: iStyle,
-          type: "password",
-          placeholder: "ghp_xxxxxxxxxxxxxxxxxxxx",
-          value: tmpTok,
-          onChange: (e) => setTmpTok(e.target.value)
-        }
-      )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, "Gist ID ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)" } }, "\u2014 leave blank to auto-create")), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          style: iStyle,
-          type: "text",
-          placeholder: "Auto-created on first connect",
-          value: tmpGid,
-          onChange: (e) => setTmpGid(e.target.value)
-        }
-      )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: async () => {
-            const t = tmpTok.trim();
-            if (!t) return;
-            localStorage.setItem("cf_gist_token", t);
-            if (tmpGid.trim()) {
-              localStorage.setItem("cf_gist_id", tmpGid.trim());
-              setTok(t);
-              setGid(tmpGid.trim());
-              setEditing(false);
-            } else {
-              const newId = await gistCreate(t);
-              if (newId) {
-                setTok(t);
-                setGid(newId);
-                setEditing(false);
-              }
-            }
-          },
-          disabled: !tmpTok.trim() || gistStatus === "syncing",
-          style: {
-            flex: 1,
-            fontFamily: "Inter,sans-serif",
-            fontSize: 13,
-            fontWeight: 600,
-            padding: "8px 0",
-            borderRadius: 6,
-            border: "none",
-            cursor: "pointer",
-            background: "var(--navy)",
-            color: "#fff"
-          }
-        },
-        tmpGid.trim() ? "Connect" : "Connect &amp; Create Gist"
-      ), editing && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setEditing(false),
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            padding: "8px 14px",
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-            background: "transparent",
-            color: "var(--textMid)"
-          }
-        },
-        "Cancel"
-      ))));
-    })()), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 760, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), /* @__PURE__ */ React.createElement(
+      GistSettingsPanel,
+      {
+        gistStatus,
+        gistMsg,
+        gistSave,
+        gistLoad,
+        gistCreate
+      }
+    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, activeYear, alertThreshold, darkMode, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -2798,6 +2776,8 @@ function waitForReact(){
         .font-mono{font-family:'IBM Plex Mono',monospace;}
         .font-ui{font-family:Inter,sans-serif;}
         input,select,button,textarea{font-family:Inter,sans-serif;}
+        .reg-table tr:hover td span[style*="opacity:0"]{opacity:1!important;}
+        @media(max-width:700px){span[style*="opacity:0"]{opacity:1!important;}}
         button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 
         /* \u2500\u2500 Mobile \u2500\u2500 */
@@ -2806,26 +2786,33 @@ function waitForReact(){
           .logo-area{gap:10px!important;}
           .logo-area img{height:32px!important;}
           .year-pills{gap:3px!important;flex-wrap:wrap;}
-          .balance-area{font-size:15px!important;}
           .tab-bar{gap:0!important;overflow-x:auto;padding-bottom:2px;}
           .tab-bar button{padding:8px 12px!important;font-size:12px!important;white-space:nowrap;}
-          .content-area{padding:16px 12px!important;}
+          .content-area{padding:16px 10px!important;}
           .kpi-grid{grid-template-columns:repeat(2,1fr)!important;}
           .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;}
           .chart-grid{grid-template-columns:1fr!important;}
           .chart-grid-32{grid-template-columns:1fr!important;}
           .reg-table{font-size:11px!important;}
-          .reg-table td,.reg-table th{padding:7px 8px!important;}
+          .reg-table td,.reg-table th{padding:6px 6px!important;}
+          .reg-col-cat{display:none!important;}
+          .reg-col-sched{display:none!important;}
+          .reg-actions{display:flex!important;gap:4px!important;}
           .entry-form-grid{grid-template-columns:1fr 1fr!important;}
-          .month-picker{gap:4px!important;}
-          .month-picker button{padding:5px 8px!important;font-size:11px!important;}
-          .forecast-table td,.forecast-table th{padding:6px 8px!important;font-size:11px!important;}
+          .month-picker{gap:3px!important;}
+          .month-picker button{padding:4px 7px!important;font-size:10px!important;}
+          .forecast-table td,.forecast-table th{padding:5px 6px!important;font-size:11px!important;}
+          .forecast-col-cat{display:none!important;}
+          .budget-col-cat{display:none!important;}
+          .daily-card{grid-template-columns:44px 1fr!important;}
+          .daily-balance{display:none!important;}
         }
         @media(max-width:480px){
           .kpi-grid{grid-template-columns:1fr 1fr!important;}
           .kpi-grid-4{grid-template-columns:1fr 1fr!important;}
           .entry-form-grid{grid-template-columns:1fr!important;}
-          .month-picker button{padding:4px 6px!important;font-size:10px!important;}
+          .month-picker button{padding:3px 5px!important;font-size:9px!important;}
+          .reg-col-notes{display:none!important;}
         }
         @media print{
           [data-noprint]{display:none!important;}
