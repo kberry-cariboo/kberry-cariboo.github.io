@@ -419,7 +419,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v13';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v14';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1769,9 +1769,8 @@ function waitForReact(){
     const [filter, setFilter] = useState("all");
     const [filterCat, setFilterCat] = useState("all");
     const [filterSched, setFilterSched] = useState("all");
-    const [filterStatus, setFilterStatus] = useState("active");
+    const [filterStatus, setFilterStatus] = useState("all");
     const [search, setSearch] = useState("");
-    const [showArchived, setShowArchived] = useState(false);
     const [showCSV, setShowCSV] = useState(false);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
     const [dragCol, setDragCol] = useState(null);
@@ -1790,7 +1789,8 @@ function waitForReact(){
     };
     const doCopy = (e) => {
       const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
-      setEntries((prev) => [...prev, copy]);
+      if (addEntry) addEntry(copy);
+      else setEntries((prev) => [...prev, copy]);
     };
     const handleSave = (data) => {
       if (editing) setEntries((prev) => prev.map((e) => e.id === editing.id ? __spreadProps(__spreadValues({}, data), { id: editing.id }) : e));
@@ -1968,9 +1968,9 @@ function waitForReact(){
           cursor: "pointer"
         }
       },
-      /* @__PURE__ */ React.createElement("option", { value: "active" }, "Active"),
-      /* @__PURE__ */ React.createElement("option", { value: "historical" }, "Historical"),
-      /* @__PURE__ */ React.createElement("option", { value: "all" }, "All Status")
+      /* @__PURE__ */ React.createElement("option", { value: "all" }, "All Status"),
+      /* @__PURE__ */ React.createElement("option", { value: "active" }, "Active only"),
+      /* @__PURE__ */ React.createElement("option", { value: "historical" }, "Historical only")
     ), /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -2037,7 +2037,7 @@ function waitForReact(){
       },
       REG_COL_LABELS[col],
       col !== "actions" && col !== "notes" ? " \u283F" : ""
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, colOrder.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: colOrder.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : showArchived ? "No entries found." : "No entries match your filters. Try changing Type, Category, Schedule, or Status.")))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 10, paddingLeft: 2 } }, "\u{1F4A1} Drag column headers to reorder \xB7 Historical entries (no activity in the viewed year) are hidden by default"), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, colOrder.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: colOrder.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 10, paddingLeft: 2 } }, "\u{1F4A1} Drag column headers to reorder \xB7 Historical entries (no activity in the viewed year) are hidden by default"), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
