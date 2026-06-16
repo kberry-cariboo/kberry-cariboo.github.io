@@ -15,10 +15,10 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
-  body{background:#F7F4EF;font-family:Inter,sans-serif;overflow-x:hidden;}
+  body{background:#1C2B3A;font-family:Inter,sans-serif;overflow-x:hidden;}
   #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;color:#999;font-size:13px;}
-  .bbar{width:180px;height:3px;background:#E0DDD8;border-radius:2px;overflow:hidden;}
-  .bfill{height:100%;background:#1C2B3A;border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
+  .bbar{width:180px;height:3px;background:#243447;border-radius:2px;overflow:hidden;}
+  .bfill{height:100%;background:#fff;border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
   @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
   @keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
   svg{max-width:100%;}
@@ -27,9 +27,10 @@
 <body>
 <div id="root">
   <div id="boot">
-    <div style="font-weight:600;color:#444;font-size:15px">CashFlow</div>
+    <div style="font-size:36px;margin-bottom:4px">💰</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;font-size:16px;letter-spacing:0.04em">CashFlow</div>
     <div class="bbar"><div class="bfill"></div></div>
-    <div id="bstat" style="font-size:11px">Loading…</div>
+    <div id="bstat" style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"
@@ -419,7 +420,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v14';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v16';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -674,6 +675,24 @@ function waitForReact(){
     return `${sign}$${Math.round(abs)}`;
   };
   const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  function hashPw(email, pw) {
+    let h = 2166136261 >>> 0;
+    const s = (email || "").toLowerCase().trim() + ":" + (pw || "") + ":cf2026salt";
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h.toString(16).padStart(8, "0");
+  }
+  const SEED_USERS = [{
+    id: "user_001",
+    fullName: "Ken Berry",
+    email: "kenneth-berry@outlook.com",
+    passwordHash: hashPw("kenneth-berry@outlook.com", "Iloveme2026!"),
+    disabled: false,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    lastLogin: null
+  }];
   const daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
   function parseDate(str) {
     if (!str) return null;
@@ -3221,7 +3240,10 @@ function waitForReact(){
     ))));
   }
   function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  }, users = [], setUsers = () => {
+  }, sessionUser = null, logout = () => {
   } }) {
+    var _a;
     const [newCat, setNewCat] = useState("");
     const [editIdx, setEditIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -3231,6 +3253,10 @@ function waitForReact(){
     const [yearMsg, setYearMsg] = useState("");
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
+    const [userForm, setUserForm] = useState(null);
+    const [uf, setUf] = useState({ fullName: "", email: "", password: "", disabled: false });
+    const [ufErr, setUfErr] = useState({});
+    const [userMsg, setUserMsg] = useState("");
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [historyOpen, setHistoryOpen] = useState({});
     const sortedYears = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -3250,7 +3276,7 @@ function waitForReact(){
       setYearMsg(`Year ${y} added.`);
     };
     const delYear = (yr) => {
-      var _a;
+      var _a2;
       if (yearConfigs.length <= 1) {
         setYearMsg("Cannot delete the only year.");
         return;
@@ -3261,7 +3287,7 @@ function waitForReact(){
         delete n[yr];
         return n;
       });
-      if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
+      if (activeYear === yr) setActiveYear(((_a2 = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a2.year) || sortedYears[0].year);
       setYearMsg(`Year ${yr} removed.`);
     };
     const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
@@ -3405,7 +3431,7 @@ function waitForReact(){
         onChange: (e) => setAlertThreshold(Math.max(0, parseFloat(e.target.value) || 0))
       }
     ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
-      var _a;
+      var _a2;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, style: {
         display: "flex",
         alignItems: "center",
@@ -3435,7 +3461,7 @@ function waitForReact(){
           value: yc.openingBalance,
           onChange: (e) => updateOpenBal(yc.year, parseFloat(e.target.value) || 0)
         }
-      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a2 = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a2.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 11,
         padding: "4px 10px",
@@ -3711,7 +3737,259 @@ function waitForReact(){
         },
         onCancel: () => setConfirmTgtReset(false)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Permanently erase all CashFlow data stored on this device \u2014 entries, overrides, categories, templates, budget targets, years, and sync settings. This cannot be undone. Export a backup first if you might need this data again."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setUf({ fullName: "", email: "", password: "", disabled: false });
+          setUfErr({});
+          setUserForm({ mode: "add" });
+        },
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "5px 14px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          background: "var(--navy)",
+          color: "#fff"
+        }
+      },
+      "+ Add User"
+    ) }, "Users"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "All users who can log in to CashFlow on this device."), /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 1,
+      borderRadius: 10,
+      overflow: "hidden",
+      border: "1px solid var(--border)"
+    } }, (users || []).map((u, i) => {
+      const isMe = (sessionUser == null ? void 0 : sessionUser.id) === u.id;
+      const initials = (u.fullName || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+      return /* @__PURE__ */ React.createElement("div", { key: u.id, style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "12px 16px",
+        background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
+        opacity: u.disabled ? 0.55 : 1
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        background: u.disabled ? "var(--border)" : "var(--navyMid)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#fff",
+        flexShrink: 0
+      } }, initials), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 600,
+        color: "var(--text)",
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      } }, u.fullName, isMe && /* @__PURE__ */ React.createElement("span", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 10,
+        fontWeight: 700,
+        padding: "1px 7px",
+        borderRadius: 10,
+        background: "var(--navyMid)",
+        color: "#fff"
+      } }, "You"), u.disabled && /* @__PURE__ */ React.createElement("span", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 10,
+        fontWeight: 700,
+        padding: "1px 7px",
+        borderRadius: 10,
+        background: "var(--border)",
+        color: "var(--textMid)"
+      } }, "Disabled")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 1 } }, u.email, u.lastLogin && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 10 } }, "\xB7 Last login ", new Date(u.lastLogin).toLocaleDateString()))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        setUf({ fullName: u.fullName, email: u.email, password: "", disabled: u.disabled });
+        setUfErr({});
+        setUserForm({ mode: "edit", user: u });
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        padding: "4px 12px",
+        borderRadius: 6,
+        border: "1px solid var(--border)",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--textMid)"
+      } }, "Edit"), !isMe && /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        setUsers((prev) => prev.map((x) => x.id === u.id ? __spreadProps(__spreadValues({}, x), { disabled: !x.disabled }) : x));
+        setUserMsg(u.disabled ? `${u.fullName} re-enabled.` : `${u.fullName} disabled.`);
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        padding: "4px 12px",
+        borderRadius: 6,
+        border: `1px solid ${u.disabled ? "var(--greenDk)" : "var(--amber)"}`,
+        cursor: "pointer",
+        background: "transparent",
+        color: u.disabled ? "var(--greenDk)" : "var(--amber)"
+      } }, u.disabled ? "Enable" : "Disable")));
+    })), userMsg && /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      color: "var(--greenDk)",
+      marginTop: 10
+    } }, userMsg), userForm && /* @__PURE__ */ React.createElement("div", { style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 2e3,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 16
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--bgCard)",
+      borderRadius: 16,
+      padding: 28,
+      maxWidth: 440,
+      width: "100%",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 17,
+      fontWeight: 700,
+      color: "var(--text)",
+      marginBottom: 20
+    } }, userForm.mode === "add" ? "Add User" : "Edit User"), [
+      { label: "Full Name", key: "fullName", type: "text", placeholder: "Jane Smith" },
+      { label: "Email (login)", key: "email", type: "email", placeholder: "jane@example.com" },
+      { label: userForm.mode === "add" ? "Password" : "New password (blank = keep current)", key: "password", type: "password", placeholder: userForm.mode === "add" ? "Min 6 characters" : "Leave blank to keep" }
+    ].map(({ label, key, type, placeholder }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
+      display: "block",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 700,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase",
+      color: "var(--textMid)",
+      marginBottom: 5
+    } }, label), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type,
+        value: uf[key],
+        placeholder,
+        onChange: (e) => {
+          setUf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }));
+          setUfErr((p) => __spreadProps(__spreadValues({}, p), { [key]: void 0 }));
+        },
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          padding: "8px 12px",
+          border: `1.5px solid ${ufErr[key] ? "var(--red)" : "var(--border)"}`,
+          borderRadius: 8,
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none",
+          boxSizing: "border-box"
+        }
+      }
+    ), ufErr[key] && /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      color: "var(--red)",
+      marginTop: 4
+    } }, ufErr[key]))), userForm.mode === "edit" && (sessionUser == null ? void 0 : sessionUser.id) !== ((_a = userForm.user) == null ? void 0 : _a.id) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        id: "uf-disabled",
+        checked: uf.disabled,
+        onChange: (e) => setUf((p) => __spreadProps(__spreadValues({}, p), { disabled: e.target.checked })),
+        style: { width: 16, height: 16, cursor: "pointer" }
+      }
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "uf-disabled", style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      color: "var(--text)",
+      cursor: "pointer"
+    } }, "Account disabled (cannot log in)")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setUserForm(null);
+          setUfErr({});
+        },
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          padding: "8px 18px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)"
+        }
+      },
+      "Cancel"
+    ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      const errs = {};
+      const nm = uf.fullName.trim();
+      const em = uf.email.trim().toLowerCase();
+      const pw = uf.password;
+      if (!nm) errs.fullName = "Full name is required.";
+      if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) errs.email = "Enter a valid email address.";
+      const dup = (users || []).find((x) => {
+        var _a2;
+        return x.email.toLowerCase() === em && x.id !== ((_a2 = userForm.user) == null ? void 0 : _a2.id);
+      });
+      if (dup) errs.email = "That email is already in use.";
+      if (userForm.mode === "add" && pw.length < 6) errs.password = "Password must be at least 6 characters.";
+      if (userForm.mode === "edit" && pw && pw.length < 6) errs.password = "Password must be at least 6 characters.";
+      if (Object.keys(errs).length) {
+        setUfErr(errs);
+        return;
+      }
+      if (userForm.mode === "add") {
+        const newUser = {
+          id: "user_" + Date.now(),
+          fullName: nm,
+          email: em,
+          passwordHash: hashPw(em, pw),
+          disabled: false,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+          lastLogin: null
+        };
+        setUsers((prev) => [...prev, newUser]);
+        setUserMsg(`${nm} added.`);
+      } else {
+        setUsers((prev) => prev.map((x) => x.id === userForm.user.id ? __spreadValues(__spreadProps(__spreadValues({}, x), {
+          fullName: nm,
+          email: em,
+          disabled: uf.disabled
+        }), pw ? { passwordHash: hashPw(em, pw) } : {}) : x));
+        setUserMsg(`${nm} updated.`);
+      }
+      setUserForm(null);
+      setUfErr({});
+    }, style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      fontWeight: 700,
+      padding: "8px 18px",
+      borderRadius: 8,
+      border: "none",
+      cursor: "pointer",
+      background: "var(--navy)",
+      color: "#fff"
+    } }, userForm.mode === "add" ? "Add User" : "Save Changes"))))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Permanently erase all CashFlow data stored on this device \u2014 entries, overrides, categories, templates, budget targets, years, and sync settings. This cannot be undone. Export a backup first if you might need this data again."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmWipe(true),
@@ -3736,7 +4014,13 @@ function waitForReact(){
         confirmLabel: "Reset Everything",
         onConfirm: () => {
           try {
+            const savedUsers = localStorage.getItem("cf_users");
             Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
+            if (savedUsers) localStorage.setItem("cf_users", savedUsers);
+          } catch (e) {
+          }
+          try {
+            sessionStorage.removeItem("cf_session");
           } catch (e) {
           }
           window.location.reload();
@@ -4042,8 +4326,213 @@ function waitForReact(){
       minWidth: 12
     } }, secs, "s"));
   }
+  function LoginView({ users, onLogin }) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [showPw, setShowPw] = useState(false);
+    const submit = () => {
+      const e = email.trim().toLowerCase();
+      if (!e || !password) {
+        setError("Please enter your email and password.");
+        return;
+      }
+      setLoading(true);
+      const h = hashPw(e, password);
+      const u = (users || []).find((u2) => u2.email.toLowerCase() === e && u2.passwordHash === h);
+      setTimeout(() => {
+        setLoading(false);
+        if (!u) {
+          setError("Incorrect email or password. Please try again.");
+          return;
+        }
+        if (u.disabled) {
+          setError("Your account has been disabled. Contact an administrator.");
+          return;
+        }
+        setError("");
+        onLogin(u);
+      }, 400);
+    };
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      minHeight: "100vh",
+      background: "var(--headerBg)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      fontFamily: "Inter,sans-serif"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { width: "100%", maxWidth: 420 } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 36 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 42, marginBottom: 8 } }, "\u{1F4B0}"), /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 22,
+      fontWeight: 700,
+      color: "#fff",
+      letterSpacing: "0.04em"
+    } }, "CashFlow"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 } }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--bgCard)",
+      borderRadius: 16,
+      padding: 32,
+      boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
+      border: "1px solid var(--border)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 24, textAlign: "center" } }, "Sign in to your account"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 600,
+      color: "var(--textMid)",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 6
+    } }, "Email address"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "email",
+        autoComplete: "email",
+        value: email,
+        onChange: (e) => {
+          setEmail(e.target.value);
+          setError("");
+        },
+        onKeyDown: (e) => {
+          var _a;
+          return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
+        },
+        placeholder: "your@email.com",
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 15,
+          padding: "10px 14px",
+          border: "1.5px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none",
+          boxSizing: "border-box"
+        }
+      }
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 24 } }, /* @__PURE__ */ React.createElement("label", { style: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 600,
+      color: "var(--textMid)",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 6
+    } }, "Password"), /* @__PURE__ */ React.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        id: "pw-input",
+        type: showPw ? "text" : "password",
+        autoComplete: "current-password",
+        value: password,
+        onChange: (e) => {
+          setPassword(e.target.value);
+          setError("");
+        },
+        onKeyDown: (e) => e.key === "Enter" && submit(),
+        placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 15,
+          padding: "10px 44px 10px 14px",
+          border: "1.5px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none",
+          boxSizing: "border-box"
+        }
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowPw((v) => !v),
+        style: {
+          position: "absolute",
+          right: 10,
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          color: "var(--textLt)",
+          fontSize: 16,
+          padding: 4
+        },
+        "aria-label": showPw ? "Hide password" : "Show password"
+      },
+      showPw ? "\u{1F648}" : "\u{1F441}"
+    ))), error && /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--redLt)",
+      border: "1px solid var(--red)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginBottom: 16,
+      fontSize: 13,
+      color: "var(--red)",
+      fontWeight: 500
+    } }, error), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: submit,
+        disabled: loading,
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 15,
+          fontWeight: 700,
+          padding: "12px",
+          borderRadius: 8,
+          border: "none",
+          cursor: loading ? "wait" : "pointer",
+          background: "var(--navy)",
+          color: "#fff",
+          opacity: loading ? 0.7 : 1,
+          transition: "opacity 0.15s"
+        }
+      },
+      loading ? "Signing in\u2026" : "Sign in"
+    )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Access restricted to authorised users only.", /* @__PURE__ */ React.createElement("br", null), "Contact your administrator if you need access.")));
+  }
   function App() {
     var _a;
+    const [users, setUsers] = useLS("cf_users", SEED_USERS);
+    const [sessionUser, setSessionUser] = useState(null);
+    const login = (user) => {
+      const sess = { userId: user.id, at: Date.now() };
+      try {
+        sessionStorage.setItem("cf_session", JSON.stringify(sess));
+      } catch (e) {
+      }
+      setUsers((prev) => prev.map((u) => u.id === user.id ? __spreadProps(__spreadValues({}, u), { lastLogin: (/* @__PURE__ */ new Date()).toISOString() }) : u));
+      setSessionUser(user);
+    };
+    const logout = () => {
+      try {
+        sessionStorage.removeItem("cf_session");
+      } catch (e) {
+      }
+      setSessionUser(null);
+    };
+    useEffect(() => {
+      try {
+        const raw = sessionStorage.getItem("cf_session");
+        if (!raw) return;
+        const sess = JSON.parse(raw);
+        let lsUsers;
+        try {
+          lsUsers = JSON.parse(localStorage.getItem("cf_users"));
+        } catch (e) {
+        }
+        const list = lsUsers || SEED_USERS;
+        const u = list.find((u2) => u2.id === sess.userId && !u2.disabled);
+        if (u) setSessionUser(u);
+      } catch (e) {
+      }
+    }, []);
     const [entries, setEntries] = useLS("cf_entries", SEED_ENTRIES);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
@@ -4067,6 +4556,9 @@ function waitForReact(){
     const [fabOpen, setFabOpen] = useState(false);
     const [undoEntry, setUndoEntry] = useState(null);
     const [showHelp, setShowHelp] = useState(false);
+    if (!sessionUser) {
+      return /* @__PURE__ */ React.createElement("div", { style: { "--navy": "#1C2B3A", "--navyMid": "#243447", "--headerBg": "#1C2B3A", "--bg": "#F7F4EF", "--bgCard": "#FFFFFF", "--text": "#1C2B3A", "--textMid": "#5A6A7A", "--textLt": "#8A9BAB", "--border": "#E8E4DD", "--inputBg": "#F7F4EF", "--red": "#E85D4A", "--redLt": "#FFF0EE", "--greenDk": "#27AE73", "--amber": "#F5A623", "--stripe": "#F7F4EF" } }, /* @__PURE__ */ React.createElement(LoginView, { users, onLogin: login }));
+    }
     const C = darkMode ? DARK : LIGHT;
     const cssVars = Object.entries(C).map(([k, v]) => "--" + k + ":" + v).join(";");
     const yearFlows = useMemo(() => {
@@ -4548,7 +5040,50 @@ function waitForReact(){
         }
       },
       "\u2699"
-    )))), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
+    ), /* @__PURE__ */ React.createElement("div", { className: "help-btn", style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        title: (sessionUser == null ? void 0 : sessionUser.email) || "",
+        style: {
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.15)",
+          border: "1px solid rgba(255,255,255,0.25)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 700,
+          color: "#fff",
+          flexShrink: 0,
+          cursor: "default"
+        }
+      },
+      ((sessionUser == null ? void 0 : sessionUser.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: logout,
+        title: "Sign out",
+        style: {
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.18)",
+          borderRadius: 8,
+          padding: "0 10px",
+          height: 32,
+          cursor: "pointer",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.6)",
+          whiteSpace: "nowrap",
+          flexShrink: 0
+        }
+      },
+      "Sign out"
+    ))))), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
@@ -4642,7 +5177,11 @@ function waitForReact(){
         setTemplates,
         activeFlow,
         budgetTargets,
-        setBudgetTargets
+        setBudgetTargets,
+        users,
+        setUsers,
+        sessionUser,
+        logout
       }
     ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoEntry && /* @__PURE__ */ React.createElement(
       UndoToast,
