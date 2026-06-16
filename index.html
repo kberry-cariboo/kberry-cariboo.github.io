@@ -419,7 +419,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v19';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v21';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1179,7 +1179,10 @@ function waitForReact(){
   )));
   const ChartTip = ({ active, payload, label }) => {
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
-    return /* @__PURE__ */ React.createElement("div", { style: { background: "#1C2B3A", borderRadius: 8, padding: "10px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "#aaa", marginBottom: 6 } }, label), payload.map((p) => /* @__PURE__ */ React.createElement("div", { key: p.name, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: p.color || "#fff", fontWeight: 600 } }, p.name, ": ", fmt(p.value))));
+    return /* @__PURE__ */ React.createElement("div", { style: { background: "#1C2B3A", borderRadius: 8, padding: "10px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "#aaa", marginBottom: 6 } }, label), payload.map((p) => {
+      const lbl = p.name === "Surplus" && p.value < 0 ? "Shortfall" : p.name;
+      return /* @__PURE__ */ React.createElement("div", { key: p.name, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: p.color || "#fff", fontWeight: 600 } }, lbl, ": ", fmt(p.value));
+    }));
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
   function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
@@ -2070,7 +2073,7 @@ function waitForReact(){
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
-    const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === (s ? s.year : todayDate.getFullYear());
+    const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate();
@@ -2257,16 +2260,51 @@ function waitForReact(){
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
-      )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 28, padding: "10px 4px" }, "aria-label": "Complete" }), ["Day", "Description", "Category", "Income", "Expense", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "budget-col-cat" : "", style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#fff",
-        padding: "10px 14px",
-        textAlign: i >= 3 ? "right" : "left",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))))))),
+      )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
+        const allIds = [...period1, ...period2].map((e) => e.id);
+        const allDone = allIds.length > 0 && allIds.every((id) => completed[id]);
+        const someDone = allIds.some((id) => completed[id]);
+        const toggleAll = () => {
+          if (allDone) {
+            allIds.forEach((id) => completed[id] && toggleComplete(id));
+          } else {
+            allIds.forEach((id) => !completed[id] && toggleComplete(id));
+          }
+        };
+        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 28, padding: "10px 4px", textAlign: "center" }, "aria-label": "Select all" }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: toggleAll,
+            "aria-label": allDone ? "Unmark all complete" : "Mark all complete",
+            title: allDone ? "Unmark all" : "Mark all complete",
+            style: {
+              width: 20,
+              height: 20,
+              borderRadius: 5,
+              cursor: "pointer",
+              padding: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: allDone ? "none" : "1.5px solid rgba(255,255,255,0.4)",
+              background: allDone ? "var(--greenDk)" : someDone ? "rgba(39,174,115,0.3)" : "transparent",
+              color: "#fff",
+              fontSize: 11,
+              lineHeight: 1
+            }
+          },
+          allDone ? "\u2713" : someDone ? "\u2013" : ""
+        )), ["Day", "Description", "Category", "Income", "Expense", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "budget-col-cat" : "", style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#fff",
+          padding: "10px 14px",
+          textAlign: i >= 3 ? "right" : "left",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase"
+        } }, h))));
+      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))))))),
       view === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
@@ -2638,72 +2676,46 @@ function waitForReact(){
       in7.setDate(today.getDate() + 7);
       const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7).sort((a, b) => a.date - b.date).slice(0, 6);
       if (upcoming.length === 0) return null;
-      return /* @__PURE__ */ React.createElement("div", { style: {
-        marginBottom: 16,
-        background: "var(--bgCard)",
-        borderRadius: 12,
-        border: "1px solid var(--border)",
-        overflow: "hidden"
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        background: "var(--navyMid)",
-        padding: "10px 16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between"
-      } }, /* @__PURE__ */ React.createElement("span", { style: {
+      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: {
         fontFamily: "Inter,sans-serif",
-        fontSize: 12,
-        fontWeight: 700,
-        color: "#fff",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase"
-      } }, "\u{1F4C5} Upcoming \u2014 next 7 days"), /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
         fontSize: 11,
-        color: "rgba(255,255,255,0.6)"
-      } }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto" } }, upcoming.map((ev, i) => {
+        fontWeight: 700,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        color: "var(--textLt)"
+      } }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, upcoming.map((ev) => {
         const d = ev.date;
         const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-        return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "9px 16px",
-          borderBottom: i < upcoming.length - 1 ? "1px solid var(--border)" : "none",
-          background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-        } }, /* @__PURE__ */ React.createElement("span", { style: {
+        const isInc = ev.type === "income";
+        return /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 11,
           color: "var(--textLt)",
-          minWidth: 90,
           whiteSpace: "nowrap"
         } }, label), /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
           fontWeight: 600,
           color: "var(--text)",
-          flex: 1,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap"
-        } }, ev.desc), /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          color: "var(--textLt)",
-          whiteSpace: "nowrap"
-        } }, ev.category), /* @__PURE__ */ React.createElement("span", { style: {
+        } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 13,
           fontWeight: 700,
-          color: ev.type === "income" ? "var(--greenDk)" : "var(--red)",
-          whiteSpace: "nowrap"
-        } }, ev.type === "income" ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { style: {
+          color: isInc ? "var(--greenDk)" : "var(--red)"
+        } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 11,
           fontWeight: 600,
-          whiteSpace: "nowrap",
           color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-        } }, fmt(ev.balance)));
+        } }, fmt(ev.balance)))), /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
+          height: "100%",
+          borderRadius: 2,
+          background: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+          width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
+        } })));
       })));
     })(), /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--red)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--red)", marginTop: 4 } }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "In ", lowestMon))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
@@ -4034,6 +4046,12 @@ function waitForReact(){
     overridesByYr,
     setOverridesByYr,
     yearConfigs,
+    budgetTargets,
+    setBudgetTargets,
+    templates,
+    setTemplates,
+    completed,
+    setCompleted,
     setYearConfigs,
     categories,
     setCategories,
@@ -4070,6 +4088,9 @@ function waitForReact(){
           overridesByYr,
           yearConfigs,
           categories,
+          budgetTargets,
+          templates,
+          completed,
           activeYear,
           alertThreshold,
           darkMode,
@@ -4088,7 +4109,7 @@ function waitForReact(){
         setStatus("error");
         setMsg("\u274C " + e.message);
       }
-    }, [entries, overridesByYr, yearConfigs, categories, activeYear, alertThreshold, darkMode]);
+    }, [entries, overridesByYr, yearConfigs, categories, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode]);
     const loadData = useCallback(async () => {
       var _a, _b;
       const tok = token().trim();
@@ -4110,6 +4131,9 @@ function waitForReact(){
         if (d.activeYear) setActiveYear(d.activeYear);
         if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
         if (d.darkMode != null) setDarkMode(d.darkMode);
+        if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
+        if (d.templates) setTemplates(d.templates);
+        if (d.completed) setCompleted(d.completed);
         setStatus("ok");
         setMsg("Loaded " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -4128,6 +4152,9 @@ function waitForReact(){
           overridesByYr,
           yearConfigs,
           categories,
+          budgetTargets,
+          templates,
+          completed,
           activeYear,
           alertThreshold,
           darkMode,
@@ -4154,7 +4181,7 @@ function waitForReact(){
         setMsg("\u274C " + e.message);
         return null;
       }
-    }, [entries, overridesByYr, yearConfigs, categories, activeYear, alertThreshold, darkMode]);
+    }, [entries, overridesByYr, yearConfigs, categories, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode]);
     useEffect(() => {
       if (initialized.current) return;
       initialized.current = true;
@@ -4326,12 +4353,50 @@ function waitForReact(){
     } }, secs, "s"));
   }
   function LoginView({ users, onLogin }) {
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState(() => {
+      try {
+        return localStorage.getItem("cf_saved_email") || "";
+      } catch (e) {
+        return "";
+      }
+    });
     const [password, setPassword] = useState("");
+    const [remember, setRemember] = useState(() => {
+      try {
+        return !!localStorage.getItem("cf_saved_email");
+      } catch (e) {
+        return false;
+      }
+    });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [showPw, setShowPw] = useState(false);
-    const submit = () => {
+    const [hasBio, setHasBio] = useState(false);
+    useEffect(() => {
+      var _a, _b;
+      const credId = localStorage.getItem("cf_bio_credential");
+      if (credId && window.PublicKeyCredential) {
+        (_b = (_a = window.PublicKeyCredential).isUserVerifyingPlatformAuthenticatorAvailable) == null ? void 0 : _b.call(_a).then((ok) => {
+          if (ok) setHasBio(true);
+        }).catch(() => {
+        });
+      }
+    }, []);
+    const doLogin = (user) => {
+      if (remember) {
+        try {
+          localStorage.setItem("cf_saved_email", user.email);
+        } catch (e) {
+        }
+      } else {
+        try {
+          localStorage.removeItem("cf_saved_email");
+        } catch (e) {
+        }
+      }
+      onLogin(user);
+    };
+    const attemptLogin = () => {
       const e = email.trim().toLowerCase();
       if (!e || !password) {
         setError("Please enter your email and password.");
@@ -4341,6 +4406,7 @@ function waitForReact(){
       const h = hashPw(e, password);
       const u = (users || []).find((u2) => u2.email.toLowerCase() === e && u2.passwordHash === h);
       setTimeout(() => {
+        var _a, _b;
         setLoading(false);
         if (!u) {
           setError("Incorrect email or password. Please try again.");
@@ -4351,8 +4417,58 @@ function waitForReact(){
           return;
         }
         setError("");
-        onLogin(u);
+        doLogin(u);
+        if (window.PublicKeyCredential && !localStorage.getItem("cf_bio_credential")) {
+          (_b = (_a = window.PublicKeyCredential).isUserVerifyingPlatformAuthenticatorAvailable) == null ? void 0 : _b.call(_a).then((ok) => {
+            if (ok) registerBiometric(u);
+          }).catch(() => {
+          });
+        }
       }, 400);
+    };
+    const registerBiometric = async (user) => {
+      try {
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const uid = new TextEncoder().encode(user.id);
+        const cred = await navigator.credentials.create({ publicKey: {
+          challenge,
+          timeout: 6e4,
+          rp: { name: "CashFlow Budget" },
+          user: { id: uid, name: user.email, displayName: user.fullName },
+          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "preferred" },
+          attestation: "none"
+        } });
+        const credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+        localStorage.setItem("cf_bio_credential", credId);
+        localStorage.setItem("cf_bio_userid", user.id);
+        setHasBio(true);
+      } catch (e) {
+      }
+    };
+    const biometricLogin = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const credIdStr = localStorage.getItem("cf_bio_credential");
+        if (!credIdStr) throw new Error("No biometric credential registered.");
+        const credId = Uint8Array.from(atob(credIdStr), (c) => c.charCodeAt(0));
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        await navigator.credentials.get({ publicKey: {
+          challenge,
+          timeout: 6e4,
+          userVerification: "preferred",
+          allowCredentials: [{ id: credId, type: "public-key" }]
+        } });
+        const userId = localStorage.getItem("cf_bio_userid");
+        const u = (users || []).find((u2) => u2.id === userId && !u2.disabled);
+        if (!u) throw new Error("User not found. Please sign in with password.");
+        setLoading(false);
+        doLogin(u);
+      } catch (e) {
+        setLoading(false);
+        if (e.name !== "NotAllowedError") setError(e.message || "Biometric authentication failed.");
+      }
     };
     return /* @__PURE__ */ React.createElement("div", { style: {
       minHeight: "100vh",
@@ -4411,7 +4527,7 @@ function waitForReact(){
           boxSizing: "border-box"
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 24 } }, /* @__PURE__ */ React.createElement("label", { style: {
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
       display: "block",
       fontSize: 12,
       fontWeight: 600,
@@ -4430,7 +4546,7 @@ function waitForReact(){
           setPassword(e.target.value);
           setError("");
         },
-        onKeyDown: (e) => e.key === "Enter" && submit(),
+        onKeyDown: (e) => e.key === "Enter" && attemptLogin(),
         placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
         style: {
           width: "100%",
@@ -4449,6 +4565,7 @@ function waitForReact(){
       "button",
       {
         onClick: () => setShowPw((v) => !v),
+        "aria-label": showPw ? "Hide password" : "Show password",
         style: {
           position: "absolute",
           right: 10,
@@ -4460,11 +4577,24 @@ function waitForReact(){
           color: "var(--textLt)",
           fontSize: 16,
           padding: 4
-        },
-        "aria-label": showPw ? "Hide password" : "Show password"
+        }
       },
       showPw ? "\u{1F648}" : "\u{1F441}"
-    ))), error && /* @__PURE__ */ React.createElement("div", { style: {
+    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        id: "remember-chk",
+        checked: remember,
+        onChange: (e) => setRemember(e.target.checked),
+        style: { width: 15, height: 15, cursor: "pointer", accentColor: "var(--navy)" }
+      }
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      color: "var(--textMid)",
+      cursor: "pointer"
+    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { style: {
       background: "var(--redLt)",
       border: "1px solid var(--red)",
       borderRadius: 8,
@@ -4476,7 +4606,7 @@ function waitForReact(){
     } }, error), /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: submit,
+        onClick: attemptLogin,
         disabled: loading,
         style: {
           width: "100%",
@@ -4490,10 +4620,34 @@ function waitForReact(){
           background: "var(--navy)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
-          transition: "opacity 0.15s"
+          transition: "opacity 0.15s",
+          marginBottom: hasBio ? 12 : 0
         }
       },
       loading ? "Signing in\u2026" : "Sign in"
+    ), hasBio && !loading && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: biometricLogin,
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
+          padding: "11px",
+          borderRadius: 8,
+          border: "1.5px solid var(--border)",
+          cursor: "pointer",
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, "\u{1F510}"),
+      " Sign in with Face ID / Touch ID"
     )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Access restricted to authorised users only.", /* @__PURE__ */ React.createElement("br", null), "Contact your administrator if you need access.")));
   }
   function App() {
@@ -4632,7 +4786,13 @@ function waitForReact(){
       alertThreshold: alertThresh,
       setAlertThreshold: setAlertThresh,
       darkMode,
-      setDarkMode
+      setDarkMode,
+      budgetTargets,
+      setBudgetTargets,
+      templates,
+      setTemplates,
+      completed,
+      setCompleted
     });
     const gistToken = () => localStorage.getItem("cf_gist_token") || "";
     const [installPrompt, setInstallPrompt] = useState(null);
@@ -4911,29 +5071,21 @@ function waitForReact(){
         }
       },
       "\u2715"
-    )), gistToken() && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        title: gistMsg || "Gist sync",
-        style: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          fontSize: 15,
-          border: "1px solid",
-          flexShrink: 0,
-          borderColor: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)",
-          color: gistStatus === "error" ? "var(--red)" : gistStatus === "ok" ? "var(--green)" : "rgba(255,255,255,0.6)",
-          background: "transparent",
-          cursor: "default"
-        },
-        onClick: () => setTab("settings")
-      },
-      gistStatus === "syncing" ? "\u27F3" : gistStatus === "error" ? "\u2717" : "\u2601"
-    ), (() => {
+    )), gistToken() && /* @__PURE__ */ React.createElement("div", { title: gistMsg || "Gist sync", style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      fontSize: 15,
+      border: "1px solid",
+      flexShrink: 0,
+      borderColor: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)",
+      color: gistStatus === "error" ? "var(--red)" : gistStatus === "ok" ? "var(--green)" : "rgba(255,255,255,0.6)",
+      background: "transparent",
+      cursor: "default"
+    } }, gistStatus === "syncing" ? "\u27F3" : gistStatus === "error" ? "\u2717" : "\u2601"), (() => {
       const today2 = /* @__PURE__ */ new Date();
       const n90 = new Date(today2);
       n90.setDate(today2.getDate() + 90);
@@ -4989,122 +5141,127 @@ function waitForReact(){
           lineHeight: 1
         } }, count > 9 ? "9+" : count)
       );
-    })(), showInstall && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: doInstall,
-        title: "Install CashFlow as an app",
-        className: "help-btn",
-        style: {
-          background: "var(--green)",
-          border: "none",
-          borderRadius: 8,
-          padding: "0 12px",
-          height: 36,
-          cursor: "pointer",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          fontWeight: 700,
-          color: "var(--navy)",
-          whiteSpace: "nowrap",
-          flexShrink: 0
+    })(), (() => {
+      const [menuOpen, setMenuOpen] = useState(false);
+      const initials = ((sessionUser == null ? void 0 : sessionUser.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+      return /* @__PURE__ */ React.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setMenuOpen((v) => !v),
+          "aria-label": "User menu",
+          title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
+          style: {
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.3)",
+            cursor: "pointer",
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#fff",
+            flexShrink: 0,
+            transition: "background 0.15s"
+          }
+        },
+        initials
+      ), menuOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          onClick: () => setMenuOpen(false),
+          style: { position: "fixed", inset: 0, zIndex: 1400 }
         }
-      },
-      "\u2B07 Install"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        "aria-label": "Keyboard shortcuts",
-        onClick: () => setShowHelp(true),
-        title: "Keyboard shortcuts (?)",
-        className: "help-btn",
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(255,255,255,0.18)",
-          borderRadius: 8,
-          width: 36,
-          height: 36,
-          cursor: "pointer",
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(255,255,255,0.6)",
-          fontSize: 15
-        }
-      },
-      "?"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        "aria-label": "Settings",
-        onClick: () => setTab((prev) => prev === "settings" ? "dashboard" : "settings"),
-        title: "Settings",
-        style: {
-          background: tab === "settings" ? "rgba(255,255,255,0.15)" : "transparent",
-          border: "1px solid",
-          flexShrink: 0,
-          borderColor: tab === "settings" ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.18)",
-          borderRadius: 8,
-          width: 36,
-          height: 36,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(255,255,255,0.75)",
-          fontSize: 18,
-          transition: "background 0.15s,border-color 0.15s"
-        }
-      },
-      "\u2699"
-    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: logout,
-        title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""} \u2014 tap to sign out`,
-        "aria-label": "Sign out",
-        style: {
-          width: 34,
-          height: 34,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.15)",
-          border: "1px solid rgba(255,255,255,0.25)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#fff",
-          flexShrink: 0,
-          cursor: "pointer"
-        }
-      },
-      ((sessionUser == null ? void 0 : sessionUser.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: logout,
-        className: "help-btn",
-        title: "Sign out",
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(255,255,255,0.18)",
-          borderRadius: 8,
-          padding: "0 10px",
-          height: 32,
-          cursor: "pointer",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          fontWeight: 600,
-          color: "rgba(255,255,255,0.6)",
-          whiteSpace: "nowrap",
-          flexShrink: 0
-        }
-      },
-      "Sign out"
-    )))), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
+      ), /* @__PURE__ */ React.createElement("div", { style: {
+        position: "absolute",
+        right: 0,
+        top: 42,
+        zIndex: 1500,
+        background: "var(--bgCard)",
+        borderRadius: 12,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+        border: "1px solid var(--border)",
+        minWidth: 200,
+        overflow: "hidden"
+      } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 10px", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
+        { label: "Edit Profile", icon: "\u{1F464}", action: () => {
+          setMenuOpen(false);
+          setTab("settings");
+        } },
+        { label: "Change Password", icon: "\u{1F511}", action: () => {
+          setMenuOpen(false);
+          setTab("settings");
+        } },
+        { label: "Settings", icon: "\u2699", action: () => {
+          setMenuOpen(false);
+          setTab("settings");
+        } },
+        { label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
+          setMenuOpen(false);
+          setShowHelp(true);
+        } },
+        { label: "Gist Sync", icon: "\u2601", action: () => {
+          setMenuOpen(false);
+          setTab("settings");
+        } },
+        ...showInstall ? [{ label: "Install App", icon: "\u2B07", action: () => {
+          setMenuOpen(false);
+          doInstall();
+        } }] : []
+      ].map((item) => /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: item.label,
+          onClick: item.action,
+          style: {
+            width: "100%",
+            textAlign: "left",
+            padding: "10px 16px",
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            color: "var(--text)",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            borderBottom: "1px solid var(--border)"
+          },
+          onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
+          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+        },
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, item.icon),
+        item.label
+      )), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setMenuOpen(false);
+            logout();
+          },
+          style: {
+            width: "100%",
+            textAlign: "left",
+            padding: "10px 16px",
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--red)",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 10
+          },
+          onMouseEnter: (e) => e.currentTarget.style.background = "var(--redLt)",
+          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+        },
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u{1F6AA}"),
+        "Sign out"
+      ))));
+    })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
@@ -5214,7 +5371,43 @@ function waitForReact(){
         },
         onDismiss: () => setUndoEntry(null)
       }
-    ), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { style: {
+      textAlign: "center",
+      padding: "18px 16px 28px",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      color: "rgba(255,255,255,0.25)",
+      background: "var(--headerBg)",
+      marginTop: "auto"
+    } }, /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        href: "privacy.html",
+        style: {
+          color: "rgba(255,255,255,0.4)",
+          textDecoration: "none",
+          borderBottom: "1px solid rgba(255,255,255,0.15)",
+          paddingBottom: 1
+        },
+        onMouseEnter: (e) => e.target.style.color = "rgba(255,255,255,0.7)",
+        onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
+      },
+      "Privacy"
+    ), /* @__PURE__ */ React.createElement("span", { style: { margin: "0 10px" } }, "|"), /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        href: "terms.html",
+        style: {
+          color: "rgba(255,255,255,0.4)",
+          textDecoration: "none",
+          borderBottom: "1px solid rgba(255,255,255,0.15)",
+          paddingBottom: 1
+        },
+        onMouseEnter: (e) => e.target.style.color = "rgba(255,255,255,0.7)",
+        onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
+      },
+      "Terms of Use"
+    )), /* @__PURE__ */ React.createElement(
       QuickAddFAB,
       {
         categories,
