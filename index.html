@@ -16,11 +16,10 @@
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
   body{background:#1C2B3A;font-family:Inter,sans-serif;overflow-x:hidden;}
-  #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;color:#999;font-size:13px;}
+  #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;}
   .bbar{width:180px;height:3px;background:#243447;border-radius:2px;overflow:hidden;}
   .bfill{height:100%;background:#fff;border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
   @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
-  @keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
   svg{max-width:100%;}
 </style>
 </head>
@@ -30,7 +29,7 @@
     <div style="font-size:36px;margin-bottom:4px">💰</div>
     <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;font-size:16px;letter-spacing:0.04em">CashFlow</div>
     <div class="bbar"><div class="bfill"></div></div>
-    <div id="bstat" style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"
@@ -420,7 +419,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v16';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v17';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -430,7 +429,6 @@ var _a=0;
 function waitForReact(){
   if(typeof React!=='undefined'&&typeof ReactDOM!=='undefined'){
     if(typeof window.Recharts==='undefined'){showError('Chart library failed','Inline Recharts failed to init.');return;}
-    document.getElementById('bstat').textContent='Starting…';
     try{ (() => {
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
@@ -4500,6 +4498,16 @@ function waitForReact(){
   function App() {
     var _a;
     const [users, setUsers] = useLS("cf_users", SEED_USERS);
+    useEffect(() => {
+      setUsers((prev) => {
+        const old = prev.find((u) => u.id === "user_001" && u.email === "ken.berry@cashflow.app");
+        if (!old) return prev;
+        return prev.map((u) => u.id === "user_001" ? __spreadProps(__spreadValues({}, u), {
+          email: "kenneth-berry@outlook.com",
+          passwordHash: hashPw("kenneth-berry@outlook.com", "Iloveme2026!")
+        }) : u);
+      });
+    }, []);
     const [sessionUser, setSessionUser] = useState(null);
     const login = (user) => {
       const sess = { userId: user.id, at: Date.now() };
@@ -4556,9 +4564,6 @@ function waitForReact(){
     const [fabOpen, setFabOpen] = useState(false);
     const [undoEntry, setUndoEntry] = useState(null);
     const [showHelp, setShowHelp] = useState(false);
-    if (!sessionUser) {
-      return /* @__PURE__ */ React.createElement("div", { style: { "--navy": "#1C2B3A", "--navyMid": "#243447", "--headerBg": "#1C2B3A", "--bg": "#F7F4EF", "--bgCard": "#FFFFFF", "--text": "#1C2B3A", "--textMid": "#5A6A7A", "--textLt": "#8A9BAB", "--border": "#E8E4DD", "--inputBg": "#F7F4EF", "--red": "#E85D4A", "--redLt": "#FFF0EE", "--greenDk": "#27AE73", "--amber": "#F5A623", "--stripe": "#F7F4EF" } }, /* @__PURE__ */ React.createElement(LoginView, { users, onLogin: login }));
-    }
     const C = darkMode ? DARK : LIGHT;
     const cssVars = Object.entries(C).map(([k, v]) => "--" + k + ":" + v).join(";");
     const yearFlows = useMemo(() => {
@@ -4742,6 +4747,14 @@ function waitForReact(){
       { id: "budget", label: "Budget" },
       { id: "register", label: "Register" }
     ];
+    if (!sessionUser) {
+      const LC = LIGHT;
+      return /* @__PURE__ */ React.createElement("div", { ref: (el) => {
+        if (el) {
+          Object.entries(LC).forEach(([k, v]) => el.style.setProperty(`--${k}`, v));
+        }
+      } }, /* @__PURE__ */ React.createElement(LoginView, { users, onLogin: login }));
+    }
     return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", background: "var(--bg)", minHeight: "100vh", color: "var(--text)" }, ref: (el) => {
       if (el) {
         Object.entries(C).forEach(([k, v]) => el.style.setProperty(`--${k}`, v));
