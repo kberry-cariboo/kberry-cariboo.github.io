@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v27';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v28';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -5007,6 +5007,8 @@ function waitForReact(){
           .search-box input{width:100%!important;flex:1;}
           /* Hide header search on mobile \u2014 saves space for essential controls */
           .header-search{display:none!important;}
+          /* Hide year pills on mobile \u2014 managed in Settings */
+          .year-pills-mobile{display:none!important;}
         }
         @media(max-width:768px){.help-btn{display:none!important;}}
         /* reg-add-btns visible on desktop */
@@ -5021,8 +5023,8 @@ function waitForReact(){
           .entry-form-grid input, .entry-form-grid select,
           .form-date-row input, .form-date-row select,
           .search-box input, .header-search input { font-size: 16px !important; }
-          /* Header: single row with tight spacing */
-          .header-inner{flex-wrap:wrap;height:auto!important;padding:8px 12px!important;gap:6px;}
+          /* Header: single fixed row \u2014 never wraps */
+          .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
           .logo-area img{height:30px!important;}
           .year-pills{gap:3px!important;flex-wrap:wrap;}
           /* Tab bar: scrollable, no scrollbar visible */
@@ -5088,7 +5090,7 @@ function waitForReact(){
         }
 
 
-      `), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--headerBg)", padding: "0 24px" } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 18 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto" } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      `), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--headerBg)", padding: "0 24px" } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
       fontFamily: "'IBM Plex Mono',monospace",
       fontSize: 13,
       fontWeight: 700,
