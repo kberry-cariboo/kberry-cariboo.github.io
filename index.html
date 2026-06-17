@@ -244,7 +244,12 @@
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'
       };
       if (custom) {
-        const payload = allKeys.map(k => ({ name:k, value:tip.d[k], dataKey:k }));
+        const payload = allKeys.map(k => {
+          // Find the matching series descriptor to get its display name
+          const desc = seriesDescs.find(d => d.props.dataKey === k);
+          const displayName = desc?.props?.name || k;
+          return { name: displayName, dataKey: k, value: tip.d[k] };
+        });
         const el = typeof custom === 'function'
           ? h(custom, { active:true, payload, label:tip.d[xKey] })
           : React.cloneElement(custom, { active:true, payload, label:tip.d[xKey] });
@@ -419,7 +424,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v22';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v24';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1204,8 +1209,9 @@ function waitForReact(){
   const ChartTip = ({ active, payload, label }) => {
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     return /* @__PURE__ */ React.createElement("div", { style: { background: "#1C2B3A", borderRadius: 8, padding: "10px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "#aaa", marginBottom: 6 } }, label), payload.map((p) => {
-      const lbl = p.name === "Surplus" && p.value < 0 ? "Shortfall" : p.name;
-      return /* @__PURE__ */ React.createElement("div", { key: p.name, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: p.color || "#fff", fontWeight: 600 } }, lbl, ": ", fmt(p.value));
+      const isSurplus = p.name === "Surplus" || p.name === "surplus" || p.dataKey === "surplus";
+      const lbl = isSurplus && p.value < 0 ? "Shortfall" : p.name === "surplus" ? "Surplus" : p.name;
+      return /* @__PURE__ */ React.createElement("div", { key: p.dataKey || p.name, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: p.color || "#fff", fontWeight: 600 } }, lbl, ": ", fmt(p.value));
     }));
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
@@ -3289,6 +3295,7 @@ function waitForReact(){
     const [newYear, setNewYear] = useState("");
     const [yearMsg, setYearMsg] = useState("");
     const [confirmWipe, setConfirmWipe] = useState(false);
+    const [settingsPage, setSettingsPage] = useState("general");
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [userForm, setUserForm] = useState(null);
     const [uf, setUf] = useState({ fullName: "", email: "", password: "", disabled: false });
@@ -3387,7 +3394,39 @@ function waitForReact(){
       display: "block",
       marginBottom: 8
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 760, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 760, margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      gap: 4,
+      marginBottom: 24,
+      padding: "4px",
+      background: "var(--border)",
+      borderRadius: 12,
+      width: "fit-content"
+    } }, [
+      { id: "general", label: "\u2699  General" },
+      { id: "templates", label: "\u{1F4CB} Templates" },
+      { id: "audit", label: "\u{1F550} Audit" }
+    ].map(({ id, label }) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: id,
+        onClick: () => setSettingsPage(id),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "8px 20px",
+          borderRadius: 9,
+          border: "none",
+          cursor: "pointer",
+          transition: "all 0.15s",
+          background: settingsPage === id ? "var(--bgCard)" : "transparent",
+          color: settingsPage === id ? "var(--text)" : "var(--textMid)",
+          boxShadow: settingsPage === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none"
+        }
+      },
+      label
+    ))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
@@ -3539,7 +3578,7 @@ function waitForReact(){
       fontSize: 12,
       marginTop: 10,
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
+    } }, yearMsg))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 12,
       color: "var(--textLt)",
@@ -3566,7 +3605,72 @@ function waitForReact(){
         }
       },
       "Remove"
-    )))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), /* @__PURE__ */ React.createElement(
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.14em",
+      textTransform: "uppercase",
+      color: "var(--textLt)",
+      padding: "6px 2px 10px",
+      marginTop: 8
+    } }, "Audit"), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
+      const ovrs = overridesByYr[activeYear] || {};
+      const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
+      if (rows.length === 0) {
+        return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", fontStyle: "italic" } }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
+      }
+      return rows.map(([eventId, ov]) => {
+        const parts = eventId.split("-");
+        const entry = entries.find((e) => String(e.id) === parts[0]);
+        const month = parseInt(parts[parts.length - 2]);
+        const day = parseInt(parts[parts.length - 1]);
+        const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
+        const hist = ov._history || [];
+        const isOpen = !!historyOpen[eventId];
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, style: { padding: "10px 0", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--textMid)"
+            }
+          },
+          isOpen ? "Hide" : "History",
+          " (",
+          hist.length,
+          ")"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setOverridesByYr((prev) => {
+              const yOvs = __spreadValues({}, prev[activeYear] || {});
+              delete yOvs[eventId];
+              return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
+            }),
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--amberLt)",
+              cursor: "pointer",
+              background: "var(--amberLt)",
+              color: "var(--amber)"
+            },
+            title: "Restore the originally scheduled values for this date"
+          },
+          "\u21BA Revert"
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, paddingLeft: 12, borderLeft: "2px solid var(--border)" } }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+      });
+    })())), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), /* @__PURE__ */ React.createElement(
       GistSettingsPanel,
       {
         gistStatus,
@@ -3668,72 +3772,7 @@ function waitForReact(){
       cursor: "pointer",
       background: "var(--navy)",
       color: "#fff"
-    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 700,
-      letterSpacing: "0.14em",
-      textTransform: "uppercase",
-      color: "var(--textLt)",
-      padding: "6px 2px 10px",
-      marginTop: 8
-    } }, "Audit"), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
-      const ovrs = overridesByYr[activeYear] || {};
-      const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
-      if (rows.length === 0) {
-        return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", fontStyle: "italic" } }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
-      }
-      return rows.map(([eventId, ov]) => {
-        const parts = eventId.split("-");
-        const entry = entries.find((e) => String(e.id) === parts[0]);
-        const month = parseInt(parts[parts.length - 2]);
-        const day = parseInt(parts[parts.length - 1]);
-        const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
-        const hist = ov._history || [];
-        const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, style: { padding: "10px 0", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, hist.length > 0 && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
-            style: {
-              fontFamily: "Inter,sans-serif",
-              fontSize: 11,
-              padding: "4px 10px",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              cursor: "pointer",
-              background: "transparent",
-              color: "var(--textMid)"
-            }
-          },
-          isOpen ? "Hide" : "History",
-          " (",
-          hist.length,
-          ")"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setOverridesByYr((prev) => {
-              const yOvs = __spreadValues({}, prev[activeYear] || {});
-              delete yOvs[eventId];
-              return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
-            }),
-            style: {
-              fontFamily: "Inter,sans-serif",
-              fontSize: 11,
-              padding: "4px 10px",
-              borderRadius: 6,
-              border: "1px solid var(--amberLt)",
-              cursor: "pointer",
-              background: "var(--amberLt)",
-              color: "var(--amber)"
-            },
-            title: "Restore the originally scheduled values for this date"
-          },
-          "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, paddingLeft: 12, borderLeft: "2px solid var(--border)" } }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
-      });
-    })()), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
@@ -4073,7 +4112,7 @@ function waitForReact(){
         },
         onCancel: () => setConfirmWipe(false)
       }
-    )));
+    ))));
   }
   function useGistSync({
     entries,
@@ -5107,21 +5146,7 @@ function waitForReact(){
         }
       },
       "\u2715"
-    )), gistToken() && /* @__PURE__ */ React.createElement("div", { title: gistMsg || "Gist sync", style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      fontSize: 15,
-      border: "1px solid",
-      flexShrink: 0,
-      borderColor: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)",
-      color: gistStatus === "error" ? "var(--red)" : gistStatus === "ok" ? "var(--green)" : "rgba(255,255,255,0.6)",
-      background: "transparent",
-      cursor: "default"
-    } }, gistStatus === "syncing" ? "\u27F3" : gistStatus === "error" ? "\u2717" : "\u2601"), (() => {
+    )), (() => {
       const today2 = /* @__PURE__ */ new Date();
       const n90 = new Date(today2);
       n90.setDate(today2.getDate() + 90);
