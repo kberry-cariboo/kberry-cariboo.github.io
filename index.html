@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v25';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v26';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -5226,17 +5226,28 @@ function waitForReact(){
           style: { position: "fixed", inset: 0, zIndex: 1400 }
         }
       ), /* @__PURE__ */ React.createElement("div", { style: {
-        position: "absolute",
-        right: 0,
-        top: 42,
+        position: "fixed",
+        top: 58,
+        // just below the 64px header
+        right: 12,
+        // 12px from right edge of viewport
         zIndex: 1500,
         background: "var(--bgCard)",
         borderRadius: 12,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.32)",
         border: "1px solid var(--border)",
-        minWidth: 200,
+        width: "min(240px, calc(100vw - 24px))",
+        // never wider than screen
         overflow: "hidden"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 10px", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
+      } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 10px", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        color: "var(--textLt)",
+        marginTop: 2,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
         { label: "Edit Profile", icon: "\u{1F464}", action: () => {
           setMenuOpen(false);
           setTab("settings");
@@ -5269,7 +5280,7 @@ function waitForReact(){
           style: {
             width: "100%",
             textAlign: "left",
-            padding: "10px 16px",
+            padding: "12px 16px",
             fontFamily: "Inter,sans-serif",
             fontSize: 13,
             color: "var(--text)",
@@ -5296,7 +5307,7 @@ function waitForReact(){
           style: {
             width: "100%",
             textAlign: "left",
-            padding: "10px 16px",
+            padding: "12px 16px",
             fontFamily: "Inter,sans-serif",
             fontSize: 13,
             fontWeight: 600,
