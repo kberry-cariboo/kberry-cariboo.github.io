@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v28';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v30';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1832,6 +1832,14 @@ function waitForReact(){
       setShowForm(false);
       setEditing(null);
     };
+    useEffect(() => {
+      window.__regOpenNew = openNew;
+      window.__regOpenCSV = () => setShowCSV((v) => !v);
+      return () => {
+        delete window.__regOpenNew;
+        delete window.__regOpenCSV;
+      };
+    }, []);
     const doCopy = (e) => {
       const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
@@ -1928,36 +1936,7 @@ function waitForReact(){
       cursor: "pointer",
       background: filter === f2 ? "var(--navy)" : "var(--border)",
       color: filter === f2 ? "#fff" : "var(--textMid)"
-    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses"))), /* @__PURE__ */ React.createElement("div", { className: "reg-add-btns", style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowCSV((v) => !v),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "7px 12px",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: showCSV ? "var(--stripe)" : "transparent",
-          color: "var(--textMid)",
-          whiteSpace: "nowrap"
-        }
-      },
-      "\u2B06 Import CSV"
-    ), /* @__PURE__ */ React.createElement("button", { onClick: openNew, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      fontWeight: 600,
-      padding: "8px 18px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff",
-      whiteSpace: "nowrap"
-    } }, "+ Add Entry"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 16, gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses")))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 16, gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "select",
       {
         value: filterCat,
@@ -2096,7 +2075,6 @@ function waitForReact(){
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
-    const [showAddForm, setShowAddForm] = useState(false);
     const [budgetOpen, setBudgetOpen] = useLS("cf_budgetOpen", true);
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
@@ -2126,7 +2104,7 @@ function waitForReact(){
       setShowAddForm(false);
     };
     const renderEventRow = (ev, i) => {
-      if (editingId === ev.id) return /* @__PURE__ */ React.createElement("tr", { key: ev.id }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: { padding: "8px 14px", background: "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
+      if (editingId === ev.id) return /* @__PURE__ */ React.createElement("tr", { key: ev.id }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: { padding: "8px 14px", background: "var(--stripe)", borderBottom: "1px solid var(--border)", borderLeft: "3px solid transparent" } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
         setOverride(ev.id, p);
         setEditingId(null);
       }, onReset: () => {
@@ -2204,9 +2182,10 @@ function waitForReact(){
       fontWeight: 700,
       color: "#fff",
       letterSpacing: "0.1em",
-      textTransform: "uppercase"
+      textTransform: "uppercase",
+      borderLeft: "3px solid transparent"
     } }, label));
-    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: { padding: "0", background: "transparent" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }))));
+    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: { padding: "0", background: "transparent", borderLeft: "3px solid transparent" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }))));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
       return Array.from({ length: daysInMonth(monthIdx, todayDate.getFullYear()) }, (_, i) => {
@@ -2257,34 +2236,11 @@ function waitForReact(){
         fontSize: 12,
         fontWeight: 600,
         color: "var(--textMid)"
-      } }, "\u2630 Monthly"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginLeft: 4 } }, MONTHS[monthIdx])), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          className: "budget-add-btn",
-          onClick: () => {
-            setShowAddForm((v) => !v);
-            setEditingId(null);
-          },
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "6px 16px",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            background: "var(--navy)",
-            color: "#fff",
-            whiteSpace: "nowrap"
-          }
-        },
-        showAddForm ? "\u2715 Cancel" : "+ Add Entry"
-      )),
+      } }, "\u2630 Monthly"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginLeft: 4 } }, MONTHS[monthIdx]))),
       /* @__PURE__ */ React.createElement(MonthPicker, { value: monthIdx, onChange: (v) => {
         setMonthIdx(v);
         setEditingId(null);
       }, noMargin: false, matchingMonths: gq ? matchingMonths : null }),
-      showAddForm && /* @__PURE__ */ React.createElement(EntryForm, { initial: null, onSave: handleAdd, onCancel: () => setShowAddForm(false), categories, templates: templates || [], onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t]) }),
       gq && /* @__PURE__ */ React.createElement("div", { style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 12,
@@ -2316,7 +2272,7 @@ function waitForReact(){
             allIds.forEach((id) => !completed[id] && toggleComplete(id));
           }
         };
-        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 28, padding: "10px 4px", textAlign: "center" }, "aria-label": "Select all" }, /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 28, padding: "10px 4px", textAlign: "center", borderLeft: "3px solid transparent" }, "aria-label": "Select all" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: toggleAll,
@@ -2349,7 +2305,7 @@ function waitForReact(){
           letterSpacing: "0.08em",
           textTransform: "uppercase"
         } }, h))));
-      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))))))),
+      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase", borderLeft: "3px solid transparent" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { colSpan: 3, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase", borderLeft: "3px solid transparent" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))))))),
       view === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
@@ -2418,7 +2374,7 @@ function waitForReact(){
         flow.filter((ev) => ev.month === monthIdx && ev.type === "expense").forEach((ev) => {
           catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
         });
-        const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => a.localeCompare(b));
+        const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
         return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 20, marginBottom: 12 } }, /* @__PURE__ */ React.createElement(
           "div",
           {
@@ -4787,6 +4743,15 @@ function waitForReact(){
     const [globalSearch, setGlobalSearch] = useState("");
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [profileForm, setProfileForm] = useState(null);
+    const [pf, setPf] = useState({ fullName: "", email: "" });
+    const [pwf, setPwf] = useState({ current: "", next: "", confirm: "" });
+    const [pfErr, setPfErr] = useState("");
+    const [pfOk, setPfOk] = useState("");
+    const [regFabOpen, setRegFabOpen] = useState(false);
+    useEffect(() => {
+      if (tab !== "register") setRegFabOpen(false);
+    }, [tab]);
     const [undoEntry, setUndoEntry] = useState(null);
     const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
@@ -5011,8 +4976,6 @@ function waitForReact(){
           .year-pills-mobile{display:none!important;}
         }
         @media(max-width:768px){.help-btn{display:none!important;}}
-        /* reg-add-btns visible on desktop */
-        .reg-add-btns{display:inline-flex;}
         @media print{[data-noprint]{display:none!important;}body{background:#fff!important;}.content-area{padding:0!important;}}
 
         /* \u2500\u2500 Mobile layout \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
@@ -5033,7 +4996,7 @@ function waitForReact(){
           .tab-bar::-webkit-scrollbar{display:none;}
           .tab-bar button{padding:8px 10px!important;font-size:11px!important;white-space:nowrap;}
           /* Content padding */
-          .content-area{padding:12px 8px!important;}
+          .content-area{padding:12px 8px!important;margin-top:0!important;}
           /* KPI grids: 2-column on tablet/mobile */
           .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
           .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
@@ -5072,9 +5035,7 @@ function waitForReact(){
           /* Budget: hide daily toggle, add button; show mobile-only label */
           .budget-view-toggle{display:none!important;}
           .budget-view-mobile{display:inline!important;}
-          .budget-add-btn{display:none!important;}
           /* Register: hide add/import buttons \u2014 FAB handles these on mobile */
-          .reg-add-btns{display:none!important;}
         }
         @media(max-width:480px){
           /* Phones: tightest layout */
@@ -5085,7 +5046,7 @@ function waitForReact(){
           .month-picker button{padding:3px 5px!important;font-size:9px!important;}
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
           .daily-balance{min-width:72px!important;}
-          .content-area{padding:10px 6px!important;}
+          .content-area{padding:10px 6px!important;margin-top:0!important;}
           .tab-bar button{padding:8px 8px!important;font-size:10px!important;}
         }
 
@@ -5253,12 +5214,16 @@ function waitForReact(){
         whiteSpace: "nowrap"
       } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
         { label: "Edit Profile", icon: "\u{1F464}", action: () => {
-          setMenuOpen(false);
-          setTab("settings");
+          setPf({ fullName: (sessionUser == null ? void 0 : sessionUser.fullName) || "", email: (sessionUser == null ? void 0 : sessionUser.email) || "" });
+          setPfErr("");
+          setPfOk("");
+          setProfileForm("profile");
         } },
         { label: "Change Password", icon: "\u{1F511}", action: () => {
-          setMenuOpen(false);
-          setTab("settings");
+          setPwf({ current: "", next: "", confirm: "" });
+          setPfErr("");
+          setPfOk("");
+          setProfileForm("password");
         } },
         { label: "Settings", icon: "\u2699", action: () => {
           setMenuOpen(false);
@@ -5267,10 +5232,6 @@ function waitForReact(){
         { label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
           setMenuOpen(false);
           setShowHelp(true);
-        } },
-        { label: "Gist Sync", icon: "\u2601", action: () => {
-          setMenuOpen(false);
-          setTab("settings");
         } },
         ...showInstall ? [{ label: "Install App", icon: "\u2B07", action: () => {
           setMenuOpen(false);
@@ -5328,7 +5289,204 @@ function waitForReact(){
         },
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u{1F6AA}"),
         "Sign out"
-      ))));
+      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { style: {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 2e3,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        background: "var(--bgCard)",
+        borderRadius: 16,
+        padding: 28,
+        maxWidth: 400,
+        width: "100%",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 16,
+        fontWeight: 700,
+        color: "var(--text)",
+        marginBottom: 20
+      } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }, { label: "Email", key: "email", type: "email" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
+        display: "block",
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--textMid)",
+        marginBottom: 5
+      } }, label), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type,
+          value: pf[key],
+          onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value })),
+          style: {
+            width: "100%",
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "8px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none",
+            boxSizing: "border-box"
+          }
+        }
+      ))), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setProfileForm(null),
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "8px 18px",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            cursor: "pointer",
+            background: "transparent",
+            color: "var(--textMid)"
+          }
+        },
+        "Cancel"
+      ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        const nm = pf.fullName.trim(), em = pf.email.trim().toLowerCase();
+        if (!nm || !em) {
+          setPfErr("Name and email are required.");
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+          setPfErr("Enter a valid email.");
+          return;
+        }
+        const dup = users.find((u) => u.email.toLowerCase() === em && u.id !== sessionUser.id);
+        if (dup) {
+          setPfErr("Email already in use.");
+          return;
+        }
+        setUsers((prev) => prev.map((u) => u.id === sessionUser.id ? __spreadProps(__spreadValues({}, u), { fullName: nm, email: em }) : u));
+        setSessionUser((su) => __spreadProps(__spreadValues({}, su), { fullName: nm, email: em }));
+        setPfOk("Profile updated.");
+        setTimeout(() => setProfileForm(null), 900);
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        padding: "8px 18px",
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: "var(--navy)",
+        color: "#fff"
+      } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { style: {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 2e3,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        background: "var(--bgCard)",
+        borderRadius: 16,
+        padding: 28,
+        maxWidth: 400,
+        width: "100%",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 16,
+        fontWeight: 700,
+        color: "var(--text)",
+        marginBottom: 20
+      } }, "Change Password"), [
+        { label: "Current password", key: "current", val: pwf.current },
+        { label: "New password (min 6 chars)", key: "next", val: pwf.next },
+        { label: "Confirm new password", key: "confirm", val: pwf.confirm }
+      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
+        display: "block",
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--textMid)",
+        marginBottom: 5
+      } }, label), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "password",
+          value: val,
+          onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value })),
+          style: {
+            width: "100%",
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "8px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none",
+            boxSizing: "border-box"
+          }
+        }
+      ))), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setProfileForm(null),
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "8px 18px",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            cursor: "pointer",
+            background: "transparent",
+            color: "var(--textMid)"
+          }
+        },
+        "Cancel"
+      ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        if (!pwf.current || !pwf.next || !pwf.confirm) {
+          setPfErr("All fields required.");
+          return;
+        }
+        const expectedHash = hashPw(sessionUser.email.toLowerCase(), pwf.current);
+        const user = users.find((u) => u.id === sessionUser.id);
+        if (!user || user.passwordHash !== expectedHash) {
+          setPfErr("Current password is incorrect.");
+          return;
+        }
+        if (pwf.next.length < 6) {
+          setPfErr("New password must be at least 6 characters.");
+          return;
+        }
+        if (pwf.next !== pwf.confirm) {
+          setPfErr("New passwords don't match.");
+          return;
+        }
+        setUsers((prev) => prev.map((u) => u.id === sessionUser.id ? __spreadProps(__spreadValues({}, u), { passwordHash: hashPw(sessionUser.email.toLowerCase(), pwf.next) }) : u));
+        setPfOk("Password changed successfully.");
+        setTimeout(() => setProfileForm(null), 900);
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        padding: "8px 18px",
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: "var(--navy)",
+        color: "#fff"
+      } }, "Change Password")))));
     })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
@@ -5361,7 +5519,7 @@ function waitForReact(){
       padding: "1px 5px",
       fontSize: 9,
       fontWeight: 700
-    } }, "\u{1F50D}"))))), /* @__PURE__ */ React.createElement("div", { className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
+    } }, "\u{1F50D}"))))), /* @__PURE__ */ React.createElement("div", { className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, margin: "0 auto", marginTop: 0 } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
@@ -5475,7 +5633,7 @@ function waitForReact(){
         onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
       },
       "Terms of Use"
-    )), /* @__PURE__ */ React.createElement(
+    )), tab !== "register" && /* @__PURE__ */ React.createElement(
       QuickAddFAB,
       {
         categories,
@@ -5488,7 +5646,100 @@ function waitForReact(){
           setFabOpen(false);
         }
       }
-    ));
+    ), tab === "register" && /* @__PURE__ */ (() => {
+      return /* @__PURE__ */ React.createElement("div", { style: {
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        zIndex: 1e3,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 10
+      } }, regFabOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          onClick: () => setRegFabOpen(false),
+          style: { position: "fixed", inset: 0, zIndex: -1 }
+        }
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setRegFabOpen(false);
+            window.__regOpenCSV && window.__regOpenCSV();
+          },
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "10px 18px",
+            borderRadius: 20,
+            border: "1px solid var(--border)",
+            cursor: "pointer",
+            background: "var(--bgCard)",
+            color: "var(--text)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }
+        },
+        /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
+        " Import CSV"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setRegFabOpen(false);
+            window.__regOpenNew && window.__regOpenNew();
+          },
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "10px 18px",
+            borderRadius: 20,
+            border: "1px solid var(--border)",
+            cursor: "pointer",
+            background: "var(--bgCard)",
+            color: "var(--text)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }
+        },
+        /* @__PURE__ */ React.createElement("span", null, "+"),
+        " Add Entry"
+      )), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setRegFabOpen((v) => !v),
+          className: "fab-panel",
+          title: "Entry actions",
+          style: {
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "var(--navy)",
+            border: "none",
+            cursor: "pointer",
+            color: "#fff",
+            fontSize: 26,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.28)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform 0.2s",
+            transform: regFabOpen ? "rotate(45deg)" : "none"
+          }
+        },
+        "+"
+      ));
+    })());
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));
