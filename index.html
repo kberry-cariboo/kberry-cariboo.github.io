@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v34';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v37';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -836,6 +836,8 @@ function waitForReact(){
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
+        const effD = ov.day !== void 0 ? Math.min(Math.max(1, ov.day), daysInMonth(m, year)) : d;
+        const effDate = effD !== d ? new Date(year, m, effD) : date;
         events.push({
           id: eid,
           entryId: e.id,
@@ -846,8 +848,8 @@ function waitForReact(){
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           isOverride: Object.keys(ov).length > 0,
           month: m,
-          day: d,
-          date: new Date(date)
+          day: effD,
+          date: effDate
         });
       };
       if (!e.repeats) {
@@ -999,7 +1001,7 @@ function waitForReact(){
   } }) {
     return /* @__PURE__ */ React.createElement(React.Fragment, null, open && /* @__PURE__ */ React.createElement("div", { className: "fab-panel", style: {
       position: "fixed",
-      bottom: 80,
+      bottom: "calc(80px + env(safe-area-inset-bottom))",
       right: 16,
       zIndex: 1500,
       background: "var(--bgCard)",
@@ -1007,7 +1009,7 @@ function waitForReact(){
       padding: 20,
       boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
       border: "1px solid var(--border)",
-      width: "min(400px, calc(100vw - 32px))",
+      width: "min(560px, calc(100vw - 32px))",
       maxHeight: "80vh",
       overflowY: "auto"
     } }, /* @__PURE__ */ React.createElement("div", { style: {
@@ -1037,7 +1039,7 @@ function waitForReact(){
         title: open ? "Close (Esc)" : "Quick Add Entry (N)",
         style: {
           position: "fixed",
-          bottom: 20,
+          bottom: "calc(20px + env(safe-area-inset-bottom))",
           right: 16,
           zIndex: 1499,
           width: 52,
@@ -1351,7 +1353,7 @@ function waitForReact(){
         recurDays: t.recurDays || [],
         notes: t.notes || ""
       }));
-    } })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-grid", style: { display: "grid", gridTemplateColumns: "3fr 1fr 1fr 1fr", gap: 12, marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Description *"), /* @__PURE__ */ React.createElement(
+    } })), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Description *"), /* @__PURE__ */ React.createElement(
       "input",
       {
         style: inp(errors.desc),
@@ -1362,7 +1364,7 @@ function waitForReact(){
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Type"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount ($) *"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Type"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount ($) *"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
@@ -1377,7 +1379,7 @@ function waitForReact(){
           if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Category"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.category, onChange: (e) => set({ category: e.target.value }) }, [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c }, c))))), /* @__PURE__ */ React.createElement("div", { className: "form-date-row", style: { display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Date *"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Category"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.category, onChange: (e) => set({ category: e.target.value }) }, [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c }, c))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Date *"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "date",
@@ -1388,7 +1390,7 @@ function waitForReact(){
           if (errors.startDate) setErrors((p) => __spreadProps(__spreadValues({}, p), { startDate: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.startDate })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", paddingBottom: 2, gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: f.repeats, onChange: (v) => set({ repeats: v }), label: "Repeats" }), f.repeats && summary && /* @__PURE__ */ React.createElement("span", { style: {
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.startDate })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, paddingBottom: 2 } }, /* @__PURE__ */ React.createElement(Toggle, { value: f.repeats, onChange: (v) => set({ repeats: v }), label: "Repeats" }), f.repeats && summary && /* @__PURE__ */ React.createElement("span", { style: {
       fontFamily: "'IBM Plex Mono',monospace",
       fontSize: 11,
       color: "var(--navyLt)",
@@ -1396,26 +1398,26 @@ function waitForReact(){
       borderRadius: 6,
       padding: "3px 8px",
       border: "1px solid var(--border)"
-    } }, summary))), f.repeats && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", borderRadius: 10, padding: "14px 16px", marginBottom: 14, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
+    } }, summary))), f.repeats && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
       color: "var(--textMid)",
       letterSpacing: "0.1em",
       textTransform: "uppercase",
-      marginBottom: 12
-    } }, "Recurrence Settings"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" } }, f.recurUnit !== "semimonth" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Every"), /* @__PURE__ */ React.createElement(
+      marginBottom: 10
+    } }, "Recurrence Settings"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 } }, f.recurUnit !== "semimonth" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Every"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
         inputMode: "decimal",
         min: "1",
         max: "99",
-        style: __spreadProps(__spreadValues({}, inp(errors.recurEvery)), { width: 64 }),
+        style: __spreadProps(__spreadValues({}, inp(errors.recurEvery)), { width: "100%" }),
         value: f.recurEvery,
         onChange: (e) => set({ recurEvery: parseInt(e.target.value) || 1 })
       }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Period"), /* @__PURE__ */ React.createElement("select", { style: __spreadProps(__spreadValues({}, inp(false)), { width: 150 }), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)"))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, WEEKDAYS.map((wd, i) => {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Period"), /* @__PURE__ */ React.createElement("select", { style: __spreadProps(__spreadValues({}, inp(false)), { width: "100%" }), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 3, flexWrap: "wrap" } }, WEEKDAYS.map((wd, i) => {
       const isAnch = i === startWD, isSel = f.recurDays.includes(i) || isAnch, isLock = isAnch || f.recurEvery > 1;
       return /* @__PURE__ */ React.createElement(
         "button",
@@ -1426,8 +1428,9 @@ function waitForReact(){
             fontFamily: "Inter,sans-serif",
             fontSize: 11,
             fontWeight: 700,
-            width: 38,
-            height: 34,
+            flex: "1 1 auto",
+            minWidth: 34,
+            height: 32,
             borderRadius: 6,
             cursor: isLock ? "default" : "pointer",
             border: isAnch ? `2px solid var(--amber)` : "none",
@@ -1438,17 +1441,11 @@ function waitForReact(){
         },
         wd.slice(0, 2)
       );
-    })), f.recurEvery === 1 && startWD !== null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, WEEKDAYS[startWD], " is locked to your start date."), f.recurEvery > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--amber)", marginTop: 4 } }, "Every ", f.recurEvery, " weeks always lands on ", startWD !== null ? WEEKDAYS[startWD] : "the start day", ".")), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      color: "var(--textMid)",
-      alignSelf: "flex-end",
-      paddingBottom: 8
-    } }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Until (optional)"), /* @__PURE__ */ React.createElement(
+    })), f.recurEvery === 1 && startWD !== null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, WEEKDAYS[startWD], " is locked to your start date."), f.recurEvery > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--amber)", marginTop: 4 } }, "Every ", f.recurEvery, " weeks always lands on ", startWD !== null ? WEEKDAYS[startWD] : "the start day", ".")), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)", marginBottom: 10 } }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Until (optional)"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "date",
-        style: __spreadProps(__spreadValues({}, inp(errors.recurEnd)), { width: 160 }),
+        style: __spreadProps(__spreadValues({}, inp(errors.recurEnd)), { width: "100%" }),
         value: f.recurEnd,
         min: f.startDate,
         onChange: (e) => {
@@ -1456,7 +1453,7 @@ function waitForReact(){
           if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 3 } }, "Leave blank to recur indefinitely")))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 3 } }, "Leave blank to recur indefinitely"))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(
       Toggle,
       {
         value: showMonthly,
@@ -2031,7 +2028,7 @@ function waitForReact(){
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "fab-panel", style: {
       position: "fixed",
-      bottom: 80,
+      bottom: "calc(80px + env(safe-area-inset-bottom))",
       right: 16,
       zIndex: 1500,
       background: "var(--bgCard)",
@@ -2078,7 +2075,7 @@ function waitForReact(){
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "fab-panel", style: {
       position: "fixed",
-      bottom: 80,
+      bottom: "calc(80px + env(safe-area-inset-bottom))",
       right: 16,
       zIndex: 1500,
       background: "var(--bgCard)",
@@ -2086,7 +2083,7 @@ function waitForReact(){
       padding: 20,
       boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
       border: "1px solid var(--border)",
-      width: "min(400px, calc(100vw - 32px))",
+      width: "min(560px, calc(100vw - 32px))",
       maxHeight: "80vh",
       overflowY: "auto"
     } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
@@ -2156,6 +2153,49 @@ function waitForReact(){
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
     const [budgetOpen, setBudgetOpen] = useLS("cf_budgetOpen", true);
+    const dragRef = useRef(null);
+    const justDraggedRef = useRef(false);
+    const [draggingId, setDraggingId] = useState(null);
+    const [dragOverDay, setDragOverDay] = useState(null);
+    const handleDragStart = (e, ev) => {
+      dragRef.current = { id: ev.id, fromDay: ev.day, startY: e.clientY, active: false, pointerId: e.pointerId };
+    };
+    const handleDragMove = (e) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dy = e.clientY - d.startY;
+      if (!d.active && Math.abs(dy) > 6) {
+        d.active = true;
+        setDraggingId(d.id);
+        try {
+          e.target.setPointerCapture(d.pointerId);
+        } catch (e2) {
+        }
+      }
+      if (d.active) {
+        e.preventDefault();
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const rowEl = el && el.closest && el.closest("tr[data-day]");
+        if (rowEl) {
+          const day = parseInt(rowEl.getAttribute("data-day"), 10);
+          if (!isNaN(day)) setDragOverDay(day);
+        }
+      }
+    };
+    const handleDragEnd = (e) => {
+      const d = dragRef.current;
+      if (d && d.active) {
+        e.stopPropagation();
+        if (dragOverDay != null && dragOverDay !== d.fromDay) setOverride(d.id, { day: dragOverDay });
+        justDraggedRef.current = true;
+        setTimeout(() => {
+          justDraggedRef.current = false;
+        }, 0);
+      }
+      dragRef.current = null;
+      setDraggingId(null);
+      setDragOverDay(null);
+    };
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
     const todayDate = /* @__PURE__ */ new Date();
@@ -2199,16 +2239,22 @@ function waitForReact(){
       }, onCancel: () => setEditingId(null) })));
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
+      const isDragging = draggingId === ev.id;
+      const isDropTarget = draggingId != null && draggingId !== ev.id && dragOverDay === ev.day;
       return /* @__PURE__ */ React.createElement(
         "tr",
         {
           key: ev.id,
-          onClick: () => setEditingId(ev.id),
+          "data-day": ev.day,
+          onClick: () => {
+            if (justDraggedRef.current) return;
+            setEditingId(ev.id);
+          },
           style: {
             background: isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
-            borderBottom: "1px solid var(--border)",
+            borderBottom: isDropTarget ? "2px solid var(--navy)" : "1px solid var(--border)",
             cursor: "pointer",
-            opacity: past && !isDone ? 0.7 : 1
+            opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
         },
         /* @__PURE__ */ React.createElement("td", { style: {
@@ -2245,7 +2291,32 @@ function waitForReact(){
           },
           isDone ? "\u2713" : ""
         )),
-        /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "8px 8px", color: "var(--textMid)", width: 30, whiteSpace: "nowrap" } }, ev.day),
+        /* @__PURE__ */ React.createElement(
+          "td",
+          {
+            onPointerDown: (e) => handleDragStart(e, ev),
+            onPointerMove: handleDragMove,
+            onPointerUp: handleDragEnd,
+            onPointerCancel: handleDragEnd,
+            title: "Drag up/down to reschedule within this month",
+            style: {
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 12,
+              padding: "8px 6px 8px 8px",
+              color: "var(--textMid)",
+              width: 30,
+              whiteSpace: "nowrap",
+              cursor: "grab",
+              touchAction: "none",
+              userSelect: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 2
+            }
+          },
+          ev.day,
+          /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.3, fontSize: 9, lineHeight: 1 } }, "\u283F")
+        ),
         /* @__PURE__ */ React.createElement("td", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
@@ -2322,7 +2393,7 @@ function waitForReact(){
     return /* @__PURE__ */ React.createElement(
       "div",
       {
-        style: { maxWidth: 1e3, margin: "0 auto" },
+        style: { maxWidth: 1160, margin: "0 auto" },
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
@@ -2425,7 +2496,7 @@ function waitForReact(){
         background: "var(--navy)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))))))),
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true))))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8, paddingLeft: 2 } }, "\u{1F4A1} Drag the day number up or down to reschedule an entry within this month")),
       view === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
@@ -4457,7 +4528,7 @@ function waitForReact(){
     }, []);
     return /* @__PURE__ */ React.createElement("div", { style: {
       position: "fixed",
-      bottom: 80,
+      bottom: "calc(80px + env(safe-area-inset-bottom))",
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 2500,
@@ -5769,7 +5840,7 @@ function waitForReact(){
     ), tab === "register" && /* @__PURE__ */ (() => {
       return /* @__PURE__ */ React.createElement("div", { style: {
         position: "fixed",
-        bottom: 20,
+        bottom: "calc(20px + env(safe-area-inset-bottom))",
         right: 16,
         zIndex: 1499,
         display: "flex",
