@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v39';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v40';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -5182,13 +5182,13 @@ function waitForReact(){
           .year-pills{gap:3px!important;flex-wrap:wrap;}
           /* Tab bar: scrollable, no scrollbar visible */
           .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
-            padding-bottom:2px;scrollbar-width:none;}
+            padding-bottom:0!important;scrollbar-width:none;}
           .tab-bar::-webkit-scrollbar{display:none;}
           .tab-bar button{padding:8px 10px!important;font-size:11px!important;white-space:nowrap;}
           /* Content padding */
           .content-area{padding:12px 8px!important;margin-top:0!important;}
           /* Kill any residual navy gap between tab-bar and content on mobile */
-          .tab-bar-outer{padding-bottom:0!important;}
+          .tab-bar-outer{padding-bottom:0!important;overflow:hidden!important;}
           /* KPI grids: 2-column on tablet/mobile */
           .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
           .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
@@ -5239,14 +5239,13 @@ function waitForReact(){
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
           .daily-balance{min-width:72px!important;}
           .content-area{padding:10px 6px!important;margin-top:0!important;}
-          .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;}
-          .tab-bar-outer{padding-bottom:0!important;}
-          .tab-bar{margin-top:2px!important;}
+          .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;padding-bottom:0!important;overflow:hidden!important;}
+          .tab-bar{margin:0!important;padding:0!important;}
           .tab-bar button{padding:8px 8px!important;font-size:10px!important;}
         }
 
 
-      `), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px" } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      `), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
       fontFamily: "'IBM Plex Mono',monospace",
       fontSize: 13,
       fontWeight: 700,
@@ -5711,7 +5710,7 @@ function waitForReact(){
         background: "var(--navy)",
         color: "#fff"
       } }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, marginTop: 4 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
+    })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
