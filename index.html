@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v40';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v41';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -5184,7 +5184,7 @@ function waitForReact(){
           .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
             padding-bottom:0!important;scrollbar-width:none;}
           .tab-bar::-webkit-scrollbar{display:none;}
-          .tab-bar button{padding:8px 10px!important;font-size:11px!important;white-space:nowrap;}
+          .tab-bar button{padding:10px 10px!important;font-size:11px!important;white-space:nowrap;}
           /* Content padding */
           .content-area{padding:12px 8px!important;margin-top:0!important;}
           /* Kill any residual navy gap between tab-bar and content on mobile */
@@ -5241,7 +5241,7 @@ function waitForReact(){
           .content-area{padding:10px 6px!important;margin-top:0!important;}
           .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;padding-bottom:0!important;overflow:hidden!important;}
           .tab-bar{margin:0!important;padding:0!important;}
-          .tab-bar button{padding:8px 8px!important;font-size:10px!important;}
+          .tab-bar button{padding:10px 8px!important;font-size:10px!important;}
         }
 
 
@@ -5305,13 +5305,14 @@ function waitForReact(){
         disabled: gistStatus === "syncing",
         title: gistStatus === "syncing" ? "Saving to Gist\u2026" : gistStatus === "error" ? `Gist error: ${gistMsg || ""}` : `Save to Gist${gistMsg ? ` \u2014 ${gistMsg}` : ""}`,
         "aria-label": "Save to Gist",
-        className: "help-btn",
         style: {
           display: "flex",
           alignItems: "center",
           gap: 6,
           padding: "0 12px",
-          height: 32,
+          height: 36,
+          minWidth: 40,
+          justifyContent: "center",
           borderRadius: 8,
           cursor: gistStatus === "syncing" ? "wait" : "pointer",
           fontFamily: "Inter,sans-serif",
@@ -5714,13 +5715,13 @@ function waitForReact(){
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
-      padding: "10px 18px",
+      padding: "12px 18px",
       border: "none",
       cursor: "pointer",
-      borderRadius: "6px 6px 0 0",
-      background: tab === t.id ? "var(--bg)" : "transparent",
-      color: tab === t.id ? "var(--navy)" : "rgba(255,255,255,0.55)",
-      transition: "background 0.15s,color 0.15s"
+      borderBottom: tab === t.id ? "3px solid var(--amber)" : "3px solid transparent",
+      background: "transparent",
+      color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)",
+      transition: "color 0.15s,border-color 0.15s"
     } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
       const today = /* @__PURE__ */ new Date();
       const n = new Date(today);
