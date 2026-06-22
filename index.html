@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v41';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v42';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -490,7 +490,7 @@ function waitForReact(){
           desc: typeof e.desc === "string" ? e.desc : "Untitled",
           type: e.type === "income" ? "income" : "expense",
           amount: isFinite(Number(e.amount)) ? Math.abs(Number(e.amount)) : 0,
-          startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
+          startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : localDateStr(/* @__PURE__ */ new Date()),
           repeats: !!e.repeats,
           recurEvery: parseInt(e.recurEvery) > 0 ? parseInt(e.recurEvery) : 1,
           recurUnit: ["day", "week", "month", "year", "semimonth"].includes(e.recurUnit) ? e.recurUnit : "month",
@@ -1356,6 +1356,7 @@ function waitForReact(){
     } })), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Description *"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        autoFocus: true,
         style: inp(errors.desc),
         value: f.desc,
         placeholder: "e.g. Mortgage payment",
@@ -2490,7 +2491,13 @@ function waitForReact(){
         background: "var(--amberLt)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: {
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
+        padding: "28px 14px",
+        textAlign: "center",
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        color: "var(--textLt)"
+      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: {
         width: 28,
         background: "var(--navy)",
         padding: 0,
@@ -3673,7 +3680,7 @@ function waitForReact(){
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+      a.download = `CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
     }, style: {
@@ -5170,15 +5177,14 @@ function waitForReact(){
 
         /* \u2500\u2500 Mobile layout \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         @media(max-width:768px){
-          /* Prevent iOS auto-zoom on input focus (fires when font-size < 16px).
-             Scoped to the main entry/settings forms; narrow tabular inputs
+          /* Prevent iOS/Android auto-zoom on input focus (fires when font-size < 16px).
+             Targets the entry/CSV form panels and search boxes. Narrow tabular inputs
              (monthly-amounts grid, budget targets) keep their compact size. */
-          .entry-form-grid input, .entry-form-grid select,
-          .form-date-row input, .form-date-row select,
+          .fab-panel input:not([type=checkbox]), .fab-panel select,
           .search-box input, .header-search input { font-size: 16px !important; }
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
-          .logo-area img{height:30px!important;}
+          .logo-area img{height:23px!important;}
           .year-pills{gap:3px!important;flex-wrap:wrap;}
           /* Tab bar: scrollable, no scrollbar visible */
           .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
@@ -5215,10 +5221,6 @@ function waitForReact(){
           .reg-actions{white-space:nowrap;}
           .reg-actions div{display:flex!important;gap:4px!important;}
           .reg-actions button{padding:6px 8px!important;font-size:12px!important;}
-          /* Entry form: 2 columns */
-          .entry-form-grid{grid-template-columns:1fr 1fr!important;}
-          /* Date/Repeats row stacks */
-          .form-date-row{grid-template-columns:1fr!important;gap:12px!important;}
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
           /* FAB quick-add panel: near full-width, centered above FAB */
@@ -5233,7 +5235,6 @@ function waitForReact(){
           /* Phones: tightest layout */
           .kpi-grid{grid-template-columns:1fr 1fr!important;gap:6px!important;}
           .kpi-grid-4{grid-template-columns:1fr 1fr!important;gap:6px!important;}
-          .entry-form-grid{grid-template-columns:1fr!important;}
           .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
           .month-picker button{padding:3px 5px!important;font-size:9px!important;}
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
@@ -5245,7 +5246,7 @@ function waitForReact(){
         }
 
 
-      `), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      `), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
       fontFamily: "'IBM Plex Mono',monospace",
       fontSize: 13,
       fontWeight: 700,
