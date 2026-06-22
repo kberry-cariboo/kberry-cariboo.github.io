@@ -426,7 +426,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v37';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v39';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2356,12 +2356,11 @@ function waitForReact(){
         textTransform: "uppercase"
       } }, label))
     );
-    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { style: {
-      width: 28,
-      padding: 0,
+    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
+      padding: "0",
       background: "transparent",
       boxShadow: "inset 3px 0 0 0 transparent"
-    } }), /* @__PURE__ */ React.createElement("td", { colSpan: 6, style: { padding: "0", background: "transparent" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }))));
+    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 8px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }))));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
       return Array.from({ length: daysInMonth(monthIdx, todayDate.getFullYear()) }, (_, i) => {
@@ -5188,6 +5187,8 @@ function waitForReact(){
           .tab-bar button{padding:8px 10px!important;font-size:11px!important;white-space:nowrap;}
           /* Content padding */
           .content-area{padding:12px 8px!important;margin-top:0!important;}
+          /* Kill any residual navy gap between tab-bar and content on mobile */
+          .tab-bar-outer{padding-bottom:0!important;}
           /* KPI grids: 2-column on tablet/mobile */
           .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
           .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
@@ -5238,11 +5239,14 @@ function waitForReact(){
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
           .daily-balance{min-width:72px!important;}
           .content-area{padding:10px 6px!important;margin-top:0!important;}
+          .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;}
+          .tab-bar-outer{padding-bottom:0!important;}
+          .tab-bar{margin-top:2px!important;}
           .tab-bar button{padding:8px 8px!important;font-size:10px!important;}
         }
 
 
-      `), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--headerBg)", padding: "0 24px" } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      `), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px" } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
       fontFamily: "'IBM Plex Mono',monospace",
       fontSize: 13,
       fontWeight: 700,
@@ -5295,7 +5299,36 @@ function waitForReact(){
         }
       },
       "\u2715"
-    )), (() => {
+    )), gistToken() && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => gistSave(false),
+        disabled: gistStatus === "syncing",
+        title: gistStatus === "syncing" ? "Saving to Gist\u2026" : gistStatus === "error" ? `Gist error: ${gistMsg || ""}` : `Save to Gist${gistMsg ? ` \u2014 ${gistMsg}` : ""}`,
+        "aria-label": "Save to Gist",
+        className: "help-btn",
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "0 12px",
+          height: 32,
+          borderRadius: 8,
+          cursor: gistStatus === "syncing" ? "wait" : "pointer",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid",
+          flexShrink: 0,
+          borderColor: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.25)",
+          background: gistStatus === "ok" ? "rgba(39,174,115,0.15)" : gistStatus === "error" ? "rgba(232,93,74,0.15)" : "rgba(255,255,255,0.07)",
+          color: gistStatus === "error" ? "var(--red)" : gistStatus === "ok" ? "var(--green)" : "rgba(255,255,255,0.7)",
+          transition: "all 0.15s"
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, gistStatus === "syncing" ? "\u27F3" : gistStatus === "error" ? "\u2717" : "\u2601"),
+      /* @__PURE__ */ React.createElement("span", { className: "help-btn" }, "Save")
+    ), (() => {
       const today2 = /* @__PURE__ */ new Date();
       const n90 = new Date(today2);
       n90.setDate(today2.getDate() + 90);
@@ -5678,7 +5711,7 @@ function waitForReact(){
         background: "var(--navy)",
         color: "#fff"
       } }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
+    })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, marginTop: 4 } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
