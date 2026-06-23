@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="CashFlow"/>
 <meta name="application-name" content="CashFlow Budget"/>
-<meta name="description" content="Personal cash flow and cash tracker"/>
+<meta name="description" content="Personal cash flow and budget tracker"/>
 <link rel="manifest" href="data:application/json,{%22name%22:%20%22CashFlow%20Budget%22,%20%22short_name%22:%20%22CashFlow%22,%20%22description%22:%20%22Personal%20cash%20flow%20and%20budget%20tracker%22,%20%22start_url%22:%20%22./%22,%20%22display%22:%20%22standalone%22,%20%22background_color%22:%20%22#F7F4EF%22,%20%22theme_color%22:%20%22#1C2B3A%22,%20%22orientation%22:%20%22any%22,%20%22icons%22:%20[{%22src%22:%20%22data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'><rect%20width='100'%20height='100'%20rx='20'%20fill='%231C2B3A'/><text%20y='.9em'%20font-size='80'%20x='10'>\ud83d\udcb0</text></svg>%22,%20%22sizes%22:%20%22any%22,%20%22type%22:%20%22image/svg+xml%22,%20%22purpose%22:%20%22any%20maskable%22}]}"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -122,9 +122,9 @@
     const yAxisLabel = yDesc?.props?.label;
     const xLabelText = xAxisLabel ? (typeof xAxisLabel==='string'?xAxisLabel:xAxisLabel.value) : null;
     const yLabelText = yAxisLabel ? (typeof yAxisLabel==='string'?yAxisLabel:yAxisLabel.value) : null;
-    const M  = { top:14, right:14,
+    const M  = { top:14, right:20,
                  bottom: xLabelText ? 54 : 34,
-                 left:   yLabelText ? 62 : 50, ...mg };
+                 left:   yLabelText ? 56 : 44, ...mg };
     const iW = Math.max(width  - M.left - M.right, 10);
     const iH = Math.max(height - M.top  - M.bottom, 10);
     const [tip, setTip] = useState(null);
@@ -445,7 +445,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v52';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v53';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -3355,14 +3355,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         onChange: setBalView,
         options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
       }
-    ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { padding: "4px 12px 24px 4px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, dot: { r: 4, fill: "#1C2B3A" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, fill: "rgba(28,43,58,0.12)", dot: { r: 4, fill: "#1C2B3A" } }))))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+    ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 8px 28px 8px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, dot: { r: 4, fill: "#1C2B3A" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, fill: "rgba(28,43,58,0.12)", dot: { r: 4, fill: "#1C2B3A" } }))))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: surplusView,
         onChange: setSurplusView,
         options: [{ id: "bar", icon: "\u25AE", label: "Bar" }, { id: "line", icon: "\u2571", label: "Line" }]
       }
-    ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { padding: "4px 12px 24px 4px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
+    ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 8px 28px 8px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
       Line,
       {
         type: "monotone",
@@ -3380,7 +3380,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         onChange: setIncExpView,
         options: [{ id: "grouped", icon: "\u25AE\u25AE", label: "Grouped" }, { id: "stacked", icon: "\u25B0", label: "Stacked" }, { id: "line", icon: "\u2571", label: "Line" }]
       }
-    ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { padding: "4px 12px 24px 4px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
+    ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 8px 28px 8px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
       BarChart,
       {
         data: summaries,
@@ -3412,7 +3412,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         width: `${pct}%`,
         background: PIE_COLORS[i % PIE_COLORS.length]
       } })));
-    })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { padding: "4px 12px 24px 4px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
+    })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 8px 28px 8px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
       Pie,
       {
         data: catTotals.map(([name, value]) => ({ name, value })),
@@ -3444,7 +3444,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", textAlign: "center", padding: "20px 0" } }, "No income entries"), incTotals.map(([cat, total], i) => {
       const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
       return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: "var(--greenDk)", opacity: 0.7 + 0.3 * (1 - i / incTotals.length) } })));
-    })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { padding: "4px 12px 24px 4px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
+    })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 8px 28px 8px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
       Pie,
       {
         data: incTotals.map(([name, value]) => ({ name, value })),
@@ -3608,7 +3608,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       cursor: "pointer",
       background: yoyMetric === m.id ? "var(--navy)" : "var(--border)",
       color: yoyMetric === m.id ? "#fff" : "var(--textMid)"
-    } }, m.label))) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { padding: "4px 12px 24px 4px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+    } }, m.label))) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 8px 28px 8px" } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, label: { value: "Month", position: "insideBottom" } }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 10, fill: "var(--textMid)" }, label: { value: "Amount", angle: -90, position: "insideLeft" } }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
       Line,
       {
         key: yc.year,
@@ -4794,6 +4794,17 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setMsg("Saving\u2026");
       } else setStatus("syncing");
       try {
+        const aiReports = {};
+        try {
+          Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => {
+            try {
+              const v = localStorage.getItem(k);
+              if (v) aiReports[k.replace("cf_ai_report_", "")] = JSON.parse(v);
+            } catch (e) {
+            }
+          });
+        } catch (e) {
+        }
         const payload = JSON.stringify({
           entries,
           overridesByYr,
@@ -4805,6 +4816,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           activeYear,
           alertThreshold,
           darkMode,
+          aiReports,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -4845,6 +4857,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
         if (d.templates) setTemplates(d.templates);
         if (d.completed) setCompleted(d.completed);
+        if (d.aiReports && typeof d.aiReports === "object") {
+          try {
+            Object.entries(d.aiReports).forEach(([year, report]) => {
+              localStorage.setItem(`cf_ai_report_${year}`, JSON.stringify(report));
+            });
+          } catch (e) {
+          }
+        }
         setStatus("ok");
         setMsg("Loaded " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -4858,6 +4878,17 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setStatus("syncing");
       setMsg("Creating Gist\u2026");
       try {
+        const aiReports = {};
+        try {
+          Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => {
+            try {
+              const v = localStorage.getItem(k);
+              if (v) aiReports[k.replace("cf_ai_report_", "")] = JSON.parse(v);
+            } catch (e) {
+            }
+          });
+        } catch (e) {
+        }
         const payload = JSON.stringify({
           entries,
           overridesByYr,
@@ -4869,6 +4900,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           activeYear,
           alertThreshold,
           darkMode,
+          aiReports,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
