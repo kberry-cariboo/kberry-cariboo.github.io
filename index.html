@@ -445,7 +445,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v47';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v48';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2982,7 +2982,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       try {
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-api-key": apiKey.trim(), "anthropic-version": "2023-06-01" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey.trim(),
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+          },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
             max_tokens: 2e3,
@@ -5564,10 +5569,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const tabs = [
       { id: "dashboard", label: "Dashboard" },
+      { id: "ai", label: "\u2726 AI Insights" },
       { id: "forecast", label: "Forecast" },
       { id: "budget", label: "Budget" },
-      { id: "register", label: "Register" },
-      { id: "ai", label: "\u2726 AI Insights" }
+      { id: "register", label: "Register" }
     ];
     if (!sessionUser) {
       const LC = LIGHT;
