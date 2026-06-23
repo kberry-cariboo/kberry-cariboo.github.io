@@ -445,7 +445,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v43';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v47';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2244,13 +2244,12 @@ function waitForReact(){
       setShowAddForm(false);
     };
     const renderEventRow = (ev, i) => {
-      if (editingId === ev.id) return /* @__PURE__ */ React.createElement("tr", { key: ev.id }, /* @__PURE__ */ React.createElement("td", { style: {
-        width: 28,
+      if (editingId === ev.id) return /* @__PURE__ */ React.createElement("tr", { key: ev.id }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
+        padding: "8px 14px",
         background: "var(--stripe)",
-        padding: 0,
         borderBottom: "1px solid var(--border)",
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 6, style: { padding: "8px 14px", background: "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
+      } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
         setOverride(ev.id, p);
         setEditingId(null);
       }, onReset: () => {
@@ -2831,6 +2830,426 @@ function waitForReact(){
     const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
     return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--redLt)", border: "1px solid var(--red)", borderRadius: 10, padding: "12px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F6A8}"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)", marginTop: 2 } }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: "var(--red)" } }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
+  function BoldText({ text = "" }) {
+    const parts = text.split(/\*\*([^*]+)\*\*/g);
+    return React.createElement(React.Fragment, null, ...parts.map(
+      (p, i) => i % 2 === 1 ? React.createElement("strong", { key: i }, p) : p
+    ));
+  }
+  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [] }) {
+    const [apiKey, setApiKey] = useLS("cf_ai_key", "");
+    const [loading, setLoading] = useState(false);
+    const [report, setReport] = useState(null);
+    const [rawText, setRawText] = useState("");
+    const [err, setErr] = useState("");
+    const [showKey, setShowKey] = useState(false);
+    const [lastRun, setLastRun] = useState(null);
+    const buildContext = () => {
+      var _a;
+      const now = /* @__PURE__ */ new Date();
+      const summaries = getMonthSummaries(flow, openBal);
+      const currentMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
+      const ytdMonths = summaries.slice(0, currentMonth + 1).map((m) => ({
+        month: m.month,
+        income: m.income,
+        expenses: m.expense,
+        surplus: m.surplus,
+        closingBalance: m.close
+      }));
+      const expenseCats = {}, incomeCats = {};
+      flow.filter((e) => e.month <= currentMonth).forEach((e) => {
+        if (e.type === "expense") expenseCats[e.category] = (expenseCats[e.category] || 0) + e.amount;
+        else incomeCats[e.category] = (incomeCats[e.category] || 0) + e.amount;
+      });
+      const bvaRows = [];
+      const targetByCat = {};
+      for (let m = 0; m <= currentMonth; m++) {
+        const t = budgetTargets[`${activeYear}:${m}`] || {};
+        Object.entries(t).forEach(([cat, amt]) => {
+          targetByCat[cat] = (targetByCat[cat] || 0) + (Number(amt) || 0);
+        });
+      }
+      Object.entries(targetByCat).forEach(([cat, tgt]) => {
+        const act = Math.round((expenseCats[cat] || 0) * 100) / 100;
+        const t = Math.round(tgt * 100) / 100;
+        bvaRows.push({ category: cat, actual: act, target: t, variance: Math.round((act - t) * 100) / 100 });
+      });
+      bvaRows.sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
+      const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "lease", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "child support"];
+      const debtItems = Object.entries(expenseCats).filter(
+        ([c]) => debtKeywords.some((k) => c.toLowerCase().includes(k))
+      ).sort((a, b) => b[1] - a[1]);
+      const totalIncome = ytdMonths.reduce((s, m) => s + m.income, 0);
+      const totalExp = ytdMonths.reduce((s, m) => s + m.expenses, 0);
+      const totalSurplus = ytdMonths.reduce((s, m) => s + m.surplus, 0);
+      const avgMonthly = ytdMonths.length ? totalExp / ytdMonths.length : 0;
+      const savingsRate = totalIncome > 0 ? (totalIncome - totalExp) / totalIncome * 100 : 0;
+      const closingBal = ((_a = summaries[currentMonth]) == null ? void 0 : _a.close) || openBal;
+      const lowestBal = Math.min(...summaries.slice(0, currentMonth + 1).map((m) => m.close));
+      return {
+        year: activeYear,
+        reportingWindow: `January\u2013${MONTHS[currentMonth]} ${activeYear} (${currentMonth + 1} months)`,
+        openingBalance: Math.round(openBal * 100) / 100,
+        closingBalance: Math.round(closingBal * 100) / 100,
+        totalIncome: Math.round(totalIncome * 100) / 100,
+        totalExpenses: Math.round(totalExp * 100) / 100,
+        totalSurplus: Math.round(totalSurplus * 100) / 100,
+        avgMonthlyExpense: Math.round(avgMonthly * 100) / 100,
+        savingsRatePct: Math.round(savingsRate * 10) / 10,
+        lowestBalance: Math.round(lowestBal * 100) / 100,
+        monthlyBreakdown: ytdMonths,
+        topExpenseCategories: Object.entries(expenseCats).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([cat, amt]) => ({
+          category: cat,
+          total: Math.round(amt * 100) / 100,
+          pctOfExpenses: totalExp > 0 ? Math.round(amt / totalExp * 1e3) / 10 : 0
+        })),
+        incomeCategories: Object.entries(incomeCats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({ category: cat, total: Math.round(amt * 100) / 100 })),
+        debtObligations: debtItems.map(([cat, amt]) => ({ category: cat, ytdPaid: Math.round(amt * 100) / 100 })),
+        budgetVsActual: bvaRows.slice(0, 15),
+        hasBudgetTargets: Object.keys(targetByCat).length > 0
+      };
+    };
+    const parseReport = (text) => {
+      const sections = [];
+      const lines = text.split("\n");
+      let current = null;
+      lines.forEach((line) => {
+        const h2 = line.match(/^##\s+(.+)/);
+        const h3 = line.match(/^###\s+(.+)/);
+        if (h2) {
+          if (current) sections.push(current);
+          current = { title: h2[1], level: 2, items: [] };
+        } else if (h3) {
+          if (current) sections.push(current);
+          current = { title: h3[1], level: 3, items: [] };
+        } else if (current) {
+          current.items.push(line);
+        } else if (line.trim()) {
+          if (!sections.length) sections.push({ title: "Overview", level: 2, items: [] });
+          sections[0].items.push(line);
+        }
+      });
+      if (current) sections.push(current);
+      return sections.filter((s) => s.items.some((l) => l.trim()));
+    };
+    const runAssessment = async () => {
+      var _a, _b;
+      if (!apiKey.trim()) {
+        setErr("Please enter your Anthropic API key in the field above.");
+        return;
+      }
+      setLoading(true);
+      setErr("");
+      setReport(null);
+      setRawText("");
+      const ctx = buildContext();
+      const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
+
+FINANCIAL DATA (${ctx.reportingWindow}):
+Opening Balance: $${ctx.openingBalance.toLocaleString()}
+Closing Balance: $${ctx.closingBalance.toLocaleString()}
+Total Income: $${ctx.totalIncome.toLocaleString()}
+Total Expenses: $${ctx.totalExpenses.toLocaleString()}
+Net Surplus/Shortfall: $${ctx.totalSurplus.toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
+Lowest Balance This Period: $${ctx.lowestBalance.toLocaleString()}
+Average Monthly Expenses: $${ctx.avgMonthlyExpense.toLocaleString()}
+
+MONTHLY BREAKDOWN:
+${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${m.income.toLocaleString()}, Expenses $${m.expenses.toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(m.surplus).toLocaleString()}, Balance $${m.closingBalance.toLocaleString()}`).join("\n")}
+
+TOP EXPENSE CATEGORIES (YTD):
+${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
+
+INCOME SOURCES:
+${ctx.incomeCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()}`).join("\n")}
+
+${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
+${ctx.debtObligations.map((d) => `  ${d.category}: $${d.ytdPaid.toLocaleString()}`).join("\n")}` : "No debt categories identified."}
+
+${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${r.actual.toLocaleString()} vs Target $${r.target.toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(r.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+
+Provide your assessment using these EXACT section headers (in markdown ## format):
+## Executive Summary
+## Income Analysis
+## Spending Analysis
+## Debt Management
+## Budget Performance
+## Cash Flow & Risk
+## Priority Action Items
+
+For each section, use bullet points (- ) and be direct and specific. In "Priority Action Items", number the top 5 actions with concrete steps and target amounts where possible. Conclude with an overall financial health score from 1-10 with brief justification.`;
+      try {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": apiKey.trim(), "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 2e3,
+            system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Provide practical, specific, empathetic advice. Format responses in clean Markdown.",
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(((_a = e == null ? void 0 : e.error) == null ? void 0 : _a.message) || `API error ${res.status}`);
+        }
+        const data = await res.json();
+        const text = ((_b = data.content) == null ? void 0 : _b.map((b) => b.text || "").join("")) || "";
+        setRawText(text);
+        setReport(parseReport(text));
+        setLastRun(/* @__PURE__ */ new Date());
+      } catch (e) {
+        setErr(`Analysis failed: ${e.message}. Check your API key and internet connection.`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const sectionIcon = {
+      "Executive Summary": "\u{1F4CA}",
+      "Income Analysis": "\u{1F4B0}",
+      "Spending Analysis": "\u{1F4C9}",
+      "Debt Management": "\u{1F4B3}",
+      "Budget Performance": "\u{1F3AF}",
+      "Cash Flow & Risk": "\u26A0\uFE0F",
+      "Priority Action Items": "\u2705"
+    };
+    const sectionColor = {
+      "Executive Summary": "var(--navy)",
+      "Income Analysis": "var(--greenDk)",
+      "Spending Analysis": "var(--amber)",
+      "Debt Management": "var(--red)",
+      "Budget Performance": "var(--navy)",
+      "Cash Flow & Risk": "var(--amber)",
+      "Priority Action Items": "var(--greenDk)"
+    };
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", lineHeight: 1.5 } }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", marginTop: 4 } }, "Last run: ", lastRun.toLocaleTimeString())), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, padding: "14px 16px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 700,
+      color: "var(--textMid)",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 8
+    } }, "Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: showKey ? "text" : "password",
+        value: apiKey,
+        onChange: (e) => setApiKey(e.target.value),
+        placeholder: "sk-ant-api03-...",
+        style: {
+          flex: 1,
+          minWidth: 220,
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          padding: "8px 12px",
+          border: "1.5px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none"
+        }
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowKey((v) => !v),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "8px 12px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)",
+          whiteSpace: "nowrap"
+        }
+      },
+      showKey ? "Hide" : "Show"
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Your key is stored only in your browser's local storage and sent directly to Anthropic \u2014 never to any third party. Get a key at ", /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        href: "https://console.anthropic.com",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: { color: "var(--navy)" }
+      },
+      "console.anthropic.com"
+    ), ".")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: runAssessment,
+        disabled: loading || !apiKey.trim(),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 14,
+          fontWeight: 700,
+          padding: "12px 28px",
+          borderRadius: 10,
+          border: "none",
+          cursor: loading || !apiKey.trim() ? "not-allowed" : "pointer",
+          background: loading || !apiKey.trim() ? "var(--border)" : "var(--navy)",
+          color: loading || !apiKey.trim() ? "var(--textMid)" : "#fff",
+          transition: "all 0.15s",
+          display: "flex",
+          alignItems: "center",
+          gap: 10
+        }
+      },
+      loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: {
+        display: "inline-block",
+        animation: "spin 1s linear infinite",
+        fontStyle: "normal"
+      } }, "\u27F3"), " Analysing your finances\u2026") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", null, "\u2726"), " Generate AI Assessment")
+    ), report && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setReport(null);
+          setRawText("");
+          setLastRun(null);
+        },
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "10px 18px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)"
+        }
+      },
+      "Clear"
+    )), err && /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      color: "var(--red)",
+      marginTop: 10,
+      padding: "10px 14px",
+      background: "rgba(232,93,74,0.08)",
+      borderRadius: 8,
+      border: "1px solid rgba(232,93,74,0.25)"
+    } }, "\u26A0 ", err)), loading && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, ["Executive Summary", "Income Analysis", "Spending Analysis", "Debt Management", "Priority Action Items"].map((s) => /* @__PURE__ */ React.createElement(Card, { key: s }, /* @__PURE__ */ React.createElement("div", { style: { height: 18, background: "var(--border)", borderRadius: 6, width: "40%", marginBottom: 16 } }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
+      height: 12,
+      background: "var(--stripe)",
+      borderRadius: 4,
+      width: `${w}%`,
+      marginBottom: 10,
+      animation: "pulse 1.5s ease-in-out infinite"
+    } })))), /* @__PURE__ */ React.createElement("style", null, `@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}`)), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+      const match = rawText.match(/\b([1-9]|10)\s*\/\s*10\b|\bscore[:\s]+([1-9]|10)\b/i);
+      if (!match) return null;
+      const score = parseInt(match[1] || match[2]);
+      const color = score >= 7 ? "var(--greenDk)" : score >= 4 ? "var(--amber)" : "var(--red)";
+      return /* @__PURE__ */ React.createElement("div", { style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        padding: "16px 20px",
+        marginBottom: 16,
+        background: "var(--bgCard)",
+        borderRadius: 12,
+        border: `2px solid ${color}`,
+        boxShadow: `0 0 0 4px ${color}22`
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "'IBM Plex Mono',monospace",
+        fontSize: 32,
+        fontWeight: 700,
+        color,
+        lineHeight: 1
+      } }, score, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textLt)" } }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)" } }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
+    })(), report.map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 14,
+      paddingBottom: 12,
+      borderBottom: "1px solid var(--border)"
+    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, sectionIcon[section.title] || "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 15,
+      fontWeight: 700,
+      color: sectionColor[section.title] || "var(--navy)"
+    } }, section.title)), section.items.map((line, li) => {
+      if (!line.trim()) return null;
+      const isBullet = line.match(/^[\-\*]\s+/);
+      const isNumbered = line.match(/^\d+\.\s+/);
+      const isBold = line.match(/^\*\*(.+)\*\*$/);
+      const text = line.replace(/^\*\*|\*\*$/g, "").replace(/^[\-\*\d+\.]\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1");
+      if (isBold) return /* @__PURE__ */ React.createElement("div", { key: li, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        color: "var(--text)",
+        marginBottom: 8,
+        marginTop: 8
+      } }, text);
+      if (isNumbered) return /* @__PURE__ */ React.createElement("div", { key: li, style: { display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", { style: {
+        minWidth: 24,
+        height: 24,
+        borderRadius: "50%",
+        background: "var(--navy)",
+        color: "#fff",
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        fontWeight: 700,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        marginTop: 1
+      } }, line.match(/^(\d+)\./)[1]), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", lineHeight: 1.55 } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
+      if (isBullet) {
+        const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt)/i.test(text);
+        const isPositive = /(well|strong|excellent|good|under budget|saving|positive)/i.test(text);
+        const dot = isWarning ? "var(--amber)" : isPositive ? "var(--greenDk)" : "var(--navyLt)";
+        return /* @__PURE__ */ React.createElement("div", { key: li, style: { display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", { style: {
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: dot,
+          flexShrink: 0,
+          marginTop: 7
+        } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", lineHeight: 1.55 } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
+      }
+      return /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          key: li,
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            color: "var(--textMid)",
+            lineHeight: 1.55,
+            marginBottom: 6
+          }
+        }
+      );
+    }))), /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      color: "var(--textLt)",
+      textAlign: "center",
+      padding: "12px 0 4px",
+      lineHeight: 1.5
+    } }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")), !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "40px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 48, marginBottom: 16 } }, "\u2726"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 8 } }, "Ready to analyse your finances"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto", marginBottom: 24 } }, "Enter your Anthropic API key above and click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 600, margin: "0 auto" } }, [
+      { icon: "\u{1F4CA}", label: "Executive Summary" },
+      { icon: "\u{1F4B0}", label: "Income Analysis" },
+      { icon: "\u{1F4C9}", label: "Spending Analysis" },
+      { icon: "\u{1F4B3}", label: "Debt Management" },
+      { icon: "\u{1F3AF}", label: "Budget vs Actual" },
+      { icon: "\u2705", label: "Priority Actions" }
+    ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, style: {
+      padding: "14px 12px",
+      background: "var(--bg)",
+      borderRadius: 10,
+      border: "1px solid var(--border)",
+      textAlign: "center"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, marginBottom: 6 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 600, color: "var(--textMid)" } }, label)))))));
+  }
   function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [] }) {
     var _a;
     const DASH_CHART_H = 220;
@@ -2856,32 +3275,6 @@ function waitForReact(){
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [flow]);
-    const ytdBudget = useMemo(() => {
-      const now = /* @__PURE__ */ new Date();
-      const lastMonth = activeYear === now.getFullYear() ? now.getMonth() : 11;
-      const actual = {}, target = {};
-      flow.filter((e) => e.type === "expense" && e.month <= lastMonth).forEach((e) => {
-        actual[e.category] = (actual[e.category] || 0) + e.amount;
-      });
-      for (let m = 0; m <= lastMonth; m++) {
-        const t = budgetTargets[`${activeYear}:${m}`] || {};
-        Object.entries(t).forEach(([cat, amt]) => {
-          target[cat] = (target[cat] || 0) + (Number(amt) || 0);
-        });
-      }
-      const cats = [.../* @__PURE__ */ new Set([...Object.keys(actual), ...Object.keys(target)])];
-      const rows = cats.map((cat) => {
-        const a = Math.round((actual[cat] || 0) * 100) / 100;
-        const t = Math.round((target[cat] || 0) * 100) / 100;
-        return { cat, actual: a, target: t, diff: Math.round((a - t) * 100) / 100 };
-      }).sort((x, y) => y.actual - x.actual);
-      return {
-        rows,
-        lastMonth,
-        totalActual: Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100,
-        totalTarget: Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100
-      };
-    }, [flow, budgetTargets, activeYear]);
     const savingsRate = useMemo(() => summaries.map((m) => ({
       month: m.month,
       rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
@@ -3046,31 +3439,7 @@ function waitForReact(){
       textAlign: i === 0 ? "left" : "right",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 YTD (", MONTHS[0], "\u2013", MONTHS[ytdBudget.lastMonth], " ", activeYear, ")"), ytdBudget.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", textAlign: "center", padding: "24px 0" } }, "No budget targets or expenses recorded yet for ", activeYear, ". Set targets on the Budget tab to track progress here.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 6 } }, ytdBudget.rows.map(({ cat, actual, target, diff }) => {
-      const hasTarget = target > 0;
-      const pct = hasTarget ? Math.min(actual / target * 100, 100) : actual > 0 ? 100 : 0;
-      const over = hasTarget && diff > 0;
-      const barColor = !hasTarget ? "var(--textLt)" : over ? diff > 50 ? "var(--red)" : "var(--amber)" : "var(--greenDk)";
-      const diffColor = !hasTarget ? "var(--textLt)" : over ? diff > 50 ? "var(--red)" : "var(--amber)" : "var(--greenDk)";
-      return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3, gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--textMid)", whiteSpace: "nowrap" } }, fmt(actual), hasTarget ? /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" } }, " / ", fmt(target)) : /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 10 } }, " (no target)"), hasTarget && /* @__PURE__ */ React.createElement("span", { style: { color: diffColor, fontWeight: 700, marginLeft: 8 } }, diff > 0 ? "+" : "", fmt(diff, true)))), /* @__PURE__ */ React.createElement("div", { style: { height: 7, borderRadius: 4, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 4, width: `${pct}%`, background: barColor, transition: "width 0.3s" } })));
-    }), /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "baseline",
-      marginTop: 6,
-      paddingTop: 10,
-      borderTop: "2px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 700,
-      color: "var(--text)",
-      textTransform: "uppercase",
-      letterSpacing: "0.06em"
-    } }, "Total"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)" } }, fmt(ytdBudget.totalActual)), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" } }, " / ", fmt(ytdBudget.totalTarget)), ytdBudget.totalTarget > 0 && (() => {
-      const d = Math.round((ytdBudget.totalActual - ytdBudget.totalTarget) * 100) / 100;
-      return /* @__PURE__ */ React.createElement("span", { style: { color: d > 50 ? "var(--red)" : d > 0 ? "var(--amber)" : "var(--greenDk)", marginLeft: 8 } }, d > 0 ? "+" : "", fmt(d, true));
-    })())))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: incView,
@@ -3094,36 +3463,26 @@ function waitForReact(){
       },
       incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: ["#27AE73", "#2ECC8A", "#16A085", "#1ABC9C", "#2980B9", "#3498DB"][i % 6] }))
     ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } })))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
+      const _now = /* @__PURE__ */ new Date();
+      const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
+      return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date") : null;
+    })(), (() => {
       const now = /* @__PURE__ */ new Date();
-      const isPast = (ev) => {
-        if (!ev.date) return true;
-        const d = ev.date instanceof Date ? ev.date : new Date(ev.date);
-        return d <= now;
-      };
-      const actualByCat = {};
-      flow.filter((e) => e.type === "expense" && isPast(e)).forEach((e) => {
-        actualByCat[e.category] = (actualByCat[e.category] || 0) + e.amount;
-      });
       const isCurrentYear = now.getFullYear() === activeYear;
       const isPastYear = now.getFullYear() > activeYear;
-      const curMonth = now.getMonth();
-      const daysInCurMonth = new Date(activeYear, curMonth + 1, 0).getDate();
-      const monthFraction = now.getDate() / daysInCurMonth;
+      const lastMonth = isPastYear ? 11 : isCurrentYear ? now.getMonth() : -1;
+      const actualByCat = {};
+      flow.filter((e) => e.type === "expense" && e.month <= lastMonth).forEach((e) => {
+        actualByCat[e.category] = (actualByCat[e.category] || 0) + e.amount;
+      });
       const targetByCat = {};
       Object.keys(budgetTargets).forEach((key) => {
         if (!key.startsWith(activeYear + ":")) return;
         const mIdx = parseInt(key.split(":")[1]);
-        if (isNaN(mIdx)) return;
-        let weight;
-        if (isPastYear) weight = 1;
-        else if (!isCurrentYear) weight = 0;
-        else if (mIdx < curMonth) weight = 1;
-        else if (mIdx === curMonth) weight = monthFraction;
-        else weight = 0;
-        if (weight <= 0) return;
+        if (isNaN(mIdx) || mIdx > lastMonth) return;
         const monthTargets = budgetTargets[key] || {};
         Object.keys(monthTargets).forEach((cat) => {
-          targetByCat[cat] = (targetByCat[cat] || 0) + monthTargets[cat] * weight;
+          targetByCat[cat] = (targetByCat[cat] || 0) + (Number(monthTargets[cat]) || 0);
         });
       });
       const cats = [.../* @__PURE__ */ new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
@@ -5207,7 +5566,8 @@ function waitForReact(){
       { id: "dashboard", label: "Dashboard" },
       { id: "forecast", label: "Forecast" },
       { id: "budget", label: "Budget" },
-      { id: "register", label: "Register" }
+      { id: "register", label: "Register" },
+      { id: "ai", label: "\u2726 AI Insights" }
     ];
     if (!sessionUser) {
       const LC = LIGHT;
@@ -5563,6 +5923,7 @@ function waitForReact(){
             setMenuOpen(false);
             logout();
           },
+          "aria-label": "Sign out",
           style: {
             width: "100%",
             textAlign: "left",
@@ -5849,7 +6210,7 @@ function waitForReact(){
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
