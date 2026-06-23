@@ -445,7 +445,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v48';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v49';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2644,9 +2644,9 @@ function waitForReact(){
               inputMode: "decimal",
               min: "0",
               placeholder: "target",
-              defaultValue: target || "",
+              defaultValue: target ? target.toFixed(2) : "",
               onBlur: (e) => {
-                const v = parseFloat(e.target.value);
+                const v = Math.round(parseFloat(e.target.value) * 100) / 100;
                 if (!isNaN(v) && v >= 0) setBudgetTargets((prev) => __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [cat]: v }) }));
                 else if (e.target.value === "") setBudgetTargets((prev) => {
                   const n = __spreadValues({}, prev);
@@ -2836,14 +2836,33 @@ function waitForReact(){
       (p, i) => i % 2 === 1 ? React.createElement("strong", { key: i }, p) : p
     ));
   }
-  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [] }) {
-    const [apiKey, setApiKey] = useLS("cf_ai_key", "");
+  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "" }) {
     const [loading, setLoading] = useState(false);
     const [report, setReport] = useState(null);
     const [rawText, setRawText] = useState("");
     const [err, setErr] = useState("");
-    const [showKey, setShowKey] = useState(false);
     const [lastRun, setLastRun] = useState(null);
+    const CACHE_KEY = `cf_ai_report_${activeYear}`;
+    useEffect(() => {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { text, ts } = JSON.parse(cached);
+          if (text) {
+            setRawText(text);
+            setReport(parseReport(text));
+            setLastRun(new Date(ts));
+          }
+        }
+      } catch (e) {
+      }
+    }, [activeYear]);
+    const saveReport = (text) => {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ text, ts: (/* @__PURE__ */ new Date()).toISOString() }));
+      } catch (e) {
+      }
+    };
     const buildContext = () => {
       var _a;
       const now = /* @__PURE__ */ new Date();
@@ -2935,7 +2954,7 @@ function waitForReact(){
     const runAssessment = async () => {
       var _a, _b;
       if (!apiKey.trim()) {
-        setErr("Please enter your Anthropic API key in the field above.");
+        setErr("No API key configured. Please add your Anthropic API key in Settings \u2192 General.");
         return;
       }
       setLoading(true);
@@ -3004,6 +3023,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setRawText(text);
         setReport(parseReport(text));
         setLastRun(/* @__PURE__ */ new Date());
+        saveReport(text);
       } catch (e) {
         setErr(`Analysis failed: ${e.message}. Check your API key and internet connection.`);
       } finally {
@@ -3028,61 +3048,60 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Cash Flow & Risk": "var(--amber)",
       "Priority Action Items": "var(--greenDk)"
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", lineHeight: 1.5 } }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", marginTop: 4 } }, "Last run: ", lastRun.toLocaleTimeString())), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, padding: "14px 16px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 700,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 8
-    } }, "Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: showKey ? "text" : "password",
-        value: apiKey,
-        onChange: (e) => setApiKey(e.target.value),
-        placeholder: "sk-ant-api03-...",
-        style: {
-          flex: 1,
-          minWidth: 220,
-          fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 13,
-          padding: "8px 12px",
-          border: "1.5px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none"
-        }
-      }
-    ), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", lineHeight: 1.5 } }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", marginTop: 4 } }, "Last run: ", lastRun.toLocaleTimeString())), !apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: {
+      marginTop: 16,
+      padding: "12px 16px",
+      background: "rgba(232,93,74,0.07)",
+      borderRadius: 10,
+      border: "1px solid rgba(232,93,74,0.2)",
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => setShowKey((v) => !v),
+        onClick: () => window.__cfSetTab && window.__cfSetTab("settings"),
         style: {
           fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          padding: "8px 12px",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
+          fontSize: 13,
+          fontWeight: 700,
+          color: "var(--navy)",
+          background: "none",
+          border: "none",
           cursor: "pointer",
-          background: "transparent",
-          color: "var(--textMid)",
-          whiteSpace: "nowrap"
+          padding: 0,
+          textDecoration: "underline"
         }
       },
-      showKey ? "Hide" : "Show"
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Your key is stored only in your browser's local storage and sent directly to Anthropic \u2014 never to any third party. Get a key at ", /* @__PURE__ */ React.createElement(
-      "a",
+      "Settings \u2192 General"
+    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: {
+      marginTop: 16,
+      padding: "10px 14px",
+      background: "rgba(39,174,115,0.07)",
+      borderRadius: 10,
+      border: "1px solid rgba(39,174,115,0.2)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      flexWrap: "wrap"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u2713"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--greenDk)" } }, "API key configured")), /* @__PURE__ */ React.createElement(
+      "button",
       {
-        href: "https://console.anthropic.com",
-        target: "_blank",
-        rel: "noopener noreferrer",
-        style: { color: "var(--navy)" }
+        onClick: () => window.__cfSetTab && window.__cfSetTab("settings"),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          color: "var(--textLt)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          textDecoration: "underline"
+        }
       },
-      "console.anthropic.com"
-    ), ".")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+      "Change in Settings"
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: runAssessment,
@@ -3115,6 +3134,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           setReport(null);
           setRawText("");
           setLastRun(null);
+          try {
+            localStorage.removeItem(CACHE_KEY);
+          } catch (e) {
+          }
         },
         style: {
           fontFamily: "Inter,sans-serif",
@@ -3220,19 +3243,13 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           marginTop: 7
         } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", lineHeight: 1.55 } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
       }
-      return /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          key: li,
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 13,
-            color: "var(--textMid)",
-            lineHeight: 1.55,
-            marginBottom: 6
-          }
-        }
-      );
+      return /* @__PURE__ */ React.createElement("div", { key: li, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        color: "var(--textMid)",
+        lineHeight: 1.55,
+        marginBottom: 6
+      } }, /* @__PURE__ */ React.createElement(BoldText, { text: line }));
     }))), /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
@@ -3257,7 +3274,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }
   function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [] }) {
     var _a;
-    const DASH_CHART_H = 220;
+    const DASH_CHART_H = 250;
     const [yoyMetric, setYoyMetric] = useState("surplus");
     const [catView, setCatView] = useState("bar");
     const [balView, setBalView] = useState("area");
@@ -3463,8 +3480,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         outerRadius: 75,
         dataKey: "value",
         nameKey: "name",
-        label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
-        labelLine: false
+        label: ({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : "",
+        labelLine: true
       },
       incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: ["#27AE73", "#2ECC8A", "#16A085", "#1ABC9C", "#2980B9", "#3498DB"][i % 6] }))
     ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } })))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
@@ -3875,8 +3892,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
-  } }) {
+  }, aiApiKey = "", setAiApiKey }) {
     var _a;
+    setAiApiKey = setAiApiKey || (() => {
+    });
     const [newCat, setNewCat] = useState("");
     const [editIdx, setEditIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -3887,6 +3906,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
+    const [showAiKey, setShowAiKey] = useState(false);
     const [userForm, setUserForm] = useState(null);
     const [uf, setUf] = useState({ fullName: "", email: "", password: "", disabled: false });
     const [ufErr, setUfErr] = useState({});
@@ -4016,7 +4036,70 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       label
-    ))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    ))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Required for the AI Insights tab. Your key is stored only in your browser's local storage and sent directly to Anthropic \u2014 never to any third party. Get a key at", " ", /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        href: "https://console.anthropic.com",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: { color: "var(--navy)" }
+      },
+      "console.anthropic.com"
+    ), "."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: showAiKey ? "text" : "password",
+        value: aiApiKey,
+        onChange: (e) => setAiApiKey(e.target.value),
+        placeholder: "sk-ant-api03-...",
+        style: {
+          flex: 1,
+          minWidth: 220,
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          padding: "8px 12px",
+          border: "1.5px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none"
+        }
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowAiKey((v) => !v),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)",
+          whiteSpace: "nowrap"
+        }
+      },
+      showAiKey ? "Hide" : "Show"
+    ), aiApiKey.trim() && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setAiApiKey(""),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--red)",
+          whiteSpace: "nowrap"
+        }
+      },
+      "Clear key"
+    )), /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
@@ -5362,6 +5445,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         return false;
       }
     });
+    const [aiApiKey, setAiApiKey] = useLS("cf_ai_key", "");
     const [alertThresh, setAlertThresh] = useLS("cf_alertThresh", 1500);
     const [categories, setCategories] = useLS("cf_categories", DEFAULT_CATEGORIES);
     const [templates, setTemplates] = useLS("cf_templates", []);
@@ -5382,6 +5466,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     useEffect(() => {
       if (tab !== "register") setRegFabOpen(false);
     }, [tab]);
+    useEffect(() => {
+      window.__cfSetTab = setTab;
+      return () => {
+        delete window.__cfSetTab;
+      };
+    }, [setTab]);
     const [undoEntry, setUndoEntry] = useState(null);
     const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
@@ -6215,7 +6305,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
