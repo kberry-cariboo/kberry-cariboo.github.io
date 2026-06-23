@@ -105,7 +105,7 @@
       return () => ro && ro.disconnect();
     }, []);
     const ch = typeof height === 'number' ? height : 200;
-    return h('div', { ref, style: Object.assign({ width:'100%', height: ch, overflow:'hidden' }, style) },
+    return h('div', { ref, style: Object.assign({ width:'100%', height: ch, overflow:'visible', position:'relative' }, style) },
       React.cloneElement(Children.only(children), { width: w, height: ch })
     );
   }
@@ -445,7 +445,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v49';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v50';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -3074,34 +3074,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       "Settings \u2192 General"
-    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: {
-      marginTop: 16,
-      padding: "10px 14px",
-      background: "rgba(39,174,115,0.07)",
-      borderRadius: 10,
-      border: "1px solid rgba(39,174,115,0.2)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
-      flexWrap: "wrap"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u2713"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--greenDk)" } }, "API key configured")), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => window.__cfSetTab && window.__cfSetTab("settings"),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          color: "var(--textLt)",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          textDecoration: "underline"
-        }
-      },
-      "Change in Settings"
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    ), ".")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: runAssessment,
@@ -4045,7 +4018,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         style: { color: "var(--navy)" }
       },
       "console.anthropic.com"
-    ), "."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+    ), "."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: showAiKey ? "text" : "password",
@@ -4099,7 +4072,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
