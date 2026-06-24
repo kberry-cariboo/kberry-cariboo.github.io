@@ -9,12 +9,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="CashFlow"/>
-<meta name="application-name" content="CashFlow Budget"/>
-<meta name="description" content="Personal cash flow and budget tracker"/>
 <link rel="manifest" href="data:application/json,{%22name%22:%20%22CashFlow%20Budget%22,%20%22short_name%22:%20%22CashFlow%22,%20%22description%22:%20%22Personal%20cash%20flow%20and%20budget%20tracker%22,%20%22start_url%22:%20%22./%22,%20%22display%22:%20%22standalone%22,%20%22background_color%22:%20%22#F7F4EF%22,%20%22theme_color%22:%20%22#1C2B3A%22,%20%22orientation%22:%20%22any%22,%20%22icons%22:%20[{%22src%22:%20%22data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'><rect%20width='100'%20height='100'%20rx='20'%20fill='%231C2B3A'/><text%20y='.9em'%20font-size='80'%20x='10'>\ud83d\udcb0</text></svg>%22,%20%22sizes%22:%20%22any%22,%20%22type%22:%20%22image/svg+xml%22,%20%22purpose%22:%20%22any%20maskable%22}]}"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
-  html,body{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  html,body{height:100%;-webkit-text-size-adjust:100%;}
   body{background:#1C2B3A;font-family:Inter,sans-serif;overflow-x:hidden;}
   #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;}
   .bbar{width:180px;height:3px;background:#243447;border-radius:2px;overflow:hidden;}
@@ -127,6 +125,11 @@
     const M  = { top:14, right:16,
                  bottom: xLabelText ? 54 : 34,
                  left:   16, ...mg };
+    // Read CSS variables for dark mode support
+    const root=typeof document!=='undefined'?document.documentElement:null;
+    const cs=root?getComputedStyle(root):null;
+    const cssGrid  = cs?.getPropertyValue('--border')?.trim() || '#e5e7eb';
+    const cssTick  = cs?.getPropertyValue('--textMid')?.trim() || '#888';
     const iW = Math.max(width  - M.left - M.right, 10);
     const iH = Math.max(height - M.top  - M.bottom, 10);
     const [tip, setTip] = useState(null);
@@ -289,7 +292,7 @@
           // Grid
           gridDesc && ytValues.map((t, i) =>
             h('line', { key:i, x1:0, y1:yv(t), x2:iW, y2:yv(t),
-              stroke:'#e5e7eb', strokeDasharray:gridDesc.props.strokeDasharray||'3 3', strokeWidth:1 })
+              stroke:cssGrid, strokeDasharray:gridDesc.props.strokeDasharray||'3 3', strokeWidth:1 })
           ),
           // Reference lines
           refLines.map((rl, i) =>
@@ -305,14 +308,14 @@
           // Lines
           lineDescs.map(d => renderLine(d, false)),
           // X axis line + labels
-          h('line', { x1:0, y1:iH, x2:iW, y2:iH, stroke:'#e5e7eb', strokeWidth:1 }),
+          h('line', { x1:0, y1:iH, x2:iW, y2:iH, stroke:cssGrid, strokeWidth:1 }),
           data.map((d, i) => {
             if (i % xStep !== 0) return null;
             const t = xDesc?.props?.tick || {};
             return h('text', { key:i, x:xMid(i), y:iH+18, textAnchor:'middle',
               fontSize: t.fontSize || 11,
               fontFamily: t.fontFamily || 'Inter,sans-serif',
-              fill: t.fill || '#888'
+              fill: t.fill || cssTick
             }, d[xKey]);
           }),
           // Y axis labels — rendered INSIDE chart area at left edge, overlaid on grid
@@ -441,7 +444,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v57';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v59';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -793,7 +796,7 @@ function waitForReact(){
     window.print();
     document.title = prev;
   }
-  const ExportBar = ({ onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+  const ExportBar = ({ onCSV, onPrint, bulkComplete, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
@@ -829,6 +832,32 @@ function waitForReact(){
       }
     },
     "\u{1F5A8} PDF"
+  ), bulkComplete && /* @__PURE__ */ React.createElement(
+    "select",
+    {
+      onChange: (e) => {
+        if (e.target.value) {
+          bulkComplete(e.target.value);
+          e.target.value = "";
+        }
+      },
+      defaultValue: "",
+      title: "Bulk-mark complete",
+      style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        padding: "4px 8px",
+        borderRadius: 6,
+        border: "1px solid var(--border)",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--textMid)"
+      }
+    },
+    /* @__PURE__ */ React.createElement("option", { value: "", disabled: true }, "\u2713 Mark\u2026"),
+    /* @__PURE__ */ React.createElement("option", { value: "income" }, "All Income \u2713"),
+    /* @__PURE__ */ React.createElement("option", { value: "expense" }, "All Expenses \u2713"),
+    /* @__PURE__ */ React.createElement("option", { value: "past" }, "All Past \u2713")
   ));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
@@ -1145,7 +1174,24 @@ function waitForReact(){
   const Card = ({ children, style = {} }) => /* @__PURE__ */ React.createElement("div", { style: __spreadValues({ background: "var(--bgCard)", borderRadius: 12, border: "1px solid var(--border)", padding: "20px 24px" }, style) }, children);
   const SectionTitle = ({ children, action }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, children), action);
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: color || "var(--text)", lineHeight: 1 } }, value), sub && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, sub));
-  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null }) => /* @__PURE__ */ React.createElement("div", { className: "month-picker", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap" } }, MONTHS.map((m, i) => {
+  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null }) => /* @__PURE__ */ React.createElement("div", { className: "month-picker", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      title: "Use \u2190 \u2192 arrow keys to navigate months",
+      style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 10,
+        color: "var(--textLt)",
+        padding: "3px 7px",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        whiteSpace: "nowrap",
+        cursor: "default",
+        userSelect: "none"
+      }
+    },
+    "\u2190 \u2192"
+  ), MONTHS.map((m, i) => {
     const isActive = value === i;
     const hasMatch = matchingMonths && matchingMonths.size > 0 && matchingMonths.has(i);
     return /* @__PURE__ */ React.createElement(
@@ -1829,6 +1875,8 @@ function waitForReact(){
     const [filterSched, setFilterSched] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
     const [search, setSearch] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
     const [showCSV, setShowCSV] = useState(false);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
     const [dragCol, setDragCol] = useState(null);
@@ -1879,6 +1927,12 @@ function waitForReact(){
     }).filter((e) => {
       const q = (search || globalSearch || "").toLowerCase();
       return !q || e.desc.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.notes || "").toLowerCase().includes(q);
+    }).filter((e) => {
+      if (!dateFrom && !dateTo) return true;
+      const sd = e.startDate || "";
+      if (dateFrom && sd && sd < dateFrom) return false;
+      if (dateTo && sd && sd > dateTo) return false;
+      return true;
     }).sort((a, b) => {
       const d = a.desc.localeCompare(b.desc);
       if (d !== 0) return d;
@@ -2026,7 +2080,51 @@ function waitForReact(){
           width: 200
         }
       }
-    ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { style: {
+    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "From"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "date",
+        value: dateFrom,
+        onChange: (e) => setDateFrom(e.target.value),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          padding: "5px 8px",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          background: "var(--bgCard)",
+          color: "var(--text)",
+          outline: "none"
+        }
+      }
+    ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "To"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "date",
+        value: dateTo,
+        onChange: (e) => setDateTo(e.target.value),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          padding: "5px 8px",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          background: "var(--bgCard)",
+          color: "var(--text)",
+          outline: "none"
+        }
+      }
+    ), (dateFrom || dateTo) && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setDateFrom("");
+          setDateTo("");
+        },
+        style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", background: "none", border: "none", cursor: "pointer", padding: "4px" }
+      },
+      "\u2715"
+    )), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 12,
       color: "var(--amber)",
@@ -2230,6 +2328,15 @@ function waitForReact(){
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
+    const bulkComplete = (mode) => {
+      const now = /* @__PURE__ */ new Date();
+      monthEvents.filter((ev) => {
+        if (mode === "income") return ev.type === "income";
+        if (mode === "expense") return ev.type === "expense";
+        if (mode === "past") return ev.date && ev.date <= now;
+        return false;
+      }).forEach((ev) => toggleComplete(ev.id, true));
+    };
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
@@ -2449,7 +2556,8 @@ function waitForReact(){
             const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
-          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
+          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`),
+          bulkComplete
         }
       )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
@@ -2747,7 +2855,7 @@ function waitForReact(){
       /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 12, paddingLeft: 2 } }, view === "monthly" ? "\u{1F4A1} Click any row to edit that entry for this date only. Changes only affect that specific date." : "\u{1F4A1} Click any item to edit for this date only. \u2713 = past date.")
     );
   }
-  function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = 1500, globalSearch = "" }) {
+  function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = 1500, globalSearch = "", budgetTargets = {} }) {
     const today = /* @__PURE__ */ new Date();
     const horizons = [30, 60, 90];
     const [horizon, setHorizon] = useState(90);
@@ -2795,7 +2903,7 @@ function waitForReact(){
         },
         onPrint: () => printView(`CashFlow Forecast - ${horizon} Days`)
       }
-    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, '\u{1F50D} Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)", fontFamily: "Inter,sans-serif" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "forecast-col-cat" : "", style: {
+    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, '\u{1F50D} Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)", fontFamily: "Inter,sans-serif" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "forecast-col-cat" : "", style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -2814,8 +2922,253 @@ function waitForReact(){
         fontWeight: 700,
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
-      } }, fmt(ev.balance)));
+      } }, fmt(ev.balance)), (() => {
+        const m = ev.month;
+        const cat = ev.category;
+        const yr = ev.year;
+        const target = (budgetTargets[`${yr}:${m}`] || {})[cat] || 0;
+        const isIncome = ev.type === "income";
+        if (isIncome) return /* @__PURE__ */ React.createElement("td", { style: { fontSize: 11, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 700 } }, "\u2713"));
+        if (!target) return /* @__PURE__ */ React.createElement("td", { style: { fontSize: 10, padding: "8px 8px", textAlign: "center", color: "var(--textLt)" } }, "\u2014");
+        const pct = Math.round(ev.amount / target * 100);
+        const conf = pct <= 100 ? 100 : pct <= 120 ? 75 : pct <= 150 ? 50 : 25;
+        const color = conf >= 75 ? "var(--greenDk)" : conf >= 50 ? "var(--amber)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement("td", { style: { fontSize: 11, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color, fontWeight: 700 } }, conf, "%"));
+      })());
     }))))));
+  }
+  function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
+    const [step, setStep] = useState(0);
+    const [openBal, setOpenBal] = useState("");
+    const [income, setIncome] = useState({ desc: "", amount: "", category: "Income" });
+    const [expense, setExpense] = useState({ desc: "", amount: "", category: categories[0] || "" });
+    const [done, setDone] = useState(false);
+    if (done) return null;
+    const steps = [
+      // Step 0: Opening balance
+      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B0}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 20 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "number",
+          inputMode: "decimal",
+          placeholder: "e.g. 5000.00",
+          value: openBal,
+          onChange: (e) => setOpenBal(e.target.value),
+          autoFocus: true,
+          style: {
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 16,
+            padding: "10px 14px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none",
+            width: 180
+          }
+        }
+      )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        const v = parseFloat(openBal) || 0;
+        setYearConfigs((prev) => prev.map((yc, i) => i === 0 ? __spreadProps(__spreadValues({}, yc), { openingBalance: v }) : yc));
+        setStep(1);
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        padding: "10px 28px",
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: "var(--navy)",
+        color: "#fff"
+      } }, "Next \u2192"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDone(true), style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 12,
+        padding: "10px 18px",
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--textMid)"
+      } }, "Skip"))),
+      // Step 1: First income
+      /* @__PURE__ */ React.createElement("div", { key: "s1" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B5}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first income"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's your main source of income? (e.g. "Payroll")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          placeholder: "Description e.g. Payroll",
+          value: income.desc,
+          autoFocus: true,
+          onChange: (e) => setIncome((p) => __spreadProps(__spreadValues({}, p), { desc: e.target.value })),
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "9px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none"
+          }
+        }
+      ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "number",
+          inputMode: "decimal",
+          placeholder: "Amount",
+          value: income.amount,
+          onChange: (e) => setIncome((p) => __spreadProps(__spreadValues({}, p), { amount: e.target.value })),
+          style: {
+            flex: 1,
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 13,
+            padding: "9px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none"
+          }
+        }
+      ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setStep(0), style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 12,
+        padding: "10px 18px",
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--textMid)"
+      } }, "\u2190 Back"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        if (income.desc.trim() && income.amount) {
+          addEntry({
+            desc: income.desc.trim(),
+            type: "income",
+            amount: parseFloat(income.amount) || 0,
+            category: income.category,
+            repeats: true,
+            recurEvery: 1,
+            recurUnit: "semimonth",
+            recurDays: [],
+            recurEnd: "",
+            startDate: (/* @__PURE__ */ new Date()).getFullYear() + "-01-01",
+            notes: "Added during setup"
+          });
+        }
+        setStep(2);
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        padding: "10px 28px",
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: "var(--navy)",
+        color: "#fff"
+      } }, income.desc.trim() && income.amount ? "Next \u2192" : "Skip \u2192"))),
+      // Step 2: First expense
+      /* @__PURE__ */ React.createElement("div", { key: "s2" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B3}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first expense"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's a recurring expense? (e.g. "Mortgage", "Rent")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          placeholder: "Description e.g. Mortgage",
+          value: expense.desc,
+          autoFocus: true,
+          onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { desc: e.target.value })),
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "9px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none"
+          }
+        }
+      ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "number",
+          inputMode: "decimal",
+          placeholder: "Monthly amount",
+          value: expense.amount,
+          onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { amount: e.target.value })),
+          style: {
+            flex: 1,
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 13,
+            padding: "9px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none"
+          }
+        }
+      )), /* @__PURE__ */ React.createElement(
+        "select",
+        {
+          value: expense.category,
+          onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { category: e.target.value })),
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            padding: "9px 12px",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            outline: "none"
+          }
+        },
+        categories.filter((c) => c !== "Income").map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+      )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setStep(1), style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 12,
+        padding: "10px 18px",
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--textMid)"
+      } }, "\u2190 Back"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        if (expense.desc.trim() && expense.amount) {
+          addEntry({
+            desc: expense.desc.trim(),
+            type: "expense",
+            amount: parseFloat(expense.amount) || 0,
+            category: expense.category,
+            repeats: true,
+            recurEvery: 1,
+            recurUnit: "month",
+            recurDays: [],
+            recurEnd: "",
+            startDate: (/* @__PURE__ */ new Date()).getFullYear() + "-01-01",
+            notes: "Added during setup"
+          });
+        }
+        setDone(true);
+        setTab("budget");
+      }, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 13,
+        fontWeight: 700,
+        padding: "10px 28px",
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: "var(--greenDk)",
+        color: "#fff"
+      } }, expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish")))
+    ];
+    return /* @__PURE__ */ React.createElement(Card, { style: { maxWidth: 480, margin: "0 auto 24px", border: "2px solid var(--navy)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
+      width: 10,
+      height: 10,
+      borderRadius: "50%",
+      background: i <= step ? "var(--navy)" : "var(--border)",
+      transition: "background 0.2s"
+    } }))), steps[step]);
   }
   function AlertBanner({ flow, openBal, alertThreshold }) {
     const today = /* @__PURE__ */ new Date();
@@ -3241,7 +3594,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       textAlign: "center"
     } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, marginBottom: 6 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 600, color: "var(--textMid)" } }, label)))))));
   }
-  function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [] }) {
+  function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], users = [], sessionUser = null, entries = [], setYearConfigs = () => {
+  }, addEntry = () => {
+  }, setTab = () => {
+  } }) {
     var _a;
     const DASH_CHART_H = 220;
     const [yoyMetric, setYoyMetric] = useState("surplus");
@@ -3251,21 +3607,28 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [incExpView, setIncExpView] = useState("grouped");
     const [summaryView, setSummaryView] = useState("table");
     const [incView, setIncView] = useState("bar");
-    const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
+    const [sharedView, setSharedView] = useState(false);
+    const [debtData, setDebtData] = useLS("cf_debt_data", {});
+    const [debtExpanded, setDebtExpanded] = useState(false);
+    const effectiveFlow = useMemo(() => {
+      if (sharedView || !sessionUser) return flow;
+      return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
+    }, [flow, sharedView, sessionUser]);
+    const summaries = useMemo(() => getMonthSummaries(effectiveFlow, openBal), [effectiveFlow, openBal]);
     const catTotals = useMemo(() => {
       const map = {};
-      flow.filter((e) => e.type === "expense").forEach((e) => {
+      effectiveFlow.filter((e) => e.type === "expense").forEach((e) => {
         map[e.category] = (map[e.category] || 0) + e.amount;
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    }, [flow]);
+    }, [effectiveFlow]);
     const incTotals = useMemo(() => {
       const map = {};
-      flow.filter((e) => e.type === "income").forEach((e) => {
+      effectiveFlow.filter((e) => e.type === "income").forEach((e) => {
         map[e.category] = (map[e.category] || 0) + e.amount;
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    }, [flow]);
+    }, [effectiveFlow]);
     const savingsRate = useMemo(() => summaries.map((m) => ({
       month: m.month,
       rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
@@ -3297,7 +3660,34 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const inc = sums.reduce((s, m) => s + m.income, 0), exp = sums.reduce((s, m) => s + m.expense, 0);
       return { year: yc.year, income: inc, expense: exp, surplus: inc - exp, close: sums[11].close, color: YCOLS[yi % YCOLS.length] };
     }).filter(Boolean);
-    return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, margin: "0 auto", overflowX: "hidden" } }, /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+    return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, margin: "0 auto", overflowX: "hidden" } }, entries.length === 0 && /* @__PURE__ */ React.createElement(
+      OnboardingWizard,
+      {
+        yearConfigs,
+        setYearConfigs,
+        addEntry,
+        categories,
+        setTab
+      }
+    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10, gap: 6 } }, ["My entries", "All users"].map((label, i) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: i,
+        onClick: () => setSharedView(i === 1),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 600,
+          padding: "5px 14px",
+          borderRadius: 20,
+          border: "none",
+          cursor: "pointer",
+          background: sharedView === (i === 1) ? "var(--navy)" : "var(--border)",
+          color: sharedView === (i === 1) ? "#fff" : "var(--textMid)"
+        }
+      },
+      label
+    ))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const today = /* @__PURE__ */ new Date();
       const in7 = new Date(today);
       in7.setDate(today.getDate() + 7);
@@ -3534,6 +3924,27 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         color: tOver ? tColor : "var(--text)"
       } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--textLt)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: tColor } }, "\u25B2", fmt(tDiff)))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, textAlign: "center" } }, "Actual vs target from Jan 1 to today (current month prorated) \xB7 green within budget, yellow over by \u2264$50, red over by >$50"));
     })())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => printView(`CashFlow Monthly Summary ${activeYear}`),
+        title: "Print monthly summary",
+        "aria-label": "Print monthly summary",
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          padding: "4px 12px",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4
+        }
+      },
+      "\u{1F5A8} Print"
+    ), /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: summaryView,
@@ -3629,7 +4040,60 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const prev = annualRows[i - 1];
       const delta = prev ? row.surplus - prev.surplus : null;
       return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
-    }))))), !showYoY && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")));
+    }))))), !showYoY && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")), (() => {
+      const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "scotialine", "loc", "vehicle", "tractor"];
+      const debtEntries = flow.filter((ev) => ev.type === "expense" && debtKeywords.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k)));
+      const debtGroups = {};
+      debtEntries.forEach((ev) => {
+        debtGroups[ev.desc] = (debtGroups[ev.desc] || []).concat(ev);
+      });
+      if (Object.keys(debtGroups).length === 0) return null;
+      return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDebtExpanded((v) => !v), style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        padding: "4px 12px",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--textMid)"
+      } }, debtExpanded ? "Hide details \u25B2" : "Show details \u25BC")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, Object.entries(debtGroups).map(([desc, evs]) => {
+        var _a2, _b, _c, _d, _e;
+        const monthlyPmt = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
+        const key = desc.replace(/\W/g, "_");
+        const bal = parseFloat((_b = debtData[key]) == null ? void 0 : _b.balance) || 0;
+        const rate = parseFloat((_c = debtData[key]) == null ? void 0 : _c.rate) || 0;
+        const monthlyRate = rate / 100 / 12;
+        const monthsLeft = bal > 0 && monthlyPmt > 0 ? monthlyRate > 0 && monthlyPmt > bal * monthlyRate ? Math.ceil(Math.log(monthlyPmt / (monthlyPmt - bal * monthlyRate)) / Math.log(1 + monthlyRate)) : Math.ceil(bal / monthlyPmt) : null;
+        const totalInterest = monthsLeft != null && monthlyRate > 0 ? Math.round((monthlyPmt * monthsLeft - bal) * 100) / 100 : null;
+        const payoffDate = monthsLeft != null ? (() => {
+          const d = /* @__PURE__ */ new Date();
+          d.setMonth(d.getMonth() + monthsLeft);
+          return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+        })() : null;
+        return /* @__PURE__ */ React.createElement("div", { key, style: { padding: "12px 14px", background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: debtExpanded ? 10 : 0, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, desc), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, fmt(monthlyPmt), "/mo payment", payoffDate && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 8, color: "var(--greenDk)", fontWeight: 600 } }, "\xB7 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))), debtExpanded && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase" } }, "Current Balance $"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            type: "number",
+            inputMode: "decimal",
+            placeholder: "e.g. 25000",
+            value: ((_d = debtData[key]) == null ? void 0 : _d.balance) || "",
+            onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { balance: e.target.value }) })),
+            style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--inputBg)", color: "var(--text)", outline: "none" }
+          }
+        )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 120 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase" } }, "Interest Rate %"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            type: "number",
+            inputMode: "decimal",
+            placeholder: "e.g. 5.9",
+            value: ((_e = debtData[key]) == null ? void 0 : _e.rate) || "",
+            onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { rate: e.target.value }) })),
+            style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--inputBg)", color: "var(--text)", outline: "none" }
+          }
+        ))));
+      })));
+    })());
   }
   function AlertsPanel({ flow, alertThreshold, setTab }) {
     const today = /* @__PURE__ */ new Date();
@@ -3893,10 +4357,36 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setYearMsg(`Year ${y} already exists.`);
         return;
       }
+      const prevYear = y - 1;
+      const prevYearEnd = `${prevYear}-12-31`;
+      let extendedCount = 0;
+      setEntries((prev) => prev.map((e) => {
+        if (e.repeats && e.recurEnd && e.recurEnd <= prevYearEnd && e.recurEnd >= prevYear + "-01-01") {
+          extendedCount++;
+          return __spreadProps(__spreadValues({}, e), { recurEnd: "" });
+        }
+        return e;
+      }));
+      let copiedTargets = 0;
+      setBudgetTargets((prev) => {
+        const next = __spreadValues({}, prev);
+        for (let m = 0; m < 12; m++) {
+          const prevKey = `${prevYear}:${m}`;
+          const newKey = `${y}:${m}`;
+          if (prev[prevKey] && !prev[newKey]) {
+            next[newKey] = __spreadValues({}, prev[prevKey]);
+            copiedTargets++;
+          }
+        }
+        return next;
+      });
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       setNewYear("");
-      setYearMsg(`Year ${y} added.`);
+      const parts = [`Year ${y} added.`];
+      if (extendedCount > 0) parts.push(`${extendedCount} recurring entr${extendedCount === 1 ? "y" : "ies"} extended.`);
+      if (copiedTargets > 0) parts.push(`${copiedTargets} budget targets copied from ${prevYear}.`);
+      setYearMsg(parts.join(" "));
     };
     const delYear = (yr) => {
       var _a2;
@@ -4119,7 +4609,46 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         cursor: "pointer",
         background: activeYear === yc.year ? "var(--navy)" : "transparent",
         color: activeYear === yc.year ? "#fff" : "var(--textMid)"
-      } }, activeYear === yc.year ? "Active" : "Switch"), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), style: {
+      } }, activeYear === yc.year ? "Active" : "Switch"), (() => {
+        const nextY = yc.year + 1;
+        const hasNext = yearConfigs.some((y) => y.year === nextY);
+        const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
+        return hasNext && hasTargets && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => {
+              let n = 0;
+              setBudgetTargets((prev) => {
+                const nx = __spreadValues({}, prev);
+                for (let m = 0; m < 12; m++) {
+                  const pk = `${yc.year}:${m}`;
+                  const nk = `${nextY}:${m}`;
+                  if (prev[pk] && Object.keys(prev[pk]).length) {
+                    nx[nk] = __spreadValues({}, prev[pk]);
+                    n++;
+                  }
+                }
+                return nx;
+              });
+              setYearMsg(`\u2705 Copied monthly targets from ${yc.year} \u2192 ${nextY}.`);
+            },
+            title: `Copy ${yc.year} budget targets to ${nextY}`,
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              color: "var(--navy)",
+              background: "none",
+              border: "1px solid var(--navy)",
+              cursor: "pointer",
+              padding: "4px 10px",
+              borderRadius: 6,
+              whiteSpace: "nowrap"
+            }
+          },
+          "Copy \u2192",
+          nextY
+        );
+      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 11,
         padding: "4px 10px",
@@ -4778,6 +5307,18 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [msg, setMsg] = useState("");
     const saveTimer = useRef(null);
     const initialized = useRef(false);
+    const pendingSync = useRef(false);
+    useEffect(() => {
+      const onOnline = () => {
+        if (pendingSync.current) {
+          pendingSync.current = false;
+          setMsg("Back online \u2014 syncing\u2026");
+          setTimeout(() => saveData(true), 1e3);
+        }
+      };
+      window.addEventListener("online", onOnline);
+      return () => window.removeEventListener("online", onOnline);
+    }, []);
     const token = () => localStorage.getItem("cf_gist_token") || "";
     const gistId = () => localStorage.getItem("cf_gist_id") || "";
     const hdrs = (tok) => ({
@@ -4831,8 +5372,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setStatus("ok");
         setMsg("Auto-saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
-        setStatus("error");
-        setMsg("\u274C " + e.message);
+        if (!navigator.onLine) {
+          pendingSync.current = true;
+          setStatus("error");
+          setMsg("\u{1F4F6} Offline \u2014 will sync when reconnected.");
+        } else {
+          setStatus("error");
+          setMsg("\u274C " + e.message);
+        }
       }
     }, [entries, overridesByYr, yearConfigs, categories, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode]);
     const loadData = useCallback(async () => {
@@ -5524,7 +6071,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
     const activeFlow = yearFlows[activeYear] || [];
     const addEntry = (data) => {
-      const entry = __spreadProps(__spreadValues({}, data), { id: Date.now() });
+      const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
       if (entry.type === "expense") {
         setBudgetTargets((prev) => {
@@ -6306,7 +6853,13 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         alertThreshold: alertThresh,
         activeYear,
         budgetTargets,
-        categories
+        categories,
+        users,
+        sessionUser,
+        entries,
+        setYearConfigs,
+        addEntry,
+        setTab
       }
     ), tab === "budget" && /* @__PURE__ */ React.createElement(
       BudgetView,
@@ -6332,7 +6885,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
