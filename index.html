@@ -30,10 +30,8 @@
     <div style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"
-  onerror="var s=document.createElement('script');s.src='https://unpkg.com/react@18.2.0/umd/react.production.min.js';document.head.appendChild(s)"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"
-  onerror="var s=document.createElement('script');s.src='https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js';document.head.appendChild(s)"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/react@18.2.0/umd/react.production.min.js';document.head.appendChild(s)"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js';document.head.appendChild(s)"></script>
 <script>window.Recharts = (function() {
   const h = React.createElement;
   const { useState, useRef, useEffect, useLayoutEffect, useMemo, Children } = React;
@@ -444,11 +442,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v61';
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
-try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v62';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
 function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
 var _a=0;
 function waitForReact(){
@@ -2450,7 +2444,7 @@ function waitForReact(){
             title: "Drag up/down to reschedule within this month",
             style: {
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 12,
+              fontSize: 13,
               padding: "8px 6px 8px 8px",
               color: "var(--textMid)",
               width: 30,
