@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v63';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v64';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -781,7 +781,7 @@ function waitForReact(){
       const s = v === null || v === void 0 ? "" : String(v);
       return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = [headers.map(esc).join(","), ...rows.map((r2) => r2.map(esc).join(","))];
+    const lines = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1710,7 +1710,7 @@ function waitForReact(){
         return out;
       };
       const hdrs = splitLine(lines[0]);
-      const rws = lines.slice(1).map(splitLine).filter((r2) => r2.some((c) => c));
+      const rws = lines.slice(1).map(splitLine).filter((r) => r.some((c) => c));
       return { headers: hdrs, rows: rws };
     };
     const handleFile = (e) => {
@@ -1720,13 +1720,13 @@ function waitForReact(){
       setDone(false);
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const { headers: h, rows: r2 } = parseCSV(ev.target.result);
+        const { headers: h, rows: r } = parseCSV(ev.target.result);
         if (!h.length) {
           setErr("Could not parse CSV \u2014 ensure the file has a header row.");
           return;
         }
         setHeaders(h);
-        setRows(r2);
+        setRows(r);
         const guess = (name) => h.find((c) => c.toLowerCase().includes(name.toLowerCase())) || "";
         setMap({
           desc: guess("desc") || guess("name") || guess("memo") || guess("narr") || "",
@@ -1747,19 +1747,19 @@ function waitForReact(){
       const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
       const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
       const ci = headers.indexOf(map.category);
-      const prev = rows.slice(0, 5).map((r2) => {
-        const rawAmt = parseFloat((r2[ai] || "").replace(/[$,]/g, ""));
+      const prev = rows.slice(0, 5).map((r) => {
+        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
         const amt = isNaN(rawAmt) ? 0 : Math.abs(rawAmt);
-        const raw = r2[dti] || todayS;
+        const raw = r[dti] || todayS;
         const parsed = new Date(raw);
         const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r2[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
+        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
         return {
-          desc: r2[di] || "(no description)",
+          desc: r[di] || "(no description)",
           amount: amt,
           startDate: dateStr,
           type: typeGuess,
-          category: ci > -1 ? r2[ci] : "Uncategorized",
+          category: ci > -1 ? r[ci] : "Uncategorized",
           notes: ""
         };
       });
@@ -1770,17 +1770,17 @@ function waitForReact(){
       const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
       const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
       const ci = headers.indexOf(map.category);
-      const imported = rows.map((r2, idx) => {
-        const rawAmt = parseFloat((r2[ai] || "").replace(/[$,]/g, ""));
+      const imported = rows.map((r, idx) => {
+        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
         const amt = isNaN(rawAmt) ? 0 : Math.abs(rawAmt);
-        const raw = r2[dti] || todayS;
+        const raw = r[dti] || todayS;
         const parsed = new Date(raw);
         const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r2[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
-        const cat = ci > -1 ? r2[ci] : "Uncategorized";
+        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
+        const cat = ci > -1 ? r[ci] : "Uncategorized";
         return {
           id: Date.now() + idx,
-          desc: r2[di] || "Imported",
+          desc: r[di] || "Imported",
           amount: amt,
           startDate: dateStr,
           type: typeGuess,
@@ -2966,9 +2966,9 @@ function waitForReact(){
         const allRows = [...autoRows, ...manualRows];
         const calcPayoff = (bal, rate, pmt) => {
           if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
-          const r2 = rate / 100 / 12;
-          const m = r2 > 0 && pmt > bal * r2 ? Math.ceil(Math.log(pmt / (pmt - bal * r2)) / Math.log(1 + r2)) : Math.ceil(bal / pmt);
-          const interest = r2 > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
+          const r = rate / 100 / 12;
+          const m = r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
+          const interest = r > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
           const d = /* @__PURE__ */ new Date();
           d.setMonth(d.getMonth() + m);
           return { monthsLeft: m, totalInterest: interest, payoffDate: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
@@ -3055,7 +3055,7 @@ function waitForReact(){
           color: "var(--textLt)",
           textAlign: "center",
           padding: "20px 0"
-        } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add Row"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto }) => {
+        } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add Row"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
           var _a2, _b2, _c, _d, _e, _f, _g;
           const bal = parseFloat((_a2 = debtData[key]) == null ? void 0 : _a2.balance) || 0;
           const rate = parseFloat((_b2 = debtData[key]) == null ? void 0 : _b2.rate) || 0;
@@ -3097,7 +3097,7 @@ function waitForReact(){
                 }
               }
             )
-          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && r.recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(r.perOccurrence), " ", r.recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
+          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: () => removeRow(key, isAuto),
@@ -3683,7 +3683,7 @@ ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (us
 ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${d.balance.toLocaleString()}, Rate ${d.rate}%, Payment $${d.monthlyPayment}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r2) => `  ${r2.category}: Actual $${r2.actual.toLocaleString()} vs Target $${r2.target.toLocaleString()} (${r2.variance >= 0 ? "over" : "under"} by $${Math.abs(r2.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${r.actual.toLocaleString()} vs Target $${r.target.toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(r.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
 
 Provide your assessment using these EXACT section headers (in markdown ## format):
 ## Executive Summary
@@ -4213,9 +4213,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
         const autoEv = !isManual ? autoByKey[key] : null;
         const pmt = autoEv ? toMo(autoEv) : parseFloat(v.payment) || 0;
-        const r2 = rate / 100 / 12;
-        const monthsLeft = bal > 0 && pmt > 0 ? r2 > 0 && pmt > bal * r2 ? Math.ceil(Math.log(pmt / (pmt - bal * r2)) / Math.log(1 + r2)) : Math.ceil(bal / pmt) : null;
-        const totalInterest = monthsLeft && r2 > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
+        const r = rate / 100 / 12;
+        const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
+        const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
         const payoffDate = monthsLeft ? (() => {
           const d = /* @__PURE__ */ new Date();
           d.setMonth(d.getMonth() + monthsLeft);
@@ -4305,21 +4305,21 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
         return { cat: c, actual, target, diff, over, color, pct };
       });
-      const totalActual = Math.round(rows.reduce((s, r2) => s + r2.actual, 0) * 100) / 100;
-      const totalTarget = Math.round(rows.reduce((s, r2) => s + r2.target, 0) * 100) / 100;
+      const totalActual = Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100;
+      const totalTarget = Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100;
       const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
       const tOver = totalTarget > 0 && tDiff > 0;
       const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r2) => /* @__PURE__ */ React.createElement("div", { key: r2.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r2.cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
         fontFamily: "'IBM Plex Mono',monospace",
         fontSize: 12,
         fontWeight: 600,
-        color: r2.over ? r2.color : "var(--text)"
-      } }, fmt(r2.actual)), r2.target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "/ ", fmt(r2.target)), r2.over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: r2.color } }, "\u25B2", fmt(r2.diff)))), r2.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
+        color: r.over ? r.color : "var(--text)"
+      } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: r.color } }, "\u25B2", fmt(r.diff)))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
         height: "100%",
-        width: `${r2.pct}%`,
+        width: `${r.pct}%`,
         borderRadius: 3,
-        background: r2.color,
+        background: r.color,
         transition: "width 0.4s ease"
       } }))))), /* @__PURE__ */ React.createElement("div", { style: {
         display: "flex",
@@ -5713,12 +5713,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
-        const r2 = await fetch(`https://api.github.com/gists/${gid}`, {
+        const r = await fetch(`https://api.github.com/gists/${gid}`, {
           method: "PATCH",
           headers: hdrs(tok),
           body: JSON.stringify({ files: { [FILE]: { content: payload } } })
         });
-        if (!r2.ok) throw new Error(`GitHub ${r2.status}`);
+        if (!r.ok) throw new Error(`GitHub ${r.status}`);
         setStatus("ok");
         setMsg("Auto-saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
@@ -5740,9 +5740,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setStatus("syncing");
       setMsg("Loading from Gist\u2026");
       try {
-        const r2 = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-        if (!r2.ok) throw new Error(`GitHub ${r2.status}`);
-        const data = await r2.json();
+        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
+        if (!r.ok) throw new Error(`GitHub ${r.status}`);
+        const data = await r.json();
         const raw = (_b = (_a = data.files) == null ? void 0 : _a[FILE]) == null ? void 0 : _b.content;
         if (!raw) throw new Error("File not found in Gist");
         const d = JSON.parse(raw);
@@ -5819,7 +5819,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
-        const r2 = await fetch("https://api.github.com/gists", {
+        const r = await fetch("https://api.github.com/gists", {
           method: "POST",
           headers: hdrs(tok),
           body: JSON.stringify({
@@ -5828,8 +5828,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             files: { [FILE]: { content: payload } }
           })
         });
-        if (!r2.ok) throw new Error(`GitHub ${r2.status}`);
-        const data = await r2.json();
+        if (!r.ok) throw new Error(`GitHub ${r.status}`);
+        const data = await r.json();
         localStorage.setItem("cf_gist_id", data.id);
         setStatus("ok");
         setMsg("Gist created \u2713 Auto-save is now active.");
