@@ -442,7 +442,7 @@
 })();
 </script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v62';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v64';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
 function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
 var _a=0;
 function waitForReact(){
@@ -2346,6 +2346,8 @@ function waitForReact(){
       const latest = [...matchingMonths].sort((a, b) => b - a)[0];
       if (latest !== void 0 && latest !== monthIdx) setMonthIdx(latest);
     }, [gq]);
+    const [debtData, setDebtData] = useLS("cf_debt_data", {});
+    const [debtExpanded, setDebtExpanded] = useState(false);
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
@@ -2873,7 +2875,276 @@ function waitForReact(){
           [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in targets)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
         ))));
       })(),
-      /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 12, paddingLeft: 2 } }, view === "monthly" ? "\u{1F4A1} Click any row to edit that entry for this date only. Changes only affect that specific date." : "\u{1F4A1} Click any item to edit for this date only. \u2713 = past date.")
+      /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 12, paddingLeft: 2 } }, view === "monthly" ? "\u{1F4A1} Click any row to edit that entry for this date only. Changes only affect that specific date." : "\u{1F4A1} Click any item to edit for this date only. \u2713 = past date."),
+      (() => {
+        const debtKeywords = [
+          "debt",
+          "credit",
+          "loan",
+          "mortgage",
+          "line of credit",
+          "cc-",
+          "visa",
+          "amex",
+          "mastercard",
+          "car payment",
+          "truck payment",
+          "trailer payment",
+          "scotialine",
+          "loc",
+          "vehicle",
+          "tractor"
+        ];
+        const autoGroups = {};
+        flow.filter((ev) => ev.type === "expense" && debtKeywords.some(
+          (k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k)
+        )).forEach((ev) => {
+          autoGroups[ev.desc] = (autoGroups[ev.desc] || []).concat(ev);
+        });
+        const manualKeys = Object.keys(debtData).filter((k) => k.startsWith("manual_"));
+        const autoRows = Object.entries(autoGroups).filter(([desc]) => {
+          var _a2;
+          return !((_a2 = debtData[desc.replace(/[^a-zA-Z0-9]/g, "_")]) == null ? void 0 : _a2.hidden);
+        }).map(([desc, evs]) => {
+          var _a2;
+          return {
+            key: desc.replace(/[^a-zA-Z0-9]/g, "_"),
+            label: desc,
+            monthlyPmt: ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0,
+            isAuto: true
+          };
+        });
+        const manualRows = manualKeys.map((k) => {
+          var _a2, _b2;
+          return {
+            key: k,
+            label: ((_a2 = debtData[k]) == null ? void 0 : _a2.label) || "",
+            monthlyPmt: parseFloat((_b2 = debtData[k]) == null ? void 0 : _b2.payment) || 0,
+            isAuto: false
+          };
+        });
+        const allRows = [...autoRows, ...manualRows];
+        const calcPayoff = (bal, rate, pmt) => {
+          if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
+          const r = rate / 100 / 12;
+          const m = r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
+          const interest = r > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
+          const d = /* @__PURE__ */ new Date();
+          d.setMonth(d.getMonth() + m);
+          return { monthsLeft: m, totalInterest: interest, payoffDate: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
+        };
+        const addManualRow = () => {
+          const id = "manual_" + Date.now();
+          setDebtData((p) => __spreadProps(__spreadValues({}, p), { [id]: { label: "", balance: "", rate: "", payment: "" } }));
+        };
+        const removeRow = (key, isAuto) => {
+          if (isAuto) {
+            setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { hidden: true }) }));
+          } else {
+            setDebtData((p) => {
+              const n = __spreadValues({}, p);
+              delete n[key];
+              return n;
+            });
+          }
+        };
+        const restoreHidden = () => {
+          setDebtData((p) => {
+            const n = __spreadValues({}, p);
+            Object.keys(n).forEach((k) => {
+              if (n[k].hidden) delete n[k].hidden;
+            });
+            return n;
+          });
+        };
+        const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
+        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Payoff Tracker"), hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: restoreHidden,
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 10,
+              padding: "3px 9px",
+              borderRadius: 5,
+              border: "1px solid var(--amber)",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--amber)"
+            }
+          },
+          "Restore ",
+          hiddenCount,
+          " hidden"
+        )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: addManualRow,
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
+              padding: "6px 14px",
+              borderRadius: 7,
+              border: "none",
+              cursor: "pointer",
+              background: "var(--navy)",
+              color: "#fff"
+            }
+          },
+          "+ Add Row"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setDebtExpanded((v) => !v),
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              padding: "6px 12px",
+              borderRadius: 7,
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--textMid)"
+            }
+          },
+          debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
+        ))), allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          color: "var(--textLt)",
+          textAlign: "center",
+          padding: "20px 0"
+        } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add Row"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto }) => {
+          var _a2, _b2, _c, _d, _e, _f, _g;
+          const bal = parseFloat((_a2 = debtData[key]) == null ? void 0 : _a2.balance) || 0;
+          const rate = parseFloat((_b2 = debtData[key]) == null ? void 0 : _b2.rate) || 0;
+          const pmt = isAuto ? monthlyPmt : parseFloat((_c = debtData[key]) == null ? void 0 : _c.payment) || 0;
+          const { totalInterest, payoffDate } = calcPayoff(bal, rate, pmt);
+          return /* @__PURE__ */ React.createElement("div", { key, style: {
+            padding: "12px 14px",
+            background: "var(--bg)",
+            borderRadius: 8,
+            border: "1px solid var(--border)"
+          } }, /* @__PURE__ */ React.createElement("div", { style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 10,
+            flexWrap: "wrap"
+          } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, isAuto ? (
+            // Auto row: show label as read-only
+            /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, label)
+          ) : (
+            // Manual row: label is editable
+            /* @__PURE__ */ React.createElement(
+              "input",
+              {
+                placeholder: "Debt name e.g. Car Loan",
+                value: ((_d = debtData[key]) == null ? void 0 : _d.label) || "",
+                onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { label: e.target.value }) })),
+                style: {
+                  fontFamily: "Inter,sans-serif",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  padding: "4px 8px",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 6,
+                  background: "var(--inputBg)",
+                  color: "var(--text)",
+                  outline: "none",
+                  width: "100%"
+                }
+              }
+            )
+          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: () => removeRow(key, isAuto),
+              title: isAuto ? "Hide from tracker" : "Remove row",
+              "aria-label": isAuto ? "Hide row" : "Remove row",
+              style: {
+                fontFamily: "Inter,sans-serif",
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 5,
+                border: "1px solid var(--border)",
+                cursor: "pointer",
+                background: "transparent",
+                color: "var(--red)",
+                lineHeight: 1,
+                flexShrink: 0
+              }
+            },
+            "\u2715"
+          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 130 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Balance $"), /* @__PURE__ */ React.createElement(
+            "input",
+            {
+              type: "number",
+              inputMode: "decimal",
+              placeholder: "e.g. 25000",
+              value: ((_e = debtData[key]) == null ? void 0 : _e.balance) || "",
+              onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { balance: e.target.value }) })),
+              style: {
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 13,
+                padding: "7px 10px",
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                background: "var(--inputBg)",
+                color: "var(--text)",
+                outline: "none"
+              }
+            }
+          )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 100 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Rate %"), /* @__PURE__ */ React.createElement(
+            "input",
+            {
+              type: "number",
+              inputMode: "decimal",
+              placeholder: "e.g. 5.9",
+              value: ((_f = debtData[key]) == null ? void 0 : _f.rate) || "",
+              onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { rate: e.target.value }) })),
+              style: {
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 13,
+                padding: "7px 10px",
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                background: "var(--inputBg)",
+                color: "var(--text)",
+                outline: "none"
+              }
+            }
+          )), !isAuto && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 120 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Monthly Payment $"), /* @__PURE__ */ React.createElement(
+            "input",
+            {
+              type: "number",
+              inputMode: "decimal",
+              placeholder: "e.g. 500",
+              value: ((_g = debtData[key]) == null ? void 0 : _g.payment) || "",
+              onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { payment: e.target.value }) })),
+              style: {
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 13,
+                padding: "7px 10px",
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                background: "var(--inputBg)",
+                color: "var(--text)",
+                outline: "none"
+              }
+            }
+          ))), debtExpanded && /* @__PURE__ */ React.createElement("div", { style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 11,
+            color: "var(--textLt)",
+            marginTop: 8,
+            padding: "6px 8px",
+            background: "var(--stripe)",
+            borderRadius: 5
+          } }, !bal && "Enter a current balance to calculate payoff.", bal > 0 && !payoffDate && "Enter balance and payment to calculate payoff.", bal > 0 && payoffDate && `${payoffDate} \u2014 ${totalInterest != null ? `$${totalInterest.toLocaleString()} in interest` : "no interest"}`));
+        })));
+      })()
     );
   }
   function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = 1500, globalSearch = "", budgetTargets = {} }) {
@@ -3629,8 +3900,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [summaryView, setSummaryView] = useState("table");
     const [incView, setIncView] = useState("bar");
     const [sharedView, setSharedView] = useState(false);
-    const [debtData, setDebtData] = useLS("cf_debt_data", {});
-    const [debtExpanded, setDebtExpanded] = useState(false);
     const effectiveFlow = useMemo(() => {
       if (sharedView || !sessionUser) return flow;
       return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
@@ -4040,60 +4309,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const prev = annualRows[i - 1];
       const delta = prev ? row.surplus - prev.surplus : null;
       return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
-    }))))), !showYoY && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")), (() => {
-      const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "scotialine", "loc", "vehicle", "tractor"];
-      const debtEntries = flow.filter((ev) => ev.type === "expense" && debtKeywords.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k)));
-      const debtGroups = {};
-      debtEntries.forEach((ev) => {
-        debtGroups[ev.desc] = (debtGroups[ev.desc] || []).concat(ev);
-      });
-      if (Object.keys(debtGroups).length === 0) return null;
-      return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDebtExpanded((v) => !v), style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        padding: "4px 12px",
-        border: "1px solid var(--border)",
-        borderRadius: 6,
-        cursor: "pointer",
-        background: "transparent",
-        color: "var(--textMid)"
-      } }, debtExpanded ? "Hide details \u25B2" : "Show details \u25BC")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, Object.entries(debtGroups).map(([desc, evs]) => {
-        var _a2, _b, _c, _d, _e;
-        const monthlyPmt = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
-        const key = desc.replace(/\W/g, "_");
-        const bal = parseFloat((_b = debtData[key]) == null ? void 0 : _b.balance) || 0;
-        const rate = parseFloat((_c = debtData[key]) == null ? void 0 : _c.rate) || 0;
-        const monthlyRate = rate / 100 / 12;
-        const monthsLeft = bal > 0 && monthlyPmt > 0 ? monthlyRate > 0 && monthlyPmt > bal * monthlyRate ? Math.ceil(Math.log(monthlyPmt / (monthlyPmt - bal * monthlyRate)) / Math.log(1 + monthlyRate)) : Math.ceil(bal / monthlyPmt) : null;
-        const totalInterest = monthsLeft != null && monthlyRate > 0 ? Math.round((monthlyPmt * monthsLeft - bal) * 100) / 100 : null;
-        const payoffDate = monthsLeft != null ? (() => {
-          const d = /* @__PURE__ */ new Date();
-          d.setMonth(d.getMonth() + monthsLeft);
-          return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-        })() : null;
-        return /* @__PURE__ */ React.createElement("div", { key, style: { padding: "12px 14px", background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: debtExpanded ? 10 : 0, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, desc), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, fmt(monthlyPmt), "/mo payment", payoffDate && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 8, color: "var(--greenDk)", fontWeight: 600 } }, "\xB7 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))), debtExpanded && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase" } }, "Current Balance $"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "number",
-            inputMode: "decimal",
-            placeholder: "e.g. 25000",
-            value: ((_d = debtData[key]) == null ? void 0 : _d.balance) || "",
-            onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { balance: e.target.value }) })),
-            style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--inputBg)", color: "var(--text)", outline: "none" }
-          }
-        )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 120 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase" } }, "Interest Rate %"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "number",
-            inputMode: "decimal",
-            placeholder: "e.g. 5.9",
-            value: ((_e = debtData[key]) == null ? void 0 : _e.rate) || "",
-            onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { rate: e.target.value }) })),
-            style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--inputBg)", color: "var(--text)", outline: "none" }
-          }
-        ))));
-      })));
-    })());
+    }))))), !showYoY && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")));
   }
   function AlertsPanel({ flow, alertThreshold, setTab }) {
     const today = /* @__PURE__ */ new Date();
