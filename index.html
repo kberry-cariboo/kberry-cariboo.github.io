@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v73';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v74';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1977,7 +1977,7 @@ function waitForReact(){
     });
     const recurLabel = (e) => {
       var _a;
-      if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)", fontWeight: 700, fontSize: 11 } }, "One-time");
+      if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)", fontSize: 13 } }, "One-time");
       const u = e.recurUnit || "month", ev = e.recurEvery || 1;
       if (u === "semimonth") return "Semi-monthly";
       if (u === "week" && ((_a = e.recurDays) == null ? void 0 : _a.length) > 1) return `Every ${ev}w \xB7 ${e.recurDays.map((d) => WEEKDAYS[d].slice(0, 2)).join("/")}`;
@@ -4050,11 +4050,24 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       fontWeight: 700,
       color: sectionColor[section.title] || "var(--navy)"
     } }, section.title)), section.items.map((line, li) => {
-      if (!line.trim()) return null;
-      const isBullet = line.match(/^[\-\*]\s+/);
-      const isNumbered = line.match(/^\d+\.\s+/);
-      const isBold = line.match(/^\*\*(.+)\*\*$/);
-      const text = line.replace(/^\*\*|\*\*$/g, "").replace(/^[\-\*\d+\.]\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1");
+      const raw = line.trim();
+      if (!raw) return null;
+      if (/^[-*_]{3,}$/.test(raw)) return /* @__PURE__ */ React.createElement("hr", { key: li, style: { border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" } });
+      if (/^#{1,3}\s+/.test(raw)) {
+        const txt = raw.replace(/^#{1,3}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
+        return /* @__PURE__ */ React.createElement("div", { key: li, style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          fontWeight: 700,
+          color: "var(--textMid)",
+          marginBottom: 6,
+          marginTop: 10
+        } }, txt);
+      }
+      const isBold = raw.match(/^\*\*(.+)\*\*$/);
+      const isNumbered = raw.match(/^\d+\.\s+/);
+      const isBullet = raw.match(/^[-*]\s+/);
+      const text = raw.replace(/^\*\*|\*\*$/g, "").replace(/^[-*\d+\.]\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
       if (isBold) return /* @__PURE__ */ React.createElement("div", { key: li, style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 13,
@@ -4064,8 +4077,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         marginTop: 8
       } }, text);
       if (isNumbered) return /* @__PURE__ */ React.createElement("div", { key: li, style: { display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", { style: {
-        minWidth: 24,
-        height: 24,
+        minWidth: 22,
+        height: 22,
         borderRadius: "50%",
         background: "var(--navy)",
         color: "#fff",
@@ -4076,28 +4089,41 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
-        marginTop: 1
-      } }, line.match(/^(\d+)\./)[1]), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", lineHeight: 1.55 } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
+        marginTop: 2
+      } }, raw.match(/^(\d+)\./)[1]), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", lineHeight: 1.6 } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
       if (isBullet) {
-        const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt)/i.test(text);
-        const isPositive = /(well|strong|excellent|good|under budget|saving|positive)/i.test(text);
+        const isIndented = line.match(/^\s{2,}/);
+        const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt|shortfall|danger|critical|problem|unsustainable)/i.test(text);
+        const isPositive = /(well|strong|excellent|good|under budget|saving|positive|recommendation)/i.test(text);
         const dot = isWarning ? "var(--amber)" : isPositive ? "var(--greenDk)" : "var(--navyLt)";
-        return /* @__PURE__ */ React.createElement("div", { key: li, style: { display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", { style: {
-          width: 6,
-          height: 6,
+        return /* @__PURE__ */ React.createElement("div", { key: li, style: {
+          display: "flex",
+          gap: 10,
+          marginBottom: isIndented ? 4 : 8,
+          alignItems: "flex-start",
+          paddingLeft: isIndented ? 16 : 0
+        } }, /* @__PURE__ */ React.createElement("div", { style: {
+          width: isIndented ? 4 : 6,
+          height: isIndented ? 4 : 6,
           borderRadius: "50%",
-          background: dot,
+          background: isIndented ? "var(--border)" : dot,
           flexShrink: 0,
-          marginTop: 7
-        } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", lineHeight: 1.55 } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
+          marginTop: isIndented ? 8 : 7
+        } }), /* @__PURE__ */ React.createElement("div", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          color: isIndented ? "var(--textMid)" : "var(--text)",
+          lineHeight: 1.6
+        } }, /* @__PURE__ */ React.createElement(BoldText, { text })));
       }
+      const plain = raw.replace(/\*([^*]+)\*/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1");
       return /* @__PURE__ */ React.createElement("div", { key: li, style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 13,
         color: "var(--textMid)",
-        lineHeight: 1.55,
+        lineHeight: 1.6,
         marginBottom: 6
-      } }, /* @__PURE__ */ React.createElement(BoldText, { text: line }));
+      } }, /* @__PURE__ */ React.createElement(BoldText, { text: plain }));
     }))), /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
