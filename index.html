@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v65';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v66';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2919,20 +2919,10 @@ function waitForReact(){
           autoGroups[ev.desc] = (autoGroups[ev.desc] || []).concat(ev);
         });
         const manualKeys = Object.keys(debtData).filter((k) => k.startsWith("manual_"));
-        const toMonthlyPmt = (ev) => {
-          var _a2;
-          const amt = ev.amount || 0;
-          const every = ev.recurEvery || 1;
-          const unit = ev.recurUnit || "month";
-          const ppy = (_a2 = {
-            day: 365 / every,
-            week: 52 / every,
-            month: 12 / every,
-            year: 1 / every,
-            semimonth: 24 / every
-            // 2× per month (1st & 15th)
-          }[unit]) != null ? _a2 : 12;
-          return Math.round(amt * (ppy / 12) * 100) / 100;
+        const toMonthlyFromEvs = (evs) => {
+          if (!evs || !evs.length) return 0;
+          const annual = evs.reduce((s2, ev) => s2 + (ev.amount || 0), 0);
+          return Math.round(annual / 12 * 100) / 100;
         };
         const autoRows = Object.entries(autoGroups).filter(([desc]) => {
           var _a2;
@@ -2942,18 +2932,24 @@ function waitForReact(){
           return {
             key: desc.replace(/[^a-zA-Z0-9]/g, "_"),
             label: desc,
-            monthlyPmt: toMonthlyPmt(evs[0]),
+            monthlyPmt: toMonthlyFromEvs(evs),
+            annualTotal: Math.round(evs.reduce((s2, ev) => s2 + (ev.amount || 0), 0) * 100) / 100,
+            timesPerYear: evs.length,
             perOccurrence: ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0,
             recurDesc: (() => {
               const ev = evs[0];
               if (!ev) return "";
+              const count = evs.length;
               const u = ev.recurUnit || "month";
               const e = ev.recurEvery || 1;
-              if (u === "semimonth") return "2\xD7/mo (1st & 15th)";
+              if (u === "semimonth") return `2\xD7/mo`;
+              if (u === "week" && e === 2) return "Bi-weekly";
               if (u === "week") return `Every ${e} wk`;
               if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
               if (u === "year") return "Yearly";
-              return "";
+              if (count === 24) return "2\xD7/mo";
+              if (count === 26) return "Bi-weekly";
+              return `${count}\xD7/yr`;
             })(),
             isAuto: true
           };
@@ -4202,11 +4198,16 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         "vehicle",
         "tractor"
       ];
-      const autoByKey = {};
+      const autoAllEvs = {};
       flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
         const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
-        if (!autoByKey[k]) autoByKey[k] = ev;
+        (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
       });
+      const autoMonthly = (key) => {
+        const evs = autoAllEvs[key] || [];
+        if (!evs.length) return 0;
+        return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
+      };
       const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
       if (configuredDebts.length === 0) return null;
       const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
@@ -4215,8 +4216,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const rate = parseFloat(v.rate) || 0;
         const isManual = key.startsWith("manual_");
         const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
-        const autoEv = !isManual ? autoByKey[key] : null;
-        const pmt = autoEv ? toMo(autoEv) : parseFloat(v.payment) || 0;
+        const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
         const r = rate / 100 / 12;
         const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
         const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
@@ -4240,7 +4240,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           width: `${pct}%`,
           background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
           transition: "width 0.4s"
-        } })), pmt > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, fmt(pmt), "/mo payment"));
+        } })), pmt > 0 && (() => {
+          var _a2;
+          const evs = autoAllEvs[key] || [];
+          const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
+          const timesYr = evs.length;
+          const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
+          return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
+        })());
       })));
     })(), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
