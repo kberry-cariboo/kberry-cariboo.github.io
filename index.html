@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v66';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v69';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2998,7 +2998,7 @@ function waitForReact(){
           });
         };
         const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Payoff Tracker"), hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), hiddenCount > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: restoreHidden,
@@ -3187,10 +3187,10 @@ function waitForReact(){
       })()
     );
   }
-  function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = 1500, globalSearch = "", budgetTargets = {} }) {
+  function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = 1500, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
+  } }) {
     const today = /* @__PURE__ */ new Date();
     const horizons = [30, 60, 90];
-    const [horizon, setHorizon] = useState(90);
     const gq2 = (globalSearch || "").toLowerCase();
     const futureEvents = useMemo(() => {
       const end = new Date(today);
@@ -5718,7 +5718,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           activeYear,
           alertThreshold,
           darkMode,
-          aiApiKey,
           aiReports,
           users,
           schemaVersion: SCHEMA_VERSION,
@@ -5767,7 +5766,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
         if (d.templates) setTemplates(d.templates);
         if (d.completed) setCompleted(d.completed);
-        if (d.aiApiKey && d.aiApiKey.trim() && setAiApiKey) setAiApiKey(d.aiApiKey);
         if (d.users && Array.isArray(d.users) && setUsers) {
           setUsers((prev) => {
             const merged = [...prev];
@@ -5824,7 +5822,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           activeYear,
           alertThreshold,
           darkMode,
-          aiApiKey,
           aiReports,
           users,
           schemaVersion: SCHEMA_VERSION,
@@ -6388,6 +6385,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [tab, setTab] = useLS("cf_tab", "dashboard");
     const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
+    const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
     const [globalSearch, setGlobalSearch] = useState("");
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -7266,7 +7264,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
