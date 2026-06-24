@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v69';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v71';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2998,25 +2998,33 @@ function waitForReact(){
           });
         };
         const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: debtExpanded ? 16 : 0,
+          flexWrap: "wrap",
+          gap: 8
+        } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, hiddenCount > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: restoreHidden,
             style: {
               fontFamily: "Inter,sans-serif",
-              fontSize: 10,
-              padding: "3px 9px",
-              borderRadius: 5,
+              fontSize: 11,
+              padding: "6px 12px",
+              borderRadius: 7,
               border: "1px solid var(--amber)",
               cursor: "pointer",
               background: "transparent",
-              color: "var(--amber)"
+              color: "var(--amber)",
+              whiteSpace: "nowrap"
             }
           },
           "Restore ",
           hiddenCount,
           " hidden"
-        )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: addManualRow,
@@ -3049,7 +3057,7 @@ function waitForReact(){
             }
           },
           debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
-        ))), allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: {
+        ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
           color: "var(--textLt)",
@@ -3174,7 +3182,7 @@ function waitForReact(){
                 outline: "none"
               }
             }
-          ))), debtExpanded && /* @__PURE__ */ React.createElement("div", { style: {
+          ))), /* @__PURE__ */ React.createElement("div", { style: {
             fontFamily: "Inter,sans-serif",
             fontSize: 11,
             color: "var(--textLt)",
@@ -3183,7 +3191,7 @@ function waitForReact(){
             background: "var(--stripe)",
             borderRadius: 5
           } }, !bal && "Enter a current balance to calculate payoff.", bal > 0 && !payoffDate && "Enter balance and payment to calculate payoff.", bal > 0 && payoffDate && `${payoffDate} \u2014 ${totalInterest != null ? `$${totalInterest.toLocaleString()} in interest` : "no interest"}`));
-        })));
+        }))));
       })()
     );
   }
@@ -5718,6 +5726,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           activeYear,
           alertThreshold,
           darkMode,
+          forecastHorizon,
           aiReports,
           users,
           schemaVersion: SCHEMA_VERSION,
@@ -5763,6 +5772,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.activeYear) setActiveYear(d.activeYear);
         if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
         if (d.darkMode != null) setDarkMode(d.darkMode);
+        if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
         if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
         if (d.templates) setTemplates(d.templates);
         if (d.completed) setCompleted(d.completed);
@@ -5822,6 +5832,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           activeYear,
           alertThreshold,
           darkMode,
+          forecastHorizon,
           aiReports,
           users,
           schemaVersion: SCHEMA_VERSION,
@@ -6382,10 +6393,22 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [templates, setTemplates] = useLS("cf_templates", []);
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
-    const [tab, setTab] = useLS("cf_tab", "dashboard");
+    const [tab, setTab] = useState(() => {
+      try {
+        return sessionStorage.getItem("cf_tab") || "dashboard";
+      } catch (e) {
+        return "dashboard";
+      }
+    });
+    useEffect(() => {
+      try {
+        sessionStorage.setItem("cf_tab", tab);
+      } catch (e) {
+      }
+    }, [tab]);
     const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
-    const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
+    const [forecastHorizon2, setForecastHorizon2] = useLS("cf_forecastHorizon", 90);
     const [globalSearch, setGlobalSearch] = useState("");
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -7264,7 +7287,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon2, setHorizon: setForecastHorizon2 }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
