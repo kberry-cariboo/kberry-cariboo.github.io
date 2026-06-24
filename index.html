@@ -30,8 +30,10 @@
     <div style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/react@18.2.0/umd/react.production.min.js';document.head.appendChild(s)"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js';document.head.appendChild(s)"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"
+  onerror="var s=document.createElement('script');s.src='https://unpkg.com/react@18.2.0/umd/react.production.min.js';document.head.appendChild(s)"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"
+  onerror="var s=document.createElement('script');s.src='https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js';document.head.appendChild(s)"></script>
 <script>window.Recharts = (function() {
   const h = React.createElement;
   const { useState, useRef, useEffect, useLayoutEffect, useMemo, Children } = React;
@@ -439,10 +441,13 @@
     Bar, Line, Area, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine
   };
-})();
-</script>
+})();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v64';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v63';
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
+try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
 function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
 var _a=0;
 function waitForReact(){
@@ -776,7 +781,7 @@ function waitForReact(){
       const s = v === null || v === void 0 ? "" : String(v);
       return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))];
+    const lines = [headers.map(esc).join(","), ...rows.map((r2) => r2.map(esc).join(","))];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1047,7 +1052,7 @@ function waitForReact(){
       padding: 20,
       boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
       border: "1px solid var(--border)",
-      width: "min(560px, calc(100vw - 32px))",
+      width: "min(680px, calc(100vw - 32px))",
       maxHeight: "80vh",
       overflowY: "auto"
     } }, /* @__PURE__ */ React.createElement("div", { style: {
@@ -1331,7 +1336,7 @@ function waitForReact(){
       desc: "",
       type: "expense",
       amount: "",
-      category: [...categories].sort((a, b) => a.localeCompare(b))[0] || "Uncategorized",
+      category: "",
       notes: "",
       startDate: today,
       repeats: false,
@@ -1382,6 +1387,7 @@ function waitForReact(){
     const validate = () => {
       const errs = {};
       if (!f.desc.trim()) errs.desc = "Description is required.";
+      if (!f.category) errs.category = "Please select a category.";
       const amt = parseFloat(f.amount);
       if (isNaN(amt) || amt < 0) errs.amount = "Enter a valid amount ($0.00 or more).";
       if (amt === 0 && !f.notes.trim()) errs.notes = "A note is required when the amount is $0.00.";
@@ -1462,7 +1468,10 @@ function waitForReact(){
           if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Category"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.category, onChange: (e) => set({ category: e.target.value }) }, [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c }, c))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Date *"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Category *"), /* @__PURE__ */ React.createElement("select", { style: inp(errors.category), value: f.category, onChange: (e) => {
+      set({ category: e.target.value });
+      if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
+    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Date *"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "date",
@@ -1546,32 +1555,35 @@ function waitForReact(){
         },
         label: "Amount varies by month"
       }
-    ), showMonthly && /* @__PURE__ */ React.createElement("div", { className: "monthly-amounts-grid", style: { display: "grid", gridTemplateColumns: "repeat(12,1fr)", gap: 6, marginTop: 10 } }, MONTHS.map((m, mi) => /* @__PURE__ */ React.createElement("div", { key: m }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textAlign: "center", marginBottom: 3 } }, m), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        inputMode: "decimal",
-        step: "0.01",
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          padding: "5px 4px",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          width: "100%",
-          boxSizing: "border-box",
-          outline: "none"
-        },
-        value: (f.monthlyAmounts || Array(12).fill(f.amount || 0))[mi] || "",
-        onChange: (ev) => {
-          const ma = [...f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0)];
-          ma[mi] = parseFloat(ev.target.value) || 0;
-          set({ monthlyAmounts: ma });
+    ), showMonthly && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, [0, 1].map((row) => /* @__PURE__ */ React.createElement("div", { key: row, className: "monthly-amounts-grid", style: { display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 6, marginBottom: row === 0 ? 8 : 0 } }, MONTHS.slice(row * 6, row * 6 + 6).map((m, i) => {
+      const mi = row * 6 + i;
+      return /* @__PURE__ */ React.createElement("div", { key: m }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textAlign: "center", marginBottom: 3 } }, m), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "number",
+          inputMode: "decimal",
+          step: "0.01",
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            padding: "6px 6px",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            background: "var(--inputBg)",
+            color: "var(--text)",
+            width: "100%",
+            boxSizing: "border-box",
+            outline: "none"
+          },
+          value: (f.monthlyAmounts || Array(12).fill(f.amount || 0))[mi] || "",
+          onChange: (ev) => {
+            const ma = [...f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0)];
+            ma[mi] = parseFloat(ev.target.value) || 0;
+            set({ monthlyAmounts: ma });
+          }
         }
-      }
-    ))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
+      ));
+    }))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
@@ -1698,7 +1710,7 @@ function waitForReact(){
         return out;
       };
       const hdrs = splitLine(lines[0]);
-      const rws = lines.slice(1).map(splitLine).filter((r) => r.some((c) => c));
+      const rws = lines.slice(1).map(splitLine).filter((r2) => r2.some((c) => c));
       return { headers: hdrs, rows: rws };
     };
     const handleFile = (e) => {
@@ -1708,13 +1720,13 @@ function waitForReact(){
       setDone(false);
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const { headers: h, rows: r } = parseCSV(ev.target.result);
+        const { headers: h, rows: r2 } = parseCSV(ev.target.result);
         if (!h.length) {
           setErr("Could not parse CSV \u2014 ensure the file has a header row.");
           return;
         }
         setHeaders(h);
-        setRows(r);
+        setRows(r2);
         const guess = (name) => h.find((c) => c.toLowerCase().includes(name.toLowerCase())) || "";
         setMap({
           desc: guess("desc") || guess("name") || guess("memo") || guess("narr") || "",
@@ -1735,19 +1747,19 @@ function waitForReact(){
       const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
       const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
       const ci = headers.indexOf(map.category);
-      const prev = rows.slice(0, 5).map((r) => {
-        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
+      const prev = rows.slice(0, 5).map((r2) => {
+        const rawAmt = parseFloat((r2[ai] || "").replace(/[$,]/g, ""));
         const amt = isNaN(rawAmt) ? 0 : Math.abs(rawAmt);
-        const raw = r[dti] || todayS;
+        const raw = r2[dti] || todayS;
         const parsed = new Date(raw);
         const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
+        const typeGuess = ti > -1 ? (r2[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
         return {
-          desc: r[di] || "(no description)",
+          desc: r2[di] || "(no description)",
           amount: amt,
           startDate: dateStr,
           type: typeGuess,
-          category: ci > -1 ? r[ci] : "Uncategorized",
+          category: ci > -1 ? r2[ci] : "Uncategorized",
           notes: ""
         };
       });
@@ -1758,17 +1770,17 @@ function waitForReact(){
       const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
       const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
       const ci = headers.indexOf(map.category);
-      const imported = rows.map((r, idx) => {
-        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
+      const imported = rows.map((r2, idx) => {
+        const rawAmt = parseFloat((r2[ai] || "").replace(/[$,]/g, ""));
         const amt = isNaN(rawAmt) ? 0 : Math.abs(rawAmt);
-        const raw = r[dti] || todayS;
+        const raw = r2[dti] || todayS;
         const parsed = new Date(raw);
         const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
-        const cat = ci > -1 ? r[ci] : "Uncategorized";
+        const typeGuess = ti > -1 ? (r2[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
+        const cat = ci > -1 ? r2[ci] : "Uncategorized";
         return {
           id: Date.now() + idx,
-          desc: r[di] || "Imported",
+          desc: r2[di] || "Imported",
           amount: amt,
           startDate: dateStr,
           type: typeGuess,
@@ -2218,7 +2230,7 @@ function waitForReact(){
       padding: 20,
       boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
       border: "1px solid var(--border)",
-      width: "min(560px, calc(100vw - 32px))",
+      width: "min(680px, calc(100vw - 32px))",
       maxHeight: "80vh",
       overflowY: "auto"
     } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
@@ -2717,35 +2729,36 @@ function waitForReact(){
           catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
         });
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
-        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 20, marginBottom: 12 } }, /* @__PURE__ */ React.createElement(
-          "div",
+        return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 20, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: budgetOpen ? 12 : 0
+        } }, /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "var(--textLt)"
+        } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement(
+          "button",
           {
             onClick: () => setBudgetOpen((v) => !v),
             style: {
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              padding: "6px 12px",
+              borderRadius: 7,
+              border: "1px solid var(--border)",
               cursor: "pointer",
-              marginBottom: budgetOpen ? 12 : 0,
-              userSelect: "none"
+              background: "transparent",
+              color: "var(--textMid)",
+              flexShrink: 0
             }
           },
-          /* @__PURE__ */ React.createElement("span", { style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "var(--textLt)"
-          } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]),
-          /* @__PURE__ */ React.createElement("span", { style: {
-            fontSize: 12,
-            color: "var(--textLt)",
-            transition: "transform 0.2s",
-            display: "inline-block",
-            transform: budgetOpen ? "rotate(0deg)" : "rotate(-90deg)"
-          } }, "\u25BC")
-        ), budgetOpen && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
+          budgetOpen ? "Collapse \u25B2" : "Expand \u25BC"
+        )), budgetOpen && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 12,
           color: "var(--textLt)",
@@ -2787,13 +2800,13 @@ function waitForReact(){
               },
               style: {
                 fontFamily: "IBM Plex Mono,monospace",
-                fontSize: 11,
-                width: 70,
-                padding: "4px 6px",
+                fontSize: 12,
+                width: 100,
+                padding: "6px 8px",
                 border: "1px solid var(--border)",
-                borderRadius: 4,
+                borderRadius: 6,
                 background: "var(--inputBg)",
-                color: "var(--textMid)",
+                color: "var(--text)",
                 outline: "none",
                 textAlign: "right"
               }
@@ -2902,6 +2915,21 @@ function waitForReact(){
           autoGroups[ev.desc] = (autoGroups[ev.desc] || []).concat(ev);
         });
         const manualKeys = Object.keys(debtData).filter((k) => k.startsWith("manual_"));
+        const toMonthlyPmt = (ev) => {
+          var _a2;
+          const amt = ev.amount || 0;
+          const every = ev.recurEvery || 1;
+          const unit = ev.recurUnit || "month";
+          const ppy = (_a2 = {
+            day: 365 / every,
+            week: 52 / every,
+            month: 12 / every,
+            year: 1 / every,
+            semimonth: 24 / every
+            // 2× per month (1st & 15th)
+          }[unit]) != null ? _a2 : 12;
+          return Math.round(amt * (ppy / 12) * 100) / 100;
+        };
         const autoRows = Object.entries(autoGroups).filter(([desc]) => {
           var _a2;
           return !((_a2 = debtData[desc.replace(/[^a-zA-Z0-9]/g, "_")]) == null ? void 0 : _a2.hidden);
@@ -2910,7 +2938,19 @@ function waitForReact(){
           return {
             key: desc.replace(/[^a-zA-Z0-9]/g, "_"),
             label: desc,
-            monthlyPmt: ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0,
+            monthlyPmt: toMonthlyPmt(evs[0]),
+            perOccurrence: ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0,
+            recurDesc: (() => {
+              const ev = evs[0];
+              if (!ev) return "";
+              const u = ev.recurUnit || "month";
+              const e = ev.recurEvery || 1;
+              if (u === "semimonth") return "2\xD7/mo (1st & 15th)";
+              if (u === "week") return `Every ${e} wk`;
+              if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
+              if (u === "year") return "Yearly";
+              return "";
+            })(),
             isAuto: true
           };
         });
@@ -2926,9 +2966,9 @@ function waitForReact(){
         const allRows = [...autoRows, ...manualRows];
         const calcPayoff = (bal, rate, pmt) => {
           if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
-          const r = rate / 100 / 12;
-          const m = r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
-          const interest = r > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
+          const r2 = rate / 100 / 12;
+          const m = r2 > 0 && pmt > bal * r2 ? Math.ceil(Math.log(pmt / (pmt - bal * r2)) / Math.log(1 + r2)) : Math.ceil(bal / pmt);
+          const interest = r2 > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
           const d = /* @__PURE__ */ new Date();
           d.setMonth(d.getMonth() + m);
           return { monthsLeft: m, totalInterest: interest, payoffDate: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
@@ -3057,7 +3097,7 @@ function waitForReact(){
                 }
               }
             )
-          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
+          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && r.recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(r.perOccurrence), " ", r.recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: () => removeRow(key, isAuto),
@@ -3509,6 +3549,12 @@ function waitForReact(){
       const now = /* @__PURE__ */ new Date();
       const summaries = getMonthSummaries(flow, openBal);
       const currentMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
+      let debtTrackerData = {};
+      try {
+        const raw = localStorage.getItem("cf_debt_data");
+        if (raw) debtTrackerData = JSON.parse(raw);
+      } catch (e) {
+      }
       const ytdMonths = summaries.slice(0, currentMonth + 1).map((m) => ({
         month: m.month,
         income: m.income,
@@ -3566,7 +3612,14 @@ function waitForReact(){
         incomeCategories: Object.entries(incomeCats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({ category: cat, total: Math.round(amt * 100) / 100 })),
         debtObligations: debtItems.map(([cat, amt]) => ({ category: cat, ytdPaid: Math.round(amt * 100) / 100 })),
         budgetVsActual: bvaRows.slice(0, 15),
-        hasBudgetTargets: Object.keys(targetByCat).length > 0
+        hasBudgetTargets: Object.keys(targetByCat).length > 0,
+        // Debt tracker data (balances + rates user has entered)
+        debtTrackerItems: Object.entries(debtTrackerData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0).map(([k, v]) => ({
+          name: v.label || k.replace("manual_", "").replace(/_/g, " "),
+          balance: Math.round(parseFloat(v.balance || 0) * 100) / 100,
+          rate: parseFloat(v.rate || 0),
+          monthlyPayment: Math.round(parseFloat(v.payment || 0) * 100) / 100
+        }))
       };
     };
     const parseReport = (text) => {
@@ -3593,7 +3646,7 @@ function waitForReact(){
       return sections.filter((s) => s.items.some((l) => l.trim()));
     };
     const runAssessment = async () => {
-      var _a, _b;
+      var _a, _b, _c;
       if (!apiKey.trim()) {
         setErr("No API key configured. Please add your Anthropic API key in Settings \u2192 General.");
         return;
@@ -3626,8 +3679,11 @@ ${ctx.incomeCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()}
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
 ${ctx.debtObligations.map((d) => `  ${d.category}: $${d.ytdPaid.toLocaleString()}`).join("\n")}` : "No debt categories identified."}
 
+${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
+${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${d.balance.toLocaleString()}, Rate ${d.rate}%, Payment $${d.monthlyPayment}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
+
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${r.actual.toLocaleString()} vs Target $${r.target.toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(r.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r2) => `  ${r2.category}: Actual $${r2.actual.toLocaleString()} vs Target $${r2.target.toLocaleString()} (${r2.variance >= 0 ? "over" : "under"} by $${Math.abs(r2.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
 
 Provide your assessment using these EXACT section headers (in markdown ## format):
 ## Executive Summary
@@ -3657,10 +3713,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         });
         if (!res.ok) {
           const e = await res.json().catch(() => ({}));
-          throw new Error(((_a = e == null ? void 0 : e.error) == null ? void 0 : _a.message) || `API error ${res.status}`);
+          throw new Error(((_b = e == null ? void 0 : e.error) == null ? void 0 : _b.message) || `API error ${res.status}`);
         }
         const data = await res.json();
-        const text = ((_b = data.content) == null ? void 0 : _b.map((b) => b.text || "").join("")) || "";
+        const text = ((_c = data.content) == null ? void 0 : _c.map((b) => b.text || "").join("")) || "";
         setRawText(text);
         setReport(parseReport(text));
         setLastRun(/* @__PURE__ */ new Date());
@@ -4110,7 +4166,79 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       textAlign: i === 0 ? "left" : "right",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), (() => {
+      let dData = {};
+      try {
+        const raw = localStorage.getItem("cf_debt_data");
+        if (raw) dData = JSON.parse(raw);
+      } catch (e) {
+      }
+      const toMo = (ev) => {
+        var _a2;
+        if (!ev) return 0;
+        const amt = ev.amount || 0, every = ev.recurEvery || 1;
+        const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
+        return Math.round(amt * (ppy / 12) * 100) / 100;
+      };
+      const dkw = [
+        "debt",
+        "credit",
+        "loan",
+        "mortgage",
+        "line of credit",
+        "cc-",
+        "visa",
+        "amex",
+        "mastercard",
+        "car payment",
+        "truck payment",
+        "trailer payment",
+        "scotialine",
+        "loc",
+        "vehicle",
+        "tractor"
+      ];
+      const autoByKey = {};
+      flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
+        const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
+        if (!autoByKey[k]) autoByKey[k] = ev;
+      });
+      const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
+      if (configuredDebts.length === 0) return null;
+      const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
+      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, configuredDebts.map(([key, v]) => {
+        const bal = parseFloat(v.balance) || 0;
+        const rate = parseFloat(v.rate) || 0;
+        const isManual = key.startsWith("manual_");
+        const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
+        const autoEv = !isManual ? autoByKey[key] : null;
+        const pmt = autoEv ? toMo(autoEv) : parseFloat(v.payment) || 0;
+        const r2 = rate / 100 / 12;
+        const monthsLeft = bal > 0 && pmt > 0 ? r2 > 0 && pmt > bal * r2 ? Math.ceil(Math.log(pmt / (pmt - bal * r2)) / Math.log(1 + r2)) : Math.ceil(bal / pmt) : null;
+        const totalInterest = monthsLeft && r2 > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
+        const payoffDate = monthsLeft ? (() => {
+          const d = /* @__PURE__ */ new Date();
+          d.setMonth(d.getMonth() + monthsLeft);
+          return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+        })() : null;
+        const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
+        return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, flexWrap: "wrap", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 10,
+          color: "var(--textLt)",
+          background: "var(--bg)",
+          padding: "2px 6px",
+          borderRadius: 4,
+          border: "1px solid var(--border)"
+        } }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--greenDk)" } }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
+          height: "100%",
+          borderRadius: 3,
+          width: `${pct}%`,
+          background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
+          transition: "width 0.4s"
+        } })), pmt > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, fmt(pmt), "/mo payment"));
+      })));
+    })(), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: incView,
@@ -4177,21 +4305,21 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
         return { cat: c, actual, target, diff, over, color, pct };
       });
-      const totalActual = Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100;
-      const totalTarget = Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100;
+      const totalActual = Math.round(rows.reduce((s, r2) => s + r2.actual, 0) * 100) / 100;
+      const totalTarget = Math.round(rows.reduce((s, r2) => s + r2.target, 0) * 100) / 100;
       const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
       const tOver = totalTarget > 0 && tDiff > 0;
       const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r2) => /* @__PURE__ */ React.createElement("div", { key: r2.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r2.cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
         fontFamily: "'IBM Plex Mono',monospace",
         fontSize: 12,
         fontWeight: 600,
-        color: r.over ? r.color : "var(--text)"
-      } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: r.color } }, "\u25B2", fmt(r.diff)))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
+        color: r2.over ? r2.color : "var(--text)"
+      } }, fmt(r2.actual)), r2.target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "/ ", fmt(r2.target)), r2.over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: r2.color } }, "\u25B2", fmt(r2.diff)))), r2.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
         height: "100%",
-        width: `${r.pct}%`,
+        width: `${r2.pct}%`,
         borderRadius: 3,
-        background: r.color,
+        background: r2.color,
         transition: "width 0.4s ease"
       } }))))), /* @__PURE__ */ React.createElement("div", { style: {
         display: "flex",
@@ -4230,7 +4358,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         ),
         onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
       }
-    )), summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 480 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+    )), summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -4238,7 +4366,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       padding: "10px 16px",
       letterSpacing: "0.08em",
       textTransform: "uppercase",
-      textAlign: i === 0 ? "left" : "right"
+      textAlign: i === 0 ? "left" : "right",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => {
       const maxInc = Math.max(...summaries.map((s) => s.income), 1);
       const maxExp = Math.max(...summaries.map((s) => s.expense), 1);
@@ -4249,7 +4380,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
       const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
       return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(m.close)));
-    }))))), summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 420 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+    }))))), summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -4257,7 +4388,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       padding: "10px 16px",
       letterSpacing: "0.08em",
       textTransform: "uppercase",
-      textAlign: i === 0 ? "left" : "right"
+      textAlign: i === 0 ? "left" : "right",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: {
       fontFamily: "'IBM Plex Mono',monospace",
       fontSize: 13,
@@ -5579,12 +5713,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
-        const r = await fetch(`https://api.github.com/gists/${gid}`, {
+        const r2 = await fetch(`https://api.github.com/gists/${gid}`, {
           method: "PATCH",
           headers: hdrs(tok),
           body: JSON.stringify({ files: { [FILE]: { content: payload } } })
         });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
+        if (!r2.ok) throw new Error(`GitHub ${r2.status}`);
         setStatus("ok");
         setMsg("Auto-saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
@@ -5606,9 +5740,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setStatus("syncing");
       setMsg("Loading from Gist\u2026");
       try {
-        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        const data = await r.json();
+        const r2 = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
+        if (!r2.ok) throw new Error(`GitHub ${r2.status}`);
+        const data = await r2.json();
         const raw = (_b = (_a = data.files) == null ? void 0 : _a[FILE]) == null ? void 0 : _b.content;
         if (!raw) throw new Error("File not found in Gist");
         const d = JSON.parse(raw);
@@ -5685,7 +5819,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
-        const r = await fetch("https://api.github.com/gists", {
+        const r2 = await fetch("https://api.github.com/gists", {
           method: "POST",
           headers: hdrs(tok),
           body: JSON.stringify({
@@ -5694,8 +5828,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             files: { [FILE]: { content: payload } }
           })
         });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        const data = await r.json();
+        if (!r2.ok) throw new Error(`GitHub ${r2.status}`);
+        const data = await r2.json();
         localStorage.setItem("cf_gist_id", data.id);
         setStatus("ok");
         setMsg("Gist created \u2713 Auto-save is now active.");
