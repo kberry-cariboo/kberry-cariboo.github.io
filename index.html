@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v64';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v65';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -892,7 +892,11 @@ function waitForReact(){
           isOverride: Object.keys(ov).length > 0,
           month: m,
           day: effD,
-          date: effDate
+          date: effDate,
+          // Recurrence metadata — needed for monthly-equivalent calculations
+          recurUnit: e.recurUnit || "month",
+          recurEvery: e.recurEvery || 1,
+          repeats: e.repeats || false
         });
       };
       if (!e.repeats) {
