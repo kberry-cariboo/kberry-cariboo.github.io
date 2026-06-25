@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v74';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v77';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2006,24 +2006,25 @@ function waitForReact(){
     };
     const cellVal = (e, col) => {
       const archived = isArchived(e, activeYear);
-      const baseStyle = { opacity: archived ? 0.45 : 1 };
+      const arcText = { color: "var(--textLt)", textDecoration: archived ? "line-through" : "none" };
+      const arcMono = { color: "var(--textLt)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", color: "var(--text)" }, baseStyle) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--textLt)", fontStyle: "italic" } }, "historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-desc-cell", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 0 }, arcText) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
         case "type":
-          return /* @__PURE__ */ React.createElement("td", { key: col, style: __spreadValues({ padding: "10px 12px" }, baseStyle) }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
+          return /* @__PURE__ */ React.createElement("td", { key: col, style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, style: __spreadValues({ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "10px 12px", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" }, baseStyle) }, e.monthlyAmounts ? "Variable" : fmt(e.amount));
+          return /* @__PURE__ */ React.createElement("td", { key: col, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--red)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? "Variable" : fmt(e.amount));
         case "startDate":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", color: "var(--textMid)", whiteSpace: "nowrap" }, baseStyle) }, e.startDate || "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", whiteSpace: "nowrap" }, arcText) }, e.startDate || "\u2014");
         case "schedule":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-sched", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", color: "var(--textMid)", whiteSpace: "nowrap" }, baseStyle) }, recurLabel(e));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-sched", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", whiteSpace: "nowrap" }, arcText) }, recurLabel(e));
         case "until":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-until", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", color: "var(--textLt)", whiteSpace: "nowrap" }, baseStyle) }, e.repeats ? e.recurEnd || /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontSize: 11 } }, "ongoing") : "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-until", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", whiteSpace: "nowrap" }, arcText) }, e.repeats ? e.recurEnd || /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
         case "category":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-cat", style: __spreadValues({ padding: "10px 12px" }, baseStyle) }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories }));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-cat", style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories }));
         case "notes":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-notes", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", color: "var(--textLt)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, baseStyle) }, e.notes);
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-notes", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, arcText) }, e.notes);
         case "actions":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-actions", style: { padding: "10px 8px", whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => openEdit(e), title: "Edit", "aria-label": "Edit entry", style: { fontFamily: "Inter,sans-serif", fontSize: 11, padding: "4px 9px", borderRadius: 5, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "\u270E"), /* @__PURE__ */ React.createElement("button", { onClick: () => doCopy(e), title: "Copy", "aria-label": "Duplicate entry", style: { fontFamily: "Inter,sans-serif", fontSize: 11, padding: "4px 9px", borderRadius: 5, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "\u2398"), /* @__PURE__ */ React.createElement("button", { onClick: () => del(e.id), title: "Delete", "aria-label": "Delete entry", style: { fontFamily: "Inter,sans-serif", fontSize: 11, padding: "4px 9px", borderRadius: 5, border: "1px solid var(--redLt)", cursor: "pointer", background: "var(--redLt)", color: "var(--red)" } }, "\u2715")));
         default:
@@ -2480,23 +2481,44 @@ function waitForReact(){
           ev.day,
           /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.3, fontSize: 9, lineHeight: 1 } }, "\u283F")
         ),
-        /* @__PURE__ */ React.createElement("td", { style: {
+        /* @__PURE__ */ React.createElement("td", { className: "budget-desc-cell", style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
           padding: "8px 14px",
           color: isDone ? "var(--textLt)" : "var(--text)",
-          textDecoration: isDone ? "line-through" : "none"
-        } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 8, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
+          textDecoration: isDone ? "line-through" : "none",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: 0
+        } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
         /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })),
-        /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600, textDecoration: isDone ? "line-through" : "none" } }, ev.type === "income" ? fmt(ev.amount) : ""),
-        /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600, textDecoration: isDone ? "line-through" : "none" } }, ev.type === "expense" ? fmt(ev.amount) : ""),
+        /* @__PURE__ */ React.createElement("td", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          padding: "8px 14px",
+          textAlign: "right",
+          color: isDone ? "var(--textLt)" : "var(--greenDk)",
+          fontWeight: 600,
+          textDecoration: isDone ? "line-through" : "none"
+        } }, ev.type === "income" ? fmt(ev.amount) : ""),
+        /* @__PURE__ */ React.createElement("td", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          padding: "8px 14px",
+          textAlign: "right",
+          color: isDone ? "var(--textLt)" : "var(--red)",
+          fontWeight: 600,
+          textDecoration: isDone ? "line-through" : "none"
+        } }, ev.type === "expense" ? fmt(ev.amount) : ""),
         /* @__PURE__ */ React.createElement("td", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 13,
           padding: "8px 14px",
           textAlign: "right",
           fontWeight: 700,
-          color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+          textDecoration: isDone ? "line-through" : "none",
+          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
         } }, fmt(ev.balance))
       );
     };
@@ -2680,8 +2702,7 @@ function waitForReact(){
         gridTemplateColumns: "60px 1fr 180px",
         borderBottom: "1px solid var(--border)",
         background: di % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
-        alignItems: "stretch",
-        opacity: isPast(dayObj.day) ? 0.75 : 1
+        alignItems: "stretch"
       } }, /* @__PURE__ */ React.createElement("div", { style: {
         display: "flex",
         flexDirection: "column",
@@ -2703,15 +2724,25 @@ function waitForReact(){
           onMouseEnter: (e) => e.currentTarget.style.background = "rgba(47,84,150,0.06)",
           onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
         },
-        /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", flex: 1 } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
+        /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: isPast(dayObj.day) ? "var(--textLt)" : "var(--text)",
+          textDecoration: isPast(dayObj.day) ? "line-through" : "none"
+        } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })),
         /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 13,
           fontWeight: 700,
-          color: ev.type === "income" ? "var(--greenDk)" : "var(--red)",
           minWidth: 90,
-          textAlign: "right"
+          textAlign: "right",
+          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "income" ? "var(--greenDk)" : "var(--red)",
+          textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.type === "income" ? "+" : "-", fmt(ev.amount))
       )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
         display: "flex",
@@ -2720,9 +2751,9 @@ function waitForReact(){
         padding: "12px 20px",
         borderLeft: "1px solid var(--border)",
         background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
-      } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textAlign: "right", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.08em" } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: {
+      } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", textAlign: "right", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.08em" } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: {
         fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: 700,
         color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
         textAlign: "right"
@@ -2777,7 +2808,7 @@ function waitForReact(){
           const over = target > 0 && diff > 0;
           const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
-          return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
+          return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "bva-row", style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 6, flexWrap: "nowrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts", style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", flex: 1, justifyContent: "flex-end", minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: {
             fontFamily: "'IBM Plex Mono',monospace",
             fontSize: 13,
             fontWeight: 600,
@@ -2807,14 +2838,15 @@ function waitForReact(){
               style: {
                 fontFamily: "IBM Plex Mono,monospace",
                 fontSize: 12,
-                width: 100,
-                padding: "6px 8px",
+                width: 84,
+                padding: "5px 6px",
                 border: "1px solid var(--border)",
                 borderRadius: 6,
                 background: "var(--inputBg)",
                 color: "var(--text)",
                 outline: "none",
-                textAlign: "right"
+                textAlign: "right",
+                flexShrink: 0
               }
             }
           ))), target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
@@ -3260,7 +3292,7 @@ function waitForReact(){
             flexWrap: "wrap"
           } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, isAuto ? (
             // Auto row: show label as read-only
-            /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)" } }, label)
+            /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label)
           ) : (
             // Manual row: label is editable
             /* @__PURE__ */ React.createElement(
@@ -3272,7 +3304,6 @@ function waitForReact(){
                 style: {
                   fontFamily: "Inter,sans-serif",
                   fontSize: 13,
-                  fontWeight: 700,
                   padding: "4px 8px",
                   border: "1.5px solid var(--border)",
                   borderRadius: 6,
@@ -3283,7 +3314,7 @@ function waitForReact(){
                 }
               }
             )
-          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
+          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: () => removeRow(key, isAuto),
@@ -3303,7 +3334,7 @@ function waitForReact(){
               }
             },
             "\u2715"
-          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 130 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Balance $"), /* @__PURE__ */ React.createElement(
+          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 130 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Balance $"), /* @__PURE__ */ React.createElement(
             "input",
             {
               type: "number",
@@ -3322,7 +3353,7 @@ function waitForReact(){
                 outline: "none"
               }
             }
-          )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 100 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Rate %"), /* @__PURE__ */ React.createElement(
+          )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 100 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Rate %"), /* @__PURE__ */ React.createElement(
             "input",
             {
               type: "number",
@@ -3341,7 +3372,7 @@ function waitForReact(){
                 outline: "none"
               }
             }
-          )), !isAuto && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 120 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Monthly Payment $"), /* @__PURE__ */ React.createElement(
+          )), !isAuto && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 120 } }, /* @__PURE__ */ React.createElement("label", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" } }, "Monthly Payment $"), /* @__PURE__ */ React.createElement(
             "input",
             {
               type: "number",
@@ -3424,7 +3455,7 @@ function waitForReact(){
       textTransform: "uppercase"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => !gq2 || ev.desc.toLowerCase().includes(gq2) || ev.category.toLowerCase().includes(gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 14px", color: "var(--textMid)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 14px", color: "var(--text)" } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 14px", color: "var(--textMid)" } }, ev.category), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 14px", color: "var(--textMid)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 14px", color: "var(--textMid)" } }, ev.category), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { style: {
         fontFamily: "'IBM Plex Mono',monospace",
         fontSize: 13,
         padding: "8px 14px",
@@ -4255,14 +4286,13 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
         const isInc = ev.type === "income";
         return /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 11,
-          color: "var(--textLt)",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          color: "var(--textMid)",
           whiteSpace: "nowrap"
         } }, label), /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
-          fontWeight: 600,
           color: "var(--text)",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -4270,12 +4300,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 13,
-          fontWeight: 700,
           color: isInc ? "var(--greenDk)" : "var(--red)"
         } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 11,
-          fontWeight: 600,
+          fontSize: 13,
           color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
         } }, fmt(ev.balance)))), /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
           height: "100%",
@@ -6918,6 +6946,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           /* Forecast table: hide category, tighten padding */
           .forecast-table td,.forecast-table th{padding:7px 8px!important;font-size:11px!important;}
           .forecast-col-cat{display:none!important;}
+          .forecast-desc-cell{max-width:180px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
           /* Daily view: hide category label, shrink balance column */
           .daily-card{grid-template-columns:44px 1fr 88px!important;}
           .daily-cat{display:none!important;}
@@ -6954,6 +6983,13 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .tab-bar button{padding:10px 8px!important;font-size:10px!important;}
           /* Cards: tighter padding on phone */
           [style*="padding:"20px 24px""]{padding:14px 12px!important;}
+          /* Budget: description cell \u2014 ellipsis on overflow, no wrap */
+          .budget-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0;}
+          /* BvA row \u2014 keep chip + amounts on one line on mobile */
+          .bva-row{flex-wrap:nowrap!important;}
+          .bva-amounts{flex-wrap:nowrap!important;}
+          /* Forecast: description cell \u2014 truncate on mobile */
+          .forecast-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px!important;}
           /* Register filters: stack on phone */
           .reg-filter-row{flex-direction:column!important;align-items:stretch!important;}
           /* Forecast confidence column: hide on phone to save width */
