@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v80';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v82';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1311,7 +1311,7 @@ function waitForReact(){
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
   function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
-    return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", borderRadius: 16, padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: onConfirm, style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { background: "var(--bgCard)", borderRadius: 16, padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: onConfirm, style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" } }, /* @__PURE__ */ React.createElement("div", { onClick: () => onChange(!value), style: {
     position: "relative",
@@ -1639,14 +1639,25 @@ function waitForReact(){
     const inp = (hasErr) => ({
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
-      padding: "6px 10px",
+      padding: "9px 12px",
       border: `1.5px solid ${hasErr ? "var(--red)" : "var(--border)"}`,
-      borderRadius: 6,
-      background: hasErr ? "#FFF8F8" : "var(--bgCard)",
+      borderRadius: 8,
+      background: hasErr ? "#FFF8F8" : "var(--inputBg)",
       color: "var(--text)",
       outline: "none",
-      width: "100%"
+      width: "100%",
+      boxSizing: "border-box"
     });
+    const lbl = {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 700,
+      color: "var(--textMid)",
+      marginBottom: 6,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      display: "block"
+    };
     const validate = () => {
       const e = {};
       const a = parseFloat(amount);
@@ -1655,39 +1666,75 @@ function waitForReact(){
       setErr(e);
       return !Object.keys(e).length;
     };
-    return /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--stripe)",
-      border: "2px solid var(--navy)",
-      borderRadius: 8,
-      padding: "12px 16px",
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 8,
-      alignItems: "flex-start"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 2, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textMid)", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.08em" } }, "Description"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: desc, onChange: (e) => setDesc(e.target.value) })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 100 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textMid)", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.08em" } }, "Amount"), /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", step: "0.01", style: inp(err.amount), value: amount, onChange: (e) => {
-      setAmount(e.target.value);
-      setErr({});
-    } }), /* @__PURE__ */ React.createElement(FieldError, { msg: err.amount })), /* @__PURE__ */ React.createElement("div", { style: { flex: 2, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textMid)", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.08em" } }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(!!err.notes), value: notes, onChange: (e) => {
-      setNotes(e.target.value);
-      setErr((p) => __spreadProps(__spreadValues({}, p), { notes: void 0 }));
-    } }), /* @__PURE__ */ React.createElement(FieldError, { msg: err.notes })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignSelf: "flex-end", paddingBottom: 2, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
-      "button",
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === "Escape") onCancel();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [onCancel]);
+    return /* @__PURE__ */ React.createElement(
+      "div",
       {
-        onClick: () => {
-          if (validate()) onSave({ desc, amount: parseFloat(amount), notes });
+        className: "modal-overlay",
+        style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
+        onClick: (e) => {
+          if (e.target === e.currentTarget) onCancel();
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
+        background: "var(--bgCard)",
+        borderRadius: 14,
+        padding: "24px 24px 20px",
+        width: "min(460px,calc(100vw - 32px))",
+        maxHeight: "90vh",
+        overflowY: "auto",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "Edit Entry \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--amber)", marginBottom: 18 } }, "\u26A1 This edit applies to this date only. The recurring schedule stays intact."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Description"), /* @__PURE__ */ React.createElement("input", { autoFocus: true, style: inp(false), value: desc, onChange: (e) => setDesc(e.target.value) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount $"), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "number",
+          inputMode: "decimal",
+          step: "0.01",
+          style: inp(err.amount),
+          value: amount,
+          onChange: (e) => {
+            setAmount(e.target.value);
+            setErr({});
+          },
+          onKeyDown: (e) => {
+            if (e.key === "Enter" && validate()) onSave({ desc, amount: parseFloat(amount), notes });
+          }
+        }
+      ), /* @__PURE__ */ React.createElement(FieldError, { msg: err.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          style: inp(!!err.notes),
+          value: notes,
+          onChange: (e) => {
+            setNotes(e.target.value);
+            setErr((p) => __spreadProps(__spreadValues({}, p), { notes: void 0 }));
+          }
+        }
+      ), /* @__PURE__ */ React.createElement(FieldError, { msg: err.notes }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: onReset,
+          style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", borderRadius: 8, border: "1px solid var(--amber)", cursor: "pointer", background: "transparent", color: "var(--amber)", marginRight: "auto" },
+          title: "Remove this date's custom edit and restore the scheduled values"
         },
-        style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "var(--navy)", color: "#fff" }
-      },
-      "Save"
-    ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: onReset,
-        style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "7px 12px", borderRadius: 6, border: "1px solid var(--amber)", cursor: "pointer", background: "transparent", color: "var(--amber)" },
-        title: "Remove this date's custom edit and restore the scheduled values"
-      },
-      "\u21BA Reset"
-    ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "7px 12px", borderRadius: 6, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel")), /* @__PURE__ */ React.createElement("div", { style: { width: "100%", fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--amber)", marginTop: 2 } }, "\u26A1 This edit applies to this date only. The recurring schedule stays intact."));
+        "\u21BA Reset to schedule"
+      ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 20px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            if (validate()) onSave({ desc, amount: parseFloat(amount), notes });
+          },
+          style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "9px 24px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--navy)", color: "#fff" }
+        },
+        "Save"
+      )))
+    );
   }
   function CSVImporter({ categories, onImport, onClose }) {
     const [rows, setRows] = useState([]);
@@ -1911,6 +1958,15 @@ function waitForReact(){
     const [filterCat, setFilterCat] = useState("all");
     const [filterSched, setFilterSched] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
+    const [sortCol, setSortCol] = useState("startDate");
+    const [sortDir, setSortDir] = useState("asc");
+    const toggleSort = (col) => {
+      if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+      else {
+        setSortCol(col);
+        setSortDir("asc");
+      }
+    };
     const [search, setSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
@@ -1971,9 +2027,14 @@ function waitForReact(){
       if (dateTo && sd && sd > dateTo) return false;
       return true;
     }).sort((a, b) => {
-      const d = a.desc.localeCompare(b.desc);
-      if (d !== 0) return d;
-      return (b.startDate || "").localeCompare(a.startDate || "");
+      let cmp = 0;
+      if (sortCol === "startDate") cmp = (a.startDate || "").localeCompare(b.startDate || "");
+      else if (sortCol === "amount") cmp = (a.amount || 0) - (b.amount || 0);
+      else if (sortCol === "desc") cmp = (a.desc || "").localeCompare(b.desc || "");
+      else if (sortCol === "category") cmp = (a.category || "").localeCompare(b.category || "");
+      else if (sortCol === "schedule") cmp = a.repeats === b.repeats ? 0 : a.repeats ? 1 : -1;
+      else cmp = (a.desc || "").localeCompare(b.desc || "");
+      return sortDir === "asc" ? cmp : -cmp;
     });
     const recurLabel = (e) => {
       var _a;
@@ -2289,8 +2350,19 @@ function waitForReact(){
           transition: "background 0.1s"
         }
       },
-      REG_COL_LABELS[col],
-      col !== "actions" && col !== "notes" ? " \u283F" : ""
+      ["desc", "amount", "startDate", "category", "schedule"].includes(col) ? /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          onClick: (e) => {
+            e.stopPropagation();
+            toggleSort(col);
+          },
+          style: { cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, userSelect: "none" },
+          title: `Sort by ${REG_COL_LABELS[col]}`
+        },
+        REG_COL_LABELS[col],
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
+      ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
     )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, colOrder.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: colOrder.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 10, paddingLeft: 2 } }, "\u{1F4A1} Drag column headers to reorder \xB7 Historical entries (no activity in the viewed year) are hidden by default"), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
@@ -2390,18 +2462,7 @@ function waitForReact(){
       setShowAddForm(false);
     };
     const renderEventRow = (ev, i) => {
-      if (editingId === ev.id) return /* @__PURE__ */ React.createElement("tr", { key: ev.id }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
-        padding: "8px 14px",
-        background: "var(--stripe)",
-        borderBottom: "1px solid var(--border)",
-        boxShadow: "inset 3px 0 0 0 transparent"
-      } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
-        setOverride(ev.id, p);
-        setEditingId(null);
-      }, onReset: () => {
-        clearOverride && clearOverride(ev.id);
-        setEditingId(null);
-      }, onCancel: () => setEditingId(null) })));
+      const editing = editingId === ev.id;
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
       const isDragging = draggingId === ev.id;
@@ -2422,6 +2483,13 @@ function waitForReact(){
             opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
         },
+        editing && /* @__PURE__ */ React.createElement("td", { style: { padding: 0, border: 0 } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
+          setOverride(ev.id, p);
+          setEditingId(null);
+        }, onReset: () => {
+          clearOverride && clearOverride(ev.id);
+          setEditingId(null);
+        }, onCancel: () => setEditingId(null) })),
         /* @__PURE__ */ React.createElement("td", { style: {
           padding: "8px 4px 8px 9px",
           width: 28,
@@ -2434,6 +2502,10 @@ function waitForReact(){
           {
             onClick: (e) => {
               e.stopPropagation();
+              try {
+                navigator.vibrate && navigator.vibrate(8);
+              } catch (e2) {
+              }
               toggleComplete(ev.id);
             },
             "aria-label": isDone ? "Mark budget line incomplete" : "Mark budget line complete",
@@ -2684,7 +2756,7 @@ function waitForReact(){
         fontFamily: "Inter,sans-serif",
         fontSize: 13,
         color: "var(--textLt)"
-      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: {
+      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row", style: { background: "var(--navy)", position: "sticky", bottom: 0 } }, /* @__PURE__ */ React.createElement("td", { style: {
         width: 28,
         background: "var(--navy)",
         padding: 0,
@@ -2712,13 +2784,13 @@ function waitForReact(){
         justifyContent: "center",
         padding: "12px 8px",
         borderRight: "1px solid var(--border)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, editingId === ev.id ? /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
+      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, editingId === ev.id && /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
         setOverride(ev.id, p);
         setEditingId(null);
       }, onReset: () => {
         clearOverride && clearOverride(ev.id);
         setEditingId(null);
-      }, onCancel: () => setEditingId(null) }) : /* @__PURE__ */ React.createElement(
+      }, onCancel: () => setEditingId(null) }), /* @__PURE__ */ React.createElement(
         "div",
         {
           onClick: () => setEditingId(ev.id),
@@ -3048,12 +3120,13 @@ function waitForReact(){
         return /* @__PURE__ */ React.createElement(React.Fragment, null, showDebtForm && /* @__PURE__ */ React.createElement(
           "div",
           {
+            className: "modal-overlay",
             style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
             onClick: (e) => {
               if (e.target === e.currentTarget) setShowDebtForm(false);
             }
           },
-          /* @__PURE__ */ React.createElement("div", { style: {
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
             background: "var(--bgCard)",
             borderRadius: 14,
             padding: "24px 24px 20px",
@@ -6637,6 +6710,31 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       } catch (e) {
       }
     }, [tab]);
+    const searchRef = useRef(null);
+    useEffect(() => {
+      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "register", "4": "forecast", "5": "ai" };
+      const handler = (e) => {
+        var _a2, _b;
+        const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
+        const isInput = tag === "input" || tag === "textarea" || tag === "select" || ((_b = e.target) == null ? void 0 : _b.isContentEditable);
+        if (!isInput && TAB_KEYS[e.key]) {
+          e.preventDefault();
+          setTab(TAB_KEYS[e.key]);
+          return;
+        }
+        if (!isInput && e.key === "/") {
+          e.preventDefault();
+          const el = document.getElementById("global-search");
+          if (el) {
+            el.focus();
+            el.select();
+          }
+          return;
+        }
+      };
+      window.addEventListener("keydown", handler);
+      return () => window.removeEventListener("keydown", handler);
+    }, []);
     const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
@@ -6652,6 +6750,41 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     useEffect(() => {
       if (tab !== "register") setRegFabOpen(false);
     }, [tab]);
+    const [pullProgress, setPullProgress] = useState(0);
+    const [pullActive, setPullActive] = useState(false);
+    const ptrRef = useRef({ startY: 0, active: false });
+    useEffect(() => {
+      const onStart = (e) => {
+        if (window.scrollY > 0) return;
+        ptrRef.current = { startY: e.touches[0].clientY, active: true };
+      };
+      const onMove = (e) => {
+        if (!ptrRef.current.active) return;
+        const dy = e.touches[0].clientY - ptrRef.current.startY;
+        if (dy > 0) setPullProgress(Math.min(1, dy / 80));
+      };
+      const onEnd = () => {
+        if (!ptrRef.current.active) return;
+        ptrRef.current.active = false;
+        if (pullProgress >= 1) {
+          setPullActive(true);
+          setTimeout(() => setPullActive(false), 2e3);
+          try {
+            gistLoad();
+          } catch (e) {
+          }
+        }
+        setPullProgress(0);
+      };
+      window.addEventListener("touchstart", onStart, { passive: true });
+      window.addEventListener("touchmove", onMove, { passive: true });
+      window.addEventListener("touchend", onEnd);
+      return () => {
+        window.removeEventListener("touchstart", onStart);
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("touchend", onEnd);
+      };
+    }, [pullProgress, gistLoad]);
     useEffect(() => {
       window.__cfSetTab = setTab;
       return () => {
@@ -6921,6 +7054,40 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
              (monthly-amounts grid, budget targets) keep their compact size. */
           .fab-panel input:not([type=checkbox]), .fab-panel select,
           .search-box input, .header-search input { font-size: 16px !important; }
+          /* Bottom-sheet modals \u2014 slide up from bottom edge */
+          .modal-overlay{align-items:flex-end!important;}
+          .modal-card{
+            border-radius:20px 20px 0 0!important;
+            width:100%!important;max-width:100%!important;
+            padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
+            max-height:92vh!important;overflow-y:auto!important;
+          }
+          /* Register: card-based layout \u2014 replace horizontal scroll table */
+          .reg-scroll-wrap{overflow-x:visible!important;}
+          .reg-table{min-width:unset!important;width:100%!important;
+            border-collapse:separate!important;border-spacing:0 6px!important;}
+          .reg-table thead{display:none!important;}
+          .reg-table tbody tr{
+            display:grid!important;
+            grid-template-columns:1fr auto!important;
+            grid-template-rows:auto auto auto!important;
+            padding:10px 12px!important;border-radius:10px!important;
+            border:1px solid var(--border)!important;background:var(--bgCard)!important;
+          }
+          .reg-table td{display:block!important;padding:0!important;border:none!important;min-height:0!important;}
+          /* Desc: full-width first row */
+          .reg-table td:has(.budget-desc-cell),.reg-table .budget-desc-cell{grid-column:1;font-size:13px!important;}
+          /* Actions: right column spanning rows */
+          .reg-table .reg-actions{grid-column:2!important;grid-row:1/4!important;
+            display:flex!important;align-items:center!important;gap:4px!important;padding-left:10px!important;}
+          /* Amount: prominent in row 1 */
+          .reg-table .reg-actions button{min-width:32px;min-height:32px;padding:6px!important;}
+          /* Meta row: date, schedule, until inline */
+          .reg-table .reg-col-date,.reg-table .reg-col-sched,.reg-table .reg-col-until{
+            display:inline!important;font-size:11px!important;}
+          .reg-table .reg-col-notes{font-size:11px!important;}
+          /* Hide notes and category columns on very narrow screens */
+          .reg-table .reg-col-notes{display:none!important;}
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
           .logo-area img{height:23px!important;}
@@ -6998,6 +7165,27 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           /* Forecast: description cell \u2014 truncate on mobile */
           .forecast-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px!important;}
           /* Register filters: stack on phone */
+
+        /* \u2500\u2500 Bottom-sheet modals on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .modal-card{animation:slideUp 0.2s ease-out;}
+
+        /* \u2500\u2500 Two-column dashboard at \u22651400px \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        @media(min-width:1400px){
+          .content-area{max-width:1400px!important;padding:28px 40px!important;}
+        }
+
+        /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        /* Budget totals row sticky */
+        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);}
+
+        /* \u2500\u2500 44px minimum tap targets \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        .reg-actions button{min-height:36px;min-width:36px;}
+        .tab-btn{min-height:44px;}
+
+        /* Keyboard shortcut hint in search placeholder */
+        #global-search::placeholder{color:var(--textLt);}
           .reg-filter-row{flex-direction:column!important;align-items:stretch!important;}
           /* Forecast confidence column: hide on phone to save width */
           .forecast-conf-col{display:none!important;}
@@ -7034,8 +7222,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "rgba(255,255,255,0.4)" } }, "\u{1F50D}"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "global-search",
         "aria-label": "Search budget entries",
-        placeholder: "Search\u2026",
+        placeholder: "Search\u2026 (/)",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),
         style: {
@@ -7511,7 +7700,30 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       padding: "1px 5px",
       fontSize: 9,
       fontWeight: 700
-    } }, "\u{1F50D}"))))), /* @__PURE__ */ React.createElement("div", { className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, margin: "0 auto", marginTop: 0 } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
+    } }, "\u{1F50D}"))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { style: {
+      position: "fixed",
+      top: 52,
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 3e3,
+      background: "var(--navy)",
+      color: "#fff",
+      borderRadius: 20,
+      padding: "6px 16px 6px 12px",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 12,
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      opacity: Math.max(pullProgress, pullActive ? 1 : 0),
+      transition: "opacity 0.2s",
+      pointerEvents: "none",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+    } }, /* @__PURE__ */ React.createElement("span", { style: {
+      display: "inline-block",
+      animation: pullActive ? "spin 0.8s linear infinite" : "none",
+      fontSize: 14
+    } }, "\u21BB"), pullActive ? "Syncing with Gist\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement("div", { className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, margin: "0 auto", marginTop: 0 } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
