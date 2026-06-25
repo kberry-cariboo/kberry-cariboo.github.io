@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v82';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v83';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -6753,38 +6753,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [pullProgress, setPullProgress] = useState(0);
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
-    useEffect(() => {
-      const onStart = (e) => {
-        if (window.scrollY > 0) return;
-        ptrRef.current = { startY: e.touches[0].clientY, active: true };
-      };
-      const onMove = (e) => {
-        if (!ptrRef.current.active) return;
-        const dy = e.touches[0].clientY - ptrRef.current.startY;
-        if (dy > 0) setPullProgress(Math.min(1, dy / 80));
-      };
-      const onEnd = () => {
-        if (!ptrRef.current.active) return;
-        ptrRef.current.active = false;
-        if (pullProgress >= 1) {
-          setPullActive(true);
-          setTimeout(() => setPullActive(false), 2e3);
-          try {
-            gistLoad();
-          } catch (e) {
-          }
-        }
-        setPullProgress(0);
-      };
-      window.addEventListener("touchstart", onStart, { passive: true });
-      window.addEventListener("touchmove", onMove, { passive: true });
-      window.addEventListener("touchend", onEnd);
-      return () => {
-        window.removeEventListener("touchstart", onStart);
-        window.removeEventListener("touchmove", onMove);
-        window.removeEventListener("touchend", onEnd);
-      };
-    }, [pullProgress, gistLoad]);
+    const gistLoadRef = useRef(null);
     useEffect(() => {
       window.__cfSetTab = setTab;
       return () => {
@@ -6875,6 +6844,41 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setCompleted
     });
     const gistToken = () => localStorage.getItem("cf_gist_token") || "";
+    useEffect(() => {
+      gistLoadRef.current = gistLoad;
+    }, [gistLoad]);
+    useEffect(() => {
+      const onStart = (e) => {
+        if (window.scrollY > 10) return;
+        ptrRef.current = { startY: e.touches[0].clientY, active: true };
+      };
+      const onMove = (e) => {
+        if (!ptrRef.current.active) return;
+        const dy = e.touches[0].clientY - ptrRef.current.startY;
+        if (dy > 0) setPullProgress(Math.min(1, dy / 80));
+      };
+      const onEnd = () => {
+        if (!ptrRef.current.active) return;
+        ptrRef.current.active = false;
+        if (pullProgress >= 1) {
+          setPullActive(true);
+          setTimeout(() => setPullActive(false), 2500);
+          try {
+            if (gistLoadRef.current) gistLoadRef.current();
+          } catch (e) {
+          }
+        }
+        setPullProgress(0);
+      };
+      window.addEventListener("touchstart", onStart, { passive: true });
+      window.addEventListener("touchmove", onMove, { passive: true });
+      window.addEventListener("touchend", onEnd);
+      return () => {
+        window.removeEventListener("touchstart", onStart);
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("touchend", onEnd);
+      };
+    }, [pullProgress]);
     const [installPrompt, setInstallPrompt] = useState(null);
     const [showInstall, setShowInstall] = useState(false);
     useEffect(() => {
