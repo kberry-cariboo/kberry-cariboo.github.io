@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v77';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v78';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -3212,10 +3212,8 @@ function waitForReact(){
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: debtExpanded ? 16 : 0,
-          flexWrap: "wrap",
-          gap: 8
-        } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+          marginBottom: debtExpanded ? 16 : 0
+        } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: restoreHidden,
@@ -3234,7 +3232,7 @@ function waitForReact(){
           "Restore ",
           hiddenCount,
           " hidden"
-        ), /* @__PURE__ */ React.createElement(
+        ), debtExpanded && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: addManualRow,
@@ -3263,7 +3261,8 @@ function waitForReact(){
               border: "1px solid var(--border)",
               cursor: "pointer",
               background: "transparent",
-              color: "var(--textMid)"
+              color: "var(--textMid)",
+              flexShrink: 0
             }
           },
           debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
