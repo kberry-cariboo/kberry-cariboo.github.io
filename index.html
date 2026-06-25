@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v87';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v88';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1664,112 +1664,6 @@ function waitForReact(){
       color: "var(--textMid)"
     } }, "Cancel")));
   }
-  function InlineEditor({ ev, onSave, onCancel, onReset }) {
-    const [amount, setAmount] = useState(String(ev.amount));
-    const [desc, setDesc] = useState(ev.desc);
-    const [notes, setNotes] = useState(ev.notes || "");
-    const [err, setErr] = useState({});
-    const inp = (hasErr) => ({
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      padding: "9px 12px",
-      border: `1.5px solid ${hasErr ? "var(--red)" : "var(--border)"}`,
-      borderRadius: 8,
-      background: hasErr ? "#FFF8F8" : "var(--inputBg)",
-      color: "var(--text)",
-      outline: "none",
-      width: "100%",
-      boxSizing: "border-box"
-    });
-    const lbl = {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 700,
-      color: "var(--textMid)",
-      marginBottom: 6,
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      display: "block"
-    };
-    const validate = () => {
-      const e = {};
-      const a = parseFloat(amount);
-      if (isNaN(a) || a < 0) e.amount = "Enter a valid amount ($0.00 or more).";
-      if (a === 0 && !notes.trim()) e.notes = "Add a note when amount is $0.00.";
-      setErr(e);
-      return !Object.keys(e).length;
-    };
-    useEffect(() => {
-      const h = (e) => {
-        if (e.key === "Escape") onCancel();
-      };
-      window.addEventListener("keydown", h);
-      return () => window.removeEventListener("keydown", h);
-    }, [onCancel]);
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
-        onClick: (e) => {
-          e.stopPropagation();
-          if (e.target === e.currentTarget) onCancel();
-        }
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: {
-        background: "var(--bgCard)",
-        borderRadius: 14,
-        padding: "24px 24px 20px",
-        width: "min(460px,calc(100vw - 32px))",
-        maxHeight: "90vh",
-        overflowY: "auto",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "Edit Entry \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--amber)", marginBottom: 18 } }, "\u26A1 This edit applies to this date only. The recurring schedule stays intact."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Description"), /* @__PURE__ */ React.createElement("input", { autoFocus: true, style: inp(false), value: desc, onChange: (e) => setDesc(e.target.value) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount $"), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "number",
-          inputMode: "decimal",
-          step: "0.01",
-          style: inp(err.amount),
-          value: amount,
-          onChange: (e) => {
-            setAmount(e.target.value);
-            setErr({});
-          },
-          onKeyDown: (e) => {
-            if (e.key === "Enter" && validate()) onSave({ desc, amount: parseFloat(amount), notes });
-          }
-        }
-      ), /* @__PURE__ */ React.createElement(FieldError, { msg: err.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          style: inp(!!err.notes),
-          value: notes,
-          onChange: (e) => {
-            setNotes(e.target.value);
-            setErr((p) => __spreadProps(__spreadValues({}, p), { notes: void 0 }));
-          }
-        }
-      ), /* @__PURE__ */ React.createElement(FieldError, { msg: err.notes }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: onReset,
-          style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", borderRadius: 8, border: "1px solid var(--amber)", cursor: "pointer", background: "transparent", color: "var(--amber)", marginRight: "auto" },
-          title: "Remove this date's custom edit and restore the scheduled values"
-        },
-        "\u21BA Reset to schedule"
-      ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 20px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            if (validate()) onSave({ desc, amount: parseFloat(amount), notes });
-          },
-          style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "9px 24px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--navy)", color: "#fff" }
-        },
-        "Save"
-      )))
-    );
-  }
   function CSVImporter({ categories, onImport, onClose }) {
     const [rows, setRows] = useState([]);
     const [headers, setHeaders] = useState([]);
@@ -2498,10 +2392,26 @@ function waitForReact(){
       }
     ));
   }
-  function BudgetView({ flow, openBal, setOverride, clearOverride, categories, setEntries, addEntry, view, setView, monthIdx, setMonthIdx, alertThreshold = 1500, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
+  function BudgetView({ flow, openBal, entries = [], setOverride, clearOverride, categories, setEntries, addEntry, view, setView, monthIdx, setMonthIdx, alertThreshold = 1500, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
+    const [showEntryForm, setShowEntryForm] = useState(false);
+    const [editingEntry, setEditingEntry] = useState(null);
+    const openEntryEdit = (ev) => {
+      const orig = entries.find((e) => e.id === ev.entryId);
+      if (orig) {
+        setEditingEntry(orig);
+        setShowEntryForm(true);
+      }
+    };
+    const handleEntrySave = (data) => {
+      if (editingEntry) setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? __spreadProps(__spreadValues({}, data), { id: editingEntry.id }) : e));
+      else if (addEntry) addEntry(data);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      setShowEntryForm(false);
+      setEditingEntry(null);
+    };
     const [budgetOpen, setBudgetOpen] = useLS("cf_budgetOpen", true);
     const dragRef = useRef(null);
     const justDraggedRef = useRef(false);
@@ -2592,7 +2502,6 @@ function waitForReact(){
       setShowAddForm(false);
     };
     const renderEventRow = (ev, i) => {
-      const editing = editingId === ev.id;
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
       const isDragging = draggingId === ev.id;
@@ -2603,8 +2512,8 @@ function waitForReact(){
           key: ev.id,
           "data-day": ev.day,
           onClick: () => {
-            if (justDraggedRef.current || editing) return;
-            setEditingId(ev.id);
+            if (justDraggedRef.current) return;
+            openEntryEdit(ev);
           },
           onContextMenu: (e) => {
             e.preventDefault();
@@ -2617,13 +2526,6 @@ function waitForReact(){
             opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
         },
-        editing && /* @__PURE__ */ React.createElement("td", { style: { padding: 0, border: 0 } }, /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
-          setOverride(ev.id, p);
-          setEditingId(null);
-        }, onReset: () => {
-          clearOverride && clearOverride(ev.id);
-          setEditingId(null);
-        }, onCancel: () => setEditingId(null) })),
         /* @__PURE__ */ React.createElement("td", { style: {
           padding: "8px 4px 8px 9px",
           width: 28,
@@ -2895,7 +2797,36 @@ function waitForReact(){
         background: "var(--navy)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true))))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8, paddingLeft: 2 } }, "\u{1F4A1} Drag the day number up or down to reschedule an entry within this month"), bvaCtxMenu && /* @__PURE__ */ React.createElement(
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true))))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8, paddingLeft: 2 } }, "\u{1F4A1} Drag the day number up or down to reschedule an entry within this month"), showEntryForm && /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "modal-overlay",
+          style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
+          onClick: (e) => {
+            e.stopPropagation();
+            if (e.target === e.currentTarget) {
+              setShowEntryForm(false);
+              setEditingEntry(null);
+            }
+          }
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { background: "var(--bgCard)", borderRadius: 14, padding: "24px 24px 20px", width: "min(680px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, "Edit Entry"), /* @__PURE__ */ React.createElement(
+          EntryForm,
+          {
+            initial: editingEntry,
+            onSave: handleEntrySave,
+            onCancel: () => {
+              setShowEntryForm(false);
+              setEditingEntry(null);
+            },
+            categories,
+            templates,
+            onSaveTemplate: (t) => {
+              setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t]);
+            }
+          }
+        ))
+      ), bvaCtxMenu && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
           x: bvaCtxMenu.x,
@@ -3004,7 +2935,7 @@ function waitForReact(){
             },
             "---",
             { icon: "\u270E", label: "Edit this entry", action: () => {
-              setEditingId(budgetCtx.ev.id);
+              openEntryEdit(budgetCtx.ev);
             } },
             {
               icon: "\u21BA",
@@ -3039,16 +2970,10 @@ function waitForReact(){
         justifyContent: "center",
         padding: "12px 8px",
         borderRight: "1px solid var(--border)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, editingId === ev.id && /* @__PURE__ */ React.createElement(InlineEditor, { ev, onSave: (p) => {
-        setOverride(ev.id, p);
-        setEditingId(null);
-      }, onReset: () => {
-        clearOverride && clearOverride(ev.id);
-        setEditingId(null);
-      }, onCancel: () => setEditingId(null) }), /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
         "div",
         {
-          onClick: () => setEditingId(ev.id),
+          onClick: () => openEntryEdit(ev),
           onContextMenu: (e) => {
             e.preventDefault();
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
@@ -7952,6 +7877,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       {
         flow: activeFlow,
         openBal: activeOpenBal,
+        entries,
         setOverride,
         clearOverride,
         categories,
