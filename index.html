@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v86';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v87';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2563,6 +2563,7 @@ function waitForReact(){
     }, [gq]);
     const [debtData, setDebtData] = useLS("cf_debt_data", {});
     const [budgetCtx, setBudgetCtx] = useState(null);
+    const [debtCtx, setDebtCtx] = useState(null);
     const [debtExpanded, setDebtExpanded] = useState(false);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
@@ -3002,7 +3003,7 @@ function waitForReact(){
               }
             },
             "---",
-            { icon: "\u270E", label: "Edit this date", action: () => {
+            { icon: "\u270E", label: "Edit this entry", action: () => {
               setEditingId(budgetCtx.ev.id);
             } },
             {
@@ -3339,7 +3340,24 @@ function waitForReact(){
           });
         };
         const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-        return /* @__PURE__ */ React.createElement(React.Fragment, null, showDebtForm && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement(React.Fragment, null, debtCtx && /* @__PURE__ */ React.createElement(
+          ContextMenu,
+          {
+            x: debtCtx.x,
+            y: debtCtx.y,
+            onClose: () => setDebtCtx(null),
+            items: [
+              { icon: "\u270E", label: "Edit entry", action: () => editDebtRow(debtCtx.key, debtCtx.label) },
+              "---",
+              {
+                icon: debtCtx.isAuto ? "\u{1F441}" : "\u2715",
+                label: debtCtx.isAuto ? "Hide from tracker" : "Remove entry",
+                action: () => removeRow(debtCtx.key, debtCtx.isAuto),
+                danger: true
+              }
+            ]
+          }
+        ), showDebtForm && /* @__PURE__ */ React.createElement(
           "div",
           {
             className: "modal-overlay",
@@ -3574,83 +3592,37 @@ function waitForReact(){
           textAlign: "center",
           padding: "20px 0"
         } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add Row"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
-          var _a2, _b2, _c, _d, _e;
+          var _a2, _b2, _c, _d;
           const bal = parseFloat((_a2 = debtData[key]) == null ? void 0 : _a2.balance) || 0;
           const rate = parseFloat((_b2 = debtData[key]) == null ? void 0 : _b2.rate) || 0;
           const pmt = isAuto ? monthlyPmt : parseFloat((_c = debtData[key]) == null ? void 0 : _c.payment) || 0;
           const { totalInterest, payoffDate } = calcPayoff(bal, rate, pmt);
-          return /* @__PURE__ */ React.createElement("div", { key, style: {
-            padding: "12px 14px",
-            background: "var(--bg)",
-            borderRadius: 8,
-            border: "1px solid var(--border)"
-          } }, /* @__PURE__ */ React.createElement("div", { style: {
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 10,
-            flexWrap: "wrap"
-          } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, isAuto ? (
-            // Auto row: show label as read-only
-            /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label), /* @__PURE__ */ React.createElement(
-              "button",
-              {
-                onClick: () => editDebtRow(key, label),
-                style: {
-                  fontFamily: "Inter,sans-serif",
-                  fontSize: 11,
-                  padding: "2px 8px",
-                  borderRadius: 4,
-                  border: "1px solid var(--border)",
-                  cursor: "pointer",
-                  background: "transparent",
-                  color: "var(--textMid)"
-                }
-              },
-              "Edit"
-            ))
-          ) : (
-            // Manual row: label is editable
-            /* @__PURE__ */ React.createElement(
-              "input",
-              {
-                placeholder: "Debt name e.g. Car Loan",
-                value: ((_d = debtData[key]) == null ? void 0 : _d.label) || "",
-                onChange: (e) => setDebtData((p) => __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key]), { label: e.target.value }) })),
-                style: {
-                  fontFamily: "Inter,sans-serif",
-                  fontSize: 13,
-                  padding: "4px 8px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 6,
-                  background: "var(--inputBg)",
-                  color: "var(--text)",
-                  outline: "none",
-                  width: "100%"
-                }
-              }
-            )
-          ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest")), /* @__PURE__ */ React.createElement(
-            "button",
+          return /* @__PURE__ */ React.createElement(
+            "div",
             {
-              onClick: () => removeRow(key, isAuto),
-              title: isAuto ? "Hide from tracker" : "Remove row",
-              "aria-label": isAuto ? "Hide row" : "Remove row",
+              key,
+              onContextMenu: (e) => {
+                e.preventDefault();
+                setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
+              },
               style: {
-                fontFamily: "Inter,sans-serif",
-                fontSize: 12,
-                padding: "4px 8px",
-                borderRadius: 5,
+                padding: "12px 14px",
+                background: "var(--bg)",
+                borderRadius: 8,
                 border: "1px solid var(--border)",
-                cursor: "pointer",
-                background: "transparent",
-                color: "var(--red)",
-                lineHeight: 1,
-                flexShrink: 0
+                cursor: "context-menu"
               }
             },
-            "\u2715"
-          ))), (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" } }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Rate"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, rate, "%")), !isAuto && ((_e = debtData[key]) == null ? void 0 : _e.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Payment"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(parseFloat(debtData[key].payment)), "/mo"))), bal === 0 && rate === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, fontStyle: "italic" } }, "Tap Edit to enter balance and interest rate for payoff tracking."));
+            /* @__PURE__ */ React.createElement("div", { style: {
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 10,
+              flexWrap: "wrap"
+            } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 1, marginBottom: 2 } }, "Right-click to edit or remove."), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))),
+            (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" } }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Rate"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Payment"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(parseFloat(debtData[key].payment)), "/mo"))),
+            bal === 0 && rate === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, fontStyle: "italic" } }, "Tap Edit to enter balance and interest rate for payoff tracking.")
+          );
         })))));
       })()
     );
