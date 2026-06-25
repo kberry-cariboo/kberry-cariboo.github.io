@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v79';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v80';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2814,8 +2814,12 @@ function waitForReact(){
             fontFamily: "'IBM Plex Mono',monospace",
             fontSize: 13,
             fontWeight: 600,
-            color: over ? color : "var(--text)"
-          } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color } }, "\u25B2", fmt(diff)), /* @__PURE__ */ React.createElement(
+            color: over ? color : "var(--text)",
+            whiteSpace: "nowrap",
+            flexShrink: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target", style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, "\u25B2", fmt(diff)), /* @__PURE__ */ React.createElement(
             "input",
             {
               key: `${bKey}-${cat}`,
@@ -2839,7 +2843,7 @@ function waitForReact(){
               },
               style: {
                 fontFamily: "IBM Plex Mono,monospace",
-                fontSize: 12,
+                fontSize: 13,
                 width: 84,
                 padding: "5px 6px",
                 border: "1px solid var(--border)",
@@ -6989,6 +6993,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           /* BvA row \u2014 keep chip + amounts on one line on mobile */
           .bva-row{flex-wrap:nowrap!important;}
           .bva-amounts{flex-wrap:nowrap!important;}
+          /* Hide / $target on mobile \u2014 it's already visible in the input field */
+          .bva-target{display:none!important;}
           /* Forecast: description cell \u2014 truncate on mobile */
           .forecast-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px!important;}
           /* Register filters: stack on phone */
