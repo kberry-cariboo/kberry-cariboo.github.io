@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v92';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v93';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2077,7 +2077,7 @@ function waitForReact(){
       const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-desc-cell", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 0 }, arcText) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
@@ -3031,7 +3031,12 @@ function waitForReact(){
           fontWeight: 700,
           letterSpacing: "0.12em",
           textTransform: "uppercase",
-          color: "var(--textLt)"
+          color: "var(--textLt)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          flex: 1,
+          minWidth: 0
         } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, budgetOpen && /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -3043,16 +3048,16 @@ function waitForReact(){
               fontFamily: "Inter,sans-serif",
               fontSize: 11,
               fontWeight: 700,
-              padding: "6px 10px",
+              padding: "6px 12px",
               borderRadius: 7,
               border: "none",
               cursor: "pointer",
               background: "var(--navy)",
-              color: "#fff"
+              color: "#fff",
+              whiteSpace: "nowrap"
             }
           },
-          /* @__PURE__ */ React.createElement("span", { className: "bva-add-full" }, "+ Add Budget Line"),
-          /* @__PURE__ */ React.createElement("span", { className: "bva-add-short", style: { display: "none" } }, "+ Add")
+          "+ Add"
         ), /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -3480,12 +3485,13 @@ function waitForReact(){
               fontFamily: "Inter,sans-serif",
               fontSize: 11,
               fontWeight: 700,
-              padding: "6px 14px",
+              padding: "6px 12px",
               borderRadius: 7,
               border: "none",
               cursor: "pointer",
               background: "var(--navy)",
-              color: "#fff"
+              color: "#fff",
+              whiteSpace: "nowrap"
             }
           },
           "+ Add"
@@ -7172,9 +7178,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
             max-height:92vh!important;overflow-y:auto!important;
           }
-          /* BvA Add button: short label on mobile */
-          .bva-add-full{display:none!important;}
-          .bva-add-short{display:inline!important;}
+
           /* Entry form: stack 3-col row on tablet */
           .entry-form-row2{grid-template-columns:1fr!important;}
           /* Register: horizontal scroll on tablet \u2014 same column order as desktop */
@@ -7262,9 +7266,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .reg-col-cat,.reg-col-sched,.reg-col-until,.reg-col-notes{display:none!important;}
         }
 
-        /* BvA Add button text: full on desktop */
-        .bva-add-full{display:inline;}
-        .bva-add-short{display:none;}
+
         /* \u2500\u2500 Bottom-sheet modals on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes spin{to{transform:rotate(360deg)}}
@@ -7276,6 +7278,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
 
         /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        /* Register desc: fill available space, truncate */
+        .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         /* Budget totals row sticky */
         .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);}
 
