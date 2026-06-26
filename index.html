@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v94';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v95';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2204,7 +2204,7 @@ function waitForReact(){
       cursor: "pointer",
       background: filter === f2 ? "var(--navy)" : "var(--border)",
       color: filter === f2 ? "#fff" : "var(--textMid)"
-    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses")))), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 16, gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses")))), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, /* @__PURE__ */ React.createElement(
       FilterPill,
       {
         label: "Category",
@@ -2535,12 +2535,18 @@ function waitForReact(){
     const handleEntrySave = (data) => {
       if (editingEntry) {
         let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
-        if (editingEntry.monthlyAmounts && editingEntry._editMonth !== void 0) {
-          finalData = __spreadProps(__spreadValues({}, finalData), {
-            monthlyAmounts: __spreadProps(__spreadValues({}, editingEntry.monthlyAmounts), { [editingEntry._editMonth]: data.amount })
-          });
-        }
+        const editMonth = editingEntry._editMonth;
         delete finalData._editMonth;
+        if (editMonth !== void 0) {
+          if (editingEntry.monthlyAmounts && Object.keys(editingEntry.monthlyAmounts).length > 0) {
+            finalData = __spreadProps(__spreadValues({}, finalData), {
+              monthlyAmounts: __spreadProps(__spreadValues({}, editingEntry.monthlyAmounts), { [editMonth]: data.amount })
+            });
+          }
+          if (clearOverride && flow) {
+            flow.filter((ev) => ev.entryId === editingEntry.id && ev.month === editMonth).forEach((ev) => clearOverride(ev.id));
+          }
+        }
         setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
@@ -7425,7 +7431,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
 
         /* Keyboard shortcut hint in search placeholder */
         #global-search::placeholder{color:var(--textLt);}
-          .reg-filter-row{flex-direction:column!important;align-items:stretch!important;}
+          .reg-filter-row{flex-wrap:wrap!important;gap:6px!important;}
           /* Forecast confidence column: hide on phone to save width */
           .forecast-conf-col{display:none!important;}
           /* Debt tracker: single column inputs */
