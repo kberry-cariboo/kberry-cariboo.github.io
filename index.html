@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v96';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v97';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2515,38 +2515,194 @@ function waitForReact(){
       }
     ));
   }
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset }) {
+    const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
+    const [amount, setAmount] = useState(String(ev.amount));
+    const [notes, setNotes] = useState(ev.notes || (orig.notes || ""));
+    const [err, setErr] = useState("");
+    const inp = (isErr) => ({
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      padding: "9px 12px",
+      border: `1.5px solid ${isErr ? "var(--red)" : "var(--border)"}`,
+      borderRadius: 8,
+      background: isErr ? "#FFF8F8" : "var(--inputBg)",
+      color: "var(--text)",
+      outline: "none",
+      width: "100%",
+      boxSizing: "border-box"
+    });
+    const lbl = {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 700,
+      color: "var(--textMid)",
+      marginBottom: 6,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      display: "block"
+    };
+    const save = () => {
+      const a = parseFloat(amount);
+      if (isNaN(a) || a < 0) {
+        setErr("Enter a valid amount.");
+        return;
+      }
+      setErr("");
+      onSave({ desc, amount: a, notes });
+    };
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === "Escape") onCancel();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [onCancel]);
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
+        onClick: (e) => {
+          e.stopPropagation();
+          if (e.target === e.currentTarget) onCancel();
+        }
+      },
+      /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "modal-card",
+          onClick: (e) => e.stopPropagation(),
+          style: {
+            background: "var(--bgCard)",
+            borderRadius: 14,
+            padding: "24px 24px 20px",
+            width: "min(460px,calc(100vw - 32px))",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+          }
+        },
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Edit \u2014 ", MONTHS_SHORT[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontSize: 18,
+          color: "var(--textLt)",
+          lineHeight: 1,
+          padding: "0 0 0 8px"
+        } }, "\u2715")),
+        /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--amber)", marginBottom: 18 } }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Description"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            autoFocus: true,
+            style: inp(false),
+            value: desc,
+            onChange: (e) => setDesc(e.target.value),
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount $"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            type: "number",
+            inputMode: "decimal",
+            step: "0.01",
+            style: inp(!!err),
+            value: amount,
+            onChange: (e) => {
+              setAmount(e.target.value);
+              setErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            style: inp(false),
+            value: notes,
+            onChange: (e) => setNotes(e.target.value),
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        ))),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: onReset,
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 13,
+              padding: "9px 16px",
+              borderRadius: 8,
+              border: "1px solid var(--amber)",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--amber)",
+              marginRight: "auto"
+            }
+          },
+          "\u21BA Reset entry"
+        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          padding: "9px 20px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)"
+        } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          fontWeight: 700,
+          padding: "9px 24px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          background: "var(--navy)",
+          color: "#fff"
+        } }, "Save"))
+      )
+    );
+  }
   function BudgetView({ flow, openBal, entries = [], setOverride, clearOverride, categories, setEntries, addEntry, view, setView, monthIdx, setMonthIdx, alertThreshold = 1500, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
+    const [showOccurrenceForm, setShowOccurrenceForm] = useState(false);
+    const [editingEv, setEditingEv] = useState(null);
     const [showEntryForm, setShowEntryForm] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [editingInitial, setEditingInitial] = useState(null);
+    const openOccurrenceEdit = (ev) => {
+      setEditingEv(ev);
+      setShowOccurrenceForm(true);
+    };
+    const handleOccurrenceSave = (data) => {
+      if (editingEv && setOverride) {
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, notes: data.notes || "" });
+      }
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+    };
     const openEntryEdit = (ev) => {
       const orig = entries.find((e) => e.id === ev.entryId);
       if (!orig) return;
-      const hasMonthlyAmts = orig.monthlyAmounts && Object.keys(orig.monthlyAmounts).length > 0;
-      const monthAmt = hasMonthlyAmts && orig.monthlyAmounts[ev.month] !== void 0 ? orig.monthlyAmounts[ev.month] : null;
-      const entryForEdit = monthAmt !== null ? __spreadProps(__spreadValues({}, orig), { amount: monthAmt, _editMonth: ev.month }) : __spreadProps(__spreadValues({}, orig), { _editMonth: ev.month });
       setEditingEntry(__spreadProps(__spreadValues({}, orig), { _editMonth: ev.month }));
+      setEditingInitial(orig);
       setShowEntryForm(true);
-      setEditingInitial(entryForEdit);
     };
     const handleEntrySave = (data) => {
       if (editingEntry) {
         let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
-        const editMonth = editingEntry._editMonth;
         delete finalData._editMonth;
-        if (editMonth !== void 0) {
-          if (editingEntry.monthlyAmounts && Object.keys(editingEntry.monthlyAmounts).length > 0) {
-            finalData = __spreadProps(__spreadValues({}, finalData), {
-              monthlyAmounts: __spreadProps(__spreadValues({}, editingEntry.monthlyAmounts), { [editMonth]: data.amount })
-            });
-          }
-          if (clearOverride && flow) {
-            flow.filter((ev) => ev.entryId === editingEntry.id && ev.month === editMonth).forEach((ev) => clearOverride(ev.id));
-          }
-        }
         setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
@@ -2655,7 +2811,7 @@ function waitForReact(){
           "data-day": ev.day,
           onClick: () => {
             if (justDraggedRef.current) return;
-            openEntryEdit(ev);
+            openOccurrenceEdit(ev);
           },
           onContextMenu: (e) => {
             e.preventDefault();
@@ -2968,6 +3124,22 @@ function waitForReact(){
             }
           }
         ))
+      ), showOccurrenceForm && editingEv && /* @__PURE__ */ React.createElement(
+        OccurrenceEditModal,
+        {
+          ev: editingEv,
+          orig: entries.find((e) => e.id === editingEv.entryId) || {},
+          onSave: handleOccurrenceSave,
+          onCancel: () => {
+            setShowOccurrenceForm(false);
+            setEditingEv(null);
+          },
+          onReset: clearOverride ? () => {
+            clearOverride(editingEv.id);
+            setShowOccurrenceForm(false);
+            setEditingEv(null);
+          } : null
+        }
       ), bvaCtxMenu && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
@@ -3110,7 +3282,7 @@ function waitForReact(){
       } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
         "div",
         {
-          onClick: () => openEntryEdit(ev),
+          onClick: () => openOccurrenceEdit(ev),
           onContextMenu: (e) => {
             e.preventDefault();
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
