@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v93';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v94';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1945,6 +1945,102 @@ function waitForReact(){
       )
     );
   }
+  function FilterPill({ label, options, selected, onChange }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    useEffect(() => {
+      const h = (e) => {
+        if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      };
+      window.addEventListener("mousedown", h);
+      return () => window.removeEventListener("mousedown", h);
+    }, []);
+    const allSel = selected.length === 0;
+    const label2 = allSel ? label : `${label} (${selected.length})`;
+    return /* @__PURE__ */ React.createElement("div", { ref, style: { position: "relative", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setOpen((v) => !v),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          padding: "6px 14px",
+          border: "1.5px solid " + (allSel ? "var(--border)" : "var(--navy)"),
+          borderRadius: 20,
+          background: allSel ? "var(--bgCard)" : "rgba(28,43,58,0.07)",
+          color: allSel ? "var(--text)" : "var(--navy)",
+          outline: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          whiteSpace: "nowrap",
+          fontWeight: allSel ? 400 : 600
+        }
+      },
+      label2,
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: 0.5 } }, open ? "\u25B2" : "\u25BC")
+    ), open && /* @__PURE__ */ React.createElement("div", { style: {
+      position: "absolute",
+      top: "calc(100% + 6px)",
+      left: 0,
+      zIndex: 500,
+      background: "var(--bgCard)",
+      border: "1px solid var(--border)",
+      borderRadius: 10,
+      boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+      minWidth: 180,
+      maxHeight: 260,
+      overflowY: "auto",
+      padding: "6px 0"
+    } }, /* @__PURE__ */ React.createElement(
+      "label",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          cursor: "pointer",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--text)",
+          borderBottom: "1px solid var(--border)",
+          marginBottom: 4
+        },
+        onClick: () => onChange([])
+      },
+      /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => {
+      }, style: { cursor: "pointer", accentColor: "var(--navy)" } }),
+      "All ",
+      label,
+      "s"
+    ), options.map((o) => {
+      const sel = selected.includes(o.value);
+      return /* @__PURE__ */ React.createElement(
+        "label",
+        {
+          key: o.value,
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "7px 14px",
+            cursor: "pointer",
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            color: "var(--text)",
+            background: sel ? "rgba(28,43,58,0.05)" : "transparent"
+          },
+          onClick: () => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value])
+        },
+        /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: sel, onChange: () => {
+        }, style: { cursor: "pointer", accentColor: "var(--navy)" } }),
+        o.label
+      );
+    })));
+  }
   function RegisterView({ entries, setEntries, addEntry, categories, setCategories = () => {
   }, activeYear, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
@@ -1952,10 +2048,10 @@ function waitForReact(){
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [filter, setFilter] = useState("all");
-    const [filterCat, setFilterCat] = useState("all");
+    const [filterCats, setFilterCats] = useState([]);
     const [searchAllYears, setSearchAllYears] = useState(false);
-    const [filterSched, setFilterSched] = useState("all");
-    const [filterStatus, setFilterStatus] = useState("all");
+    const [filterScheds, setFilterScheds] = useState([]);
+    const [filterStatus, setFilterStatus] = useState([]);
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
     const toggleSort = (col) => {
@@ -2018,10 +2114,10 @@ function waitForReact(){
     };
     const yearScoped = !searchAllYears;
     const visibleCols = colOrder.filter((c) => c !== "actions");
-    const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCat === "all" || e.category === filterCat).filter((e) => filterSched === "all" || (filterSched === "onetime" ? !e.repeats : e.repeats)).filter((e) => {
-      if (filterStatus === "active") return !isArchived(e, activeYear);
-      if (filterStatus === "historical") return isArchived(e, activeYear);
-      return true;
+    const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
+      if (filterStatus.length === 0) return true;
+      const arc = isArchived(e, activeYear);
+      return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
     }).filter((e) => {
       const q = (search || globalSearch || "").toLowerCase();
       return !q || e.desc.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.notes || "").toLowerCase().includes(q);
@@ -2108,65 +2204,30 @@ function waitForReact(){
       cursor: "pointer",
       background: filter === f2 ? "var(--navy)" : "var(--border)",
       color: filter === f2 ? "#fff" : "var(--textMid)"
-    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses")))), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "flex-start", marginBottom: 16, gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
-      "select",
+    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses")))), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 16, gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+      FilterPill,
       {
-        value: filterCat,
-        onChange: (e) => setFilterCat(e.target.value),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          padding: "6px 12px",
-          border: "1px solid var(--border)",
-          borderRadius: 20,
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          outline: "none",
-          cursor: "pointer"
-        }
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "all" }, "All Categories"),
-      [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+        label: "Category",
+        selected: filterCats,
+        onChange: setFilterCats,
+        options: [...categories].sort((a, b) => a.localeCompare(b)).map((c) => ({ value: c, label: c }))
+      }
     ), /* @__PURE__ */ React.createElement(
-      "select",
+      FilterPill,
       {
-        value: filterSched,
-        onChange: (e) => setFilterSched(e.target.value),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          padding: "6px 12px",
-          border: "1px solid var(--border)",
-          borderRadius: 20,
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          outline: "none",
-          cursor: "pointer"
-        }
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "all" }, "All Schedules"),
-      /* @__PURE__ */ React.createElement("option", { value: "recurring" }, "Recurring"),
-      /* @__PURE__ */ React.createElement("option", { value: "onetime" }, "One-time")
+        label: "Schedule",
+        selected: filterScheds,
+        onChange: setFilterScheds,
+        options: [{ value: "recurring", label: "Recurring" }, { value: "onetime", label: "One-time" }]
+      }
     ), /* @__PURE__ */ React.createElement(
-      "select",
+      FilterPill,
       {
-        value: filterStatus,
-        onChange: (e) => setFilterStatus(e.target.value),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          padding: "6px 12px",
-          border: "1px solid var(--border)",
-          borderRadius: 20,
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          outline: "none",
-          cursor: "pointer"
-        }
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "all" }, "All Status"),
-      /* @__PURE__ */ React.createElement("option", { value: "active" }, "Active only"),
-      /* @__PURE__ */ React.createElement("option", { value: "historical" }, "Historical only")
+        label: "Status",
+        selected: filterStatus,
+        onChange: setFilterStatus,
+        options: [{ value: "active", label: "Active" }, { value: "historical", label: "Historical" }]
+      }
     ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "From"), /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -2331,7 +2392,7 @@ function waitForReact(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -2368,7 +2429,68 @@ function waitForReact(){
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status."))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
+      const archived = isArchived(e, activeYear);
+      const arcStyle = {
+        color: archived ? "var(--textLt)" : "var(--text)",
+        textDecoration: archived ? "line-through" : "none"
+      };
+      const isInc = e.type === "income";
+      return /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          key: e.id,
+          onContextMenu: (ev) => openCtx(ev, e),
+          style: {
+            padding: "12px 14px",
+            borderBottom: "1px solid var(--border)",
+            background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
+            cursor: "context-menu"
+          }
+        },
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: __spreadValues({
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }, arcStyle) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          fontWeight: 600,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--red)",
+          textDecoration: archived ? "line-through" : "none"
+        } }, e.monthlyAmounts ? "Variable" : fmt(e.amount))),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 10,
+          fontWeight: 700,
+          padding: "2px 7px",
+          borderRadius: 4,
+          textTransform: "uppercase",
+          background: isInc ? "#E8F8F1" : "var(--redLt)",
+          color: isInc ? "var(--greenDk)" : "var(--red)"
+        } }, e.type), e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories }), e.startDate && /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          color: "var(--textMid)"
+        } }, e.startDate), e.repeats && /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          color: "var(--textMid)"
+        } }, recurLabel(e)), e.notes && /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          color: "var(--textLt)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: 120
+        } }, e.notes))
+      );
+    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -2399,19 +2521,32 @@ function waitForReact(){
     const [editingId, setEditingId] = useState(null);
     const [showEntryForm, setShowEntryForm] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
+    const [editingInitial, setEditingInitial] = useState(null);
     const openEntryEdit = (ev) => {
       const orig = entries.find((e) => e.id === ev.entryId);
-      if (orig) {
-        setEditingEntry(orig);
-        setShowEntryForm(true);
-      }
+      if (!orig) return;
+      const hasMonthlyAmts = orig.monthlyAmounts && Object.keys(orig.monthlyAmounts).length > 0;
+      const monthAmt = hasMonthlyAmts && orig.monthlyAmounts[ev.month] !== void 0 ? orig.monthlyAmounts[ev.month] : null;
+      const entryForEdit = monthAmt !== null ? __spreadProps(__spreadValues({}, orig), { amount: monthAmt, _editMonth: ev.month }) : __spreadProps(__spreadValues({}, orig), { _editMonth: ev.month });
+      setEditingEntry(__spreadProps(__spreadValues({}, orig), { _editMonth: ev.month }));
+      setShowEntryForm(true);
+      setEditingInitial(entryForEdit);
     };
     const handleEntrySave = (data) => {
-      if (editingEntry) setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? __spreadProps(__spreadValues({}, data), { id: editingEntry.id }) : e));
-      else if (addEntry) addEntry(data);
+      if (editingEntry) {
+        let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
+        if (editingEntry.monthlyAmounts && editingEntry._editMonth !== void 0) {
+          finalData = __spreadProps(__spreadValues({}, finalData), {
+            monthlyAmounts: __spreadProps(__spreadValues({}, editingEntry.monthlyAmounts), { [editingEntry._editMonth]: data.amount })
+          });
+        }
+        delete finalData._editMonth;
+        setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
+      } else if (addEntry) addEntry(data);
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
       setShowEntryForm(false);
       setEditingEntry(null);
+      setEditingInitial(null);
     };
     const [budgetOpen, setBudgetOpen] = useLS("cf_budgetOpen", true);
     const dragRef = useRef(null);
@@ -2814,7 +2949,7 @@ function waitForReact(){
         /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { background: "var(--bgCard)", borderRadius: 14, padding: "24px 24px 20px", width: "min(680px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, "Edit Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
           {
-            initial: editingEntry,
+            initial: editingInitial || editingEntry,
             onSave: handleEntrySave,
             onCancel: () => {
               setShowEntryForm(false);
@@ -7181,11 +7316,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
 
           /* Entry form: stack 3-col row on tablet */
           .entry-form-row2{grid-template-columns:1fr!important;}
-          /* Register: horizontal scroll on tablet \u2014 same column order as desktop */
-          .reg-scroll-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
-          .reg-table{min-width:480px!important;}
-          /* Notes: visible but compact at 768px */
-          .reg-col-notes{max-width:80px!important;font-size:11px!important;}
+          /* Register: switch to cards on mobile \u2014 table hidden */
+          .reg-cards{display:block!important;}
+          .reg-table-wrap{display:none!important;}
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
           .logo-area img{height:23px!important;}
@@ -7278,6 +7411,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
 
         /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        /* Register: table on desktop, cards on mobile */
+        .reg-cards{display:none;}
+        .reg-table-wrap{display:block;}
         /* Register desc: fill available space, truncate */
         .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         /* Budget totals row sticky */
