@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v95';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v96';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2044,14 +2044,14 @@ function waitForReact(){
   function RegisterView({ entries, setEntries, addEntry, categories, setCategories = () => {
   }, activeYear, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
+  }, filter = "all", setFilter = () => {
+  }, filterCats = [], setFilterCats = () => {
+  }, filterScheds = [], setFilterScheds = () => {
+  }, filterStatus = [], setFilterStatus = () => {
   } }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [filter, setFilter] = useState("all");
-    const [filterCats, setFilterCats] = useState([]);
     const [searchAllYears, setSearchAllYears] = useState(false);
-    const [filterScheds, setFilterScheds] = useState([]);
-    const [filterStatus, setFilterStatus] = useState([]);
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
     const toggleSort = (col) => {
@@ -6194,6 +6194,18 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     colOrder = [],
     setColOrder = () => {
     },
+    regFilter = "all",
+    setRegFilter = () => {
+    },
+    regFilterCats = [],
+    setRegFilterCats = () => {
+    },
+    regFilterScheds = [],
+    setRegFilterScheds = () => {
+    },
+    regFilterStatus = [],
+    setRegFilterStatus = () => {
+    },
     aiApiKey = "",
     setAiApiKey,
     users = [],
@@ -6258,6 +6270,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           aiReports,
           users,
           colOrder,
+          regFilter,
+          regFilterCats,
+          regFilterScheds,
+          regFilterStatus,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -6303,6 +6319,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.darkMode != null) setDarkMode(d.darkMode);
         if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
         if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
+        if (d.regFilter) setRegFilter(d.regFilter);
+        if (Array.isArray(d.regFilterCats)) setRegFilterCats(d.regFilterCats);
+        if (Array.isArray(d.regFilterScheds)) setRegFilterScheds(d.regFilterScheds);
+        if (Array.isArray(d.regFilterStatus)) setRegFilterStatus(d.regFilterStatus);
         if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
         if (d.templates) setTemplates(d.templates);
         if (d.completed) setCompleted(d.completed);
@@ -6366,6 +6386,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           aiReports,
           users,
           colOrder,
+          regFilter,
+          regFilterCats,
+          regFilterScheds,
+          regFilterStatus,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -6989,6 +7013,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
+    const [regFilter, setRegFilter] = useLS("cf_reg_filter", "all");
+    const [regFilterCats, setRegFilterCats] = useLS("cf_reg_filter_cats", []);
+    const [regFilterScheds, setRegFilterScheds] = useLS("cf_reg_filter_scheds", []);
+    const [regFilterStatus, setRegFilterStatus] = useLS("cf_reg_filter_status", []);
     const [globalSearch, setGlobalSearch] = useState("");
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -7085,6 +7113,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setForecastHorizon,
       colOrder,
       setColOrder,
+      regFilter,
+      setRegFilter,
+      regFilterCats,
+      setRegFilterCats,
+      regFilterScheds,
+      setRegFilterScheds,
+      regFilterStatus,
+      setRegFilterStatus,
       aiApiKey,
       setAiApiKey,
       users,
@@ -8059,7 +8095,31 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch, colOrder, setColOrder }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(
+      RegisterView,
+      {
+        entries,
+        setEntries,
+        addEntry,
+        categories,
+        setCategories,
+        activeYear,
+        onDeleted: (e) => setUndoEntry(e),
+        templates,
+        setTemplates,
+        globalSearch,
+        colOrder,
+        setColOrder,
+        filter: regFilter,
+        setFilter: setRegFilter,
+        filterCats: regFilterCats,
+        setFilterCats: setRegFilterCats,
+        filterScheds: regFilterScheds,
+        setFilterScheds: setRegFilterScheds,
+        filterStatus: regFilterStatus,
+        setFilterStatus: setRegFilterStatus
+      }
+    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
