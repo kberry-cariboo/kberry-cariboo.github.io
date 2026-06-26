@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v88';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v89';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1490,7 +1490,7 @@ function waitForReact(){
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Type"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount ($) *"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }, className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Type"), /* @__PURE__ */ React.createElement("select", { style: inp(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", marginLeft: 2 } }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
@@ -1505,7 +1505,7 @@ function waitForReact(){
           if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Category *"), /* @__PURE__ */ React.createElement("select", { style: inp(errors.category), value: f.category, onChange: (e) => {
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Category", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", marginLeft: 2 } }, "*")), /* @__PURE__ */ React.createElement("select", { style: inp(errors.category), value: f.category, onChange: (e) => {
       set({ category: e.target.value });
       if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
     } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Date *"), /* @__PURE__ */ React.createElement(
@@ -1974,7 +1974,7 @@ function waitForReact(){
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [showCSV, setShowCSV] = useState(false);
-    const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
+    const [colOrder2, setColOrder2] = useLS("cf_col_order", DEFAULT_REG_COLS);
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
     const openNew = () => {
@@ -2017,6 +2017,7 @@ function waitForReact(){
       if (deleted) onDeleted(deleted);
     };
     const yearScoped = !searchAllYears;
+    const visibleCols = colOrder2.filter((c) => c !== "actions");
     const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCat === "all" || e.category === filterCat).filter((e) => filterSched === "all" || (filterSched === "onetime" ? !e.repeats : e.repeats)).filter((e) => {
       if (filterStatus === "active") return !isArchived(e, activeYear);
       if (filterStatus === "historical") return isArchived(e, activeYear);
@@ -2061,11 +2062,11 @@ function waitForReact(){
     };
     const onDrop = (col) => {
       if (!dragCol || dragCol === col) return;
-      const arr = [...colOrder];
+      const arr = [...colOrder2];
       const from = arr.indexOf(dragCol), to = arr.indexOf(col);
       arr.splice(from, 1);
       arr.splice(to, 0, dragCol);
-      setColOrder(arr);
+      setColOrder2(arr);
       setDragCol(null);
       setDragOver(null);
     };
@@ -2330,7 +2331,7 @@ function waitForReact(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, colOrder.map((col) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -2367,7 +2368,7 @@ function waitForReact(){
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, colOrder.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: colOrder.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 10, paddingLeft: 2 } }, "\u{1F4A1} Drag column headers to reorder \xB7 Historical entries (no activity in the viewed year) are hidden by default"), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 10, paddingLeft: 2 } }, "\u{1F4A1} Drag column headers to reorder \xB7 Historical entries (no activity in the viewed year) are hidden by default"), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -2937,14 +2938,9 @@ function waitForReact(){
             { icon: "\u270E", label: "Edit this entry", action: () => {
               openEntryEdit(budgetCtx.ev);
             } },
-            {
-              icon: "\u21BA",
-              label: "Reset to schedule",
-              action: () => {
-                clearOverride && clearOverride(budgetCtx.ev.id);
-              },
-              danger: false
-            }
+            ...budgetCtx.ev.repeats ? [{ icon: "\u21BA", label: "Reset entry", action: () => {
+              clearOverride && clearOverride(budgetCtx.ev.id);
+            } }] : []
           ]
         }
       )),
@@ -3036,7 +3032,27 @@ function waitForReact(){
           letterSpacing: "0.12em",
           textTransform: "uppercase",
           color: "var(--textLt)"
-        } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement(
+        } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, budgetOpen && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => {
+              setBvaModalData({ cat: "", target: "", editCat: null });
+              setShowBvaModal(true);
+            },
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
+              padding: "6px 12px",
+              borderRadius: 7,
+              border: "none",
+              cursor: "pointer",
+              background: "var(--navy)",
+              color: "#fff"
+            }
+          },
+          "+ Add Budget Line"
+        ), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setBudgetOpen((v) => !v),
@@ -3053,7 +3069,7 @@ function waitForReact(){
             }
           },
           budgetOpen ? "Collapse \u25B2" : "Expand \u25BC"
-        )), budgetOpen && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
+        ))), budgetOpen && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
           color: "var(--textLt)",
@@ -3120,29 +3136,8 @@ function waitForReact(){
             fontWeight: 700,
             color: tOver ? tColor : "var(--text)"
           } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: tColor } }, "\u25B2", fmt(tDiff))));
-        })(), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginTop: 8, paddingTop: 10, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
-              setBvaModalData({ cat: "", target: "", editCat: null });
-              setShowBvaModal(true);
-            },
-            style: {
-              fontFamily: "Inter,sans-serif",
-              fontSize: 11,
-              fontWeight: 700,
-              padding: "6px 14px",
-              borderRadius: 7,
-              border: "none",
-              cursor: "pointer",
-              background: "var(--navy)",
-              color: "#fff"
-            }
-          },
-          "+ Add Budget Line"
-        ))));
+        })()));
       })(),
-      /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 12, paddingLeft: 2 } }, view === "monthly" ? "\u{1F4A1} Click any row to edit that entry for this date only. Changes only affect that specific date." : "\u{1F4A1} Click any item to edit for this date only. \u2713 = past date."),
       (() => {
         const debtKeywords = [
           "debt",
@@ -3544,7 +3539,7 @@ function waitForReact(){
               alignItems: "flex-start",
               gap: 10,
               flexWrap: "wrap"
-            } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 1, marginBottom: 2 } }, "Right-click to edit or remove."), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))),
+            } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))),
             (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" } }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Rate"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Payment"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(parseFloat(debtData[key].payment)), "/mo"))),
             bal === 0 && rate === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, fontStyle: "italic" } }, "Tap Edit to enter balance and interest rate for payoff tracking.")
           );
@@ -6048,6 +6043,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     forecastHorizon = 90,
     setForecastHorizon = () => {
     },
+    colOrder: colOrder2 = [],
+    setColOrder: setColOrder2 = () => {
+    },
     aiApiKey = "",
     setAiApiKey,
     users = [],
@@ -6111,6 +6109,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           forecastHorizon,
           aiReports,
           users,
+          colOrder: colOrder2,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -6134,7 +6133,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
     }, [entries, overridesByYr, yearConfigs, categories, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode]);
     const loadData = useCallback(async () => {
-      var _a, _b;
+      var _a, _b, _c;
       const tok = token().trim();
       const gid = gistId().trim();
       if (!tok || !gid) return false;
@@ -6155,6 +6154,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
         if (d.darkMode != null) setDarkMode(d.darkMode);
         if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
+        if (((_c = d.colOrder) == null ? void 0 : _c.length) > 1) setColOrder2(d.colOrder.filter((c) => c !== "actions"));
         if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
         if (d.templates) setTemplates(d.templates);
         if (d.completed) setCompleted(d.completed);
@@ -6217,6 +6217,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           forecastHorizon,
           aiReports,
           users,
+          colOrder: colOrder2,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -6818,12 +6819,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         var _a2, _b;
         const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
         const isInput = tag === "input" || tag === "textarea" || tag === "select" || ((_b = e.target) == null ? void 0 : _b.isContentEditable);
-        if (!isInput && TAB_KEYS[e.key]) {
+        if (!isInput && TAB_KEYS[e.key] && !document.querySelector(".modal-overlay")) {
           e.preventDefault();
           setTab(TAB_KEYS[e.key]);
           return;
         }
-        if (!isInput && e.key === "/") {
+        if (!isInput && e.key === "/" && !document.querySelector(".modal-overlay")) {
           e.preventDefault();
           const el = document.getElementById("global-search");
           if (el) {
@@ -6933,6 +6934,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setDarkMode,
       forecastHorizon,
       setForecastHorizon,
+      colOrder,
+      setColOrder,
       aiApiKey,
       setAiApiKey,
       users,
@@ -7108,7 +7111,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
     } }, /* @__PURE__ */ React.createElement("style", null, `
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
-        *{box-sizing:border-box;} body{margin:0;background:var(--bg);}
+        *{box-sizing:border-box;} body{margin:0;background:var(--bg);scrollbar-gutter:stable;}
         .font-mono{font-family:'IBM Plex Mono',monospace;}
         .font-ui{font-family:Inter,sans-serif;}
         input,select,button,textarea{font-family:Inter,sans-serif;}
@@ -7167,10 +7170,11 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
             max-height:92vh!important;overflow-y:auto!important;
           }
-          /* Register: compact horizontal scroll with sticky actions */
+          /* Entry form: stack 3-col row on tablet */
+          .entry-form-row2{grid-template-columns:1fr!important;}
+          /* Register: horizontal scroll on tablet \u2014 same column order as desktop */
           .reg-scroll-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
-          .reg-table{min-width:520px!important;}
-          /* Hide less-critical columns on tablet */
+          .reg-table{min-width:480px!important;}
           .reg-col-notes{display:none!important;}
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
@@ -7307,8 +7311,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "input",
       {
         id: "global-search",
-        "aria-label": "Search budget entries",
-        placeholder: "Search\u2026 (/)",
+        "aria-label": "Search",
+        placeholder: "Search\u2026",
+        autoComplete: "off",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),
         style: {
