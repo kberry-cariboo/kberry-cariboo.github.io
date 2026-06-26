@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v89';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v90';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1947,7 +1947,8 @@ function waitForReact(){
   }
   function RegisterView({ entries, setEntries, addEntry, categories, setCategories = () => {
   }, activeYear, onDeleted = () => {
-  }, templates = [], setTemplates, globalSearch = "", allYearFlows = null }) {
+  }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
+  } }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [filter, setFilter] = useState("all");
@@ -1974,7 +1975,6 @@ function waitForReact(){
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [showCSV, setShowCSV] = useState(false);
-    const [colOrder2, setColOrder2] = useLS("cf_col_order", DEFAULT_REG_COLS);
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
     const openNew = () => {
@@ -2017,7 +2017,7 @@ function waitForReact(){
       if (deleted) onDeleted(deleted);
     };
     const yearScoped = !searchAllYears;
-    const visibleCols = colOrder2.filter((c) => c !== "actions");
+    const visibleCols = colOrder.filter((c) => c !== "actions");
     const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCat === "all" || e.category === filterCat).filter((e) => filterSched === "all" || (filterSched === "onetime" ? !e.repeats : e.repeats)).filter((e) => {
       if (filterStatus === "active") return !isArchived(e, activeYear);
       if (filterStatus === "historical") return isArchived(e, activeYear);
@@ -2062,11 +2062,11 @@ function waitForReact(){
     };
     const onDrop = (col) => {
       if (!dragCol || dragCol === col) return;
-      const arr = [...colOrder2];
+      const arr = [...colOrder];
       const from = arr.indexOf(dragCol), to = arr.indexOf(col);
       arr.splice(from, 1);
       arr.splice(to, 0, dragCol);
-      setColOrder2(arr);
+      setColOrder(arr);
       setDragCol(null);
       setDragOver(null);
     };
@@ -6043,8 +6043,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     forecastHorizon = 90,
     setForecastHorizon = () => {
     },
-    colOrder: colOrder2 = [],
-    setColOrder: setColOrder2 = () => {
+    colOrder = [],
+    setColOrder = () => {
     },
     aiApiKey = "",
     setAiApiKey,
@@ -6109,7 +6109,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           forecastHorizon,
           aiReports,
           users,
-          colOrder: colOrder2,
+          colOrder,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -6133,7 +6133,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
     }, [entries, overridesByYr, yearConfigs, categories, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode]);
     const loadData = useCallback(async () => {
-      var _a, _b, _c;
+      var _a, _b;
       const tok = token().trim();
       const gid = gistId().trim();
       if (!tok || !gid) return false;
@@ -6154,7 +6154,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
         if (d.darkMode != null) setDarkMode(d.darkMode);
         if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
-        if (((_c = d.colOrder) == null ? void 0 : _c.length) > 1) setColOrder2(d.colOrder.filter((c) => c !== "actions"));
+        if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
         if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
         if (d.templates) setTemplates(d.templates);
         if (d.completed) setCompleted(d.completed);
@@ -6217,7 +6217,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           forecastHorizon,
           aiReports,
           users,
-          colOrder: colOrder2,
+          colOrder,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -6840,6 +6840,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
+    const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
     const [globalSearch, setGlobalSearch] = useState("");
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -7902,7 +7903,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(RegisterView, { entries, setEntries, addEntry, categories, setCategories, activeYear, onDeleted: (e) => setUndoEntry(e), templates, setTemplates, globalSearch, colOrder, setColOrder }), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
