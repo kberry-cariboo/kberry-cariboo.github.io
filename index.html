@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v90';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v92';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2368,7 +2368,7 @@ function waitForReact(){
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 10, paddingLeft: 2 } }, "\u{1F4A1} Drag column headers to reorder \xB7 Historical entries (no activity in the viewed year) are hidden by default"), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status.")))))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -2798,7 +2798,7 @@ function waitForReact(){
         background: "var(--navy)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true))))))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8, paddingLeft: 2 } }, "\u{1F4A1} Drag the day number up or down to reschedule an entry within this month"), showEntryForm && /* @__PURE__ */ React.createElement(
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "10px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 14px", textAlign: "right", color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true))))))), showEntryForm && /* @__PURE__ */ React.createElement(
         "div",
         {
           className: "modal-overlay",
@@ -3043,7 +3043,7 @@ function waitForReact(){
               fontFamily: "Inter,sans-serif",
               fontSize: 11,
               fontWeight: 700,
-              padding: "6px 12px",
+              padding: "6px 10px",
               borderRadius: 7,
               border: "none",
               cursor: "pointer",
@@ -3051,7 +3051,8 @@ function waitForReact(){
               color: "#fff"
             }
           },
-          "+ Add Budget Line"
+          /* @__PURE__ */ React.createElement("span", { className: "bva-add-full" }, "+ Add Budget Line"),
+          /* @__PURE__ */ React.createElement("span", { className: "bva-add-short", style: { display: "none" } }, "+ Add")
         ), /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -3487,7 +3488,7 @@ function waitForReact(){
               color: "#fff"
             }
           },
-          "+ Add Row"
+          "+ Add"
         ), /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -3511,7 +3512,7 @@ function waitForReact(){
           color: "var(--textLt)",
           textAlign: "center",
           padding: "20px 0"
-        } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add Row"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
+        } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
           var _a2, _b2, _c, _d;
           const bal = parseFloat((_a2 = debtData[key]) == null ? void 0 : _a2.balance) || 0;
           const rate = parseFloat((_b2 = debtData[key]) == null ? void 0 : _b2.rate) || 0;
@@ -7171,12 +7172,16 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
             max-height:92vh!important;overflow-y:auto!important;
           }
+          /* BvA Add button: short label on mobile */
+          .bva-add-full{display:none!important;}
+          .bva-add-short{display:inline!important;}
           /* Entry form: stack 3-col row on tablet */
           .entry-form-row2{grid-template-columns:1fr!important;}
           /* Register: horizontal scroll on tablet \u2014 same column order as desktop */
           .reg-scroll-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
           .reg-table{min-width:480px!important;}
-          .reg-col-notes{display:none!important;}
+          /* Notes: visible but compact at 768px */
+          .reg-col-notes{max-width:80px!important;font-size:11px!important;}
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
           .logo-area img{height:23px!important;}
@@ -7254,7 +7259,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           /* Forecast: description cell \u2014 truncate on mobile */
           .forecast-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px!important;}
           /* Register filters: stack on phone */
+          .reg-col-cat,.reg-col-sched,.reg-col-until,.reg-col-notes{display:none!important;}
+        }
 
+        /* BvA Add button text: full on desktop */
+        .bva-add-full{display:inline;}
+        .bva-add-short{display:none;}
         /* \u2500\u2500 Bottom-sheet modals on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes spin{to{transform:rotate(360deg)}}
