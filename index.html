@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v100';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v101';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1928,9 +1928,11 @@ function waitForReact(){
         if (e.key === "Escape") onClose();
       };
       window.addEventListener("mousedown", h);
+      window.addEventListener("touchstart", h, { passive: true });
       window.addEventListener("keydown", k);
       return () => {
         window.removeEventListener("mousedown", h);
+        window.removeEventListener("touchstart", h);
         window.removeEventListener("keydown", k);
       };
     }, [onClose]);
@@ -2922,13 +2924,11 @@ function waitForReact(){
               cursor: "grab",
               touchAction: "none",
               userSelect: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 2
+              verticalAlign: "middle"
             }
           },
           ev.day,
-          /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.3, fontSize: 9, lineHeight: 1 } }, "\u283F")
+          /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.3, fontSize: 9, marginLeft: 2 } }, "\u283F")
         ),
         /* @__PURE__ */ React.createElement("td", { className: "budget-desc-cell", style: {
           fontFamily: "Inter,sans-serif",
@@ -3915,8 +3915,7 @@ function waitForReact(){
               gap: 10,
               flexWrap: "wrap"
             } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textMid)" } }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))),
-            (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" } }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Rate"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Payment"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(parseFloat(debtData[key].payment)), "/mo"))),
-            bal === 0 && rate === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, fontStyle: "italic" } }, "Tap Edit to enter balance and interest rate for payoff tracking.")
+            (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" } }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Balance"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Rate"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Payment"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--text)" } }, fmt(parseFloat(debtData[key].payment)), "/mo")))
           );
         })))));
       })()
@@ -5108,7 +5107,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         fontSize: 13,
         fontWeight: 700,
         color: tOver ? tColor : "var(--text)"
-      } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 6, textAlign: "center" } }, "Actual vs target from Jan 1 to today (current month prorated) \xB7 green within budget, yellow over by \u2264$50, red over by >$50"));
+      } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))));
     })())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary"), /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
@@ -7693,6 +7692,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .entry-form-row2{grid-template-columns:1fr!important;}
           /* Register: switch to cards on mobile \u2014 table hidden */
           .reg-cards{display:block!important;}
+          /* Prevent focus zoom on Android/iOS: inputs must render \u226516px */
+          input,select,textarea{font-size:16px!important;}
           .reg-table-wrap{display:none!important;}
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
