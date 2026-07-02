@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v103';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v105';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -663,6 +663,29 @@ function waitForReact(){
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const PIE_COLORS = ["#E85D4A", "#F5A623", "#2F5496", "#27AE73", "#8E44AD", "#16A085", "#D35400", "#2980B9"];
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function compressReceiptImage(file, cb) {
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * scale);
+      cv.height = Math.round(img.height * scale);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      const b64 = cv.toDataURL("image/jpeg", 0.6);
+      if (b64.length > 3e5) {
+        alert("Image too large even after compression \u2014 try a smaller photo.");
+        cb(null);
+        return;
+      }
+      cb(b64);
+    };
+    img.onerror = () => {
+      alert("Could not read that image \u2014 try a different photo.");
+      cb(null);
+    };
+    img.src = URL.createObjectURL(file);
+  }
   const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const DEFAULT_CATEGORIES = [
@@ -901,6 +924,7 @@ function waitForReact(){
           amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
+          attachment: ov.attachment !== void 0 ? ov.attachment : e.attachment || null,
           isOverride: Object.keys(ov).length > 0,
           month: m,
           day: effD,
@@ -1370,26 +1394,9 @@ function waitForReact(){
     var _a, _b, _c, _d, _e;
     const [attachment, setAttachment] = useState((initial == null ? void 0 : initial.attachment) || null);
     const attachFile = (e) => {
-      const f2 = e.target.files[0];
-      if (!f2) return;
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-        const cv = document.createElement("canvas");
-        cv.width = Math.round(img.width * scale);
-        cv.height = Math.round(img.height * scale);
-        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-        const b64 = cv.toDataURL("image/jpeg", 0.6);
-        if (b64.length > 3e5) {
-          alert("Image too large even after compression \u2014 try a smaller photo.");
-          return;
-        }
-        setAttachment(b64);
-      };
-      img.onerror = () => {
-        alert("Could not read that image \u2014 try a different photo.");
-      };
-      img.src = URL.createObjectURL(f2);
+      compressReceiptImage(e.target.files[0], (b64) => {
+        if (b64) setAttachment(b64);
+      });
       e.target.value = "";
     };
     const today = todayStr();
@@ -2566,7 +2573,14 @@ function waitForReact(){
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(ev.amount));
     const [notes, setNotes] = useState(ev.notes || (orig.notes || ""));
+    const [attachment, setAttachment] = useState(ev.attachment || null);
     const [err, setErr] = useState("");
+    const attachFile = (e) => {
+      compressReceiptImage(e.target.files[0], (b64) => {
+        if (b64) setAttachment(b64);
+      });
+      e.target.value = "";
+    };
     const inp = (isErr) => ({
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
@@ -2596,7 +2610,7 @@ function waitForReact(){
         return;
       }
       setErr("");
-      onSave({ desc, amount: a, notes });
+      onSave({ desc, amount: a, notes, attachment });
     };
     useEffect(() => {
       const h = (e) => {
@@ -2677,7 +2691,26 @@ function waitForReact(){
               if (e.key === "Enter") save();
             }
           }
-        ))),
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
+          "img",
+          {
+            src: attachment,
+            alt: "attachment",
+            style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
+            onClick: () => {
+              const w = window.open();
+              if (w) w.document.write('<img src="' + attachment + '" style="max-width:100%">');
+            }
+          }
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => setAttachment(null),
+            style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
+          },
+          "Remove"
+        )) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -2733,7 +2766,7 @@ function waitForReact(){
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, notes: data.notes || "" });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, notes: data.notes || "", attachment: data.attachment || null });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
@@ -2943,7 +2976,7 @@ function waitForReact(){
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           maxWidth: 0
-        } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
+        } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
         /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })),
         /* @__PURE__ */ React.createElement("td", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
@@ -4926,90 +4959,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       textAlign: i === 0 ? "left" : "right",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), (() => {
-      let dData = {};
-      try {
-        const raw = localStorage.getItem("cf_debt_data");
-        if (raw) dData = JSON.parse(raw);
-      } catch (e) {
-      }
-      const toMo = (ev) => {
-        var _a2;
-        if (!ev) return 0;
-        const amt = ev.amount || 0, every = ev.recurEvery || 1;
-        const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
-        return Math.round(amt * (ppy / 12) * 100) / 100;
-      };
-      const dkw = [
-        "debt",
-        "credit",
-        "loan",
-        "mortgage",
-        "line of credit",
-        "cc-",
-        "visa",
-        "amex",
-        "mastercard",
-        "car payment",
-        "truck payment",
-        "trailer payment",
-        "scotialine",
-        "loc",
-        "vehicle",
-        "tractor"
-      ];
-      const autoAllEvs = {};
-      flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
-        const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
-        (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
-      });
-      const autoMonthly = (key) => {
-        const evs = autoAllEvs[key] || [];
-        if (!evs.length) return 0;
-        return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
-      };
-      const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
-      if (configuredDebts.length === 0) return null;
-      const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
-      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, configuredDebts.map(([key, v]) => {
-        const bal = parseFloat(v.balance) || 0;
-        const rate = parseFloat(v.rate) || 0;
-        const isManual = key.startsWith("manual_");
-        const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
-        const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
-        const r = rate / 100 / 12;
-        const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
-        const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
-        const payoffDate = monthsLeft ? (() => {
-          const d = /* @__PURE__ */ new Date();
-          d.setMonth(d.getMonth() + monthsLeft);
-          return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-        })() : null;
-        const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
-        return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, flexWrap: "wrap", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          color: "var(--textLt)",
-          background: "var(--bg)",
-          padding: "2px 6px",
-          borderRadius: 4,
-          border: "1px solid var(--border)"
-        } }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--greenDk)" } }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
-          height: "100%",
-          borderRadius: 3,
-          width: `${pct}%`,
-          background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
-          transition: "width 0.4s"
-        } })), pmt > 0 && (() => {
-          var _a2;
-          const evs = autoAllEvs[key] || [];
-          const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
-          const timesYr = evs.length;
-          const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
-          return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
-        })());
-      })));
-    })(), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: incView,
@@ -5111,7 +5061,90 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         fontWeight: 700,
         color: tOver ? tColor : "var(--text)"
       } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))));
-    })())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary"), /* @__PURE__ */ React.createElement(
+    })())), (() => {
+      let dData = {};
+      try {
+        const raw = localStorage.getItem("cf_debt_data");
+        if (raw) dData = JSON.parse(raw);
+      } catch (e) {
+      }
+      const toMo = (ev) => {
+        var _a2;
+        if (!ev) return 0;
+        const amt = ev.amount || 0, every = ev.recurEvery || 1;
+        const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
+        return Math.round(amt * (ppy / 12) * 100) / 100;
+      };
+      const dkw = [
+        "debt",
+        "credit",
+        "loan",
+        "mortgage",
+        "line of credit",
+        "cc-",
+        "visa",
+        "amex",
+        "mastercard",
+        "car payment",
+        "truck payment",
+        "trailer payment",
+        "scotialine",
+        "loc",
+        "vehicle",
+        "tractor"
+      ];
+      const autoAllEvs = {};
+      flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
+        const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
+        (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
+      });
+      const autoMonthly = (key) => {
+        const evs = autoAllEvs[key] || [];
+        if (!evs.length) return 0;
+        return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
+      };
+      const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
+      if (configuredDebts.length === 0) return null;
+      const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
+      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, configuredDebts.map(([key, v]) => {
+        const bal = parseFloat(v.balance) || 0;
+        const rate = parseFloat(v.rate) || 0;
+        const isManual = key.startsWith("manual_");
+        const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
+        const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
+        const r = rate / 100 / 12;
+        const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
+        const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
+        const payoffDate = monthsLeft ? (() => {
+          const d = /* @__PURE__ */ new Date();
+          d.setMonth(d.getMonth() + monthsLeft);
+          return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+        })() : null;
+        const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
+        return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, flexWrap: "wrap", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          color: "var(--textLt)",
+          background: "var(--bg)",
+          padding: "2px 6px",
+          borderRadius: 4,
+          border: "1px solid var(--border)"
+        } }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--greenDk)" } }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
+          height: "100%",
+          borderRadius: 3,
+          width: `${pct}%`,
+          background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
+          transition: "width 0.4s"
+        } })), pmt > 0 && (() => {
+          var _a2;
+          const evs = autoAllEvs[key] || [];
+          const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
+          const timesYr = evs.length;
+          const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
+          return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
+        })());
+      })));
+    })(), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary"), /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: summaryView,
