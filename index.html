@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v101';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v102';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -5266,7 +5266,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
-  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad: gistLoad2, gistCreate }) {
+  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad, gistCreate }) {
     const [tok, setTok] = useState(() => localStorage.getItem("cf_gist_token") || "");
     const [gid, setGid] = useState(() => localStorage.getItem("cf_gist_id") || "");
     const [editing, setEditing] = useState(false);
@@ -5329,7 +5329,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => gistLoad2(),
+        onClick: () => gistLoad(),
         disabled: gistStatus === "syncing",
         style: btnSt("var(--navyMid)", gistStatus === "syncing")
       },
@@ -5439,7 +5439,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Cancel"
     ))));
   }
-  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad: gistLoad2, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey }) {
@@ -5955,7 +5955,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistStatus,
         gistMsg,
         gistSave,
-        gistLoad: gistLoad2,
+        gistLoad,
         gistCreate
       }
     )), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
@@ -6682,14 +6682,31 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => saveData(true), 2e3);
       return () => clearTimeout(saveTimer.current);
-    }, [entries, overridesByYr, yearConfigs, categories, alertThreshold, darkMode]);
+    }, [
+      entries,
+      overridesByYr,
+      yearConfigs,
+      categories,
+      alertThreshold,
+      darkMode,
+      activeYear,
+      budgetTargets,
+      templates,
+      completed,
+      forecastHorizon,
+      colOrder,
+      regFilter,
+      regFilterCats,
+      regFilterScheds,
+      regFilterStatus
+    ]);
     return { status, msg, saveData, loadData, createGist, conflict, resolveConflict: (keepMine) => {
       if (keepMine) {
         setConflict(null);
         saveData(false, true);
       } else if (conflict == null ? void 0 : conflict.remoteData) {
         setConflict(null);
-        gistLoad();
+        loadData();
       } else setConflict(null);
     } };
   }
@@ -7411,7 +7428,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       status: gistStatus,
       msg: gistMsg,
       saveData: gistSave,
-      loadData: gistLoad2,
+      loadData: gistLoad,
       createGist: gistCreate,
       conflict: gistConflict,
       resolveConflict
@@ -7455,8 +7472,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     });
     const gistToken = () => localStorage.getItem("cf_gist_token") || "";
     useEffect(() => {
-      gistLoadRef.current = gistLoad2;
-    }, [gistLoad2]);
+      gistLoadRef.current = gistLoad;
+    }, [gistLoad]);
     useEffect(() => {
       const onStart = (e) => {
         if (window.scrollY > 10) return;
@@ -8473,7 +8490,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistStatus,
         gistMsg,
         gistSave,
-        gistLoad: gistLoad2,
+        gistLoad,
         gistCreate,
         templates,
         setTemplates,
