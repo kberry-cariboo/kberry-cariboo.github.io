@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v97';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v100';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1368,6 +1368,27 @@ function waitForReact(){
   } })), label && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)", fontWeight: 600 } }, label));
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
     var _a, _b, _c, _d, _e;
+    const [attachment, setAttachment] = useState((initial == null ? void 0 : initial.attachment) || null);
+    const attachFile = (e) => {
+      const f2 = e.target.files[0];
+      if (!f2) return;
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(img.width * scale);
+        cv.height = Math.round(img.height * scale);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        const b64 = cv.toDataURL("image/jpeg", 0.6);
+        if (b64.length > 3e5) {
+          alert("Image too large even after compression \u2014 try a smaller photo.");
+          return;
+        }
+        setAttachment(b64);
+      };
+      img.src = URL.createObjectURL(f2);
+      e.target.value = "";
+    };
     const today = todayStr();
     const blank = {
       desc: "",
@@ -1440,7 +1461,8 @@ function waitForReact(){
         amount: parseFloat(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: ma,
-        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
+        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : [],
+        attachment
       }));
     };
     const inp = (hasErr) => ({
@@ -1620,7 +1642,26 @@ function waitForReact(){
           }
         }
       ));
-    }))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
+    }))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
+      "img",
+      {
+        src: attachment,
+        alt: "attachment",
+        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
+        onClick: () => {
+          const w = window.open();
+          if (w) w.document.write('<img src="' + attachment + '" style="max-width:100%">');
+        }
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => setAttachment(null),
+        style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
+      },
+      "Remove"
+    )) : /* @__PURE__ */ React.createElement("label", { style: { display: "inline-block", fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} Attach photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } })))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
@@ -2969,18 +3010,32 @@ function waitForReact(){
     }, []);
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
-      touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      const t = e.target;
+      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable]")) {
+        touchStart.current = null;
+        return;
+      }
+      touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
     };
     const handleTouchEnd = (e) => {
       if (!touchStart.current) return;
       const dx = e.changedTouches[0].clientX - touchStart.current.x;
       const dy = e.changedTouches[0].clientY - touchStart.current.y;
+      const dt = Date.now() - touchStart.current.t;
       touchStart.current = null;
-      if (Math.abs(dx) < 100) return;
-      if (Math.abs(dy) > Math.abs(dx) * 0.5) return;
+      if (document.querySelector(".modal-overlay")) return;
+      if (dt > 600) return;
+      if (Math.abs(dx) < 140) return;
+      if (Math.abs(dy) > 60) return;
+      if (Math.abs(dy) > Math.abs(dx) * 0.4) return;
       const dir = dx < 0 ? 1 : -1;
       setMonthIdx((v) => Math.max(0, Math.min(11, v + dir)));
       setEditingId(null);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+      setShowEntryForm(false);
+      setEditingEntry(null);
+      setEditingInitial(null);
     };
     return /* @__PURE__ */ React.createElement(
       "div",
@@ -5212,7 +5267,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
-  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad, gistCreate }) {
+  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad: gistLoad2, gistCreate }) {
     const [tok, setTok] = useState(() => localStorage.getItem("cf_gist_token") || "");
     const [gid, setGid] = useState(() => localStorage.getItem("cf_gist_id") || "");
     const [editing, setEditing] = useState(false);
@@ -5275,7 +5330,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => gistLoad(),
+        onClick: () => gistLoad2(),
         disabled: gistStatus === "syncing",
         style: btnSt("var(--navyMid)", gistStatus === "syncing")
       },
@@ -5385,7 +5440,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Cancel"
     ))));
   }
-  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad: gistLoad2, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey }) {
@@ -5901,7 +5956,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistStatus,
         gistMsg,
         gistSave,
-        gistLoad,
+        gistLoad: gistLoad2,
         gistCreate
       }
     )), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
@@ -6385,6 +6440,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }) {
     const FILE = "CashFlow_Data.json";
     const [status, setStatus] = useState("idle");
+    const [conflict, setConflict] = useState(null);
+    const lastSyncedAt = useRef(null);
     const [msg, setMsg] = useState("");
     const saveTimer = useRef(null);
     const initialized = useRef(false);
@@ -6407,7 +6464,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Accept": "application/vnd.github+json",
       "Content-Type": "application/json"
     });
-    const saveData = useCallback(async (silent = false) => {
+    const saveData = useCallback(async (silent = false, force = false) => {
+      var _a, _b;
       const tok = token().trim();
       const gid = gistId().trim();
       if (!tok || !gid) return;
@@ -6427,6 +6485,31 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           });
         } catch (e) {
         }
+        if (!force) {
+          try {
+            const chk = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
+            if (chk.ok) {
+              const cd = await chk.json();
+              const remoteRaw = (_b = (_a = cd.files) == null ? void 0 : _a[FILE]) == null ? void 0 : _b.content;
+              if (remoteRaw) {
+                const remote = JSON.parse(remoteRaw);
+                if (remote.savedAt && lastSyncedAt.current && remote.savedAt > lastSyncedAt.current) {
+                  setConflict({
+                    remoteSavedAt: remote.savedAt,
+                    remoteEntries: (remote.entries || []).length,
+                    localEntries: entries.length,
+                    remoteData: remote
+                  });
+                  setStatus("error");
+                  setMsg("\u26A0 Sync conflict \u2014 another device saved newer data.");
+                  return;
+                }
+              }
+            }
+          } catch (e) {
+          }
+        }
+        const nowIso = (/* @__PURE__ */ new Date()).toISOString();
         const payload = JSON.stringify({
           entries,
           overridesByYr,
@@ -6447,7 +6530,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           regFilterScheds,
           regFilterStatus,
           schemaVersion: SCHEMA_VERSION,
-          savedAt: (/* @__PURE__ */ new Date()).toISOString()
+          savedAt: nowIso
         }, null, 2);
         const r = await fetch(`https://api.github.com/gists/${gid}`, {
           method: "PATCH",
@@ -6455,6 +6538,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           body: JSON.stringify({ files: { [FILE]: { content: payload } } })
         });
         if (!r.ok) throw new Error(`GitHub ${r.status}`);
+        lastSyncedAt.current = nowIso;
+        setConflict(null);
         setStatus("ok");
         setMsg("Auto-saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
@@ -6491,6 +6576,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.darkMode != null) setDarkMode(d.darkMode);
         if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
         if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
+        if (d.savedAt) lastSyncedAt.current = d.savedAt;
         if (d.regFilter) setRegFilter(d.regFilter);
         if (Array.isArray(d.regFilterCats)) setRegFilterCats(d.regFilterCats);
         if (Array.isArray(d.regFilterScheds)) setRegFilterScheds(d.regFilterScheds);
@@ -6598,7 +6684,15 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       saveTimer.current = setTimeout(() => saveData(true), 2e3);
       return () => clearTimeout(saveTimer.current);
     }, [entries, overridesByYr, yearConfigs, categories, alertThreshold, darkMode]);
-    return { status, msg, saveData, loadData, createGist };
+    return { status, msg, saveData, loadData, createGist, conflict, resolveConflict: (keepMine) => {
+      if (keepMine) {
+        setConflict(null);
+        saveData(false, true);
+      } else if (conflict == null ? void 0 : conflict.remoteData) {
+        setConflict(null);
+        gistLoad();
+      } else setConflict(null);
+    } };
   }
   class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -6701,7 +6795,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       textAlign: "center"
     } }, "Shortcuts work when not typing in a field")));
   }
-  function UndoToast({ entry, onUndo, onDismiss }) {
+  function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
     useEffect(() => {
       const iv = setInterval(() => setSecs((s) => {
@@ -6732,7 +6826,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       fontSize: 13,
       whiteSpace: "nowrap",
       animation: "slideUp 0.25s ease-out"
-    } }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted'), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onUndo,
@@ -7057,8 +7151,61 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       " Sign in with Face ID / Touch ID"
     )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Access restricted to authorised users only.", /* @__PURE__ */ React.createElement("br", null), "Contact your administrator if you need access.")));
   }
+  function SelfTestView() {
+    const results = useMemo(() => {
+      const out = [];
+      const t = (name, fn) => {
+        try {
+          const v = fn();
+          out.push({ name, ok: !!v, detail: v === true ? "" : String(v) });
+        } catch (e) {
+          out.push({ name, ok: false, detail: e.message });
+        }
+      };
+      const entry = { id: 1, desc: "T", type: "expense", amount: 100, repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const evs = expandEntries([entry], 2026, {});
+      t("expandEntries monthly = 12 events", () => evs.length === 12);
+      t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
+      const semi = __spreadProps(__spreadValues({}, entry), { id: 2, recurUnit: "semimonth", startDate: "2026-01-01" });
+      t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
+      const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
+      const bevs = expandEntries([biw], 2026, {});
+      t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
+      const sums = getMonthSummaries(evs, 1e3);
+      t("getMonthSummaries 12 months", () => sums.length === 12);
+      t("Jan close = open - expense", () => Math.abs(sums[0].close - (1e3 - 100)) < 0.01);
+      const ov = {};
+      ov[evs[0].id] = { amount: 250 };
+      const evs2 = expandEntries([entry], 2026, ov);
+      t("override changes amount", () => evs2[0].amount === 250 && evs2[0].isOverride === true);
+      t("localStorage roundtrip", () => {
+        localStorage.setItem("cf_selftest", "x");
+        const v = localStorage.getItem("cf_selftest") === "x";
+        localStorage.removeItem("cf_selftest");
+        return v;
+      });
+      t("sessionStorage roundtrip", () => {
+        sessionStorage.setItem("cf_st", "y");
+        const v = sessionStorage.getItem("cf_st") === "y";
+        sessionStorage.removeItem("cf_st");
+        return v;
+      });
+      t("React 18 present", () => typeof React !== "undefined" && !!React.useState);
+      t("Recharts present", () => typeof window.Recharts !== "undefined");
+      t("Service worker supported", () => "serviceWorker" in navigator);
+      t("navigator.onLine readable", () => typeof navigator.onLine === "boolean");
+      t("canvas (attachments) supported", () => {
+        const c = document.createElement("canvas");
+        return !!c.getContext("2d");
+      });
+      return out;
+    }, []);
+    const passed = results.filter((r) => r.ok).length;
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, margin: "40px auto", padding: "0 20px", fontFamily: "Inter,sans-serif" } }, /* @__PURE__ */ React.createElement("h2", { style: { color: "var(--text)", fontSize: 18, marginBottom: 6 } }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: passed === results.length ? "var(--greenDk)" : "var(--red)", marginBottom: 18, fontWeight: 700 } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 } }, /* @__PURE__ */ React.createElement("span", { style: { color: r.ok ? "var(--greenDk)" : "var(--red)", fontWeight: 700, width: 18 } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)", flex: 1 } }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 11 } }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, style: { display: "inline-block", marginTop: 20, fontSize: 13, color: "var(--navy)" } }, "\u2190 Back to app"));
+  }
   function App() {
     var _a;
+    if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(SelfTestView, null);
     const [users, setUsers] = useLS("cf_users", SEED_USERS);
     useEffect(() => {
       setUsers((prev) => {
@@ -7211,7 +7358,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         delete window.__cfSetTab;
       };
     }, [setTab]);
-    const [undoEntry, setUndoEntry] = useState(null);
+    const [undoStack, setUndoStack] = useState([]);
+    const pushUndo = (e) => setUndoStack((prev) => [...prev.slice(-9), e]);
     const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
     const cssVars = Object.entries(C).map(([k, v]) => "--" + k + ":" + v).join(";");
@@ -7264,8 +7412,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       status: gistStatus,
       msg: gistMsg,
       saveData: gistSave,
-      loadData: gistLoad,
-      createGist: gistCreate
+      loadData: gistLoad2,
+      createGist: gistCreate,
+      conflict: gistConflict,
+      resolveConflict
     } = useGistSync({
       entries,
       setEntries,
@@ -7306,8 +7456,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     });
     const gistToken = () => localStorage.getItem("cf_gist_token") || "";
     useEffect(() => {
-      gistLoadRef.current = gistLoad;
-    }, [gistLoad]);
+      gistLoadRef.current = gistLoad2;
+    }, [gistLoad2]);
     useEffect(() => {
       const onStart = (e) => {
         if (window.scrollY > 10) return;
@@ -7469,6 +7619,17 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     } }, /* @__PURE__ */ React.createElement("style", null, `
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         *{box-sizing:border-box;} body{margin:0;background:var(--bg);scrollbar-gutter:stable;}
+        /* \u2500\u2500 UI polish \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        html{-webkit-tap-highlight-color:transparent;}
+        button{transition:opacity 0.15s ease,transform 0.1s ease;}
+        button:hover:not(:disabled){opacity:0.88;}
+        button:active:not(:disabled){transform:scale(0.97);}
+        button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
+        input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+        input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+        .modal-card{overscroll-behavior:contain;}
+        tr{transition:background 0.12s ease;}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}}
         .font-mono{font-family:'IBM Plex Mono',monospace;}
         .font-ui{font-family:Inter,sans-serif;}
         input,select,button,textarea{font-family:Inter,sans-serif;}
@@ -8276,7 +8437,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         categories,
         setCategories,
         activeYear,
-        onDeleted: (e) => setUndoEntry(e),
+        onDeleted: (e) => pushUndo(e),
         templates,
         setTemplates,
         globalSearch,
@@ -8311,7 +8472,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistStatus,
         gistMsg,
         gistSave,
-        gistLoad,
+        gistLoad: gistLoad2,
         gistCreate,
         templates,
         setTemplates,
@@ -8325,15 +8486,31 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         aiApiKey,
         setAiApiKey
       }
-    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoEntry && /* @__PURE__ */ React.createElement(
+    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), gistConflict && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 3500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { background: "var(--bgCard)", borderRadius: 14, padding: "26px 24px", width: "min(440px,calc(100vw - 32px))", boxShadow: "0 20px 60px rgba(0,0,0,0.35)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 10 } }, "\u26A0 Sync Conflict"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, marginBottom: 14 } }, "Another device saved to the Gist ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, new Date(gistConflict.remoteSavedAt).toLocaleString()), " \u2014 after this device last synced."), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)", background: "var(--stripe)", borderRadius: 8, padding: "10px 14px", marginBottom: 18 } }, "Remote: ", gistConflict.remoteEntries, " entries \xB7 This device: ", gistConflict.localEntries, " entries"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => resolveConflict(false),
+        style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--navy)", color: "#fff" }
+      },
+      "\u2B07 Load their version (recommended)"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => resolveConflict(true),
+        style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "11px", borderRadius: 8, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
+      },
+      "\u2B06 Overwrite with my version"
+    )))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
-        entry: undoEntry,
+        entry: undoStack[undoStack.length - 1],
+        count: undoStack.length,
         onUndo: () => {
-          setEntries((prev) => [...prev, undoEntry]);
-          setUndoEntry(null);
+          const e = undoStack[undoStack.length - 1];
+          setEntries((prev) => [...prev, e]);
+          setUndoStack((prev) => prev.slice(0, -1));
         },
-        onDismiss: () => setUndoEntry(null)
+        onDismiss: () => setUndoStack([])
       }
     ), /* @__PURE__ */ React.createElement("div", { style: {
       textAlign: "center",
