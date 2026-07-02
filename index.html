@@ -443,7 +443,7 @@
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v107';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v108';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1213,85 +1213,96 @@ function waitForReact(){
   const Card = ({ children, style = {} }) => /* @__PURE__ */ React.createElement("div", { style: __spreadValues({ background: "var(--bgCard)", borderRadius: 12, border: "1px solid var(--border)", padding: "20px 24px" }, style) }, children);
   const SectionTitle = ({ children, action }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, children), action);
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: color || "var(--text)", lineHeight: 1 } }, value), sub && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, sub));
-  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null }) => /* @__PURE__ */ React.createElement("div", { className: "month-picker", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      className: "month-nav-arrow",
-      onClick: () => onChange(Math.max(0, value - 1)),
-      disabled: value === 0,
-      title: "Previous month (\u2190 key)",
-      "aria-label": "Previous month",
-      style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 14,
-        padding: "2px 9px",
-        borderRadius: 6,
-        border: "1px solid var(--border)",
-        cursor: value === 0 ? "default" : "pointer",
-        background: "transparent",
-        color: value === 0 ? "var(--border)" : "var(--textMid)",
-        lineHeight: 1.2,
-        flexShrink: 0
-      }
-    },
-    "\u2039"
-  ), /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      className: "month-nav-arrow",
-      onClick: () => onChange(Math.min(11, value + 1)),
-      disabled: value === 11,
-      title: "Next month (\u2192 key)",
-      "aria-label": "Next month",
-      style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 14,
-        padding: "2px 9px",
-        borderRadius: 6,
-        border: "1px solid var(--border)",
-        cursor: value === 11 ? "default" : "pointer",
-        background: "transparent",
-        color: value === 11 ? "var(--border)" : "var(--textMid)",
-        lineHeight: 1.2,
-        flexShrink: 0
-      }
-    },
-    "\u203A"
-  ), MONTHS.map((m, i) => {
-    const isActive = value === i;
-    const hasMatch = matchingMonths && matchingMonths.size > 0 && matchingMonths.has(i);
-    return /* @__PURE__ */ React.createElement(
+  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null }) => {
+    const stripRef = useRef(null);
+    useEffect(() => {
+      const el = stripRef.current;
+      if (!el || el.scrollWidth <= el.clientWidth) return;
+      const btn = el.querySelector('[data-active="true"]');
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }, [value]);
+    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
-        key: m,
-        onClick: () => onChange(i),
+        className: "month-nav-arrow",
+        onClick: () => onChange(Math.max(0, value - 1)),
+        disabled: value === 0,
+        title: "Previous month (\u2190 key)",
+        "aria-label": "Previous month",
         style: {
           fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "6px 14px",
-          borderRadius: 20,
-          border: "none",
-          cursor: "pointer",
-          position: "relative",
-          background: isActive ? "var(--navy)" : hasMatch ? "var(--amberLt)" : "var(--border)",
-          color: isActive ? "#fff" : hasMatch ? "var(--amber)" : "var(--textMid)",
-          outline: hasMatch && !isActive ? "2px solid var(--amber)" : "none"
+          fontSize: 14,
+          padding: "2px 9px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          cursor: value === 0 ? "default" : "pointer",
+          background: "transparent",
+          color: value === 0 ? "var(--border)" : "var(--textMid)",
+          lineHeight: 1.2,
+          flexShrink: 0
         }
       },
-      m,
-      hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { style: {
-        position: "absolute",
-        top: -3,
-        right: -3,
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        background: "var(--amber)",
-        border: "2px solid var(--bgCard)"
-      } })
-    );
-  }));
+      "\u2039"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "month-nav-arrow",
+        onClick: () => onChange(Math.min(11, value + 1)),
+        disabled: value === 11,
+        title: "Next month (\u2192 key)",
+        "aria-label": "Next month",
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 14,
+          padding: "2px 9px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          cursor: value === 11 ? "default" : "pointer",
+          background: "transparent",
+          color: value === 11 ? "var(--border)" : "var(--textMid)",
+          lineHeight: 1.2,
+          flexShrink: 0
+        }
+      },
+      "\u203A"
+    ), MONTHS.map((m, i) => {
+      const isActive = value === i;
+      const hasMatch = matchingMonths && matchingMonths.size > 0 && matchingMonths.has(i);
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: m,
+          onClick: () => onChange(i),
+          "data-active": isActive ? "true" : "false",
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "6px 14px",
+            borderRadius: 20,
+            border: "none",
+            cursor: "pointer",
+            position: "relative",
+            flexShrink: 0,
+            background: isActive ? "var(--navy)" : hasMatch ? "var(--amberLt)" : "var(--border)",
+            color: isActive ? "#fff" : hasMatch ? "var(--amber)" : "var(--textMid)",
+            outline: hasMatch && !isActive ? "2px solid var(--amber)" : "none"
+          }
+        },
+        m,
+        hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { style: {
+          position: "absolute",
+          top: -3,
+          right: -3,
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "var(--amber)",
+          border: "2px solid var(--bgCard)"
+        } })
+      );
+    }));
+  };
   const SegmentedControl = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { display: "inline-flex", position: "relative", background: "var(--border)", borderRadius: 10, padding: 3, gap: 0 } }, options.map((opt) => /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -1399,6 +1410,7 @@ function waitForReact(){
       });
       e.target.value = "";
     };
+    const [lightbox, setLightbox] = useState(false);
     const today = todayStr();
     const blank = {
       desc: "",
@@ -1658,10 +1670,7 @@ function waitForReact(){
         src: attachment,
         alt: "attachment",
         style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
-        onClick: () => {
-          const w = window.open();
-          if (w) w.document.write('<img src="' + attachment + '" style="max-width:100%">');
-        }
+        onClick: () => setLightbox(true)
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
@@ -1671,7 +1680,7 @@ function waitForReact(){
         style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
       },
       "Remove"
-    )) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
+    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
@@ -2326,7 +2335,7 @@ function waitForReact(){
       const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, e.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Has receipt" }, "\u{1F4CE}"), archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
@@ -2582,7 +2591,24 @@ function waitForReact(){
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters. Try changing Type, Category, Schedule, or Status."))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."), !(search || globalSearch) && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: openNew,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 700,
+          padding: "8px 18px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          background: "var(--navy)",
+          color: "#fff"
+        }
+      },
+      "+ Add Entry"
+    )))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
       const archived = isArchived(e, activeYear);
       const arcStyle = {
         color: archived ? "var(--textLt)" : "var(--text)",
@@ -2610,7 +2636,7 @@ function waitForReact(){
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap"
-        }, arcStyle) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { style: {
+        }, arcStyle) }, e.desc, e.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Has receipt" }, "\u{1F4CE}"), archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { style: {
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 13,
           fontWeight: 600,
@@ -2646,7 +2672,24 @@ function waitForReact(){
           maxWidth: 120
         } }, e.notes))
       );
-    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."), !(search || globalSearch) && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: openNew,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 700,
+          padding: "8px 18px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          background: "var(--navy)",
+          color: "#fff"
+        }
+      },
+      "+ Add Entry"
+    )))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -2670,6 +2713,68 @@ function waitForReact(){
         ]
       }
     ));
+  }
+  function ReceiptLightbox({ src, onClose }) {
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [onClose]);
+    if (!src) return null;
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        onClick: onClose,
+        style: {
+          position: "fixed",
+          inset: 0,
+          zIndex: 9500,
+          background: "rgba(0,0,0,0.85)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 20,
+          touchAction: "pinch-zoom",
+          cursor: "zoom-out"
+        }
+      },
+      /* @__PURE__ */ React.createElement(
+        "img",
+        {
+          src,
+          alt: "Receipt",
+          style: {
+            maxWidth: "100%",
+            maxHeight: "100%",
+            borderRadius: 10,
+            boxShadow: "0 10px 50px rgba(0,0,0,0.5)"
+          }
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: onClose,
+          "aria-label": "Close",
+          style: {
+            position: "fixed",
+            top: "calc(14px + env(safe-area-inset-top))",
+            right: 16,
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            border: "none",
+            cursor: "pointer",
+            background: "rgba(255,255,255,0.15)",
+            color: "#fff",
+            fontSize: 18
+          }
+        },
+        "\u2715"
+      )
+    );
   }
   function Fab({ onClick, label = "Add entry" }) {
     return /* @__PURE__ */ React.createElement(
@@ -2702,6 +2807,7 @@ function waitForReact(){
       });
       e.target.value = "";
     };
+    const [lightbox, setLightbox] = useState(false);
     const inp = (isErr) => ({
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
@@ -2818,10 +2924,7 @@ function waitForReact(){
             src: attachment,
             alt: "attachment",
             style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
-            onClick: () => {
-              const w = window.open();
-              if (w) w.document.write('<img src="' + attachment + '" style="max-width:100%">');
-            }
+            onClick: () => setLightbox(true)
           }
         ), /* @__PURE__ */ React.createElement(
           "button",
@@ -2831,7 +2934,7 @@ function waitForReact(){
             style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
           },
           "Remove"
-        )) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
+        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -2876,6 +2979,20 @@ function waitForReact(){
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
+    const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
+      try {
+        return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
+      } catch (e) {
+        return false;
+      }
+    });
+    const dismissSwipeCoach = () => {
+      try {
+        localStorage.setItem("cf_coach_swipe", "1");
+      } catch (e) {
+      }
+      setShowSwipeCoach(false);
+    };
     const [showOccurrenceForm, setShowOccurrenceForm] = useState(false);
     const [editingEv, setEditingEv] = useState(null);
     const [showEntryForm, setShowEntryForm] = useState(false);
@@ -3276,6 +3393,37 @@ function waitForReact(){
         setMonthIdx(v);
         setEditingId(null);
       }, noMargin: false, matchingMonths: gq ? matchingMonths : null }),
+      showSwipeCoach && /* @__PURE__ */ React.createElement("div", { style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 10,
+        fontFamily: "Inter,sans-serif",
+        fontSize: 12,
+        color: "var(--textMid)",
+        background: "var(--stripe)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        padding: "8px 12px",
+        marginBottom: 12
+      }, className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F449} Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: dismissSwipeCoach,
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 6,
+            border: "none",
+            cursor: "pointer",
+            background: "transparent",
+            color: "var(--navy)"
+          }
+        },
+        "Got it"
+      )),
       gq && /* @__PURE__ */ React.createElement("div", { style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 12,
@@ -3665,7 +3813,27 @@ function waitForReact(){
           color: "var(--textLt)",
           textAlign: "center",
           padding: "8px 0"
-        } }, "No budget lines yet. Add one below to start tracking a category against a monthly target."), cats.map((cat) => {
+        } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, "No budget lines yet. Track a category against a monthly target."), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => {
+              setBvaModalData({ cat: "", target: "", editCat: null });
+              setShowBvaModal(true);
+            },
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "8px 18px",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              background: "var(--navy)",
+              color: "#fff"
+            }
+          },
+          "+ Add Budget Line"
+        )), cats.map((cat) => {
           const actual = Math.round((catExpenses[cat] || 0) * 100) / 100;
           const target = Math.round((targets[cat] || 0) * 100) / 100;
           const diff = Math.round((actual - target) * 100) / 100;
@@ -6174,7 +6342,40 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistLoad,
         gistCreate
       }
-    )), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    ), (() => {
+      let bytes = 0, count = 0;
+      try {
+        entries.forEach((e) => {
+          if (e.attachment) {
+            bytes += e.attachment.length;
+            count++;
+          }
+        });
+        Object.values(overridesByYr || {}).forEach((yr) => Object.values(yr || {}).forEach((o) => {
+          if (o && o.attachment) {
+            bytes += o.attachment.length;
+            count++;
+          }
+        }));
+      } catch (e) {
+      }
+      if (count === 0) return null;
+      const kb = Math.round(bytes / 1024);
+      const warn = kb >= 500;
+      const pct = Math.min(100, Math.round(kb / 1024 * 100));
+      return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, "\u{1F4CE} Receipt storage \u2014 ", count, " attachment", count !== 1 ? "s" : ""), /* @__PURE__ */ React.createElement("span", { style: {
+        fontFamily: "'IBM Plex Mono',monospace",
+        fontSize: 12,
+        fontWeight: 700,
+        color: warn ? "var(--amber)" : "var(--textMid)"
+      } }, kb, " KB / ~1 MB")), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
+        height: "100%",
+        width: pct + "%",
+        borderRadius: 3,
+        background: warn ? "var(--amber)" : "var(--greenDk)",
+        transition: "width 0.3s ease"
+      } })), warn && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--amber)", marginTop: 6 } }, "Approaching the sync payload limit \u2014 consider removing receipts from older entries."));
+    })()), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -7959,7 +8160,11 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden!important;max-width:100%!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
-          .month-picker{gap:3px!important;flex-wrap:wrap!important;}
+          .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+            -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
+            padding-bottom:4px!important;margin-left:-6px!important;margin-right:-6px!important;
+            padding-left:6px!important;padding-right:6px!important;}
+          .month-picker::-webkit-scrollbar{display:none!important;}
           .month-picker button{padding:4px 6px!important;font-size:10px!important;}
           .month-nav-arrow{display:none!important;}
           /* Budget monthly table: hide category */
