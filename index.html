@@ -241,6 +241,16 @@ react-dom/cjs/react-dom-client.production.js:
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
               setTip({ x: e.clientX-svg.left+M.left, y: e.clientY-svg.top, idx: i, d });
             },
+            onTouchStart: e => {
+              const t=e.touches&&e.touches[0]; if(!t) return;
+              const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+              setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d });
+            },
+            onTouchMove: e => {
+              const t=e.touches&&e.touches[0]; if(!t) return;
+              const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+              setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d });
+            },
             onMouseLeave: () => setTip(null)
           }),
           lblFmt && v !== 0 && h('text', {
@@ -277,6 +287,16 @@ react-dom/cjs/react-dom-client.production.js:
           onMouseMove: e => {
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
             setTip({ x: e.clientX-svg.left+M.left, y: e.clientY-svg.top, idx: i, d: data[i] });
+          },
+          onTouchStart: e => {
+            const t=e.touches&&e.touches[0]; if(!t) return;
+            const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+            setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d: data[i] });
+          },
+          onTouchMove: e => {
+            const t=e.touches&&e.touches[0]; if(!t) return;
+            const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+            setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d: data[i] });
           },
           onMouseLeave: () => setTip(null)
         })),
@@ -474,6 +494,16 @@ react-dom/cjs/react-dom-client.production.js:
               const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
               setTip({ x:e.clientX-r.left, y:e.clientY-r.top, name:s.name, value:s.value });
             },
+            onTouchStart: e => {
+              const t=e.touches&&e.touches[0]; if(!t) return;
+              const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+              setTip({ x:t.clientX-r.left, y:t.clientY-r.top, name:s.name, value:s.value });
+            },
+            onTouchMove: e => {
+              const t=e.touches&&e.touches[0]; if(!t) return;
+              const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+              setTip({ x:t.clientX-r.left, y:t.clientY-r.top, name:s.name, value:s.value });
+            },
             onMouseLeave: () => setTip(null)
           }),
           s.labelText && h('text', {
@@ -495,14 +525,14 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v109';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v110';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
 try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
 function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
 document.addEventListener('DOMContentLoaded',function(){
-  // React 19.2.5 is bundled inline — no CDN, fully offline-first
+  // React 19.2.5 bundled inline — no CDN, fully offline-first
   if(typeof React==='undefined'||typeof ReactDOM==='undefined'){showError('React failed to initialize','Inline React bundle did not load.');return;}
   if(typeof window.Recharts==='undefined'){showError('Chart library failed','Inline Recharts failed to init.');return;}
   try{ (() => {
@@ -713,7 +743,6 @@ document.addEventListener('DOMContentLoaded',function(){
     doneBg: "#16291F"
   };
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
-  const PIE_COLORS = ["#E85D4A", "#F5A623", "#2F5496", "#27AE73", "#8E44AD", "#16A085", "#D35400", "#2980B9"];
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function compressReceiptImage(file, cb) {
     if (!file) return;
@@ -1078,6 +1107,23 @@ document.addEventListener('DOMContentLoaded',function(){
     const past = flow.filter((ev) => ev.date <= today);
     return past.length > 0 ? past[past.length - 1].balance : openBal;
   }
+  function haptic() {
+    try {
+      navigator.vibrate && navigator.vibrate(8);
+    } catch (err) {
+    }
+  }
+  function fmtVarRange(monthlyAmounts) {
+    try {
+      const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v));
+      if (!vals.length) return "Variable";
+      const mn = Math.min(...vals), mx = Math.max(...vals);
+      const k = (v) => v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
+      return mn === mx ? "\u2248 " + k(mn) : k(mn) + "\u2013" + k(mx);
+    } catch (err) {
+      return "Variable";
+    }
+  }
   const CAT_PALETTE = [
     "#2F5496",
     "#E85D4A",
@@ -1431,7 +1477,10 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
   function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { background: "var(--bgCard)", borderRadius: 16, padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: onConfirm, style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { background: "var(--bgCard)", borderRadius: 16, padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      haptic();
+      onConfirm();
+    }, style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" } }, /* @__PURE__ */ React.createElement("div", { onClick: () => onChange(!value), style: {
     position: "relative",
@@ -1545,7 +1594,7 @@ document.addEventListener('DOMContentLoaded',function(){
       padding: "8px 10px",
       border: `1.5px solid ${hasErr ? "var(--red)" : "var(--border)"}`,
       borderRadius: 6,
-      background: hasErr ? "#FFF8F8" : "var(--inputBg)",
+      background: hasErr ? "rgba(232,93,74,0.08)" : "var(--inputBg)",
       color: "var(--text)",
       width: "100%",
       boxSizing: "border-box",
@@ -2348,7 +2397,7 @@ document.addEventListener('DOMContentLoaded',function(){
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--red)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? "Variable" : fmt(e.amount));
+          return /* @__PURE__ */ React.createElement("td", { key: col, style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--red)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount));
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: __spreadValues({ fontFamily: "Inter,sans-serif", fontSize: 13, padding: "10px 12px", whiteSpace: "nowrap" }, arcMeta) }, e.startDate || "\u2014");
         case "schedule":
@@ -2650,7 +2699,7 @@ document.addEventListener('DOMContentLoaded',function(){
           flexShrink: 0,
           color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--red)",
           textDecoration: archived ? "line-through" : "none"
-        } }, e.monthlyAmounts ? "Variable" : fmt(e.amount))),
+        } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 10,
@@ -2790,10 +2839,7 @@ document.addEventListener('DOMContentLoaded',function(){
         "aria-label": label,
         title: label,
         onClick: () => {
-          try {
-            navigator.vibrate && navigator.vibrate(8);
-          } catch (e) {
-          }
+          haptic();
           onClick();
         }
       },
@@ -2820,7 +2866,7 @@ document.addEventListener('DOMContentLoaded',function(){
       padding: "9px 12px",
       border: `1.5px solid ${isErr ? "var(--red)" : "var(--border)"}`,
       borderRadius: 8,
-      background: isErr ? "#FFF8F8" : "var(--inputBg)",
+      background: isErr ? "rgba(232,93,74,0.08)" : "var(--inputBg)",
       color: "var(--text)",
       outline: "none",
       width: "100%",
@@ -3159,10 +3205,7 @@ document.addEventListener('DOMContentLoaded',function(){
           {
             onClick: (e) => {
               e.stopPropagation();
-              try {
-                navigator.vibrate && navigator.vibrate(8);
-              } catch (e2) {
-              }
+              haptic();
               toggleComplete(ev.id);
             },
             "aria-label": isDone ? "Mark budget line incomplete" : "Mark budget line complete",
@@ -3309,6 +3352,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if (Math.abs(dy) > 60) return;
       if (Math.abs(dy) > Math.abs(dx) * 0.4) return;
       const dir = dx < 0 ? 1 : -1;
+      haptic();
       setMonthIdx((v) => Math.max(0, Math.min(11, v + dir)));
       setEditingId(null);
       setShowOccurrenceForm(false);
@@ -3610,10 +3654,7 @@ document.addEventListener('DOMContentLoaded',function(){
               icon: completed[budgetCtx.ev.id] ? "\u2610" : "\u2611",
               label: completed[budgetCtx.ev.id] ? "Mark incomplete" : "Mark complete",
               action: () => {
-                try {
-                  navigator.vibrate && navigator.vibrate(8);
-                } catch (e) {
-                }
+                haptic();
                 toggleComplete(budgetCtx.ev.id);
               }
             },
@@ -5234,7 +5275,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         height: "100%",
         borderRadius: 3,
         width: `${pct}%`,
-        background: PIE_COLORS[i % PIE_COLORS.length]
+        background: getCatColor(cat, categories)
       } })));
     })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
       Pie,
@@ -5248,7 +5289,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
         labelLine: false
       },
-      catTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: PIE_COLORS[i % PIE_COLORS.length] }))
+      catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories) }))
     ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", marginTop: 4 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--stripe)" } }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 10,
@@ -5258,7 +5299,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       textAlign: i === 0 ? "left" : "right",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: getCatColor(cat, categories), flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
       ChartToggle,
       {
         value: incView,
@@ -6908,6 +6949,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         lastSyncedAt.current = nowIso;
         setConflict(null);
         setStatus("ok");
+        if (!silent) haptic();
         setMsg("Auto-saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       } catch (e) {
         if (!navigator.onLine) {
@@ -7845,6 +7887,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     useEffect(() => {
       const onStart = (e) => {
         if (window.scrollY > 10) return;
+        if (document.querySelector(".modal-overlay")) return;
         ptrRef.current = { startY: e.touches[0].clientY, active: true };
       };
       const onMove = (e) => {
@@ -8905,6 +8948,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         entry: undoStack[undoStack.length - 1],
         count: undoStack.length,
         onUndo: () => {
+          haptic();
           const e = undoStack[undoStack.length - 1];
           setEntries((prev) => [...prev, e]);
           setUndoStack((prev) => prev.slice(0, -1));
