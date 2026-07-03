@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v110';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v111';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1123,6 +1123,63 @@ document.addEventListener('DOMContentLoaded',function(){
     } catch (err) {
       return "Variable";
     }
+  }
+  function simulateDebtStrategy(debts, extra, order) {
+    try {
+      let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => __spreadValues({}, d2));
+      if (!ds.length) return null;
+      const sortFn = order === "avalanche" ? (a, b) => b.rate - a.rate || a.bal - b.bal : (a, b) => a.bal - b.bal || b.rate - a.rate;
+      let months = 0, totalInterest = 0;
+      const payoffOrder = [];
+      while (ds.length && months < 600) {
+        months++;
+        ds.forEach((d2) => {
+          const i = d2.bal * (d2.rate / 100 / 12);
+          d2.bal += i;
+          totalInterest += i;
+        });
+        let freed = extra;
+        ds.forEach((d2) => {
+          const pay = Math.min(d2.pmt, d2.bal);
+          d2.bal -= pay;
+        });
+        ds.sort(sortFn);
+        if (ds[0] && freed > 0) {
+          const pay = Math.min(freed, ds[0].bal);
+          ds[0].bal -= pay;
+        }
+        ds = ds.filter((d2) => {
+          if (d2.bal <= 5e-3) {
+            payoffOrder.push(d2.label);
+            extra += d2.pmt;
+            return false;
+          }
+          return true;
+        });
+      }
+      if (months >= 600) return null;
+      const d = /* @__PURE__ */ new Date();
+      d.setMonth(d.getMonth() + months);
+      const MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return {
+        months,
+        totalInterest: Math.round(totalInterest * 100) / 100,
+        debtFreeDate: MO[d.getMonth()] + " " + d.getFullYear(),
+        payoffOrder
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+  function matchesAmountQuery(q, amount) {
+    const s = (q || "").trim();
+    if (/^>\s*[\d.]+$/.test(s)) return amount > parseFloat(s.slice(1));
+    if (/^<\s*[\d.]+$/.test(s)) return amount < parseFloat(s.slice(1));
+    if (/^[\d.]+$/.test(s)) {
+      const n = parseFloat(s);
+      return !isNaN(n) && (Math.abs(amount - n) < 5e-3 || String(amount).includes(s));
+    }
+    return null;
   }
   const CAT_PALETTE = [
     "#2F5496",
@@ -2340,7 +2397,10 @@ document.addEventListener('DOMContentLoaded',function(){
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
     }).filter((e) => {
       const q = (search || globalSearch || "").toLowerCase();
-      return !q || e.desc.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.notes || "").toLowerCase().includes(q);
+      if (!q) return true;
+      const amtMatch = matchesAmountQuery(q, e.amount);
+      if (amtMatch !== null) return amtMatch;
+      return e.desc.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.notes || "").toLowerCase().includes(q);
     }).filter((e) => {
       if (!dateFrom && !dateTo) return true;
       const sd = e.startDate || "";
@@ -3139,6 +3199,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if (latest !== void 0 && latest !== monthIdx) setMonthIdx(latest);
     }, [gq]);
     const [debtData, setDebtData] = useLS("cf_debt_data", {});
+    const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
     const [debtExpanded, setDebtExpanded] = useState(false);
@@ -4010,7 +4071,46 @@ document.addEventListener('DOMContentLoaded',function(){
           });
         };
         const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-        return /* @__PURE__ */ React.createElement(React.Fragment, null, debtCtx && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+          const simDebts = allRows.map((row) => {
+            var _a2, _b2;
+            return {
+              label: row.label,
+              bal: parseFloat((_a2 = debtData[row.key]) == null ? void 0 : _a2.balance) || 0,
+              rate: parseFloat((_b2 = debtData[row.key]) == null ? void 0 : _b2.rate) || 0,
+              pmt: row.monthlyPmt
+            };
+          }).filter((d) => d.bal > 0 && d.pmt > 0);
+          if (simDebts.length < 1) return null;
+          const extra = Math.max(0, parseFloat(debtExtra) || 0);
+          const av = simulateDebtStrategy(simDebts, extra, "avalanche");
+          const sn = simulateDebtStrategy(simDebts, extra, "snowball");
+          const base = simulateDebtStrategy(simDebts, 0, "avalanche");
+          if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--red)", marginTop: 14 } }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
+          const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 220px", background: "var(--stripe)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 } }, icon, " ", title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginBottom: 10 } }, sub), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)" } }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)" } }, "Total interest"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)" } }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", lineHeight: 1.7 } }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
+          return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
+            "input",
+            {
+              type: "number",
+              inputMode: "decimal",
+              min: "0",
+              step: "10",
+              value: debtExtra,
+              onChange: (e) => setDebtExtra(e.target.value),
+              style: {
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 13,
+                padding: "5px 10px",
+                width: 90,
+                border: "1.5px solid var(--border)",
+                borderRadius: 8,
+                background: "var(--inputBg)",
+                color: "var(--text)",
+                outline: "none"
+              }
+            }
+          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "\u{1F3D4}", sub: "Highest interest rate first \u2014 mathematically optimal", r: av }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "\u26C4", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 8 } }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
+        })(), debtCtx && /* @__PURE__ */ React.createElement(
           ContextMenu,
           {
             x: debtCtx.x,
@@ -5171,6 +5271,33 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       label
     ))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const today = /* @__PURE__ */ new Date();
+      today.setHours(0, 0, 0, 0);
+      const horizon = new Date(today);
+      horizon.setDate(horizon.getDate() + 60);
+      const ending = entries.filter((e) => {
+        if (!e.repeats || !e.recurEnd) return false;
+        const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
+        return d >= today && d <= horizon;
+      }).map((e) => {
+        const evs = activeFlow.filter((ev) => ev.entryId === e.id);
+        const monthly = evs.length ? Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100 : e.amount;
+        const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
+        return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
+      }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
+      if (!ending.length) return null;
+      return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 } }, ending.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        fontFamily: "Inter,sans-serif",
+        fontSize: 12,
+        background: e.type === "expense" ? "var(--greenLt)" : "var(--amberLt)",
+        border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amber)"}33`,
+        borderRadius: 20,
+        padding: "7px 14px"
+      } }, /* @__PURE__ */ React.createElement("span", null, e.type === "expense" ? "\u{1F389}" : "\u26A0"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
+    })(), (() => {
+      const today = /* @__PURE__ */ new Date();
       const in7 = new Date(today);
       in7.setDate(today.getDate() + 7);
       const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7).sort((a, b) => a.date - b.date).slice(0, 6);
@@ -5815,7 +5942,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Cancel"
     ))));
   }
-  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow: activeFlow2 = [], budgetTargets = {}, setBudgetTargets = () => {
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey }) {
@@ -6062,7 +6189,27 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         value: alertThreshold,
         onChange: (e) => setAlertThreshold(Math.max(0, parseFloat(e.target.value) || 0))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        value: lockTimeout,
+        onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          padding: "7px 10px",
+          borderRadius: 8,
+          border: "1.5px solid var(--border)",
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none"
+        }
+      },
+      /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
+      /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
+      /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
+      /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
       var _a2;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, style: {
         display: "flex",
@@ -6485,7 +6632,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         confirmLabel: "Reset Targets",
         onConfirm: () => {
           const byMonthCat = {};
-          (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
+          (activeFlow2 || []).filter((ev) => ev.type === "expense").forEach((ev) => {
             const key = `${activeYear}:${ev.month}`;
             if (!byMonthCat[key]) byMonthCat[key] = {};
             byMonthCat[key][ev.category] = (byMonthCat[key][ev.category] || 0) + ev.amount;
@@ -7616,7 +7763,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         sessionStorage.removeItem("cf_st");
         return v;
       });
-      t("React 18 present", () => typeof React !== "undefined" && !!React.useState);
+      t("React present (v" + (typeof React !== "undefined" && React.version || "?") + ")", () => typeof React !== "undefined" && !!React.useState && !!ReactDOM.createRoot);
       t("Recharts present", () => typeof window.Recharts !== "undefined");
       t("Service worker supported", () => "serviceWorker" in navigator);
       t("navigator.onLine readable", () => typeof navigator.onLine === "boolean");
@@ -7624,6 +7771,54 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const c = document.createElement("canvas");
         return !!c.getContext("2d");
       });
+      t("Gist payload round-trip keeps all fields", () => {
+        const payload = {
+          entries: [entry],
+          overridesByYr: {},
+          yearConfigs: {},
+          categories: ["A"],
+          budgetTargets: {},
+          templates: [],
+          completed: {},
+          activeYear: 2026,
+          alertThreshold: 500,
+          darkMode: false,
+          forecastHorizon: 60,
+          aiReports: [],
+          users: [],
+          colOrder: ["desc"],
+          regFilter: "all",
+          regFilterCats: [],
+          regFilterScheds: [],
+          regFilterStatus: [],
+          schemaVersion: 4,
+          savedAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        const rt = JSON.parse(JSON.stringify(payload));
+        return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === 4 && rt.entries.length === 1;
+      });
+      t("override attachment wins over base", () => {
+        const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64BASE" });
+        const evsA = expandEntries([ent], 2026, {});
+        const ovA = {};
+        ovA[evsA[0].id] = { attachment: "base64OVERRIDE" };
+        const evsB = expandEntries([ent], 2026, ovA);
+        return evsA[0].attachment === "base64BASE" && evsB[0].attachment === "base64OVERRIDE" && evsB[1].attachment === "base64BASE";
+      });
+      t("multi-select filter math ([]=all)", () => {
+        const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];
+        const apply = (sel) => items.filter((x) => !sel.length || sel.includes(x.cat)).length;
+        return apply([]) === 3 && apply(["A"]) === 1 && apply(["A", "C"]) === 2;
+      });
+      t("amount search: >, <, exact", () => matchesAmountQuery(">500", 600) === true && matchesAmountQuery(">500", 400) === false && matchesAmountQuery("<100", 50) === true && matchesAmountQuery("49.50", 49.5) === true && matchesAmountQuery("rent", 100) === null);
+      t("fmtVarRange equal/range/empty", () => fmtVarRange([100, 100]) === "\u2248 $100" && fmtVarRange([1200, 2400]) === "$1.2k\u2013$2.4k" && fmtVarRange([]) === "Variable");
+      t("debt sim: avalanche \u2264 snowball interest", () => {
+        const debts = [{ label: "HighRate", bal: 5e3, rate: 22, pmt: 150 }, { label: "LowRate", bal: 2e3, rate: 5, pmt: 100 }];
+        const av = simulateDebtStrategy(debts, 100, "avalanche");
+        const sn = simulateDebtStrategy(debts, 100, "snowball");
+        return !!av && !!sn && av.totalInterest <= sn.totalInterest && av.months > 0 && av.payoffOrder.length === 2;
+      });
+      t("debt sim: diverging payments \u2192 null", () => simulateDebtStrategy([{ label: "X", bal: 1e4, rate: 50, pmt: 10 }], 0, "avalanche") === null);
       return out;
     }, []);
     const passed = results.filter((r) => r.ok).length;
@@ -7660,6 +7855,25 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
       setSessionUser(null);
     };
+    const [lockTimeout2, setLockTimeout2] = useLS("cf_lock_timeout", 15);
+    useEffect(() => {
+      if (!lockTimeout2 || !sessionUser) return;
+      const KEY = "cf_hidden_at";
+      const onVis = () => {
+        try {
+          if (document.visibilityState === "hidden") {
+            sessionStorage.setItem(KEY, String(Date.now()));
+          } else {
+            const at = parseInt(sessionStorage.getItem(KEY) || "0", 10);
+            sessionStorage.removeItem(KEY);
+            if (at && Date.now() - at > lockTimeout2 * 6e4) logout();
+          }
+        } catch (err) {
+        }
+      };
+      document.addEventListener("visibilitychange", onVis);
+      return () => document.removeEventListener("visibilitychange", onVis);
+    }, [lockTimeout2, sessionUser]);
     useEffect(() => {
       try {
         const raw = sessionStorage.getItem("cf_session");
@@ -7812,7 +8026,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const prevFlow = yearFlows[sortedConfigs[idx - 1].year];
       return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
     }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
-    const activeFlow = yearFlows[activeYear] || [];
+    const activeFlow2 = yearFlows[activeYear] || [];
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
@@ -7833,7 +8047,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
       return entry;
     };
-    const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
+    const currentBalance = useMemo(() => getCurrentBalance(activeFlow2, activeOpenBal, activeYear), [activeFlow2, activeOpenBal, activeYear]);
     const {
       status: gistStatus,
       msg: gistMsg,
@@ -8345,7 +8559,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const today2 = /* @__PURE__ */ new Date();
       const n90 = new Date(today2);
       n90.setDate(today2.getDate() + 90);
-      const upcoming = activeFlow.filter((ev) => ev.date >= today2 && ev.date <= n90 && ev.balance < alertThresh);
+      const upcoming = activeFlow2.filter((ev) => ev.date >= today2 && ev.date <= n90 && ev.balance < alertThresh);
       const critical = upcoming.filter((ev) => ev.balance < 0);
       const warning = upcoming.filter((ev) => ev.balance >= 0);
       const hasCritical = critical.length > 0;
@@ -8736,7 +8950,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       background: "transparent",
       color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)",
       transition: "color 0.15s,border-color 0.15s"
-    } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
+    } }, t.label, t.id === "dashboard" && activeFlow2.filter((ev) => {
       const today = /* @__PURE__ */ new Date();
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
@@ -8830,7 +9044,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     } }, "\u21BB"), pullActive ? "Syncing with Gist\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement("div", { className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, margin: "0 auto", marginTop: 0 } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
       DashboardView,
       {
-        flow: activeFlow,
+        flow: activeFlow2,
         openBal: activeOpenBal,
         yearFlows,
         yearConfigs: sortedConfigs,
@@ -8848,7 +9062,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     ), tab === "budget" && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
-        flow: activeFlow,
+        flow: activeFlow2,
         openBal: activeOpenBal,
         entries,
         setOverride,
@@ -8870,7 +9084,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow2, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(
       RegisterView,
       {
         entries,
@@ -8894,7 +9108,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         filterStatus: regFilterStatus,
         setFilterStatus: setRegFilterStatus
       }
-    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow2, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
@@ -8918,7 +9132,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistCreate,
         templates,
         setTemplates,
-        activeFlow,
+        activeFlow: activeFlow2,
         budgetTargets,
         setBudgetTargets,
         users,
