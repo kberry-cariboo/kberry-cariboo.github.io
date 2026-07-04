@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v112';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v113';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -4765,6 +4765,22 @@ document.addEventListener('DOMContentLoaded',function(){
         if (raw) debtTrackerData = JSON.parse(raw);
       } catch (e) {
       }
+      let savingsGoals = [];
+      try {
+        const raw = localStorage.getItem("cf_goals");
+        if (raw) {
+          const g = JSON.parse(raw);
+          if (Array.isArray(g)) savingsGoals = g.map((x) => ({
+            name: x.name,
+            target: x.target,
+            saved: x.saved,
+            monthly: x.monthly,
+            targetDate: x.targetDate || null,
+            pct: x.target > 0 ? Math.round(x.saved / x.target * 100) : 0
+          }));
+        }
+      } catch (e) {
+      }
       const ytdMonths = summaries.slice(0, currentMonth + 1).map((m) => ({
         month: m.month,
         income: m.income,
@@ -4804,6 +4820,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const lowestBal = Math.min(...summaries.slice(0, currentMonth + 1).map((m) => m.close));
       return {
         year: activeYear,
+        savingsGoals,
         reportingWindow: `January\u2013${MONTHS[currentMonth]} ${activeYear} (${currentMonth + 1} months)`,
         openingBalance: Math.round(openBal * 100) / 100,
         closingBalance: Math.round(closingBal * 100) / 100,
@@ -4902,6 +4919,9 @@ Provide your assessment using these EXACT section headers (in markdown ## format
 ## Debt Management
 ## Budget Performance
 ## Cash Flow & Risk
+## Savings Goals
+Assess progress on each savings goal in savingsGoals (percent funded, whether monthly funding will meet the target date) and recommend funding adjustments.
+
 ## Priority Action Items
 
 For each section, use bullet points (- ) and be direct and specific. In "Priority Action Items", number the top 5 actions with concrete steps and target amounts where possible. Conclude with an overall financial health score from 1-10 with brief justification.`;
@@ -4942,6 +4962,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Income Analysis": "\u{1F4B0}",
       "Spending Analysis": "\u{1F4C9}",
       "Debt Management": "\u{1F4B3}",
+      "Savings Goals": "\u{1F3AF}",
       "Budget Performance": "\u{1F3AF}",
       "Cash Flow & Risk": "\u26A0\uFE0F",
       "Priority Action Items": "\u2705"
@@ -4951,6 +4972,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Income Analysis": "var(--greenDk)",
       "Spending Analysis": "var(--amber)",
       "Debt Management": "var(--red)",
+      "Savings Goals": "var(--greenDk)",
       "Budget Performance": "var(--navy)",
       "Cash Flow & Risk": "var(--amber)",
       "Priority Action Items": "var(--greenDk)"
@@ -6149,7 +6171,20 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
-  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad, gistCreate }) {
+  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad, gistCreate, listSnapshots = null, restoreSnapshot = null, downloadBackup = null }) {
+    const [snaps, setSnaps] = useState(null);
+    const [snapsBusy, setSnapsBusy] = useState(false);
+    const [confirmRestore, setConfirmRestore] = useState(null);
+    const refreshSnaps = async () => {
+      if (!listSnapshots) return;
+      setSnapsBusy(true);
+      try {
+        setSnaps(await listSnapshots());
+      } catch (e) {
+        setSnaps([]);
+      }
+      setSnapsBusy(false);
+    };
     const [tok, setTok] = useState(() => localStorage.getItem("cf_gist_token") || "");
     const [gid, setGid] = useState(() => localStorage.getItem("cf_gist_id") || "");
     const [editing, setEditing] = useState(false);
@@ -6320,9 +6355,88 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       "Cancel"
-    ))));
+    ))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: "var(--text)" } }, "\u{1F4BE} Backups"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, downloadBackup && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: downloadBackup,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 600,
+          padding: "5px 12px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--navy)"
+        }
+      },
+      "\u2B07 Download backup"
+    ), listSnapshots && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: refreshSnaps,
+        disabled: snapsBusy,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 600,
+          padding: "5px 12px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          cursor: snapsBusy ? "wait" : "pointer",
+          background: "transparent",
+          color: "var(--textMid)"
+        }
+      },
+      snapsBusy ? "\u27F3 Loading\u2026" : snaps === null ? "View snapshots" : "\u21BB Refresh"
+    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: snaps && snaps.length ? 10 : 0 } }, "Snapshots are kept automatically in your Gist (last 3, rotated every 6 hours and before any overwrite)."), snaps !== null && (snaps.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)" } }, "No snapshots yet \u2014 they'll appear after your next few saves.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, snaps.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.n, style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 10,
+      background: "var(--stripe)",
+      border: "1px solid var(--border)",
+      borderRadius: 8,
+      padding: "8px 12px",
+      flexWrap: "wrap"
+    } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, "Snapshot ", s.n), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", marginLeft: 8 } }, s.savedAt ? new Date(s.savedAt).toLocaleString() : "unknown date", " \xB7 ", s.entries, " entries", s.goals ? ` \xB7 ${s.goals} goals` : "")), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setConfirmRestore(s),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          padding: "5px 14px",
+          borderRadius: 6,
+          border: "1px solid var(--amber)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--amber)"
+        }
+      },
+      "Restore"
+    ))))), confirmRestore && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: `Restore snapshot ${confirmRestore.n}?`,
+        confirmLabel: "Restore",
+        message: `Your data will be replaced with the snapshot from ${confirmRestore.savedAt ? new Date(confirmRestore.savedAt).toLocaleString() : "an earlier save"}. Your current data is preserved as Snapshot 1, so this can be undone.`,
+        onCancel: () => setConfirmRestore(null),
+        onConfirm: async () => {
+          const n = confirmRestore.n;
+          setConfirmRestore(null);
+          if (restoreSnapshot) {
+            await restoreSnapshot(n);
+            refreshSnaps();
+          }
+        }
+      }
+    )));
   }
-  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, templates = [], setTemplates, activeFlow: activeFlow2 = [], budgetTargets = {}, setBudgetTargets = () => {
+  function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, listSnapshots = null, restoreSnapshot = null, downloadBackup = null, installPrompt = null, triggerInstall = () => {
+  }, templates = [], setTemplates, activeFlow: activeFlow2 = [], budgetTargets = {}, setBudgetTargets = () => {
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey }) {
@@ -6589,7 +6703,24 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), installPrompt && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Install App"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "Add CashFlow to your home screen for a full-screen, offline-ready experience."), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: triggerInstall,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          fontWeight: 700,
+          padding: "9px 20px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          background: "var(--navy)",
+          color: "#fff"
+        }
+      },
+      "\u{1F4F2} Install"
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
       var _a2;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, style: {
         display: "flex",
@@ -6859,7 +6990,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistMsg,
         gistSave,
         gistLoad,
-        gistCreate
+        gistCreate,
+        listSnapshots,
+        restoreSnapshot,
+        downloadBackup
       }
     ), (() => {
       let bytes = 0, count = 0;
@@ -7395,6 +7529,115 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       window.addEventListener("online", onOnline);
       return () => window.removeEventListener("online", onOnline);
     }, []);
+    const listSnapshots = useCallback(async () => {
+      try {
+        const tok = token(), gid = gistId();
+        if (!tok || !gid) return [];
+        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
+        if (!r.ok) return [];
+        const d = await r.json();
+        return [1, 2, 3].map((n) => {
+          var _a;
+          const f = (_a = d.files) == null ? void 0 : _a[`CashFlow_Snapshot_${n}.json`];
+          if (!(f == null ? void 0 : f.content)) return null;
+          try {
+            const pl = JSON.parse(f.content);
+            return { n, savedAt: pl.savedAt || null, entries: (pl.entries || []).length, goals: (pl.goals || []).length };
+          } catch (e) {
+            return null;
+          }
+        }).filter(Boolean);
+      } catch (e) {
+        return [];
+      }
+    }, []);
+    const restoreSnapshot = useCallback(async (n) => {
+      var _a, _b, _c, _d;
+      try {
+        const tok = token(), gid = gistId();
+        if (!tok || !gid) return false;
+        setStatus("syncing");
+        setMsg(`Restoring snapshot ${n}\u2026`);
+        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
+        if (!r.ok) throw new Error(`GitHub ${r.status}`);
+        const d = await r.json();
+        const snap = (_b = (_a = d.files) == null ? void 0 : _a[`CashFlow_Snapshot_${n}.json`]) == null ? void 0 : _b.content;
+        if (!snap) throw new Error("Snapshot not found");
+        const cur = (_d = (_c = d.files) == null ? void 0 : _c[FILE]) == null ? void 0 : _d.content;
+        const files = { [FILE]: { content: snap } };
+        if (cur) files["CashFlow_Snapshot_1.json"] = { content: cur };
+        const w = await fetch(`https://api.github.com/gists/${gid}`, {
+          method: "PATCH",
+          headers: hdrs(tok),
+          body: JSON.stringify({ files })
+        });
+        if (!w.ok) throw new Error(`GitHub ${w.status}`);
+        await loadData();
+        setMsg(`Snapshot ${n} restored.`);
+        return true;
+      } catch (e) {
+        setStatus("error");
+        setMsg("Restore failed: " + e.message);
+        return false;
+      }
+    }, []);
+    const downloadBackup = useCallback(() => {
+      try {
+        const payload = JSON.stringify({
+          entries,
+          overridesByYr,
+          yearConfigs,
+          categories,
+          budgetTargets,
+          templates,
+          completed,
+          activeYear,
+          alertThreshold,
+          darkMode,
+          forecastHorizon,
+          users,
+          colOrder,
+          regFilter,
+          regFilterCats,
+          regFilterScheds,
+          regFilterStatus,
+          goals,
+          schemaVersion: SCHEMA_VERSION,
+          savedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }, null, 2);
+        const blob = new Blob([payload], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }, 100);
+      } catch (e) {
+        alert("Backup failed: " + e.message);
+      }
+    }, [
+      entries,
+      overridesByYr,
+      yearConfigs,
+      categories,
+      budgetTargets,
+      templates,
+      completed,
+      activeYear,
+      alertThreshold,
+      darkMode,
+      forecastHorizon,
+      users,
+      colOrder,
+      regFilter,
+      regFilterCats,
+      regFilterScheds,
+      regFilterStatus,
+      goals
+    ]);
     const token = () => localStorage.getItem("cf_gist_token") || "";
     const gistId = () => localStorage.getItem("cf_gist_id") || "";
     const hdrs = (tok) => ({
@@ -7403,7 +7646,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "Content-Type": "application/json"
     });
     const saveData = useCallback(async (silent = false, force = false) => {
-      var _a, _b;
+      var _a, _b, _c, _d;
       const tok = token().trim();
       const gid = gistId().trim();
       if (!tok || !gid) return;
@@ -7423,29 +7666,52 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           });
         } catch (e) {
         }
-        if (!force) {
+        let remoteFiles = null;
+        try {
+          const chk = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
+          if (chk.ok) {
+            const cd = await chk.json();
+            remoteFiles = cd.files || null;
+          }
+        } catch (e) {
+        }
+        if (!force && remoteFiles) {
           try {
-            const chk = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-            if (chk.ok) {
-              const cd = await chk.json();
-              const remoteRaw = (_b = (_a = cd.files) == null ? void 0 : _a[FILE]) == null ? void 0 : _b.content;
-              if (remoteRaw) {
-                const remote = JSON.parse(remoteRaw);
-                if (remote.savedAt && lastSyncedAt.current && remote.savedAt > lastSyncedAt.current) {
-                  setConflict({
-                    remoteSavedAt: remote.savedAt,
-                    remoteEntries: (remote.entries || []).length,
-                    localEntries: entries.length,
-                    remoteData: remote
-                  });
-                  setStatus("error");
-                  setMsg("\u26A0 Sync conflict \u2014 another device saved newer data.");
-                  return;
-                }
+            const remoteRaw = (_a = remoteFiles[FILE]) == null ? void 0 : _a.content;
+            if (remoteRaw) {
+              const remote = JSON.parse(remoteRaw);
+              if (remote.savedAt && lastSyncedAt.current && remote.savedAt > lastSyncedAt.current) {
+                setConflict({
+                  remoteSavedAt: remote.savedAt,
+                  remoteEntries: (remote.entries || []).length,
+                  localEntries: entries.length,
+                  remoteData: remote
+                });
+                setStatus("error");
+                setMsg("\u26A0 Sync conflict \u2014 another device saved newer data.");
+                return;
               }
             }
           } catch (e) {
           }
+        }
+        const snapFiles = {};
+        try {
+          const SNAP_MS = 6 * 60 * 60 * 1e3;
+          const lastSnap = parseInt(localStorage.getItem("cf_last_snapshot") || "0", 10);
+          const due = force || Date.now() - lastSnap > SNAP_MS;
+          if (due && remoteFiles && ((_b = remoteFiles[FILE]) == null ? void 0 : _b.content)) {
+            snapFiles["CashFlow_Snapshot_1.json"] = { content: remoteFiles[FILE].content };
+            if ((_c = remoteFiles["CashFlow_Snapshot_1.json"]) == null ? void 0 : _c.content)
+              snapFiles["CashFlow_Snapshot_2.json"] = { content: remoteFiles["CashFlow_Snapshot_1.json"].content };
+            if ((_d = remoteFiles["CashFlow_Snapshot_2.json"]) == null ? void 0 : _d.content)
+              snapFiles["CashFlow_Snapshot_3.json"] = { content: remoteFiles["CashFlow_Snapshot_2.json"].content };
+            try {
+              localStorage.setItem("cf_last_snapshot", String(Date.now()));
+            } catch (e) {
+            }
+          }
+        } catch (e) {
         }
         const nowIso = (/* @__PURE__ */ new Date()).toISOString();
         const payload = JSON.stringify({
@@ -7474,7 +7740,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const r = await fetch(`https://api.github.com/gists/${gid}`, {
           method: "PATCH",
           headers: hdrs(tok),
-          body: JSON.stringify({ files: { [FILE]: { content: payload } } })
+          body: JSON.stringify({ files: __spreadValues({ [FILE]: { content: payload } }, snapFiles) })
         });
         if (!r.ok) throw new Error(`GitHub ${r.status}`);
         lastSyncedAt.current = nowIso;
@@ -7643,7 +7909,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       regFilterStatus,
       goals
     ]);
-    return { status, msg, saveData, loadData, createGist, conflict, resolveConflict: (keepMine) => {
+    return { status, msg, saveData, loadData, createGist, listSnapshots, restoreSnapshot, downloadBackup, conflict, resolveConflict: (keepMine) => {
       if (keepMine) {
         setConflict(null);
         saveData(false, true);
@@ -8205,6 +8471,35 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const sn = simulateDebtStrategy(debts, 100, "snowball");
         return !!av && !!sn && av.totalInterest <= sn.totalInterest && av.months > 0 && av.payoffOrder.length === 2;
       });
+      const renderCheck = (label, el) => {
+        t("renders: " + label, () => {
+          const host = document.createElement("div");
+          const root2 = ReactDOM.createRoot(host);
+          try {
+            if (ReactDOM.flushSync) ReactDOM.flushSync(() => root2.render(el));
+            else root2.render(el);
+            return true;
+          } finally {
+            setTimeout(() => {
+              try {
+                root2.unmount();
+              } catch (e) {
+              }
+            }, 0);
+          }
+        });
+      };
+      const noop = () => {
+      };
+      renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
+      renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
+      renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
+      renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
+      renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));
+      renderCheck("RegisterView (empty)", React.createElement(RegisterView, { entries: [], setEntries: noop, addEntry: noop, categories: ["A"], activeYear: 2026 }));
+      renderCheck("BudgetView (empty)", React.createElement(BudgetView, { flow: [], openBal: 0, entries: [], setOverride: noop, clearOverride: noop, categories: ["A"], setEntries: noop, addEntry: noop, view: "monthly", setView: noop, monthIdx: 0, setMonthIdx: noop }));
+      renderCheck("ForecastView (empty)", React.createElement(ForecastView, { yearFlows: {}, yearConfigs: [], openBalByYear: {} }));
+      renderCheck("DashboardView (empty)", React.createElement(DashboardView, { flow: [], openBal: 0, yearFlows: {}, yearConfigs: [], alertThreshold: 500, activeYear: 2026 }));
       t("goal progress math (pct, projection)", () => {
         const g = { target: 3600, saved: 900, monthly: 300 };
         const pct = Math.min(100, Math.round(g.saved / g.target * 100));
@@ -8448,6 +8743,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       saveData: gistSave,
       loadData: gistLoad,
       createGist: gistCreate,
+      listSnapshots,
+      restoreSnapshot,
+      downloadBackup,
       conflict: gistConflict,
       resolveConflict
     } = useGistSync({
@@ -8536,7 +8834,15 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setShowInstall(true);
       };
       window.addEventListener("beforeinstallprompt", handler);
-      return () => window.removeEventListener("beforeinstallprompt", handler);
+      const done = () => {
+        setInstallPrompt(null);
+        setShowInstall(false);
+      };
+      window.addEventListener("appinstalled", done);
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handler);
+        window.removeEventListener("appinstalled", done);
+      };
     }, []);
     const doInstall = async () => {
       if (!installPrompt) return;
@@ -9529,6 +9835,11 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         gistSave,
         gistLoad,
         gistCreate,
+        listSnapshots,
+        restoreSnapshot,
+        downloadBackup,
+        installPrompt,
+        triggerInstall: doInstall,
         templates,
         setTemplates,
         activeFlow: activeFlow2,
