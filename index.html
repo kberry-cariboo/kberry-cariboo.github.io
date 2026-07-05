@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v115';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v119';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1533,7 +1533,7 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
   function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { background: "var(--bgCard)", borderRadius: 16, padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { background: "var(--bgCard)", borderRadius: 14, padding: "24px", width: "min(400px,calc(100vw - 32px))", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--textMid)" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
     }, style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
@@ -2325,6 +2325,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }, filterScheds = [], setFilterScheds = () => {
   }, filterStatus = [], setFilterStatus = () => {
   } }) {
+    const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_REG_COLS;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [searchAllYears, setSearchAllYears] = useState(false);
@@ -2389,7 +2390,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if (deleted) onDeleted(deleted);
     };
     const yearScoped = !searchAllYears;
-    const visibleCols = colOrder.filter((c) => c !== "actions");
+    const visibleCols = cols.filter((c) => c !== "actions");
     const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
       if (filterStatus.length === 0) return true;
       const arc = isArchived(e, activeYear);
@@ -2896,8 +2897,8 @@ document.addEventListener('DOMContentLoaded',function(){
       { id: "dashboard", icon: "\u{1F3E0}", label: "Home" },
       { id: "budget", icon: "\u{1F4C5}", label: "Budget" },
       { id: "register", icon: "\u{1F9FE}", label: "Register" },
-      { id: "forecast", icon: "\u{1F4C8}", label: "Forecast" },
-      { id: "plan", icon: "\u{1F3AF}", label: "Plan" }
+      { id: "plan", icon: "\u{1F3AF}", label: "Plan" },
+      { id: "forecast", icon: "\u{1F4C8}", label: "Forecast" }
     ];
     const moreItems = [
       { id: "ai", icon: "\u2726", label: "AI Insights" },
@@ -3354,6 +3355,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "grid");
+    const [budgetCtx, setBudgetCtx] = useState(null);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
@@ -4927,7 +4929,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }, categories = [], alertThreshold = 1500, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     const [debtData, setDebtData] = useLS("cf_debt_data", {});
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
-    const [budgetCtx2, setBudgetCtx2] = useState(null);
+    const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
     const [debtExpanded, setDebtExpanded] = useState(false);
     const [showDebtForm, setShowDebtForm] = useState(false);
@@ -5794,19 +5796,30 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }, setTab = () => {
   }, setEntries = () => {
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
+  }, dashOrder = [], setDashOrder = () => {
   } }) {
     var _a;
     const [showCustomize, setShowCustomize] = useState(false);
-    const DASH_WIDGETS = [
-      { id: "endingSoon", label: "Ending-soon chips" },
-      { id: "upcoming", label: "Upcoming this week" },
-      { id: "kpis", label: "KPI tiles" },
-      { id: "charts", label: "Balance & category charts" },
-      { id: "incomeRow", label: "Income Sources + Budget vs Actual" },
-      { id: "debtSnap", label: "Debt Snapshot" },
-      { id: "summary", label: "Monthly summary table" },
-      { id: "yoy", label: "Year-over-Year comparison" }
-    ];
+    useEffect(() => {
+      if (dashHidden.charts || dashHidden.incomeRow) {
+        setDashHidden((prev) => {
+          const next = __spreadValues({}, prev);
+          if (next.charts) {
+            next.balanceChart = 1;
+            next.surplusChart = 1;
+            next.incExpChart = 1;
+            next.topCatsChart = 1;
+            delete next.charts;
+          }
+          if (next.incomeRow) {
+            next.incomeSources = 1;
+            next.bvaYear = 1;
+            delete next.incomeRow;
+          }
+          return next;
+        });
+      }
+    }, []);
     const DASH_CHART_H = 220;
     const [yoyMetric, setYoyMetric] = useState("surplus");
     const [catView, setCatView] = useState("bar");
@@ -5889,6 +5902,493 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         return null;
       }
     }, [flow, openBal, activeYear, completed]);
+    const DASH_WIDGET_DEFS = [
+      { id: "endingSoon", label: "Ending-soon chips", size: "full" },
+      { id: "upcoming", label: "Upcoming this week", size: "full" },
+      { id: "kpis", label: "KPI tiles", size: "full" },
+      { id: "balanceChart", label: "Balance chart", size: "half" },
+      { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
+      { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
+      { id: "topCatsChart", label: "Top expense categories", size: "narrow" },
+      { id: "incomeSources", label: "Income sources", size: "half" },
+      { id: "bvaYear", label: "Budget vs Actual (year)", size: "half" },
+      { id: "debtSnap", label: "Debt snapshot", size: "full" },
+      { id: "summary", label: "Monthly summary table", size: "full" },
+      { id: "yoy", label: "Year-over-Year comparison", size: "full" }
+    ];
+    const DASH_ORDER_DEFAULT = DASH_WIDGET_DEFS.map((w) => w.id);
+    const dashOrderEff = useMemo(() => {
+      const stored = Array.isArray(dashOrder) ? dashOrder.filter((id) => DASH_ORDER_DEFAULT.includes(id)) : [];
+      return [...stored, ...DASH_ORDER_DEFAULT.filter((id) => !stored.includes(id))];
+    }, [dashOrder]);
+    const WIDGET_RENDER = {
+      endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+        const today = /* @__PURE__ */ new Date();
+        today.setHours(0, 0, 0, 0);
+        const horizon = new Date(today);
+        horizon.setDate(horizon.getDate() + 60);
+        const ending = entries.filter((e) => {
+          if (!e.repeats || !e.recurEnd) return false;
+          const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
+          return d >= today && d <= horizon;
+        }).map((e) => {
+          const evs = flow.filter((ev) => ev.entryId === e.id);
+          const monthly = evs.length ? Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100 : e.amount;
+          const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
+          return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
+        }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
+        if (!ending.length) return null;
+        return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 } }, ending.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          background: e.type === "expense" ? "var(--greenLt)" : "var(--amberLt)",
+          border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amber)"}33`,
+          borderRadius: 20,
+          padding: "7px 14px"
+        } }, /* @__PURE__ */ React.createElement("span", null, e.type === "expense" ? "\u{1F389}" : "\u26A0"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
+      })()),
+      upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+        const today = /* @__PURE__ */ new Date();
+        const in7 = new Date(today);
+        in7.setDate(today.getDate() + 7);
+        const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7).sort((a, b) => a.date - b.date).slice(0, 6);
+        if (upcoming.length === 0) return null;
+        return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "var(--textLt)"
+        } }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, upcoming.map((ev) => {
+          const d = ev.date;
+          const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          const isInc = ev.type === "income";
+          return /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            color: "var(--textMid)",
+            whiteSpace: "nowrap"
+          } }, label), /* @__PURE__ */ React.createElement("span", { style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            color: "var(--text)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap"
+          } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { style: {
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 13,
+            color: isInc ? "var(--greenDk)" : "var(--red)"
+          } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { style: {
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 13,
+            color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+          } }, fmt(ev.balance)))), /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
+            height: "100%",
+            borderRadius: 2,
+            background: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+            width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
+          } })));
+        })));
+      })()),
+      kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--red)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, "In ", lowestMon)))),
+      balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+        ChartToggle,
+        {
+          value: balView,
+          onChange: setBalView,
+          options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
+        }
+      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, dot: { r: 4, fill: "#1C2B3A" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, fill: "rgba(28,43,58,0.12)", dot: { r: 4, fill: "#1C2B3A" } })))))),
+      surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+        ChartToggle,
+        {
+          value: surplusView,
+          onChange: setSurplusView,
+          options: [{ id: "bar", icon: "\u25AE", label: "Bar" }, { id: "line", icon: "\u2571", label: "Line" }]
+        }
+      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
+        Line,
+        {
+          type: "monotone",
+          dataKey: "surplus",
+          name: "Surplus",
+          stroke: "var(--greenDk)",
+          strokeWidth: 2.5,
+          dot: ({ cx, cy, payload }) => /* @__PURE__ */ React.createElement("circle", { key: cx, cx, cy, r: 4, fill: payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)", stroke: "none" }),
+          activeDot: { r: 6 }
+        }
+      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
+      incExpChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+        ChartToggle,
+        {
+          value: incExpView,
+          onChange: setIncExpView,
+          options: [{ id: "grouped", icon: "\u25AE\u25AE", label: "Grouped" }, { id: "stacked", icon: "\u25B0", label: "Stacked" }, { id: "line", icon: "\u2571", label: "Line" }]
+        }
+      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
+        BarChart,
+        {
+          data: summaries,
+          margin: { top: 4, right: 4, bottom: 0, left: 4 },
+          barCategoryGap: incExpView === "stacked" ? "20%" : "10%"
+        },
+        /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
+        /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }),
+        /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }),
+        /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
+        /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }),
+        /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
+        /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
+      ))))),
+      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, [{ id: "bar", icon: "\u25AC" }, { id: "pie", icon: "\u25D1" }].map((v) => /* @__PURE__ */ React.createElement("button", { key: v.id, onClick: () => setCatView(v.id), style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        fontWeight: 700,
+        padding: "3px 10px",
+        borderRadius: 6,
+        border: "none",
+        cursor: "pointer",
+        background: catView === v.id ? "var(--navy)" : "var(--border)",
+        color: catView === v.id ? "#fff" : "var(--textMid)"
+      } }, v.icon))) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
+        const pct = total / totalExpense * 100;
+        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
+          height: "100%",
+          borderRadius: 3,
+          width: `${pct}%`,
+          background: getCatColor(cat, categories)
+        } })));
+      })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
+        Pie,
+        {
+          data: catTotals.map(([name, value]) => ({ name, value })),
+          cx: "50%",
+          cy: "50%",
+          outerRadius: 80,
+          dataKey: "value",
+          nameKey: "name",
+          label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
+          labelLine: false
+        },
+        catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories) }))
+      ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", marginTop: 4 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--stripe)" } }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 10,
+        fontWeight: 700,
+        color: "var(--textLt)",
+        padding: "6px 8px",
+        textAlign: i === 0 ? "left" : "right",
+        letterSpacing: "0.08em",
+        textTransform: "uppercase"
+      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: getCatColor(cat, categories), flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
+      incomeSources: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
+        ChartToggle,
+        {
+          value: incView,
+          onChange: setIncView,
+          options: [{ id: "bar", icon: "\u25AC", label: "Bars" }, { id: "pie", icon: "\u25D1", label: "Pie" }]
+        }
+      ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", textAlign: "center", padding: "20px 0" } }, "No income entries"), incTotals.map(([cat, total], i) => {
+        const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
+        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: "var(--greenDk)", opacity: 0.7 + 0.3 * (1 - i / incTotals.length) } })));
+      })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
+        Pie,
+        {
+          data: incTotals.map(([name, value]) => ({ name, value })),
+          cx: "50%",
+          cy: "50%",
+          outerRadius: 75,
+          dataKey: "value",
+          nameKey: "name",
+          label: ({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : "",
+          labelLine: true
+        },
+        incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: ["#27AE73", "#2ECC8A", "#16A085", "#1ABC9C", "#2980B9", "#3498DB"][i % 6] }))
+      ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } })))))),
+      bvaYear: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
+        const _now = /* @__PURE__ */ new Date();
+        const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
+        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date") : null;
+      })(), (() => {
+        const now = /* @__PURE__ */ new Date();
+        const isCurrentYear = now.getFullYear() === activeYear;
+        const isPastYear = now.getFullYear() > activeYear;
+        const lastMonth = isPastYear ? 11 : isCurrentYear ? now.getMonth() : -1;
+        const actualByCat = {};
+        flow.filter((e) => e.type === "expense" && e.month <= lastMonth).forEach((e) => {
+          actualByCat[e.category] = (actualByCat[e.category] || 0) + e.amount;
+        });
+        const targetByCat = {};
+        Object.keys(budgetTargets).forEach((key) => {
+          if (!key.startsWith(activeYear + ":")) return;
+          const mIdx = parseInt(key.split(":")[1]);
+          if (isNaN(mIdx) || mIdx > lastMonth) return;
+          const monthTargets = budgetTargets[key] || {};
+          Object.keys(monthTargets).forEach((cat) => {
+            targetByCat[cat] = (targetByCat[cat] || 0) + (Number(monthTargets[cat]) || 0);
+          });
+        });
+        const cats = [.../* @__PURE__ */ new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
+        if (cats.length === 0) {
+          return /* @__PURE__ */ React.createElement("div", { style: {
+            padding: "32px 16px",
+            textAlign: "center",
+            height: DASH_CHART_H,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center"
+          } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 28, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
+        }
+        const rows = cats.map((c) => {
+          const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
+          const target = Math.round((targetByCat[c] || 0) * 100) / 100;
+          const diff = Math.round((actual - target) * 100) / 100;
+          const over = target > 0 && diff > 0;
+          const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
+          const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
+          return { cat: c, actual, target, diff, over, color, pct };
+        });
+        const totalActual = Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100;
+        const totalTarget = Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100;
+        const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
+        const tOver = totalTarget > 0 && tDiff > 0;
+        const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          color: r.over ? r.color : "var(--text)"
+        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: r.color } }, "\u25B2", fmt(r.diff)))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
+          height: "100%",
+          width: `${r.pct}%`,
+          borderRadius: 3,
+          background: r.color,
+          transition: "width 0.4s ease"
+        } }))))), /* @__PURE__ */ React.createElement("div", { style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 6,
+          paddingTop: 10,
+          borderTop: "2px solid var(--border)"
+        } }, /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--textMid)"
+        } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          color: tOver ? tColor : "var(--text)"
+        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))));
+      })())),
+      debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+        let dData = {};
+        try {
+          const raw = localStorage.getItem("cf_debt_data");
+          if (raw) dData = JSON.parse(raw);
+        } catch (e) {
+        }
+        const toMo = (ev) => {
+          var _a2;
+          if (!ev) return 0;
+          const amt = ev.amount || 0, every = ev.recurEvery || 1;
+          const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
+          return Math.round(amt * (ppy / 12) * 100) / 100;
+        };
+        const dkw = [
+          "debt",
+          "credit",
+          "loan",
+          "mortgage",
+          "line of credit",
+          "cc-",
+          "visa",
+          "amex",
+          "mastercard",
+          "car payment",
+          "truck payment",
+          "trailer payment",
+          "scotialine",
+          "loc",
+          "vehicle",
+          "tractor"
+        ];
+        const autoAllEvs = {};
+        flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
+          const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
+          (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
+        });
+        const autoMonthly = (key) => {
+          const evs = autoAllEvs[key] || [];
+          if (!evs.length) return 0;
+          return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
+        };
+        const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
+        if (configuredDebts.length === 0) return null;
+        const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
+        return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, configuredDebts.map(([key, v]) => {
+          const bal = parseFloat(v.balance) || 0;
+          const rate = parseFloat(v.rate) || 0;
+          const isManual = key.startsWith("manual_");
+          const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
+          const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
+          const r = rate / 100 / 12;
+          const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
+          const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
+          const payoffDate = monthsLeft ? (() => {
+            const d = /* @__PURE__ */ new Date();
+            d.setMonth(d.getMonth() + monthsLeft);
+            return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+          })() : null;
+          const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
+          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, flexWrap: "wrap", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 11,
+            color: "var(--textLt)",
+            background: "var(--bg)",
+            padding: "2px 6px",
+            borderRadius: 4,
+            border: "1px solid var(--border)"
+          } }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--greenDk)" } }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
+            height: "100%",
+            borderRadius: 3,
+            width: `${pct}%`,
+            background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
+            transition: "width 0.4s"
+          } })), pmt > 0 && (() => {
+            var _a2;
+            const evs = autoAllEvs[key] || [];
+            const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
+            const timesYr = evs.length;
+            const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
+            return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
+          })());
+        })));
+      })()),
+      summary: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        CollapseHeader,
+        {
+          id: "summary",
+          summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
+          title: /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary")
+        },
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
+          ChartToggle,
+          {
+            value: summaryView,
+            onChange: setSummaryView,
+            options: [{ id: "table", icon: "\u2261", label: "Table" }, { id: "heat", icon: "\u25FC", label: "Heatmap" }]
+          }
+        )), /* @__PURE__ */ React.createElement(
+          ExportBar,
+          {
+            onCSV: () => downloadCSV(
+              `CashFlow_Monthly_Summary_${activeYear}.csv`,
+              summaries.map((m) => [m.month, m.income, m.expense, m.surplus, m.close]),
+              ["Month", "Income", "Expenses", "Surplus", "Closing Balance"]
+            ),
+            onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
+          }
+        )),
+        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#fff",
+          padding: "10px 16px",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          textAlign: i === 0 ? "left" : "right",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => {
+          const maxInc = Math.max(...summaries.map((s) => s.income), 1);
+          const maxExp = Math.max(...summaries.map((s) => s.expense), 1);
+          const maxAbs = Math.max(...summaries.map((s) => Math.abs(s.surplus)), 1);
+          const maxBal = Math.max(...summaries.map((s) => Math.abs(s.close)), 1);
+          const heatInc = `rgba(39,174,115,${0.1 + 0.7 * (m.income / maxInc)})`;
+          const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
+          const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
+          const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
+          return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(m.close)));
+        }))))),
+        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#fff",
+          padding: "10px 16px",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          textAlign: i === 0 ? "left" : "right",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          padding: "9px 16px",
+          textAlign: "right",
+          color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)",
+          background: m.surplus < 0 ? "var(--redLt)" : "transparent"
+        } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: {
+          fontFamily: "'IBM Plex Mono',monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          padding: "9px 16px",
+          textAlign: "right",
+          color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+          background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : "transparent"
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "var(--green)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#FF8A7A" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px" } }))))))
+      ))),
+      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, yoyMetrics.map((m) => /* @__PURE__ */ React.createElement("button", { key: m.id, onClick: () => setYoyMetric(m.id), style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "5px 12px",
+        borderRadius: 16,
+        border: "none",
+        cursor: "pointer",
+        background: yoyMetric === m.id ? "var(--navy)" : "var(--border)",
+        color: yoyMetric === m.id ? "#fff" : "var(--textMid)"
+      } }, m.label))) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+        Line,
+        {
+          key: yc.year,
+          type: "monotone",
+          dataKey: yc.year,
+          name: String(yc.year),
+          stroke: YCOLS[yi % YCOLS.length],
+          strokeWidth: 2.5,
+          dot: { r: 3 },
+          activeDot: { r: 5 }
+        }
+      ))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#fff",
+        padding: "9px 14px",
+        textAlign: i === 0 ? "left" : "right",
+        letterSpacing: "0.08em",
+        textTransform: "uppercase"
+      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, annualRows.map((row, i) => {
+        const prev = annualRows[i - 1];
+        const delta = prev ? row.surplus - prev.surplus : null;
+        return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
+      }))))) : /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")))
+    };
     return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, margin: "0 auto", overflowX: "hidden" } }, glance && entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "glance-strip", style: {
       position: "sticky",
       top: 0,
@@ -5941,27 +6441,51 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           style: { background: "var(--bgCard)", borderRadius: 14, padding: "24px", width: "min(400px,calc(100vw - 32px))", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }
         },
         /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 } }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 16 } }, "Choose which widgets appear. Your selection syncs across devices."),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, DASH_WIDGETS.map((w) => /* @__PURE__ */ React.createElement("label", { key: w.id, style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "9px 10px",
-          borderRadius: 8,
-          cursor: "pointer",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          color: "var(--text)",
-          background: dashHidden[w.id] ? "transparent" : "var(--stripe)"
-        } }, /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "checkbox",
-            checked: !dashHidden[w.id],
-            onChange: (e) => setDashHidden((prev) => __spreadProps(__spreadValues({}, prev), { [w.id]: !e.target.checked })),
-            style: { width: 16, height: 16, accentColor: "var(--navy)" }
-          }
-        ), w.label))),
+        /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--textLt)", marginBottom: 16 } }, "Show, hide, and reorder each widget individually. Your layout syncs across devices."),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, dashOrderEff.map((id, idx) => {
+          const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
+          if (!w) return null;
+          const move = (dir) => {
+            haptic();
+            const next = [...dashOrderEff];
+            const j = idx + dir;
+            if (j < 0 || j >= next.length) return;
+            [next[idx], next[j]] = [next[j], next[idx]];
+            setDashOrder(next);
+          };
+          const btn = {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            width: 34,
+            height: 34,
+            lineHeight: "32px",
+            borderRadius: 6,
+            border: "1px solid var(--border)",
+            cursor: "pointer",
+            background: "transparent",
+            color: "var(--textMid)",
+            padding: 0
+          };
+          return /* @__PURE__ */ React.createElement("div", { key: id, style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "7px 10px",
+            borderRadius: 8,
+            fontFamily: "Inter,sans-serif",
+            fontSize: 13,
+            color: "var(--text)",
+            background: dashHidden[id] ? "transparent" : "var(--stripe)"
+          } }, /* @__PURE__ */ React.createElement(
+            "input",
+            {
+              type: "checkbox",
+              checked: !dashHidden[id],
+              onChange: (e) => setDashHidden((prev) => __spreadProps(__spreadValues({}, prev), { [id]: !e.target.checked })),
+              style: { width: 16, height: 16, accentColor: "var(--navy)", flexShrink: 0 }
+            }
+          ), /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 0, opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === 0 ? 0.3 : 1 }), disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }), disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
+        })),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginTop: 18 } }, /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -6008,461 +6532,28 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       label
-    ))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), !dashHidden.endingSoon && (() => {
-      const today = /* @__PURE__ */ new Date();
-      today.setHours(0, 0, 0, 0);
-      const horizon = new Date(today);
-      horizon.setDate(horizon.getDate() + 60);
-      const ending = entries.filter((e) => {
-        if (!e.repeats || !e.recurEnd) return false;
-        const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
-        return d >= today && d <= horizon;
-      }).map((e) => {
-        const evs = activeFlow.filter((ev) => ev.entryId === e.id);
-        const monthly = evs.length ? Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100 : e.amount;
-        const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
-        return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
-      }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
-      if (!ending.length) return null;
-      return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 } }, ending.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        fontFamily: "Inter,sans-serif",
-        fontSize: 12,
-        background: e.type === "expense" ? "var(--greenLt)" : "var(--amberLt)",
-        border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amber)"}33`,
-        borderRadius: 20,
-        padding: "7px 14px"
-      } }, /* @__PURE__ */ React.createElement("span", null, e.type === "expense" ? "\u{1F389}" : "\u26A0"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
-    })(), !dashHidden.upcoming && (() => {
-      const today = /* @__PURE__ */ new Date();
-      const in7 = new Date(today);
-      in7.setDate(today.getDate() + 7);
-      const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7).sort((a, b) => a.date - b.date).slice(0, 6);
-      if (upcoming.length === 0) return null;
-      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.12em",
-        textTransform: "uppercase",
-        color: "var(--textLt)"
-      } }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)" } }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, upcoming.map((ev) => {
-        const d = ev.date;
-        const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-        const isInc = ev.type === "income";
-        return /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          color: "var(--textMid)",
-          whiteSpace: "nowrap"
-        } }, label), /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          color: "var(--text)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap"
-        } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 13,
-          color: isInc ? "var(--greenDk)" : "var(--red)"
-        } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 13,
-          color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-        } }, fmt(ev.balance)))), /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
-          height: "100%",
-          borderRadius: 2,
-          background: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
-          width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
-        } })));
-      })));
-    })(), !dashHidden.kpis && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--red)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--red)", marginTop: 4 } }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, "In ", lowestMon))), !dashHidden.charts && /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-      ChartToggle,
-      {
-        value: balView,
-        onChange: setBalView,
-        options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
-      }
-    ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, dot: { r: 4, fill: "#1C2B3A" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "#1C2B3A", strokeWidth: 2.5, fill: "rgba(28,43,58,0.12)", dot: { r: 4, fill: "#1C2B3A" } }))))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-      ChartToggle,
-      {
-        value: surplusView,
-        onChange: setSurplusView,
-        options: [{ id: "bar", icon: "\u25AE", label: "Bar" }, { id: "line", icon: "\u2571", label: "Line" }]
-      }
-    ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
-      Line,
-      {
-        type: "monotone",
-        dataKey: "surplus",
-        name: "Surplus",
-        stroke: "var(--greenDk)",
-        strokeWidth: 2.5,
-        dot: ({ cx, cy, payload }) => /* @__PURE__ */ React.createElement("circle", { key: cx, cx, cy, r: 4, fill: payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)", stroke: "none" }),
-        activeDot: { r: 6 }
-      }
-    )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))), !dashHidden.charts && /* @__PURE__ */ React.createElement("div", { className: "chart-grid-32", style: { display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-      ChartToggle,
-      {
-        value: incExpView,
-        onChange: setIncExpView,
-        options: [{ id: "grouped", icon: "\u25AE\u25AE", label: "Grouped" }, { id: "stacked", icon: "\u25B0", label: "Stacked" }, { id: "line", icon: "\u2571", label: "Line" }]
-      }
-    ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
-      BarChart,
-      {
-        data: summaries,
-        margin: { top: 4, right: 4, bottom: 0, left: 4 },
-        barCategoryGap: incExpView === "stacked" ? "20%" : "10%"
-      },
-      /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
-      /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }),
-      /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }),
-      /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
-      /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }),
-      /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
-      /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
-    )))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, [{ id: "bar", icon: "\u25AC" }, { id: "pie", icon: "\u25D1" }].map((v) => /* @__PURE__ */ React.createElement("button", { key: v.id, onClick: () => setCatView(v.id), style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 700,
-      padding: "3px 10px",
-      borderRadius: 6,
-      border: "none",
-      cursor: "pointer",
-      background: catView === v.id ? "var(--navy)" : "var(--border)",
-      color: catView === v.id ? "#fff" : "var(--textMid)"
-    } }, v.icon))) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
-      const pct = total / totalExpense * 100;
-      return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
-        height: "100%",
-        borderRadius: 3,
-        width: `${pct}%`,
-        background: getCatColor(cat, categories)
-      } })));
-    })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
-      Pie,
-      {
-        data: catTotals.map(([name, value]) => ({ name, value })),
-        cx: "50%",
-        cy: "50%",
-        outerRadius: 80,
-        dataKey: "value",
-        nameKey: "name",
-        label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
-        labelLine: false
-      },
-      catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories) }))
-    ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", marginTop: 4 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--stripe)" } }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 700,
-      color: "var(--textLt)",
-      padding: "6px 8px",
-      textAlign: i === 0 ? "left" : "right",
-      letterSpacing: "0.08em",
-      textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: getCatColor(cat, categories), flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))), !dashHidden.incomeRow && /* @__PURE__ */ React.createElement("div", { className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-      ChartToggle,
-      {
-        value: incView,
-        onChange: setIncView,
-        options: [{ id: "bar", icon: "\u25AC", label: "Bars" }, { id: "pie", icon: "\u25D1", label: "Pie" }]
-      }
-    ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", textAlign: "center", padding: "20px 0" } }, "No income entries"), incTotals.map(([cat, total], i) => {
-      const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
-      return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: "var(--greenDk)", opacity: 0.7 + 0.3 * (1 - i / incTotals.length) } })));
-    })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
-      Pie,
-      {
-        data: incTotals.map(([name, value]) => ({ name, value })),
-        cx: "50%",
-        cy: "50%",
-        outerRadius: 75,
-        dataKey: "value",
-        nameKey: "name",
-        label: ({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : "",
-        labelLine: true
-      },
-      incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: ["#27AE73", "#2ECC8A", "#16A085", "#1ABC9C", "#2980B9", "#3498DB"][i % 6] }))
-    ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontFamily: "Inter,sans-serif", fontSize: 12, background: "#1C2B3A", border: "none", borderRadius: 8, color: "#fff" } }))))), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
-      const _now = /* @__PURE__ */ new Date();
-      const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
-      return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date") : null;
-    })(), (() => {
-      const now = /* @__PURE__ */ new Date();
-      const isCurrentYear = now.getFullYear() === activeYear;
-      const isPastYear = now.getFullYear() > activeYear;
-      const lastMonth = isPastYear ? 11 : isCurrentYear ? now.getMonth() : -1;
-      const actualByCat = {};
-      flow.filter((e) => e.type === "expense" && e.month <= lastMonth).forEach((e) => {
-        actualByCat[e.category] = (actualByCat[e.category] || 0) + e.amount;
-      });
-      const targetByCat = {};
-      Object.keys(budgetTargets).forEach((key) => {
-        if (!key.startsWith(activeYear + ":")) return;
-        const mIdx = parseInt(key.split(":")[1]);
-        if (isNaN(mIdx) || mIdx > lastMonth) return;
-        const monthTargets = budgetTargets[key] || {};
-        Object.keys(monthTargets).forEach((cat) => {
-          targetByCat[cat] = (targetByCat[cat] || 0) + (Number(monthTargets[cat]) || 0);
-        });
-      });
-      const cats = [.../* @__PURE__ */ new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
-      if (cats.length === 0) {
-        return /* @__PURE__ */ React.createElement("div", { style: {
-          padding: "32px 16px",
-          textAlign: "center",
-          height: DASH_CHART_H,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center"
-        } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 28, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
-      }
-      const rows = cats.map((c) => {
-        const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
-        const target = Math.round((targetByCat[c] || 0) * 100) / 100;
-        const diff = Math.round((actual - target) * 100) / 100;
-        const over = target > 0 && diff > 0;
-        const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
-        const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
-        return { cat: c, actual, target, diff, over, color, pct };
-      });
-      const totalActual = Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100;
-      const totalTarget = Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100;
-      const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
-      const tOver = totalTarget > 0 && tDiff > 0;
-      const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 13,
-        color: r.over ? r.color : "var(--text)"
-      } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: r.color } }, "\u25B2", fmt(r.diff)))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
-        height: "100%",
-        width: `${r.pct}%`,
-        borderRadius: 3,
-        background: r.color,
-        transition: "width 0.4s ease"
-      } }))))), /* @__PURE__ */ React.createElement("div", { style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: 6,
-        paddingTop: 10,
-        borderTop: "2px solid var(--border)"
-      } }, /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 13,
-        fontWeight: 700,
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
-        color: "var(--textMid)"
-      } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 13,
-        fontWeight: 700,
-        color: tOver ? tColor : "var(--text)"
-      } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))));
-    })())), !dashHidden.debtSnap && (() => {
-      let dData = {};
-      try {
-        const raw = localStorage.getItem("cf_debt_data");
-        if (raw) dData = JSON.parse(raw);
-      } catch (e) {
-      }
-      const toMo = (ev) => {
-        var _a2;
-        if (!ev) return 0;
-        const amt = ev.amount || 0, every = ev.recurEvery || 1;
-        const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
-        return Math.round(amt * (ppy / 12) * 100) / 100;
-      };
-      const dkw = [
-        "debt",
-        "credit",
-        "loan",
-        "mortgage",
-        "line of credit",
-        "cc-",
-        "visa",
-        "amex",
-        "mastercard",
-        "car payment",
-        "truck payment",
-        "trailer payment",
-        "scotialine",
-        "loc",
-        "vehicle",
-        "tractor"
-      ];
-      const autoAllEvs = {};
-      flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
-        const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
-        (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
-      });
-      const autoMonthly = (key) => {
-        const evs = autoAllEvs[key] || [];
-        if (!evs.length) return 0;
-        return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
-      };
-      const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
-      if (configuredDebts.length === 0) return null;
-      const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
-      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, configuredDebts.map(([key, v]) => {
-        const bal = parseFloat(v.balance) || 0;
-        const rate = parseFloat(v.rate) || 0;
-        const isManual = key.startsWith("manual_");
-        const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
-        const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
-        const r = rate / 100 / 12;
-        const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
-        const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
-        const payoffDate = monthsLeft ? (() => {
-          const d = /* @__PURE__ */ new Date();
-          d.setMonth(d.getMonth() + monthsLeft);
-          return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-        })() : null;
-        const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
-        return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, flexWrap: "wrap", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          color: "var(--textLt)",
-          background: "var(--bg)",
-          padding: "2px 6px",
-          borderRadius: 4,
-          border: "1px solid var(--border)"
-        } }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--red)" } }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--greenDk)" } }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
-          height: "100%",
-          borderRadius: 3,
-          width: `${pct}%`,
-          background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
-          transition: "width 0.4s"
-        } })), pmt > 0 && (() => {
-          var _a2;
-          const evs = autoAllEvs[key] || [];
-          const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
-          const timesYr = evs.length;
-          const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
-          return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
-        })());
-      })));
-    })(), !dashHidden.summary && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      CollapseHeader,
-      {
-        id: "summary",
-        summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
-        title: /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary")
-      },
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
-        ChartToggle,
-        {
-          value: summaryView,
-          onChange: setSummaryView,
-          options: [{ id: "table", icon: "\u2261", label: "Table" }, { id: "heat", icon: "\u25FC", label: "Heatmap" }]
+    ))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+      const visible = dashOrderEff.filter((id) => !dashHidden[id]);
+      const out = [];
+      let i = 0;
+      const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
+      while (i < visible.length) {
+        const id = visible[i], sz = sizeOf(id);
+        if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full") {
+          const id2 = visible[i + 1], sz2 = sizeOf(id2);
+          const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
+          out.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { display: "grid", gridTemplateColumns: cols, gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
+          i += 2;
+        } else if (sz !== "full") {
+          out.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, WIDGET_RENDER[id]()));
+          i += 1;
+        } else {
+          out.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
+          i += 1;
         }
-      )), /* @__PURE__ */ React.createElement(
-        ExportBar,
-        {
-          onCSV: () => downloadCSV(
-            `CashFlow_Monthly_Summary_${activeYear}.csv`,
-            summaries.map((m) => [m.month, m.income, m.expense, m.surplus, m.close]),
-            ["Month", "Income", "Expenses", "Surplus", "Closing Balance"]
-          ),
-          onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
-        }
-      )),
-      summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#fff",
-        padding: "10px 16px",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        textAlign: i === 0 ? "left" : "right",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => {
-        const maxInc = Math.max(...summaries.map((s) => s.income), 1);
-        const maxExp = Math.max(...summaries.map((s) => s.expense), 1);
-        const maxAbs = Math.max(...summaries.map((s) => Math.abs(s.surplus)), 1);
-        const maxBal = Math.max(...summaries.map((s) => Math.abs(s.close)), 1);
-        const heatInc = `rgba(39,174,115,${0.1 + 0.7 * (m.income / maxInc)})`;
-        const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
-        const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
-        const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
-        return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(m.close)));
-      }))))),
-      summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#fff",
-        padding: "10px 16px",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        textAlign: i === 0 ? "left" : "right",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 13,
-        fontWeight: 700,
-        padding: "9px 16px",
-        textAlign: "right",
-        color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)",
-        background: m.surplus < 0 ? "var(--redLt)" : "transparent"
-      } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 13,
-        fontWeight: 700,
-        padding: "9px 16px",
-        textAlign: "right",
-        color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)",
-        background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : "transparent"
-      } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "var(--green)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#FF8A7A" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px" } }))))))
-    )), showYoY && !dashHidden.yoy && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, yoyMetrics.map((m) => /* @__PURE__ */ React.createElement("button", { key: m.id, onClick: () => setYoyMetric(m.id), style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 600,
-      padding: "5px 12px",
-      borderRadius: 16,
-      border: "none",
-      cursor: "pointer",
-      background: yoyMetric === m.id ? "var(--navy)" : "var(--border)",
-      color: yoyMetric === m.id ? "#fff" : "var(--textMid)"
-    } }, m.label))) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontFamily: "Inter,sans-serif", fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
-      Line,
-      {
-        key: yc.year,
-        type: "monotone",
-        dataKey: yc.year,
-        name: String(yc.year),
-        stroke: YCOLS[yi % YCOLS.length],
-        strokeWidth: 2.5,
-        dot: { r: 3 },
-        activeDot: { r: 5 }
       }
-    ))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 700,
-      color: "#fff",
-      padding: "9px 14px",
-      textAlign: i === 0 ? "left" : "right",
-      letterSpacing: "0.08em",
-      textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, annualRows.map((row, i) => {
-      const prev = annualRows[i - 1];
-      const delta = prev ? row.surplus - prev.surplus : null;
-      return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
-    }))))), !showYoY && !dashHidden.yoy && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")));
+      return out;
+    })());
   }
   function AlertsPanel({ flow, alertThreshold, setTab }) {
     const today = /* @__PURE__ */ new Date();
@@ -6783,7 +6874,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     )));
   }
   function SettingsView({ categories, setCategories, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, listSnapshots = null, restoreSnapshot = null, downloadBackup = null, installPrompt = null, triggerInstall = () => {
-  }, templates = [], setTemplates, activeFlow: activeFlow2 = [], budgetTargets = {}, setBudgetTargets = () => {
+  }, lockTimeout = 15, setLockTimeout = () => {
+  }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey }) {
@@ -7493,7 +7585,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         confirmLabel: "Reset Targets",
         onConfirm: () => {
           const byMonthCat = {};
-          (activeFlow2 || []).filter((ev) => ev.type === "expense").forEach((ev) => {
+          (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
             const key = `${activeYear}:${ev.month}`;
             if (!byMonthCat[key]) byMonthCat[key] = {};
             byMonthCat[key][ev.category] = (byMonthCat[key][ev.category] || 0) + ev.amount;
@@ -7828,6 +7920,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     dashHidden = {},
     setDashHidden = () => {
     },
+    dashOrder = [],
+    setDashOrder = () => {
+    },
     setYearConfigs,
     categories,
     setCategories,
@@ -7953,6 +8048,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           regFilterStatus,
           goals,
           dashHidden,
+          dashOrder,
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         }, null, 2);
@@ -7988,7 +8084,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       regFilterScheds,
       regFilterStatus,
       goals,
-      dashHidden
+      dashHidden,
+      dashOrder
     ]);
     const token = () => localStorage.getItem("cf_gist_token") || "";
     const gistId = () => localStorage.getItem("cf_gist_id") || "";
@@ -8087,6 +8184,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           regFilterStatus,
           goals,
           dashHidden,
+          dashOrder,
           schemaVersion: SCHEMA_VERSION,
           savedAt: nowIso
         }, null, 2);
@@ -8136,6 +8234,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
         if (Array.isArray(d.goals)) setGoals(d.goals);
         if (d.dashHidden && typeof d.dashHidden === "object") setDashHidden(d.dashHidden);
+        if (Array.isArray(d.dashOrder)) setDashOrder(d.dashOrder);
         if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
         if (d.savedAt) lastSyncedAt.current = d.savedAt;
         if (d.regFilter) setRegFilter(d.regFilter);
@@ -8262,7 +8361,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       regFilterScheds,
       regFilterStatus,
       goals,
-      dashHidden
+      dashHidden,
+      dashOrder
     ]);
     return { status, msg, saveData, loadData, createGist, listSnapshots, restoreSnapshot, downloadBackup, conflict, resolveConflict: (keepMine) => {
       if (keepMine) {
@@ -8900,9 +9000,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
       setSessionUser(null);
     };
-    const [lockTimeout2, setLockTimeout2] = useLS("cf_lock_timeout", 15);
+    const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
     useEffect(() => {
-      if (!lockTimeout2 || !sessionUser) return;
+      if (!lockTimeout || !sessionUser) return;
       const KEY = "cf_hidden_at";
       const onVis = () => {
         try {
@@ -8911,14 +9011,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           } else {
             const at = parseInt(sessionStorage.getItem(KEY) || "0", 10);
             sessionStorage.removeItem(KEY);
-            if (at && Date.now() - at > lockTimeout2 * 6e4) logout();
+            if (at && Date.now() - at > lockTimeout * 6e4) logout();
           }
         } catch (err) {
         }
       };
       document.addEventListener("visibilitychange", onVis);
       return () => document.removeEventListener("visibilitychange", onVis);
-    }, [lockTimeout2, sessionUser]);
+    }, [lockTimeout, sessionUser]);
     useEffect(() => {
       try {
         const raw = sessionStorage.getItem("cf_session");
@@ -8941,6 +9041,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [activeYear, setActiveYear] = useLS("cf_activeYear", 2026);
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
+    const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
     const [darkMode, setDarkMode] = useLS("cf_darkMode", () => {
       try {
         return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -8992,7 +9093,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     };
     const searchRef = useRef(null);
     useEffect(() => {
-      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "register", "4": "forecast", "5": "plan", "6": "ai" };
+      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "register", "4": "plan", "5": "forecast", "6": "ai" };
       const handler = (e) => {
         var _a2, _b;
         const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
@@ -9073,7 +9174,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const prevFlow = yearFlows[sortedConfigs[idx - 1].year];
       return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
     }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
-    const activeFlow2 = yearFlows[activeYear] || [];
+    const activeFlow = yearFlows[activeYear] || [];
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
@@ -9094,7 +9195,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
       return entry;
     };
-    const currentBalance = useMemo(() => getCurrentBalance(activeFlow2, activeOpenBal, activeYear), [activeFlow2, activeOpenBal, activeYear]);
+    const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     const {
       status: gistStatus,
       msg: gistMsg,
@@ -9146,7 +9247,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       goals,
       setGoals,
       dashHidden,
-      setDashHidden
+      setDashHidden,
+      dashOrder,
+      setDashOrder
     });
     const gistToken = () => localStorage.getItem("cf_gist_token") || "";
     useEffect(() => {
@@ -9303,10 +9406,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const tabs = [
       { id: "dashboard", label: "Dashboard" },
       { id: "ai", label: "\u2726 AI Insights" },
+      { id: "plan", label: "Plan" },
       { id: "forecast", label: "Forecast" },
       { id: "budget", label: "Budget" },
-      { id: "register", label: "Register" },
-      { id: "plan", label: "Plan" }
+      { id: "register", label: "Register" }
     ];
     if (!sessionUser) {
       const LC = LIGHT;
@@ -9419,6 +9522,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .reg-cards{display:block!important;}
           /* Prevent focus zoom on Android/iOS: inputs must render \u226516px */
           input,select,textarea{font-size:16px!important;}
+          .wm-arrow{width:44px!important;height:44px!important;line-height:42px!important;font-size:16px!important;}
           .reg-table-wrap{display:none!important;}
           /* Header: single fixed row \u2014 never wraps */
           .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
@@ -9635,7 +9739,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       const today2 = /* @__PURE__ */ new Date();
       const n90 = new Date(today2);
       n90.setDate(today2.getDate() + 90);
-      const upcoming = activeFlow2.filter((ev) => ev.date >= today2 && ev.date <= n90 && ev.balance < alertThresh);
+      const upcoming = activeFlow.filter((ev) => ev.date >= today2 && ev.date <= n90 && ev.balance < alertThresh);
       const critical = upcoming.filter((ev) => ev.balance < 0);
       const warning = upcoming.filter((ev) => ev.balance >= 0);
       const hasCritical = critical.length > 0;
@@ -10026,7 +10130,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       background: "transparent",
       color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)",
       transition: "color 0.15s,border-color 0.15s"
-    } }, t.label, t.id === "dashboard" && activeFlow2.filter((ev) => {
+    } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
       const today = /* @__PURE__ */ new Date();
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
@@ -10120,7 +10224,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     } }, "\u21BB"), pullActive ? "Syncing with Gist\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab }), /* @__PURE__ */ React.createElement("div", { className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, margin: "0 auto", marginTop: 0 } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
       DashboardView,
       {
-        flow: activeFlow2,
+        flow: activeFlow,
         openBal: activeOpenBal,
         yearFlows,
         yearConfigs: sortedConfigs,
@@ -10137,12 +10241,14 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setEntries,
         completed,
         dashHidden,
-        setDashHidden
+        setDashHidden,
+        dashOrder,
+        setDashOrder
       }
     ), tab === "budget" && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
-        flow: activeFlow2,
+        flow: activeFlow,
         openBal: activeOpenBal,
         entries,
         setOverride,
@@ -10164,7 +10270,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow2, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(
+    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(
       RegisterView,
       {
         entries,
@@ -10191,7 +10297,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     ), tab === "plan" && /* @__PURE__ */ React.createElement(
       PlanView,
       {
-        flow: activeFlow2,
+        flow: activeFlow,
         openBal: activeOpenBal,
         entries,
         setEntries,
@@ -10201,7 +10307,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         alertThreshold: alertThresh,
         activeYear
       }
-    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow2, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
@@ -10228,9 +10334,11 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         downloadBackup,
         installPrompt,
         triggerInstall: doInstall,
+        lockTimeout,
+        setLockTimeout,
         templates,
         setTemplates,
-        activeFlow: activeFlow2,
+        activeFlow,
         budgetTargets,
         setBudgetTargets,
         users,
