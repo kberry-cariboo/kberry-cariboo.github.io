@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v119';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v121';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -3614,10 +3614,18 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         s2.label
       ))),
-      budgetSub === "grid" && /* @__PURE__ */ React.createElement(MonthPicker, { value: monthIdx, onChange: (v) => {
-        setMonthIdx(v);
-        setEditingId(null);
-      }, noMargin: false, matchingMonths: gq ? matchingMonths : null }),
+      /* @__PURE__ */ React.createElement(
+        MonthPicker,
+        {
+          value: monthIdx,
+          onChange: (v) => {
+            setMonthIdx(v);
+            setEditingId(null);
+          },
+          noMargin: false,
+          matchingMonths: budgetSub === "grid" && gq ? matchingMonths : null
+        }
+      ),
       budgetSub === "grid" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { style: {
         display: "flex",
         justifyContent: "space-between",
@@ -3966,7 +3974,6 @@ document.addEventListener('DOMContentLoaded',function(){
         color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
         textAlign: "right"
       } }, fmt(dayObj.balance))))))), days.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)", fontFamily: "Inter,sans-serif" } }, "No activity this month.")))),
-      budgetSub === "bva" && /* @__PURE__ */ React.createElement(MonthPicker, { value: monthIdx, onChange: (v) => setMonthIdx(v), noMargin: false }),
       budgetSub === "bva" && (() => {
         const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
@@ -5903,6 +5910,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
     }, [flow, openBal, activeYear, completed]);
     const DASH_WIDGET_DEFS = [
+      { id: "balanceToday", label: "Balance today", size: "third" },
+      { id: "nextLow", label: "Next low point", size: "third" },
+      { id: "dueMonth", label: "Due rest of month", size: "third" },
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "upcoming", label: "Upcoming this week", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
@@ -5919,9 +5929,27 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const DASH_ORDER_DEFAULT = DASH_WIDGET_DEFS.map((w) => w.id);
     const dashOrderEff = useMemo(() => {
       const stored = Array.isArray(dashOrder) ? dashOrder.filter((id) => DASH_ORDER_DEFAULT.includes(id)) : [];
-      return [...stored, ...DASH_ORDER_DEFAULT.filter((id) => !stored.includes(id))];
+      const merged = [...stored];
+      DASH_ORDER_DEFAULT.forEach((id, defIdx) => {
+        if (!merged.includes(id)) merged.splice(Math.min(defIdx, merged.length), 0, id);
+      });
+      return merged;
     }, [dashOrder]);
+    const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--textLt)", marginBottom: 3 } }, title), children);
     const WIDGET_RENDER = {
+      balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "'IBM Plex Mono',monospace",
+        fontSize: 16,
+        fontWeight: 700,
+        color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+      } }, glance ? fmt(glance.balanceNow) : "\u2014")),
+      nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { style: {
+        fontFamily: "'IBM Plex Mono',monospace",
+        fontSize: 16,
+        fontWeight: 700,
+        color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
+      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
         today.setHours(0, 0, 0, 0);
@@ -6389,25 +6417,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
       }))))) : /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")))
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, margin: "0 auto", overflowX: "hidden" } }, glance && entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "glance-strip", style: {
-      position: "sticky",
-      top: 0,
-      zIndex: 900,
-      background: "var(--bg)",
-      padding: "8px 0 10px",
-      marginBottom: 14,
-      borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--textLt)", marginBottom: 3 } }, "Balance today"), /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "'IBM Plex Mono',monospace",
-      fontSize: 16,
-      fontWeight: 700,
-      color: glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-    } }, fmt(glance.balanceNow))), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--textLt)", marginBottom: 3 } }, "Next low point"), glance.low ? /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "'IBM Plex Mono',monospace",
-      fontSize: 16,
-      fontWeight: 700,
-      color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-    } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, "\u2014")), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--textLt)", marginBottom: 3 } }, "Due rest of ", glance.month), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : ""))))), entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, margin: "0 auto", overflowX: "hidden" } }, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowCustomize(true),
@@ -6533,13 +6543,19 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       },
       label
     ))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
-      const visible = dashOrderEff.filter((id) => !dashHidden[id]);
+      const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
+      const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const out = [];
       let i = 0;
       const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
       while (i < visible.length) {
         const id = visible[i], sz = sizeOf(id);
-        if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full") {
+        if (sz === "third") {
+          const run = [id];
+          while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
+          out.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { display: "grid", gridTemplateColumns: `repeat(${run.length},1fr)`, gap: 8, marginBottom: 14 } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
+          i += run.length;
+        } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
           const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
           out.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { display: "grid", gridTemplateColumns: cols, gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
@@ -9093,7 +9109,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     };
     const searchRef = useRef(null);
     useEffect(() => {
-      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "register", "4": "plan", "5": "forecast", "6": "ai" };
+      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "register", "4": "plan", "5": "forecast", "6": "ai", "7": "settings" };
       const handler = (e) => {
         var _a2, _b;
         const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
@@ -9405,11 +9421,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const tabs = [
       { id: "dashboard", label: "Dashboard" },
-      { id: "ai", label: "\u2726 AI Insights" },
+      { id: "budget", label: "Budget" },
+      { id: "register", label: "Register" },
       { id: "plan", label: "Plan" },
       { id: "forecast", label: "Forecast" },
-      { id: "budget", label: "Budget" },
-      { id: "register", label: "Register" }
+      { id: "ai", label: "\u2726 AI Insights" },
+      { id: "settings", label: "Settings" }
     ];
     if (!sessionUser) {
       const LC = LIGHT;
@@ -9551,8 +9568,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             padding-bottom:4px!important;margin-left:-6px!important;margin-right:-6px!important;
             padding-left:6px!important;padding-right:6px!important;}
           .month-picker::-webkit-scrollbar{display:none!important;}
-          .glance-strip>div{gap:6px!important;}
-          .glance-strip [style*="IBM Plex Mono"]{font-size:14px!important;}
+          .glance-grid{gap:6px!important;}
+          .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
           .month-picker button{padding:4px 6px!important;font-size:10px!important;}
           .month-nav-arrow{display:none!important;}
           /* Budget monthly table: hide category */
