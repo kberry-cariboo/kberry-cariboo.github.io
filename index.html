@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v126';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v127';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1618,6 +1618,22 @@ document.addEventListener('DOMContentLoaded',function(){
     }) : blank);
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
+    const [showAdv, setShowAdv] = useState(() => {
+      var _a2, _b2;
+      try {
+        if (localStorage.getItem("cf_ef_adv") === "1") return true;
+      } catch (err) {
+      }
+      return !!(initial && (initial.notes || initial.attachment || initial.monthlyAmounts || initial.recurEnd || initial.recurDays && initial.recurDays.length > 0 || initial.repeats && (((_a2 = initial.recurEvery) != null ? _a2 : 1) !== 1 || ((_b2 = initial.recurUnit) != null ? _b2 : "month") !== "month")));
+    });
+    const toggleAdv = () => setShowAdv((v) => {
+      const n = !v;
+      try {
+        localStorage.setItem("cf_ef_adv", n ? "1" : "0");
+      } catch (err) {
+      }
+      return n;
+    });
     const set = (patch) => setF((p) => __spreadValues(__spreadValues({}, p), patch));
     const startD = f.startDate ? parseDate(f.startDate) : null;
     const startWD = startD ? startD.getDay() : null;
@@ -1659,7 +1675,13 @@ document.addEventListener('DOMContentLoaded',function(){
       return !Object.keys(errs).length;
     };
     const handleSave = () => {
-      if (!validate()) return;
+      if (!validate()) {
+        setErrors((prev) => {
+          if (prev.recurEnd || prev.recurEvery) setShowAdv(true);
+          return prev;
+        });
+        return;
+      }
       const ma = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
       onSave(__spreadProps(__spreadValues({}, f), {
         amount: parseFloat(f.amount),
@@ -1753,7 +1775,47 @@ document.addEventListener('DOMContentLoaded',function(){
       borderRadius: 6,
       padding: "3px 8px",
       border: "1px solid var(--border)"
-    } }, summary))), f.repeats && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
+    } }, summary))), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: toggleAdv,
+        "aria-expanded": showAdv,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          width: "100%",
+          padding: "8px 2px",
+          marginBottom: 12,
+          border: "none",
+          borderTop: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "transparent",
+          color: "var(--textMid)",
+          textAlign: "left"
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, transform: showAdv ? "rotate(90deg)" : "none", transition: "transform 0.15s", display: "inline-block" } }, "\u25B8"),
+      "Advanced",
+      !showAdv && (f.notes || attachment || showMonthly || f.recurEnd) && /* @__PURE__ */ React.createElement("span", { style: {
+        fontFamily: "Inter,sans-serif",
+        fontSize: 9,
+        fontWeight: 700,
+        padding: "2px 7px",
+        borderRadius: 8,
+        background: "var(--stripe)",
+        border: "1px solid var(--border)",
+        color: "var(--textLt)",
+        textTransform: "none",
+        letterSpacing: 0
+      } }, "has details")
+    ), showAdv && /* @__PURE__ */ React.createElement(React.Fragment, null, f.repeats && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -1862,17 +1924,7 @@ document.addEventListener('DOMContentLoaded',function(){
         style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
       },
       "Remove"
-    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      fontWeight: 600,
-      padding: "9px 22px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff"
-    } }, "Save Entry"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), onSaveTemplate && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const amt = parseFloat(f.amount) || 0;
       onSaveTemplate({
         desc: f.desc,
@@ -1895,7 +1947,17 @@ document.addEventListener('DOMContentLoaded',function(){
       cursor: "pointer",
       background: "transparent",
       color: "var(--textMid)"
-    } }, "\u{1F4BE} Save Template"), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
+    } }, "\u{1F4BE} Save as Template"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      fontWeight: 600,
+      padding: "9px 22px",
+      borderRadius: 8,
+      border: "none",
+      cursor: "pointer",
+      background: "var(--navy)",
+      color: "#fff"
+    } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       padding: "9px 16px",
@@ -2732,7 +2794,7 @@ document.addEventListener('DOMContentLoaded',function(){
         }
       },
       "Clear"
-    )), /* @__PURE__ */ React.createElement(Fab, { onClick: openNew, label: "Add entry" }), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    )), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
       {
         onClick: close,
@@ -3191,21 +3253,6 @@ document.addEventListener('DOMContentLoaded',function(){
       } }, "\u25BC"), title),
       collapsed && summary && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, summary)
     ), !collapsed && children);
-  }
-  function Fab({ onClick, label = "Add entry" }) {
-    return /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "cf-fab",
-        "aria-label": label,
-        title: label,
-        onClick: () => {
-          haptic();
-          onClick();
-        }
-      },
-      "+"
-    );
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset }) {
     const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -7305,16 +7352,18 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "\u{1F4F2} Install"
     ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
       var _a2;
-      return /* @__PURE__ */ React.createElement("div", { key: yc.year, style: {
+      return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         display: "flex",
         alignItems: "center",
         gap: 10,
         padding: "8px 12px",
+        flexWrap: "wrap",
+        rowGap: 8,
         borderRadius: 8,
         marginBottom: 6,
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
         border: `1px solid ${activeYear === yc.year ? "var(--navy)" : "var(--border)"}`
-      } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)", minWidth: 52 } }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)" } }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)", minWidth: 52 } }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal", style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textMid)", whiteSpace: "nowrap" } }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -7329,7 +7378,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             background: "var(--inputBg)",
             color: "var(--text)",
             outline: "none",
-            width: 120
+            width: 120,
+            maxWidth: "100%",
+            minWidth: 0,
+            flex: "0 1 120px"
           },
           value: yc.openingBalance,
           onChange: (e) => updateOpenBal(yc.year, parseFloat(e.target.value) || 0)
@@ -9754,6 +9806,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
+          .cf-regfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
         }
         /* FAB: touch devices only, thumb-reach primary action */
@@ -9870,6 +9923,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             padding-left:6px!important;padding-right:6px!important;}
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:6px!important;}
+          .year-openbal{flex-basis:100%!important;order:5;}
+          .year-openbal input{flex:1 1 auto!important;width:auto!important;}
           .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
           .month-picker button{padding:4px 6px!important;font-size:10px!important;}
           .month-nav-arrow{display:none!important;}
@@ -10747,7 +10802,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       }
     ), tab === "register" && /* @__PURE__ */ (() => {
-      return /* @__PURE__ */ React.createElement("div", { style: {
+      return /* @__PURE__ */ React.createElement("div", { className: "cf-regfab", style: {
         position: "fixed",
         bottom: "calc(20px + env(safe-area-inset-bottom))",
         right: 16,
