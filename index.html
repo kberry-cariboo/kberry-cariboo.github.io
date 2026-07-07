@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v127';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v129';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1482,30 +1482,6 @@ document.addEventListener('DOMContentLoaded',function(){
       );
     }));
   };
-  const SegmentedControl = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { display: "inline-flex", position: "relative", background: "var(--border)", borderRadius: 10, padding: 3, gap: 0 } }, options.map((opt) => /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      key: opt.id,
-      onClick: () => onChange(opt.id),
-      style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "6px 18px",
-        borderRadius: 8,
-        border: "none",
-        cursor: "pointer",
-        position: "relative",
-        zIndex: 1,
-        background: value === opt.id ? "var(--navy)" : "transparent",
-        color: value === opt.id ? "#fff" : "var(--textMid)",
-        transition: "background 0.18s,color 0.18s",
-        whiteSpace: "nowrap"
-      }
-    },
-    opt.icon && /* @__PURE__ */ React.createElement("span", { style: { marginRight: 5 } }, opt.icon),
-    opt.label
-  )));
   const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -2839,7 +2815,7 @@ document.addEventListener('DOMContentLoaded',function(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { className: "reg-th", style: { padding: "10px 6px 10px 12px", width: 34, background: "var(--navy)" } }, /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { className: "reg-th", style: { padding: "10px 6px 10px 12px", width: 34, background: "var(--navy)" } }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "checkbox",
@@ -3091,27 +3067,20 @@ document.addEventListener('DOMContentLoaded',function(){
     );
   }
   function BottomNav({ tab, setTab, lowAlert = false }) {
-    const [more, setMore] = useState(false);
     const items = [
       { id: "dashboard", icon: "\u{1F3E0}", label: "Home" },
       { id: "budget", icon: "\u{1F4C5}", label: "Budget" },
-      { id: "register", icon: "\u{1F9FE}", label: "Register" },
       { id: "plan", icon: "\u{1F3AF}", label: "Plan" },
-      { id: "forecast", icon: "\u{1F4C8}", label: "Forecast" }
-    ];
-    const moreItems = [
-      { id: "ai", icon: "\u2726", label: "AI Insights" },
+      { id: "ai", icon: "\u2726", label: "AI" },
       { id: "settings", icon: "\u2699", label: "Settings" }
     ];
-    const moreActive = moreItems.some((m) => m.id === tab);
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav" }, items.map((it) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav" }, items.map((it) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: it.id,
         onClick: () => {
           haptic();
           setTab(it.id);
-          setMore(false);
         },
         "aria-label": it.label,
         style: {
@@ -3141,75 +3110,6 @@ document.addEventListener('DOMContentLoaded',function(){
         border: "2px solid var(--bgCard)"
       } })),
       it.label
-    )), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          haptic();
-          setMore((v) => !v);
-        },
-        "aria-label": "More",
-        style: {
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-          padding: "7px 0 4px",
-          border: "none",
-          cursor: "pointer",
-          background: "transparent",
-          color: moreActive ? "var(--navy)" : "var(--textLt)",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 9,
-          fontWeight: moreActive ? 700 : 500
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, lineHeight: 1 } }, "\u22EF"),
-      "More"
-    )), more && /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 1390, background: "rgba(0,0,0,0.35)" }, onClick: () => setMore(false) }, /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-card",
-        onClick: (e) => e.stopPropagation(),
-        style: {
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: "calc(52px + env(safe-area-inset-bottom))",
-          background: "var(--bgCard)",
-          borderRadius: "16px 16px 0 0",
-          padding: "8px 0",
-          boxShadow: "0 -8px 32px rgba(0,0,0,0.25)"
-        }
-      },
-      moreItems.map((it) => /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          key: it.id,
-          onClick: () => {
-            haptic();
-            setTab(it.id);
-            setMore(false);
-          },
-          style: {
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            width: "100%",
-            padding: "14px 22px",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: "Inter,sans-serif",
-            fontSize: 15,
-            color: tab === it.id ? "var(--navy)" : "var(--text)"
-          }
-        },
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, width: 22, textAlign: "center" } }, it.icon),
-        it.label
-      ))
     )));
   }
   function CollapseHeader({ id, title, summary, children }) {
@@ -3435,7 +3335,8 @@ document.addEventListener('DOMContentLoaded',function(){
       )
     );
   }
-  function BudgetView({ flow, openBal, entries = [], setOverride, clearOverride, categories, setEntries, addEntry, view, setView, monthIdx, setMonthIdx, alertThreshold = 1500, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
+  function BudgetView({ flow, openBal, entries = [], setOverride, clearOverride, categories, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  }, monthIdx, setMonthIdx, alertThreshold = 1500, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
@@ -3547,7 +3448,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if (latest !== void 0 && latest !== monthIdx) setMonthIdx(latest);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
-    const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "grid");
+    const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
@@ -3733,7 +3634,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [monthEvents, s, monthIdx]);
     useEffect(() => {
       const isMobile = window.innerWidth <= 768;
-      if (isMobile && view === "daily") setView("monthly");
+      if (isMobile && budgetSub === "daily") setBudgetSub("monthly");
     }, []);
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
@@ -3772,41 +3673,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { className: "budget-view-toggle" }, /* @__PURE__ */ React.createElement(
-        SegmentedControl,
-        {
-          options: [{ id: "monthly", label: "Monthly", icon: "\u2630" }, { id: "daily", label: "Daily", icon: "\u25A6" }],
-          value: view,
-          onChange: (v) => {
-            setView(v);
-            setEditingId(null);
-          }
-        }
-      )), /* @__PURE__ */ React.createElement("span", { className: "budget-view-mobile", style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 12,
-        fontWeight: 600,
-        color: "var(--textMid)"
-      } }, "\u2630 Monthly"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginLeft: 4 } }, MONTHS[monthIdx]))),
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [{ id: "grid", label: "\u2630 Grid" }, { id: "bva", label: "\u{1F3AF} Budget vs Actual" }].map((s2) => /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          key: s2.id,
-          onClick: () => setBudgetSub(s2.id),
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "7px 16px",
-            borderRadius: 20,
-            border: "none",
-            cursor: "pointer",
-            background: budgetSub === s2.id ? "var(--navy)" : "var(--stripe)",
-            color: budgetSub === s2.id ? "#fff" : "var(--textMid)"
-          }
-        },
-        s2.label
-      ))),
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, MONTHS[monthIdx]))),
       /* @__PURE__ */ React.createElement(
         MonthPicker,
         {
@@ -3816,10 +3683,10 @@ document.addEventListener('DOMContentLoaded',function(){
             setEditingId(null);
           },
           noMargin: false,
-          matchingMonths: budgetSub === "grid" && gq ? matchingMonths : null
+          matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null
         }
       ),
-      budgetSub === "grid" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { style: {
+      budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { style: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
@@ -3861,7 +3728,7 @@ document.addEventListener('DOMContentLoaded',function(){
         border: "1px solid var(--amber)"
       } }, '\u{1F50D} Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
       /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--greenDk)" })),
-      budgetSub === "grid" && view === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
+      budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => {
@@ -3871,7 +3738,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`),
           bulkComplete
         }
-      )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
+      )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
         const allDone = allIds.length > 0 && allIds.every((id) => completed[id]);
         const someDone = allIds.some((id) => completed[id]);
@@ -4095,7 +3962,7 @@ document.addEventListener('DOMContentLoaded',function(){
           ]
         }
       )),
-      budgetSub === "grid" && view === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
+      budgetSub === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => {
@@ -4365,7 +4232,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         onPrint: () => printView(`CashFlow Forecast - ${horizon} Days`)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : ""), style: {
+    )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : ""), style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -5127,7 +4994,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
-    const [debtExpanded, setDebtExpanded] = useState(false);
+    const [debtExpanded, setDebtExpanded] = useState(true);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
     const [showGoalForm, setShowGoalForm] = useState(false);
@@ -6502,7 +6369,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
           }
         )),
-        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 11,
           fontWeight: 700,
@@ -6525,7 +6392,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
           return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(m.close)));
         }))))),
-        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 11,
           fontWeight: 700,
@@ -6577,7 +6444,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           dot: { r: 3 },
           activeDot: { r: 5 }
         }
-      ))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+      ))))), /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 11,
         fontWeight: 700,
@@ -6756,7 +6623,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const renderAlertRow = (ev, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
-        onClick: () => setTab("forecast"),
+        onClick: () => {
+          window.__cfGoBudgetSub ? window.__cfGoBudgetSub("forecast") : setTab("budget");
+        },
         style: {
           display: "flex",
           alignItems: "center",
@@ -8662,9 +8531,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }
   function ShortcutsHelp({ onClose }) {
     const shortcuts = [
-      ["1\u20137", "Switch tabs (in order)"],
-      ["D / B / R", "Dashboard \xB7 Budget \xB7 Register"],
-      ["P / F / A / S", "Plan \xB7 Forecast \xB7 AI \xB7 Settings"],
+      ["1\u20135", "Switch tabs (in order)"],
+      ["D / B / P / A / S", "Dashboard \xB7 Budget \xB7 Plan \xB7 AI \xB7 Settings"],
+      ["F / R", "Budget \u2192 Forecast \xB7 Entries"],
       ["N", "Quick add entry"],
       ["/", "Focus search"],
       ["\u2190  \u2192", "Previous / next month (Budget)"],
@@ -9393,6 +9262,55 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       } catch (e) {
       }
     }, [tab]);
+    const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
+    useEffect(() => {
+      if (budgetSub === "grid") setBudgetSub("monthly");
+      if (tab === "register") {
+        setTab("budget");
+        setBudgetSub("entries");
+      } else if (tab === "forecast") {
+        setTab("budget");
+        setBudgetSub("forecast");
+      }
+    }, []);
+    useEffect(() => {
+      window.__cfGoBudgetSub = (s) => {
+        setTab("budget");
+        setBudgetSub(s);
+      };
+      return () => {
+        delete window.__cfGoBudgetSub;
+      };
+    }, []);
+    useEffect(() => {
+      const trap = (e) => {
+        if (e.key !== "Tab") return;
+        try {
+          const overlays = document.querySelectorAll(".modal-overlay");
+          if (!overlays || !overlays.length) return;
+          const modal = overlays[overlays.length - 1];
+          const focusables = modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+          if (!focusables.length) {
+            e.preventDefault();
+            return;
+          }
+          const first = focusables[0], last = focusables[focusables.length - 1];
+          if (!modal.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+          } else if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        } catch (err) {
+        }
+      };
+      document.addEventListener("keydown", trap, true);
+      return () => document.removeEventListener("keydown", trap, true);
+    }, []);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
@@ -9418,7 +9336,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     };
     const searchRef = useRef(null);
     useEffect(() => {
-      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "register", "4": "plan", "5": "forecast", "6": "ai", "7": "settings" };
+      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "plan", "4": "ai", "5": "settings" };
       const handler = (e) => {
         var _a2, _b;
         const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
@@ -9459,8 +9377,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [pfOk, setPfOk] = useState("");
     const [regFabOpen, setRegFabOpen] = useState(false);
     useEffect(() => {
-      if (tab !== "register") setRegFabOpen(false);
-    }, [tab]);
+      if (!(tab === "budget" && budgetSub === "entries")) setRegFabOpen(false);
+    }, [tab, budgetSub]);
     const [pullProgress, setPullProgress] = useState(0);
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
@@ -9669,7 +9587,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             break;
           case "f":
           case "F":
-            setTab("forecast");
+            setTab("budget");
+            setBudgetSub("forecast");
             break;
           case "b":
           case "B":
@@ -9677,7 +9596,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             break;
           case "r":
           case "R":
-            setTab("register");
+            setTab("budget");
+            setBudgetSub("entries");
             break;
           case "p":
           case "P":
@@ -9772,9 +9692,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const tabs = [
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
-      { id: "register", label: "Register" },
       { id: "plan", label: "Plan" },
-      { id: "forecast", label: "Forecast" },
       { id: "ai", label: "\u2726 AI Insights" },
       { id: "settings", label: "Settings" }
     ];
@@ -9923,6 +9841,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             padding-left:6px!important;padding-right:6px!important;}
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:6px!important;}
+          .bp-daily{display:none!important;}
           .year-openbal{flex-basis:100%!important;order:5;}
           .year-openbal input{flex:1 1 auto!important;width:auto!important;}
           .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
@@ -9997,7 +9916,11 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         /* Register: table on desktop, cards on mobile */
         .reg-cards{display:none;}
-        .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;}
+        .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+        .reg-table-wrap::-webkit-scrollbar{display:none;}
+        /* Shared horizontal-scroll wrapper \u2014 scrollbar hidden, matches app pattern */
+        .hscroll{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+        .hscroll::-webkit-scrollbar{display:none;}
         .reg-table thead .reg-th{position:sticky;top:0;z-index:5;}
         /* Register desc: fill available space, truncate */
         .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -10619,7 +10542,35 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         dashOrder,
         setDashOrder
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", rowGap: 8, maxWidth: 1160, margin: "0 auto 16px" } }, [
+      { id: "monthly", label: "\u2630 Monthly" },
+      { id: "daily", label: "\u25A6 Daily", cls: "bp-daily" },
+      { id: "bva", label: "\u{1F3AF} Budget vs Actual" },
+      { id: "forecast", label: "\u{1F4C8} Forecast" },
+      { id: "entries", label: "\u{1F9FE} Entries" }
+    ].map((s) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: s.id,
+        className: s.cls || void 0,
+        onClick: () => {
+          haptic();
+          setBudgetSub(s.id);
+        },
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "7px 16px",
+          borderRadius: 20,
+          border: "none",
+          cursor: "pointer",
+          background: budgetSub === s.id ? "var(--navy)" : "var(--stripe)",
+          color: budgetSub === s.id ? "#fff" : "var(--textMid)"
+        }
+      },
+      s.label
+    ))), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -10630,8 +10581,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         categories,
         setEntries,
         addEntry,
-        view: budgetView,
-        setView: setBudgetView,
+        budgetSub,
+        setBudgetSub,
         monthIdx: budgetMonth,
         setMonthIdx: setBudgetMonth,
         alertThreshold: alertThresh,
@@ -10644,7 +10595,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         toggleComplete,
         activeYear
       }
-    ), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), tab === "register" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,
       {
         entries,
@@ -10671,7 +10622,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         filterStatus: regFilterStatus,
         setFilterStatus: setRegFilterStatus
       }
-    ), tab === "plan" && /* @__PURE__ */ React.createElement(
+    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "plan" && /* @__PURE__ */ React.createElement(
       PlanView,
       {
         flow: activeFlow,
@@ -10788,7 +10739,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
       },
       "Terms of Use"
-    )), tab !== "register" && /* @__PURE__ */ React.createElement(
+    )), !(tab === "budget" && budgetSub === "entries") && /* @__PURE__ */ React.createElement(
       QuickAddFAB,
       {
         categories,
@@ -10801,7 +10752,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           setFabOpen(false);
         }
       }
-    ), tab === "register" && /* @__PURE__ */ (() => {
+    ), tab === "budget" && budgetSub === "entries" && /* @__PURE__ */ (() => {
       return /* @__PURE__ */ React.createElement("div", { className: "cf-regfab", style: {
         position: "fixed",
         bottom: "calc(20px + env(safe-area-inset-bottom))",
