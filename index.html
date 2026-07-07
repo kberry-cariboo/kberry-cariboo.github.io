@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v132';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v133';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -910,7 +910,7 @@ document.addEventListener('DOMContentLoaded',function(){
     window.print();
     document.title = prev;
   }
-  const ExportBar = ({ onCSV, onPrint, bulkComplete, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+  const ExportBar = ({ onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
@@ -946,32 +946,6 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     },
     "\u{1F5A8} PDF"
-  ), bulkComplete && /* @__PURE__ */ React.createElement(
-    "select",
-    {
-      onChange: (e) => {
-        if (e.target.value) {
-          bulkComplete(e.target.value);
-          e.target.value = "";
-        }
-      },
-      defaultValue: "",
-      title: "Bulk-mark complete",
-      style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        padding: "4px 8px",
-        borderRadius: 6,
-        border: "1px solid var(--border)",
-        cursor: "pointer",
-        background: "transparent",
-        color: "var(--textMid)"
-      }
-    },
-    /* @__PURE__ */ React.createElement("option", { value: "", disabled: true }, "\u2713 Mark\u2026"),
-    /* @__PURE__ */ React.createElement("option", { value: "income" }, "All Income \u2713"),
-    /* @__PURE__ */ React.createElement("option", { value: "expense" }, "All Expenses \u2713"),
-    /* @__PURE__ */ React.createElement("option", { value: "past" }, "All Past \u2713")
   ));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
@@ -3337,6 +3311,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   function BudgetView({ flow, openBal, entries = [], setOverride, clearOverride, categories, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = 1500, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
+  }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
     var _a, _b;
     const [editingId, setEditingId] = useState(null);
@@ -3450,20 +3425,36 @@ document.addEventListener('DOMContentLoaded',function(){
     const [showBvaModal, setShowBvaModal] = useState(false);
     const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
+    const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
+    const toggleSel = (id) => setSelIds((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+    const clearSel = () => setSelIds(/* @__PURE__ */ new Set());
+    const markSelectedPaid = () => {
+      try {
+        const ids = [...selIds].filter((id) => !completed[id]);
+        if (!ids.length) {
+          toast("Nothing unpaid in selection", "error");
+          return;
+        }
+        markOccurrencesPaid(ids);
+        haptic();
+        toast(`Marked ${ids.length} item${ids.length !== 1 ? "s" : ""} paid for ${MONTHS[monthIdx]}`);
+        clearSel();
+      } catch (err) {
+        toast("Bulk update failed: " + err.message, "error");
+      }
+    };
+    useEffect(() => {
+      clearSel();
+    }, [monthIdx, budgetSub]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
-    const bulkComplete = (mode) => {
-      const now = /* @__PURE__ */ new Date();
-      monthEvents.filter((ev) => {
-        if (mode === "income") return ev.type === "income";
-        if (mode === "expense") return ev.type === "expense";
-        if (mode === "past") return ev.date && ev.date <= now;
-        return false;
-      }).forEach((ev) => toggleComplete(ev.id, true));
-    };
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
@@ -3492,12 +3483,22 @@ document.addEventListener('DOMContentLoaded',function(){
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
           },
           style: {
-            background: isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
+            background: selIds.has(ev.id) ? "var(--stripe)" : isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
             borderBottom: isDropTarget ? "2px solid var(--navy)" : "1px solid var(--border)",
             cursor: "pointer",
             opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
         },
+        /* @__PURE__ */ React.createElement("td", { onClick: (e) => e.stopPropagation(), style: { padding: "8px 2px 8px 8px", width: 26, textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            type: "checkbox",
+            "aria-label": "Select row",
+            checked: selIds.has(ev.id),
+            onChange: () => toggleSel(ev.id),
+            style: { width: 15, height: 15, accentColor: "var(--navy)", cursor: "pointer", verticalAlign: "middle" }
+          }
+        )),
         /* @__PURE__ */ React.createElement("td", { style: {
           padding: "8px 4px 8px 9px",
           width: 28,
@@ -3602,7 +3603,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const renderPeriodHdr = (label) => (
       // borderLeft on <tr> (not <td>) so the 3px sits OUTSIDE the cell width,
       // matching exactly how data rows position the green/transparent stripe.
-      /* @__PURE__ */ React.createElement("tr", { key: label }, /* @__PURE__ */ React.createElement("td", { style: {
+      /* @__PURE__ */ React.createElement("tr", { key: label }, /* @__PURE__ */ React.createElement("td", { style: { width: 26, background: "var(--navyMid)", padding: 0 } }), /* @__PURE__ */ React.createElement("td", { style: {
         width: 28,
         background: "var(--navyMid)",
         padding: 0,
@@ -3618,7 +3619,7 @@ document.addEventListener('DOMContentLoaded',function(){
         textTransform: "uppercase"
       } }, label))
     );
-    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
+    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, style: {
       padding: "0",
       background: "transparent",
       boxShadow: "inset 3px 0 0 0 transparent"
@@ -3673,6 +3674,59 @@ document.addEventListener('DOMContentLoaded',function(){
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
+      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar", style: {
+        position: "fixed",
+        left: "50%",
+        transform: "translateX(-50%)",
+        bottom: "calc(18px + env(safe-area-inset-bottom))",
+        zIndex: 1450,
+        background: "var(--navy)",
+        borderRadius: 26,
+        padding: "8px 10px 8px 18px",
+        boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        maxWidth: "calc(100vw - 24px)"
+      } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" } }, selIds.size, " selected"), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: markSelectedPaid,
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "8px 14px",
+            borderRadius: 18,
+            border: "none",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            background: "var(--greenDk)",
+            color: "#fff"
+          }
+        },
+        "\u2713 Mark paid (",
+        MONTHS[monthIdx],
+        ")"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: clearSel,
+          "aria-label": "Clear selection",
+          style: {
+            fontFamily: "Inter,sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "8px 12px",
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.35)",
+            cursor: "pointer",
+            background: "transparent",
+            color: "#fff"
+          }
+        },
+        "Clear"
+      )),
       /* @__PURE__ */ React.createElement(
         MonthPicker,
         {
@@ -3734,8 +3788,7 @@ document.addEventListener('DOMContentLoaded',function(){
             const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
-          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`),
-          bulkComplete
+          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
       )), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
@@ -3748,12 +3801,24 @@ document.addEventListener('DOMContentLoaded',function(){
             allIds.forEach((id) => !completed[id] && toggleComplete(id));
           }
         };
-        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: {
+        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 26, padding: "10px 2px", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            type: "checkbox",
+            "aria-label": "Select all rows",
+            checked: allIds.length > 0 && allIds.every((id) => selIds.has(id)),
+            onChange: (e) => {
+              if (e.target.checked) setSelIds(new Set(allIds));
+              else clearSel();
+            },
+            style: { width: 15, height: 15, accentColor: "#fff", cursor: "pointer", verticalAlign: "middle" }
+          }
+        )), /* @__PURE__ */ React.createElement("th", { style: {
           width: 28,
           padding: "10px 4px",
           textAlign: "center",
           boxShadow: "inset 3px 0 0 0 transparent"
-        }, "aria-label": "Select all" }, /* @__PURE__ */ React.createElement(
+        }, "aria-label": "Mark all complete" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: toggleAll,
@@ -3786,18 +3851,18 @@ document.addEventListener('DOMContentLoaded',function(){
           letterSpacing: "0.08em",
           textTransform: "uppercase"
         } }, h))));
-      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { style: {
+      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { style: { width: 26, background: "var(--amberLt)", padding: 0 } }), /* @__PURE__ */ React.createElement("td", { style: {
         width: 28,
         background: "var(--amberLt)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, style: {
         padding: "28px 14px",
         textAlign: "center",
         fontFamily: "Inter,sans-serif",
         fontSize: 13,
         color: "var(--textLt)"
-      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row", style: { background: "var(--navy)", position: "sticky", bottom: 0 } }, /* @__PURE__ */ React.createElement("td", { style: {
+      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row", style: { background: "var(--navy)", position: "sticky", bottom: 0 } }, /* @__PURE__ */ React.createElement("td", { style: { width: 26, background: "var(--navy)", padding: 0 } }), /* @__PURE__ */ React.createElement("td", { style: {
         width: 28,
         background: "var(--navy)",
         padding: 0,
@@ -10638,6 +10703,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setBudgetTargets,
         completed,
         toggleComplete,
+        markOccurrencesPaid,
         activeYear
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
