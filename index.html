@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v133';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v134';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1209,8 +1209,25 @@ document.addEventListener('DOMContentLoaded',function(){
     return /* @__PURE__ */ React.createElement("svg", { width, height, style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: lineColor, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: lineColor }));
   };
   function QuickAddFAB({ categories, templates = [], setTemplates, onSave, open = false, setOpen = () => {
-  } }) {
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, open && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", style: {
+  }, onImportCSV = null }) {
+    const [menu, setMenu] = useState(false);
+    const [form, setForm] = useState(false);
+    useEffect(() => {
+      if (open) {
+        setForm(true);
+        setMenu(false);
+      }
+    }, [open]);
+    const closeForm = () => {
+      setForm(false);
+      setOpen(false);
+    };
+    const openAdd = () => {
+      setMenu(false);
+      setForm(true);
+    };
+    const fabActive = menu || form;
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", style: {
       position: "fixed",
       bottom: "calc(80px + env(safe-area-inset-bottom))",
       right: 16,
@@ -1229,26 +1246,92 @@ document.addEventListener('DOMContentLoaded',function(){
       fontWeight: 700,
       color: "var(--text)",
       marginBottom: 16
-    } }, "Quick Add Entry"), /* @__PURE__ */ React.createElement(
+    } }, "Add Entry"), /* @__PURE__ */ React.createElement(
       EntryForm,
       {
         initial: null,
         onSave: (data) => {
           onSave(data);
-          setOpen(false);
+          closeForm();
         },
-        onCancel: () => setOpen(false),
+        onCancel: closeForm,
         categories,
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
+    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", style: {
+      position: "fixed",
+      bottom: "calc(80px + env(safe-area-inset-bottom))",
+      right: 16,
+      zIndex: 1500,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "flex-end",
+      gap: 10
+    } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), style: { position: "fixed", inset: 0, zIndex: -1 } }), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMenu(false);
+          onImportCSV();
+        },
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "10px 18px",
+          borderRadius: 20,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "var(--bgCard)",
+          color: "var(--text)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+          whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+          gap: 8
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
+      " Import CSV"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: openAdd,
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "10px 18px",
+          borderRadius: 20,
+          border: "1px solid var(--border)",
+          cursor: "pointer",
+          background: "var(--bgCard)",
+          color: "var(--text)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+          whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+          gap: 8
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", null, "+"),
+      " Add Entry"
     )), /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "cf-quickfab",
-        onClick: () => setOpen((v) => !v),
-        "aria-label": open ? "Close quick add" : "Quick add entry",
-        title: open ? "Close (Esc)" : "Quick Add Entry (N)",
+        onClick: () => {
+          if (form) {
+            closeForm();
+            return;
+          }
+          if (onImportCSV) {
+            setMenu((v) => !v);
+          } else setForm(true);
+        },
+        "aria-label": fabActive ? "Close" : "Add entry",
+        title: fabActive ? "Close (Esc)" : onImportCSV ? "Entry actions" : "Add Entry (N)",
         style: {
           position: "fixed",
           bottom: "calc(20px + env(safe-area-inset-bottom))",
@@ -1259,7 +1342,7 @@ document.addEventListener('DOMContentLoaded',function(){
           borderRadius: "50%",
           border: "none",
           cursor: "pointer",
-          background: open ? "var(--red)" : "var(--navy)",
+          background: fabActive ? "var(--red)" : "var(--navy)",
           color: "#fff",
           fontSize: 24,
           fontWeight: 300,
@@ -1269,7 +1352,7 @@ document.addEventListener('DOMContentLoaded',function(){
           alignItems: "center",
           justifyContent: "center",
           transition: "background 0.2s,transform 0.2s",
-          transform: open ? "rotate(45deg)" : "rotate(0deg)"
+          transform: fabActive ? "rotate(45deg)" : "rotate(0deg)"
         }
       },
       "+"
@@ -1725,7 +1808,23 @@ document.addEventListener('DOMContentLoaded',function(){
       borderRadius: 6,
       padding: "3px 8px",
       border: "1px solid var(--border)"
-    } }, summary))), /* @__PURE__ */ React.createElement(
+    } }, summary))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
+      "img",
+      {
+        src: attachment,
+        alt: "attachment",
+        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
+        onClick: () => setLightbox(true)
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => setAttachment(null),
+        style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
+      },
+      "Remove"
+    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement(
       "button",
       {
         type: "button",
@@ -1753,7 +1852,7 @@ document.addEventListener('DOMContentLoaded',function(){
       },
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, transform: showAdv ? "rotate(90deg)" : "none", transition: "transform 0.15s", display: "inline-block" } }, "\u25B8"),
       "Advanced",
-      !showAdv && (f.notes || attachment || showMonthly || f.recurEnd) && /* @__PURE__ */ React.createElement("span", { style: {
+      !showAdv && (showMonthly || f.recurEnd) && /* @__PURE__ */ React.createElement("span", { style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 9,
         fontWeight: 700,
@@ -1820,7 +1919,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 3 } }, "Leave blank to recur indefinitely"))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 10, color: "var(--textLt)", marginTop: 3 } }, "Leave blank to recur indefinitely")), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement(
       Toggle,
       {
         value: showMonthly,
@@ -1858,23 +1957,26 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
       ));
-    }))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
-      "img",
-      {
-        src: attachment,
-        alt: "attachment",
-        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
-        onClick: () => setLightbox(true)
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => setAttachment(null),
-        style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
-      },
-      "Remove"
-    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), onSaveTemplate && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    }))))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      fontWeight: 600,
+      padding: "9px 22px",
+      borderRadius: 8,
+      border: "none",
+      cursor: "pointer",
+      background: "var(--navy)",
+      color: "#fff"
+    } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      padding: "9px 16px",
+      borderRadius: 8,
+      border: "1px solid var(--border)",
+      cursor: "pointer",
+      background: "transparent",
+      color: "var(--textMid)"
+    } }, "Cancel"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const amt = parseFloat(f.amount) || 0;
       onSaveTemplate({
         desc: f.desc,
@@ -1895,28 +1997,10 @@ document.addEventListener('DOMContentLoaded',function(){
       borderRadius: 8,
       border: "1px dashed var(--border)",
       cursor: "pointer",
+      marginLeft: "auto",
       background: "transparent",
       color: "var(--textMid)"
-    } }, "\u{1F4BE} Save as Template"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      fontWeight: 600,
-      padding: "9px 22px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff"
-    } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      padding: "9px 16px",
-      borderRadius: 8,
-      border: "1px solid var(--border)",
-      cursor: "pointer",
-      background: "transparent",
-      color: "var(--textMid)"
-    } }, "Cancel")));
+    } }, "\u{1F4BE} Save as Template")));
   }
   function CSVImporter({ categories, onImport, onClose }) {
     const [rows, setRows] = useState([]);
@@ -3489,22 +3573,12 @@ document.addEventListener('DOMContentLoaded',function(){
             opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
         },
-        /* @__PURE__ */ React.createElement("td", { onClick: (e) => e.stopPropagation(), style: { padding: "8px 2px 8px 8px", width: 26, textAlign: "center" } }, /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "checkbox",
-            "aria-label": "Select row",
-            checked: selIds.has(ev.id),
-            onChange: () => toggleSel(ev.id),
-            style: { width: 15, height: 15, accentColor: "var(--navy)", cursor: "pointer", verticalAlign: "middle" }
-          }
-        )),
-        /* @__PURE__ */ React.createElement("td", { style: {
+        /* @__PURE__ */ React.createElement("td", { onClick: (e) => e.stopPropagation(), style: {
           padding: "8px 4px 8px 9px",
-          width: 28,
+          width: 30,
           whiteSpace: "nowrap",
           textAlign: "center",
-          background: isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
+          background: isDone ? "var(--doneBg)" : selIds.has(ev.id) ? "var(--stripe)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
           boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent"
         } }, /* @__PURE__ */ React.createElement(
           "button",
@@ -3512,10 +3586,12 @@ document.addEventListener('DOMContentLoaded',function(){
             onClick: (e) => {
               e.stopPropagation();
               haptic();
-              toggleComplete(ev.id);
+              toggleSel(ev.id);
             },
-            "aria-label": isDone ? "Mark budget line incomplete" : "Mark budget line complete",
-            title: isDone ? "Completed \u2014 click to undo" : "Mark complete",
+            role: "checkbox",
+            "aria-checked": selIds.has(ev.id),
+            "aria-label": selIds.has(ev.id) ? "Deselect row" : "Select row",
+            title: isDone ? "Paid \u2014 select to change" : "Select to mark paid",
             style: {
               width: 20,
               height: 20,
@@ -3525,14 +3601,14 @@ document.addEventListener('DOMContentLoaded',function(){
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              border: isDone ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : "transparent",
+              border: isDone || selIds.has(ev.id) ? "none" : "1.5px solid var(--border)",
+              background: isDone ? "var(--greenDk)" : selIds.has(ev.id) ? "var(--navy)" : "transparent",
               color: "#fff",
               fontSize: 12,
               lineHeight: 1
             }
           },
-          isDone ? "\u2713" : ""
+          isDone ? "\u2713" : selIds.has(ev.id) ? "\u2713" : ""
         )),
         /* @__PURE__ */ React.createElement(
           "td",
@@ -3603,8 +3679,8 @@ document.addEventListener('DOMContentLoaded',function(){
     const renderPeriodHdr = (label) => (
       // borderLeft on <tr> (not <td>) so the 3px sits OUTSIDE the cell width,
       // matching exactly how data rows position the green/transparent stripe.
-      /* @__PURE__ */ React.createElement("tr", { key: label }, /* @__PURE__ */ React.createElement("td", { style: { width: 26, background: "var(--navyMid)", padding: 0 } }), /* @__PURE__ */ React.createElement("td", { style: {
-        width: 28,
+      /* @__PURE__ */ React.createElement("tr", { key: label }, /* @__PURE__ */ React.createElement("td", { style: {
+        width: 30,
         background: "var(--navyMid)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
@@ -3619,7 +3695,7 @@ document.addEventListener('DOMContentLoaded',function(){
         textTransform: "uppercase"
       } }, label))
     );
-    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, style: {
+    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
       padding: "0",
       background: "transparent",
       boxShadow: "inset 3px 0 0 0 transparent"
@@ -3801,47 +3877,40 @@ document.addEventListener('DOMContentLoaded',function(){
             allIds.forEach((id) => !completed[id] && toggleComplete(id));
           }
         };
-        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 26, padding: "10px 2px", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "checkbox",
-            "aria-label": "Select all rows",
-            checked: allIds.length > 0 && allIds.every((id) => selIds.has(id)),
-            onChange: (e) => {
-              if (e.target.checked) setSelIds(new Set(allIds));
-              else clearSel();
+        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { style: { width: 30, padding: "10px 4px", textAlign: "center" }, "aria-label": "Select all rows" }, (() => {
+          const allSel = allIds.length > 0 && allIds.every((id) => selIds.has(id));
+          const someSel = allIds.some((id) => selIds.has(id));
+          return /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: () => {
+                if (allSel) clearSel();
+                else setSelIds(new Set(allIds));
+              },
+              role: "checkbox",
+              "aria-checked": allSel,
+              "aria-label": allSel ? "Deselect all rows" : "Select all rows",
+              title: allSel ? "Deselect all" : "Select all",
+              style: {
+                width: 20,
+                height: 20,
+                borderRadius: 5,
+                cursor: "pointer",
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: allSel ? "none" : "1.5px solid rgba(255,255,255,0.4)",
+                background: allSel ? "var(--navy)" : someSel ? "rgba(255,255,255,0.25)" : "transparent",
+                color: "#fff",
+                fontSize: 11,
+                lineHeight: 1,
+                boxShadow: allSel ? "0 0 0 1.5px #fff" : "none"
+              }
             },
-            style: { width: 15, height: 15, accentColor: "#fff", cursor: "pointer", verticalAlign: "middle" }
-          }
-        )), /* @__PURE__ */ React.createElement("th", { style: {
-          width: 28,
-          padding: "10px 4px",
-          textAlign: "center",
-          boxShadow: "inset 3px 0 0 0 transparent"
-        }, "aria-label": "Mark all complete" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: toggleAll,
-            "aria-label": allDone ? "Unmark all complete" : "Mark all complete",
-            title: allDone ? "Unmark all" : "Mark all complete",
-            style: {
-              width: 20,
-              height: 20,
-              borderRadius: 5,
-              cursor: "pointer",
-              padding: 0,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: allDone ? "none" : "1.5px solid rgba(255,255,255,0.4)",
-              background: allDone ? "var(--greenDk)" : someDone ? "rgba(39,174,115,0.3)" : "transparent",
-              color: "#fff",
-              fontSize: 11,
-              lineHeight: 1
-            }
-          },
-          allDone ? "\u2713" : someDone ? "\u2013" : ""
-        )), ["Day", "Description", "Category", "Income", "Expense", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "budget-col-cat" : "", style: {
+            allSel ? "\u2713" : someSel ? "\u2013" : ""
+          );
+        })()), ["Day", "Description", "Category", "Income", "Expense", "Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: h === "Category" ? "budget-col-cat" : "", style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 11,
           fontWeight: 700,
@@ -3851,19 +3920,19 @@ document.addEventListener('DOMContentLoaded',function(){
           letterSpacing: "0.08em",
           textTransform: "uppercase"
         } }, h))));
-      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { style: { width: 26, background: "var(--amberLt)", padding: 0 } }), /* @__PURE__ */ React.createElement("td", { style: {
-        width: 28,
+      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--amberLt)" } }, /* @__PURE__ */ React.createElement("td", { style: {
+        width: 30,
         background: "var(--amberLt)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, style: {
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Opening Balance"), /* @__PURE__ */ React.createElement("td", { className: "budget-col-cat", style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { colSpan: 2, style: { padding: "8px 14px" } }), /* @__PURE__ */ React.createElement("td", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open))), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, (/* @__PURE__ */ new Date()).getFullYear())}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 7, style: {
         padding: "28px 14px",
         textAlign: "center",
         fontFamily: "Inter,sans-serif",
         fontSize: 13,
         color: "var(--textLt)"
-      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row", style: { background: "var(--navy)", position: "sticky", bottom: 0 } }, /* @__PURE__ */ React.createElement("td", { style: { width: 26, background: "var(--navy)", padding: 0 } }), /* @__PURE__ */ React.createElement("td", { style: {
-        width: 28,
+      } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row", style: { background: "var(--navy)", position: "sticky", bottom: 0 } }, /* @__PURE__ */ React.createElement("td", { style: {
+        width: 30,
         background: "var(--navy)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
@@ -7010,7 +7079,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey }) {
-    var _a;
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -7073,7 +7141,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setYearMsg(parts.join(" "));
     };
     const delYear = (yr) => {
-      var _a2;
+      var _a;
       if (yearConfigs.length <= 1) {
         setYearMsg("Cannot delete the only year.");
         return;
@@ -7084,7 +7152,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         delete n[yr];
         return n;
       });
-      if (activeYear === yr) setActiveYear(((_a2 = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a2.year) || sortedYears[0].year);
+      if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
       setYearMsg(`Year ${yr} removed.`);
     };
     const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
@@ -7253,45 +7321,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         value: alertThreshold,
         onChange: (e) => setAlertThreshold(Math.max(0, parseFloat(e.target.value) || 0))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        value: lockTimeout,
-        onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          padding: "7px 10px",
-          borderRadius: 8,
-          border: "1.5px solid var(--border)",
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none"
-        }
-      },
-      /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
-      /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
-      /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
-      /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), installPrompt && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Install App"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textMid)" } }, "Add CashFlow to your home screen for a full-screen, offline-ready experience."), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: triggerInstall,
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          fontWeight: 700,
-          padding: "9px 20px",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          background: "var(--navy)",
-          color: "#fff"
-        }
-      },
-      "\u{1F4F2} Install"
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
-      var _a2;
+    ))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
+      var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         display: "flex",
         alignItems: "center",
@@ -7326,7 +7357,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           value: yc.openingBalance,
           onChange: (e) => updateOpenBal(yc.year, parseFloat(e.target.value) || 0)
         }
-      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a2 = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a2.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
         fontFamily: "Inter,sans-serif",
         fontSize: 11,
         padding: "4px 10px",
@@ -7475,90 +7506,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       fontSize: 12,
       marginTop: 10,
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      color: "var(--textLt)",
-      fontStyle: "italic"
-    } }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "8px 0",
-      borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, t.desc), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, t.type === "income" ? "+" : "-", fmt(t.amount), " \xB7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \xB7 Recurring"))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          padding: "4px 10px",
-          borderRadius: 6,
-          border: "1px solid var(--redLt)",
-          cursor: "pointer",
-          background: "var(--redLt)",
-          color: "var(--red)"
-        }
-      },
-      "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
-      const ovrs = overridesByYr[activeYear] || {};
-      const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
-      if (rows.length === 0) {
-        return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", fontStyle: "italic" } }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
-      }
-      return rows.map(([eventId, ov]) => {
-        const parts = eventId.split("-");
-        const entry = entries.find((e) => String(e.id) === parts[0]);
-        const month = parseInt(parts[parts.length - 2]);
-        const day = parseInt(parts[parts.length - 1]);
-        const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
-        const hist = ov._history || [];
-        const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, style: { padding: "10px 0", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, hist.length > 0 && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
-            style: {
-              fontFamily: "Inter,sans-serif",
-              fontSize: 11,
-              padding: "4px 10px",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              cursor: "pointer",
-              background: "transparent",
-              color: "var(--textMid)"
-            }
-          },
-          isOpen ? "Hide" : "History",
-          " (",
-          hist.length,
-          ")"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setOverridesByYr((prev) => {
-              const yOvs = __spreadValues({}, prev[activeYear] || {});
-              delete yOvs[eventId];
-              return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
-            }),
-            style: {
-              fontFamily: "Inter,sans-serif",
-              fontSize: 11,
-              padding: "4px 10px",
-              borderRadius: 6,
-              border: "1px solid var(--amberLt)",
-              cursor: "pointer",
-              background: "var(--amberLt)",
-              color: "var(--amber)"
-            },
-            title: "Restore the originally scheduled values for this date"
-          },
-          "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, paddingLeft: 12, borderLeft: "2px solid var(--border)" } }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
-      });
-    })())), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), /* @__PURE__ */ React.createElement(
+    } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), /* @__PURE__ */ React.createElement(
       GistSettingsPanel,
       {
         gistStatus,
@@ -7603,7 +7551,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         background: warn ? "var(--amber)" : "var(--greenDk)",
         transition: "width 0.3s ease"
       } })), warn && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--amber)", marginTop: 6 } }, "Approaching the sync payload limit \u2014 consider removing receipts from older entries."));
-    })()), /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    })()), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -7696,7 +7644,27 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       cursor: "pointer",
       background: "var(--navy)",
       color: "#fff"
-    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        value: lockTimeout,
+        onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 13,
+          padding: "7px 10px",
+          borderRadius: 8,
+          border: "1.5px solid var(--border)",
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none"
+        }
+      },
+      /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
+      /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
+      /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
+      /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
@@ -7746,259 +7714,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         },
         onCancel: () => setConfirmTgtReset(false)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setUf({ fullName: "", email: "", password: "", disabled: false });
-          setUfErr({});
-          setUserForm({ mode: "add" });
-        },
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "5px 14px",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          background: "var(--navy)",
-          color: "#fff"
-        }
-      },
-      "+ Add User"
-    ) }, "Users"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "All users who can log in to CashFlow on this device."), /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 1,
-      borderRadius: 10,
-      overflow: "hidden",
-      border: "1px solid var(--border)"
-    } }, (users || []).map((u, i) => {
-      const isMe = (sessionUser == null ? void 0 : sessionUser.id) === u.id;
-      const initials = (u.fullName || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-      return /* @__PURE__ */ React.createElement("div", { key: u.id, style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 16px",
-        background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
-        opacity: u.disabled ? 0.55 : 1
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        width: 36,
-        height: 36,
-        borderRadius: "50%",
-        background: u.disabled ? "var(--border)" : "var(--navyMid)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Inter,sans-serif",
-        fontSize: 13,
-        fontWeight: 700,
-        color: "#fff",
-        flexShrink: 0
-      } }, initials), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 13,
-        fontWeight: 600,
-        color: "var(--text)",
-        display: "flex",
-        alignItems: "center",
-        gap: 8
-      } }, u.fullName, isMe && /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 10,
-        fontWeight: 700,
-        padding: "1px 7px",
-        borderRadius: 10,
-        background: "var(--navyMid)",
-        color: "#fff"
-      } }, "You"), u.disabled && /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 10,
-        fontWeight: 700,
-        padding: "1px 7px",
-        borderRadius: 10,
-        background: "var(--border)",
-        color: "var(--textMid)"
-      } }, "Disabled")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 1 } }, u.email, u.lastLogin && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 10 } }, "\xB7 Last login ", new Date(u.lastLogin).toLocaleDateString()))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        setUf({ fullName: u.fullName, email: u.email, password: "", disabled: u.disabled });
-        setUfErr({});
-        setUserForm({ mode: "edit", user: u });
-      }, style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        padding: "4px 12px",
-        borderRadius: 6,
-        border: "1px solid var(--border)",
-        cursor: "pointer",
-        background: "transparent",
-        color: "var(--textMid)"
-      } }, "Edit"), !isMe && /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        setUsers((prev) => prev.map((x) => x.id === u.id ? __spreadProps(__spreadValues({}, x), { disabled: !x.disabled }) : x));
-        setUserMsg(u.disabled ? `${u.fullName} re-enabled.` : `${u.fullName} disabled.`);
-      }, style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 11,
-        padding: "4px 12px",
-        borderRadius: 6,
-        border: `1px solid ${u.disabled ? "var(--greenDk)" : "var(--amber)"}`,
-        cursor: "pointer",
-        background: "transparent",
-        color: u.disabled ? "var(--greenDk)" : "var(--amber)"
-      } }, u.disabled ? "Enable" : "Disable")));
-    })), userMsg && /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      color: "var(--greenDk)",
-      marginTop: 10
-    } }, userMsg), userForm && /* @__PURE__ */ React.createElement("div", { style: {
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.5)",
-      zIndex: 2e3,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16
-    } }, /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 28,
-      maxWidth: 440,
-      width: "100%",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 17,
-      fontWeight: 700,
-      color: "var(--text)",
-      marginBottom: 20
-    } }, userForm.mode === "add" ? "Add User" : "Edit User"), [
-      { label: "Full Name", key: "fullName", type: "text", placeholder: "Jane Smith" },
-      { label: "Email (login)", key: "email", type: "email", placeholder: "jane@example.com" },
-      { label: userForm.mode === "add" ? "Password" : "New password (blank = keep current)", key: "password", type: "password", placeholder: userForm.mode === "add" ? "Min 6 characters" : "Leave blank to keep" }
-    ].map(({ label, key, type, placeholder }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 700,
-      letterSpacing: "0.08em",
-      textTransform: "uppercase",
-      color: "var(--textMid)",
-      marginBottom: 5
-    } }, label), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type,
-        value: uf[key],
-        placeholder,
-        onChange: (e) => {
-          setUf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }));
-          setUfErr((p) => __spreadProps(__spreadValues({}, p), { [key]: void 0 }));
-        },
-        style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          padding: "8px 12px",
-          border: `1.5px solid ${ufErr[key] ? "var(--red)" : "var(--border)"}`,
-          borderRadius: 8,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none",
-          boxSizing: "border-box"
-        }
-      }
-    ), ufErr[key] && /* @__PURE__ */ React.createElement("div", { style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      color: "var(--red)",
-      marginTop: 4
-    } }, ufErr[key]))), userForm.mode === "edit" && (sessionUser == null ? void 0 : sessionUser.id) !== ((_a = userForm.user) == null ? void 0 : _a.id) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
-        id: "uf-disabled",
-        checked: uf.disabled,
-        onChange: (e) => setUf((p) => __spreadProps(__spreadValues({}, p), { disabled: e.target.checked })),
-        style: { width: 16, height: 16, cursor: "pointer" }
-      }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "uf-disabled", style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      color: "var(--text)",
-      cursor: "pointer"
-    } }, "Account disabled (cannot log in)")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setUserForm(null);
-          setUfErr({});
-        },
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 13,
-          padding: "8px 18px",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--textMid)"
-        }
-      },
-      "Cancel"
-    ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const errs = {};
-      const nm = uf.fullName.trim();
-      const em = uf.email.trim().toLowerCase();
-      const pw = uf.password;
-      if (!nm) errs.fullName = "Full name is required.";
-      if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) errs.email = "Enter a valid email address.";
-      const dup = (users || []).find((x) => {
-        var _a2;
-        return x.email.toLowerCase() === em && x.id !== ((_a2 = userForm.user) == null ? void 0 : _a2.id);
-      });
-      if (dup) errs.email = "That email is already in use.";
-      if (userForm.mode === "add" && pw.length < 6) errs.password = "Password must be at least 6 characters.";
-      if (userForm.mode === "edit" && pw && pw.length < 6) errs.password = "Password must be at least 6 characters.";
-      if (Object.keys(errs).length) {
-        setUfErr(errs);
-        return;
-      }
-      if (userForm.mode === "add") {
-        const newUser = {
-          id: "user_" + Date.now(),
-          fullName: nm,
-          email: em,
-          passwordHash: hashPw(em, pw),
-          disabled: false,
-          createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-          lastLogin: null
-        };
-        setUsers((prev) => [...prev, newUser]);
-        setUserMsg(`${nm} added.`);
-      } else {
-        setUsers((prev) => prev.map((x) => x.id === userForm.user.id ? __spreadValues(__spreadProps(__spreadValues({}, x), {
-          fullName: nm,
-          email: em,
-          disabled: uf.disabled
-        }), pw ? { passwordHash: hashPw(em, pw) } : {}) : x));
-        setUserMsg(`${nm} updated.`);
-      }
-      setUserForm(null);
-      setUfErr({});
-    }, style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      fontWeight: 700,
-      padding: "8px 18px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff"
-    } }, userForm.mode === "add" ? "Add User" : "Save Changes"))))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Permanently erase all CashFlow data stored on this device \u2014 entries, overrides, categories, templates, budget targets, years, and sync settings. This cannot be undone. Export a backup first if you might need this data again."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Permanently erase all CashFlow data stored on this device \u2014 entries, overrides, categories, templates, budget targets, years, and sync settings. This cannot be undone. Export a backup first if you might need this data again."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmWipe(true),
@@ -8036,7 +7752,90 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))));
+    ))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Inter,sans-serif",
+      fontSize: 13,
+      color: "var(--textLt)",
+      fontStyle: "italic"
+    } }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "8px 0",
+      borderBottom: "1px solid var(--border)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, t.desc), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, t.type === "income" ? "+" : "-", fmt(t.amount), " \xB7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \xB7 Recurring"))), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
+        style: {
+          fontFamily: "Inter,sans-serif",
+          fontSize: 11,
+          padding: "4px 10px",
+          borderRadius: 6,
+          border: "1px solid var(--redLt)",
+          cursor: "pointer",
+          background: "var(--redLt)",
+          color: "var(--red)"
+        }
+      },
+      "Remove"
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
+      const ovrs = overridesByYr[activeYear] || {};
+      const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
+      if (rows.length === 0) {
+        return /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, color: "var(--textLt)", fontStyle: "italic" } }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
+      }
+      return rows.map(([eventId, ov]) => {
+        const parts = eventId.split("-");
+        const entry = entries.find((e) => String(e.id) === parts[0]);
+        const month = parseInt(parts[parts.length - 2]);
+        const day = parseInt(parts[parts.length - 1]);
+        const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
+        const hist = ov._history || [];
+        const isOpen = !!historyOpen[eventId];
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, style: { padding: "10px 0", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text)" } }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--textMid)"
+            }
+          },
+          isOpen ? "Hide" : "History",
+          " (",
+          hist.length,
+          ")"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setOverridesByYr((prev) => {
+              const yOvs = __spreadValues({}, prev[activeYear] || {});
+              delete yOvs[eventId];
+              return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
+            }),
+            style: {
+              fontFamily: "Inter,sans-serif",
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--amberLt)",
+              cursor: "pointer",
+              background: "var(--amberLt)",
+              color: "var(--amber)"
+            },
+            title: "Restore the originally scheduled values for this date"
+          },
+          "\u21BA Revert"
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, paddingLeft: 12, borderLeft: "2px solid var(--border)" } }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Inter,sans-serif", fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+      });
+    })())));
   }
   function useGistSync({
     entries,
@@ -9499,10 +9298,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [pwf, setPwf] = useState({ current: "", next: "", confirm: "" });
     const [pfErr, setPfErr] = useState("");
     const [pfOk, setPfOk] = useState("");
-    const [regFabOpen, setRegFabOpen] = useState(false);
-    useEffect(() => {
-      if (!(tab === "budget" && budgetSub === "entries")) setRegFabOpen(false);
-    }, [tab, budgetSub]);
     const [pullProgress, setPullProgress] = useState(0);
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
@@ -10850,7 +10645,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
       },
       "Terms of Use"
-    )), !(tab === "budget" && budgetSub === "entries") && /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(
       QuickAddFAB,
       {
         categories,
@@ -10861,104 +10656,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         onSave: (data) => {
           addEntry(data);
           setFabOpen(false);
-        }
+        },
+        onImportCSV: tab === "budget" && budgetSub === "entries" ? (() => {
+          window.__regOpenCSV && window.__regOpenCSV();
+        }) : null
       }
-    ), tab === "budget" && budgetSub === "entries" && /* @__PURE__ */ (() => {
-      return /* @__PURE__ */ React.createElement("div", { className: "cf-regfab", style: {
-        position: "fixed",
-        bottom: "calc(20px + env(safe-area-inset-bottom))",
-        right: 16,
-        zIndex: 1499,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: 10
-      } }, regFabOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          onClick: () => setRegFabOpen(false),
-          style: { position: "fixed", inset: 0, zIndex: -1 }
-        }
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            setRegFabOpen(false);
-            window.__regOpenCSV && window.__regOpenCSV();
-          },
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "10px 18px",
-            borderRadius: 20,
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-            background: "var(--bgCard)",
-            color: "var(--text)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-            whiteSpace: "nowrap",
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }
-        },
-        /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
-        " Import CSV"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            setRegFabOpen(false);
-            window.__regOpenNew && window.__regOpenNew();
-          },
-          style: {
-            fontFamily: "Inter,sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "10px 18px",
-            borderRadius: 20,
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-            background: "var(--bgCard)",
-            color: "var(--text)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-            whiteSpace: "nowrap",
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }
-        },
-        /* @__PURE__ */ React.createElement("span", null, "+"),
-        " Add Entry"
-      )), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setRegFabOpen((v) => !v),
-          "aria-label": "Entry actions",
-          title: "Entry actions",
-          style: {
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: regFabOpen ? "var(--red)" : "var(--navy)",
-            border: "none",
-            cursor: "pointer",
-            color: "#fff",
-            fontSize: 24,
-            fontWeight: 300,
-            lineHeight: 1,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.2s,transform 0.2s",
-            transform: regFabOpen ? "rotate(45deg)" : "rotate(0deg)"
-          }
-        },
-        "+"
-      ));
-    })());
+    ));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));
