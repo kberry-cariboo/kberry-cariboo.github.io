@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v137';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v138';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -2811,19 +2811,40 @@ document.addEventListener('DOMContentLoaded',function(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { className: "reg-th", style: { padding: "10px 6px 10px 12px", width: 34, background: "var(--navy)" } }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
-        "aria-label": "Select all",
-        checked: filtered.length > 0 && filtered.every((e) => selIds.has(e.id)),
-        onChange: (ev) => {
-          if (ev.target.checked) setSelIds(new Set(filtered.map((e) => e.id)));
-          else setSelIds(/* @__PURE__ */ new Set());
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { className: "reg-th", style: { padding: "10px 6px 10px 12px", width: 34, background: "var(--navy)" } }, (() => {
+      const allSel = filtered.length > 0 && filtered.every((e) => selIds.has(e.id));
+      const someSel = filtered.some((e) => selIds.has(e.id));
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            if (allSel) setSelIds(/* @__PURE__ */ new Set());
+            else setSelIds(new Set(filtered.map((e) => e.id)));
+          },
+          role: "checkbox",
+          "aria-checked": allSel,
+          "aria-label": allSel ? "Deselect all" : "Select all",
+          title: allSel ? "Deselect all" : "Select all",
+          style: {
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            cursor: "pointer",
+            padding: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: allSel ? "none" : "1.5px solid rgba(255,255,255,0.4)",
+            background: allSel ? "var(--navy)" : someSel ? "rgba(255,255,255,0.25)" : "transparent",
+            color: "#fff",
+            fontSize: 11,
+            lineHeight: 1,
+            boxShadow: allSel ? "0 0 0 1.5px #fff" : "none"
+          }
         },
-        style: { width: 15, height: 15, accentColor: "#fff", cursor: "pointer", verticalAlign: "middle" }
-      }
-    )), visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+        allSel ? "\u2713" : someSel ? "\u2013" : ""
+      );
+    })()), visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -2862,14 +2883,32 @@ document.addEventListener('DOMContentLoaded',function(){
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
     )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)", cursor: "context-menu" } }, /* @__PURE__ */ React.createElement("td", { onClick: (ev) => ev.stopPropagation(), style: { padding: "8px 6px 8px 12px", width: 34 } }, /* @__PURE__ */ React.createElement(
-      "input",
+      "button",
       {
-        type: "checkbox",
-        "aria-label": "Select row",
-        checked: selIds.has(e.id),
-        onChange: () => toggleSel(e.id),
-        style: { width: 15, height: 15, accentColor: "var(--navy)", cursor: "pointer", verticalAlign: "middle" }
-      }
+        onClick: () => {
+          haptic();
+          toggleSel(e.id);
+        },
+        role: "checkbox",
+        "aria-checked": selIds.has(e.id),
+        "aria-label": selIds.has(e.id) ? "Deselect row" : "Select row",
+        style: {
+          width: 20,
+          height: 20,
+          borderRadius: 5,
+          cursor: "pointer",
+          padding: 0,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
+          background: selIds.has(e.id) ? "var(--navy)" : "transparent",
+          color: "#fff",
+          fontSize: 12,
+          lineHeight: 1
+        }
+      },
+      selIds.has(e.id) ? "\u2713" : ""
     )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, style: { padding: "32px", textAlign: "center", fontFamily: "Inter,sans-serif", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."), !(search || globalSearch) && /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -2907,15 +2946,35 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         },
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 4 } }, /* @__PURE__ */ React.createElement(
-          "input",
+          "button",
           {
-            type: "checkbox",
-            "aria-label": "Select entry",
-            checked: selIds.has(e.id),
-            onClick: (ev) => ev.stopPropagation(),
-            onChange: () => toggleSel(e.id),
-            style: { width: 18, height: 18, accentColor: "var(--navy)", flexShrink: 0, marginTop: 1 }
-          }
+            onClick: (ev) => {
+              ev.stopPropagation();
+              haptic();
+              toggleSel(e.id);
+            },
+            role: "checkbox",
+            "aria-checked": selIds.has(e.id),
+            "aria-label": selIds.has(e.id) ? "Deselect entry" : "Select entry",
+            style: {
+              width: 22,
+              height: 22,
+              borderRadius: 5,
+              cursor: "pointer",
+              padding: 0,
+              flexShrink: 0,
+              marginTop: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
+              background: selIds.has(e.id) ? "var(--navy)" : "transparent",
+              color: "#fff",
+              fontSize: 13,
+              lineHeight: 1
+            }
+          },
+          selIds.has(e.id) ? "\u2713" : ""
         ), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: __spreadValues({
           fontFamily: "Inter,sans-serif",
           fontSize: 13,
