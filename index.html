@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v134';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v137';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -1651,22 +1651,6 @@ document.addEventListener('DOMContentLoaded',function(){
     }) : blank);
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
-    const [showAdv, setShowAdv] = useState(() => {
-      var _a2, _b2;
-      try {
-        if (localStorage.getItem("cf_ef_adv") === "1") return true;
-      } catch (err) {
-      }
-      return !!(initial && (initial.notes || initial.attachment || initial.monthlyAmounts || initial.recurEnd || initial.recurDays && initial.recurDays.length > 0 || initial.repeats && (((_a2 = initial.recurEvery) != null ? _a2 : 1) !== 1 || ((_b2 = initial.recurUnit) != null ? _b2 : "month") !== "month")));
-    });
-    const toggleAdv = () => setShowAdv((v) => {
-      const n = !v;
-      try {
-        localStorage.setItem("cf_ef_adv", n ? "1" : "0");
-      } catch (err) {
-      }
-      return n;
-    });
     const set = (patch) => setF((p) => __spreadValues(__spreadValues({}, p), patch));
     const startD = f.startDate ? parseDate(f.startDate) : null;
     const startWD = startD ? startD.getDay() : null;
@@ -1708,13 +1692,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return !Object.keys(errs).length;
     };
     const handleSave = () => {
-      if (!validate()) {
-        setErrors((prev) => {
-          if (prev.recurEnd || prev.recurEvery) setShowAdv(true);
-          return prev;
-        });
-        return;
-      }
+      if (!validate()) return;
       const ma = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
       onSave(__spreadProps(__spreadValues({}, f), {
         amount: parseFloat(f.amount),
@@ -1808,63 +1786,7 @@ document.addEventListener('DOMContentLoaded',function(){
       borderRadius: 6,
       padding: "3px 8px",
       border: "1px solid var(--border)"
-    } }, summary))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
-      "img",
-      {
-        src: attachment,
-        alt: "attachment",
-        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
-        onClick: () => setLightbox(true)
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => setAttachment(null),
-        style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
-      },
-      "Remove"
-    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: toggleAdv,
-        "aria-expanded": showAdv,
-        style: {
-          fontFamily: "Inter,sans-serif",
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          width: "100%",
-          padding: "8px 2px",
-          marginBottom: 12,
-          border: "none",
-          borderTop: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--textMid)",
-          textAlign: "left"
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, transform: showAdv ? "rotate(90deg)" : "none", transition: "transform 0.15s", display: "inline-block" } }, "\u25B8"),
-      "Advanced",
-      !showAdv && (showMonthly || f.recurEnd) && /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 9,
-        fontWeight: 700,
-        padding: "2px 7px",
-        borderRadius: 8,
-        background: "var(--stripe)",
-        border: "1px solid var(--border)",
-        color: "var(--textLt)",
-        textTransform: "none",
-        letterSpacing: 0
-      } }, "has details")
-    ), showAdv && /* @__PURE__ */ React.createElement(React.Fragment, null, f.repeats && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
+    } }, summary))), f.repeats && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, border: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 11,
       fontWeight: 700,
@@ -1957,7 +1879,23 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
       ));
-    }))))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
+    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes"), /* @__PURE__ */ React.createElement("input", { style: inp(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
+      "img",
+      {
+        src: attachment,
+        alt: "attachment",
+        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
+        onClick: () => setLightbox(true)
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => setAttachment(null),
+        style: { fontFamily: "Inter,sans-serif", fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
+      },
+      "Remove"
+    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter,sans-serif", fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: handleSave, style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 13,
       fontWeight: 600,
@@ -1989,7 +1927,7 @@ document.addEventListener('DOMContentLoaded',function(){
         recurDays: f.recurDays || [],
         notes: f.notes
       });
-    }, style: {
+    }, className: "ef-save-template", style: {
       fontFamily: "Inter,sans-serif",
       fontSize: 12,
       fontWeight: 600,
@@ -9761,6 +9699,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:6px!important;}
           .bp-daily{display:none!important;}
+          .ef-save-template{display:none!important;}
           .budget-subtab-pill .bp-label-full{display:none!important;}
           .budget-subtab-pill .bp-label-short{display:inline!important;}
           .budget-subtab-pill{padding:7px 13px!important;}
