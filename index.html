@@ -525,7 +525,7 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v138';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v139';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
@@ -9041,7 +9041,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const tabs = [
       { id: "monthly", label: "Monthly", icon: "\u2630" },
       { id: "daily", label: "Daily", icon: "\u25A6", cls: "bp-daily" },
-      { id: "bva", label: "Budget vs Actual", short: "vs Actual", icon: "\u{1F3AF}" },
+      { id: "bva", label: "Budget vs Actual", icon: "\u{1F3AF}" },
       { id: "forecast", label: "Forecast", icon: "\u{1F4C8}" },
       { id: "entries", label: "Entries", icon: "\u{1F9FE}" }
     ];
@@ -9063,6 +9063,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           haptic();
           onChange(s.id);
         },
+        "aria-label": s.label,
+        title: s.label,
         style: {
           fontFamily: "Inter,sans-serif",
           fontSize: 12,
@@ -9078,9 +9080,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true" }, s.icon),
-      " ",
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, s.label),
-      s.short && /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
     )));
   }
   function App() {
@@ -9760,8 +9760,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .bp-daily{display:none!important;}
           .ef-save-template{display:none!important;}
           .budget-subtab-pill .bp-label-full{display:none!important;}
-          .budget-subtab-pill .bp-label-short{display:inline!important;}
-          .budget-subtab-pill{padding:7px 13px!important;}
+          .budget-subtab-pill{width:40px!important;height:40px!important;padding:0!important;
+            display:inline-flex!important;align-items:center!important;justify-content:center!important;
+            flex-shrink:0!important;font-size:16px!important;}
           .budget-subtabs{margin-left:-4px!important;margin-right:-4px!important;padding-left:4px!important;padding-right:4px!important;}
           .year-openbal{flex-basis:100%!important;order:5;}
           .year-openbal input{flex:1 1 auto!important;width:auto!important;}
@@ -9837,8 +9838,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         /* Register: table on desktop, cards on mobile */
         .reg-cards{display:none;}
-        /* Budget sub-tab labels: full on desktop, short on mobile */
-        .bp-label-short{display:none;}
+        /* Budget sub-tab labels: full text on desktop; icon-only, uniform size on mobile */
         /* \u2500\u2500 Unified scroll utility \u2014 every grid scrolls like the register \u2500\u2500
            hidden scrollbar (all engines) + vertical scrollport + horizontal overflow;
            direct-child thead cells stick to the top while scrolling. */
