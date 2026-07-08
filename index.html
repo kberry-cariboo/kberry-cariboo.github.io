@@ -525,11 +525,21 @@ react-dom/cjs/react-dom-client.production.js:
   };
 })();</script>
 <script>
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-v140';
+if('serviceWorker'in navigator){const sw=`const CACHE='cf-v141';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()).then(()=>self.clients.matchAll({type:'window'})).then(cs=>cs.forEach(c=>c.postMessage({type:'CF_SW_ACTIVATED',cache:CACHE}))));});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));});`;
-try{const b=new Blob([sw],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}catch(e){}}
+try{
+  const b=new Blob([sw],{type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(b)).then(reg=>{
+    // If a new SW takes over after this page already loaded, refresh once automatically
+    // so updates (like this build) land without the user needing a manual double-refresh.
+    let refreshed=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(refreshed) return; refreshed=true; window.location.reload();
+    });
+  }).catch(()=>{});
+}catch(e){}}
 function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof React==='undefined'||typeof ReactDOM==='undefined'){showError('React failed to initialize','Inline React bundle did not load.');return;}
@@ -9684,7 +9694,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
-          .cf-regfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
         }
         /* FAB: touch devices only, thumb-reach primary action */
