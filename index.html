@@ -1260,6 +1260,20 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!d || isNaN(d)) return str;
     return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
   }
+  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings"];
+  const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
+  function parseTabHash() {
+    let raw = "";
+    try {
+      raw = (location.hash || "").replace(/^#\/?/, "");
+    } catch (e) {
+    }
+    const [t, s] = raw.split("/");
+    return {
+      tab: ROUTE_TABS.includes(t) ? t : null,
+      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null
+    };
+  }
   function todayStr() {
     const t = /* @__PURE__ */ new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
@@ -9258,6 +9272,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
     const [tab, setTab] = useState(() => {
+      const fromHash = parseTabHash().tab;
+      if (fromHash) return fromHash;
       try {
         return sessionStorage.getItem("cf_tab") || "dashboard";
       } catch (e) {
@@ -9271,6 +9287,33 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       }
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
+    const hashSyncGuard = useRef(false);
+    useEffect(() => {
+      const fromHash = parseTabHash().budgetSub;
+      if (fromHash) setBudgetSub(fromHash);
+    }, []);
+    useEffect(() => {
+      if (hashSyncGuard.current) {
+        hashSyncGuard.current = false;
+        return;
+      }
+      let newHash;
+      try {
+        newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "");
+        if (location.hash !== newHash) history.pushState(null, "", newHash);
+      } catch (e) {
+      }
+    }, [tab, budgetSub]);
+    useEffect(() => {
+      const onPopState = () => {
+        const parsed = parseTabHash();
+        hashSyncGuard.current = true;
+        if (parsed.tab) setTab(parsed.tab);
+        if (parsed.tab === "budget" && parsed.budgetSub) setBudgetSub(parsed.budgetSub);
+      };
+      window.addEventListener("popstate", onPopState);
+      return () => window.removeEventListener("popstate", onPopState);
+    }, []);
     useEffect(() => {
       if (budgetSub === "grid") setBudgetSub("monthly");
       if (tab === "register") {
