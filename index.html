@@ -726,6 +726,35 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [key]);
     return [val, set];
   }
+  function useMediaQuery(query) {
+    const [matches, setMatches] = useState(() => {
+      try {
+        return window.matchMedia(query).matches;
+      } catch (e) {
+        return false;
+      }
+    });
+    useEffect(() => {
+      let mq;
+      try {
+        mq = window.matchMedia(query);
+      } catch (e) {
+        return;
+      }
+      const onChange = () => setMatches(mq.matches);
+      onChange();
+      if (mq.addEventListener) mq.addEventListener("change", onChange);
+      else mq.addListener(onChange);
+      return () => {
+        if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+        else mq.removeListener(onChange);
+      };
+    }, [query]);
+    return matches;
+  }
+  const useIsMobile = () => useMediaQuery("(max-width: 768px)");
+  const useIsPhone = () => useMediaQuery("(max-width: 480px)");
+  const useIsCoarsePointer = () => useMediaQuery("(pointer: coarse)");
   const LIGHT = {
     navy: "#1C2B3A",
     navyMid: "#243447",
@@ -867,6 +896,7 @@ document.addEventListener('DOMContentLoaded',function(){
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
           .content-area{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
+          .content-area.content-area--fab{padding-bottom:calc(132px + env(safe-area-inset-bottom))!important;}
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
@@ -1199,6 +1229,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
+  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(v) / 1e3).toFixed(0) + "k";
   const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
   function hashPw(email, pw) {
     let h = 2166136261 >>> 0;
@@ -1223,6 +1254,11 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!str) return null;
     const [y, m, d] = str.split("-").map(Number);
     return new Date(y, m - 1, d);
+  }
+  function humanShortDate(str) {
+    const d = parseDate(str);
+    if (!d || isNaN(d)) return str;
+    return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
   }
   function todayStr() {
     const t = /* @__PURE__ */ new Date();
@@ -1907,14 +1943,21 @@ document.addEventListener('DOMContentLoaded',function(){
       key: o.id,
       onClick: () => onChange(o.id),
       title: o.label,
+      "aria-label": o.label,
+      "aria-pressed": value === o.id,
       style: {
         fontSize: 10,
         fontWeight: 700,
+        minWidth: 34,
+        minHeight: 34,
         padding: "2px 8px",
         borderRadius: 5,
         border: "none",
         cursor: "pointer",
         letterSpacing: "0.04em",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
         background: value === o.id ? "var(--navy)" : "var(--border)",
         color: value === o.id ? "#fff" : "var(--textMid)"
       }
@@ -2751,6 +2794,8 @@ document.addEventListener('DOMContentLoaded',function(){
       e.stopPropagation();
       setCtxMenu({ x: e.clientX, y: e.clientY, entry });
     };
+    const isMobile = useIsMobile();
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [search, setSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
@@ -2881,7 +2926,8 @@ document.addEventListener('DOMContentLoaded',function(){
           return /* @__PURE__ */ React.createElement("td", { key: col });
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, /* @__PURE__ */ React.createElement(
+    const activeFilterCount = filterCats.length + filterScheds.length + filterStatus.length + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+    const filterControls = /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       FilterPill,
       {
         label: "Category",
@@ -2905,7 +2951,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onChange: setFilterStatus,
         options: [{ value: "active", label: "Active" }, { value: "historical", label: "Historical" }]
       }
-    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, "From"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, "From"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "date",
@@ -2946,8 +2992,42 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         style: { fontSize: 13, color: "var(--textLt)", background: "none", border: "none", cursor: "pointer", padding: "4px" }
       },
-      "\u2715"
-    )), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--textMid)", cursor: "pointer", whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), style: { cursor: "pointer" } }), "All years"), /* @__PURE__ */ React.createElement(
+      "✕"
+    )));
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowMobileFilters(true),
+        "aria-haspopup": "dialog",
+        style: {
+          fontSize: 13,
+          fontWeight: 600,
+          padding: "8px 14px",
+          border: "1.5px solid " + (activeFilterCount > 0 ? "var(--navy)" : "var(--border)"),
+          borderRadius: 20,
+          background: activeFilterCount > 0 ? "rgba(28,43,58,0.07)" : "var(--bgCard)",
+          color: activeFilterCount > 0 ? "var(--navy)" : "var(--text)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6
+        }
+      },
+      "\u2699\ufe0f Filters",
+      activeFilterCount > 0 && /* @__PURE__ */ React.createElement("span", { style: {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 18,
+        height: 18,
+        padding: "0 5px",
+        borderRadius: 9,
+        background: "var(--navy)",
+        color: "#fff",
+        fontSize: 11,
+        fontWeight: 700
+      } }, activeFilterCount)
+    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--textMid)", cursor: "pointer", whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), style: { cursor: "pointer" } }), "All years"), /* @__PURE__ */ React.createElement(
       "input",
       {
         placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026",
@@ -2973,7 +3053,24 @@ document.addEventListener('DOMContentLoaded',function(){
       border: "1px solid var(--amber)",
       width: "100%",
       marginTop: 6
-    } }, '\u{1F50D} Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), showCSV && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    } }, '\u{1F50D} Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        onClick: (e) => {
+          if (e.target === e.currentTarget) setShowMobileFilters(false);
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "20px 20px 16px", width: "min(480px,calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", style: { background: "none", border: "none", fontSize: 20, color: "var(--textLt)", cursor: "pointer", lineHeight: 1 } }, "\u2715")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 } }, filterControls), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setShowMobileFilters(false),
+          className: "cf-btn cf-btn--primary",
+          style: { width: "100%", marginTop: 18, padding: "12px" }
+        },
+        "Show results"
+      ))
+    ), showCSV && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
       {
         onClick: () => setShowCSV(false),
@@ -3232,7 +3329,7 @@ document.addEventListener('DOMContentLoaded',function(){
           style: {
             padding: "12px 14px",
             borderBottom: "1px solid var(--border)",
-            background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
+            background: "var(--bgCard)",
             cursor: "context-menu"
           }
         },
@@ -3278,21 +3375,10 @@ document.addEventListener('DOMContentLoaded',function(){
           color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--red)",
           textDecoration: archived ? "line-through" : "none"
         } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: {
-          fontSize: 10,
-          fontWeight: 700,
-          padding: "2px 7px",
-          borderRadius: 4,
-          textTransform: "uppercase",
-          background: isInc ? "#E8F8F1" : "var(--redLt)",
-          color: isInc ? "var(--greenDk)" : "var(--red)"
-        } }, e.type), e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { style: {
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { style: {
           fontSize: 11,
           color: "var(--textMid)"
-        } }, e.startDate), e.repeats && /* @__PURE__ */ React.createElement("span", { style: {
-          fontSize: 11,
-          color: "var(--textMid)"
-        } }, recurLabel(e)), e.notes && /* @__PURE__ */ React.createElement("span", { style: {
+        } }, humanShortDate(e.startDate), e.repeats && ` · ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { style: {
           fontSize: 11,
           color: "var(--textLt)",
           overflow: "hidden",
@@ -3410,6 +3496,7 @@ document.addEventListener('DOMContentLoaded',function(){
           setTab(it.id);
         },
         "aria-label": it.label,
+        "aria-current": tab === it.id ? "page" : void 0,
         style: {
           flex: 1,
           display: "flex",
@@ -3425,7 +3512,19 @@ document.addEventListener('DOMContentLoaded',function(){
           fontWeight: tab === it.id ? 700 : 500
         }
       },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, lineHeight: 1, position: "relative" } }, it.icon, it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { style: {
+      /* @__PURE__ */ React.createElement("span", { style: {
+        fontSize: 17,
+        lineHeight: 1,
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 36,
+        height: 24,
+        borderRadius: 12,
+        background: tab === it.id ? "var(--accentLt)" : "transparent",
+        transition: "background 0.15s"
+      } }, it.icon, it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { style: {
         position: "absolute",
         top: -2,
         right: -6,
@@ -3656,6 +3755,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   } }) {
     var _a, _b;
+    const isMobile = useIsMobile();
     const [editingId, setEditingId] = useState(null);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
@@ -3970,6 +4070,118 @@ document.addEventListener('DOMContentLoaded',function(){
       background: "transparent",
       boxShadow: "inset 3px 0 0 0 transparent"
     } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 8px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }))));
+    const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }));
+    const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, style: {
+      background: "var(--navyMid)",
+      padding: "8px 14px",
+      fontSize: 11,
+      fontWeight: 700,
+      color: "#fff",
+      letterSpacing: "0.1em",
+      textTransform: "uppercase"
+    } }, label);
+    const renderEventCard = (ev) => {
+      const past = isPast(ev.day);
+      const isDone = !!completed[ev.id];
+      const isSel = selIds.has(ev.id);
+      const signed = ev.type === "income" ? ev.amount : -ev.amount;
+      return /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          key: ev.id,
+          className: "budget-card-row",
+          onClick: () => openOccurrenceEdit(ev),
+          onContextMenu: (e) => {
+            e.preventDefault();
+            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
+          },
+          style: {
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            padding: "10px 14px",
+            background: isSel ? "var(--stripe)" : isDone ? "var(--doneBg)" : "var(--bgCard)",
+            borderBottom: "1px solid var(--border)",
+            boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent",
+            cursor: "pointer",
+            opacity: past && !isDone ? 0.7 : 1
+          }
+        },
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: (e) => {
+              e.stopPropagation();
+              haptic();
+              toggleSel(ev.id);
+            },
+            role: "checkbox",
+            "aria-checked": isSel,
+            "aria-label": isSel ? "Deselect row" : "Select row",
+            title: isDone ? "Paid — select to change" : "Select to mark paid",
+            style: {
+              flexShrink: 0,
+              marginTop: 2,
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              cursor: "pointer",
+              padding: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: isDone || isSel ? "none" : "1.5px solid var(--border)",
+              background: isDone ? "var(--greenDk)" : isSel ? "var(--navy)" : "transparent",
+              color: "#fff",
+              fontSize: 13,
+              lineHeight: 1
+            }
+          },
+          isDone || isSel ? "✓" : ""
+        ),
+        /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", {
+          className: "tx",
+          title: ev.desc,
+          style: {
+            fontWeight: 600,
+            fontSize: 14,
+            color: isDone ? "var(--textLt)" : "var(--text)",
+            textDecoration: isDone ? "line-through" : "none",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0
+          }
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 4 } }, /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
+          fontWeight: 600,
+          textDecoration: isDone ? "line-through" : "none",
+          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--red)"
+        } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
+          fontWeight: 700,
+          minWidth: 74,
+          textAlign: "right",
+          textDecoration: isDone ? "line-through" : "none",
+          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+        } }, fmt(ev.balance)))))
+      );
+    };
+    const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "10px 14px",
+      background: "var(--amberLt)",
+      borderBottom: "1px solid var(--border)"
+    } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
+      fontWeight: 700,
+      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "28px 14px", textAlign: "center", fontSize: 13, color: "var(--textLt)" } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), period1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), period2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "12px 14px",
+      background: "var(--navy)"
+    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 12, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: { fontWeight: 700, color: "var(--green)" } }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno", style: { fontWeight: 700, color: "#FF8A7A" } }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno", style: { fontWeight: 700, color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
       return Array.from({ length: daysInMonth(monthIdx, activeYear) }, (_, i) => {
@@ -3980,9 +4192,8 @@ document.addEventListener('DOMContentLoaded',function(){
       }).filter((d) => d.events.length > 0);
     }, [monthEvents, s, monthIdx]);
     useEffect(() => {
-      const isMobile = window.innerWidth <= 768;
       if (isMobile && budgetSub === "daily") setBudgetSub("monthly");
-    }, []);
+    }, [isMobile, budgetSub]);
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
       const t = e.target;
@@ -4131,7 +4342,7 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
-      )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
+      )), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
         const allDone = allIds.length > 0 && allIds.every((id) => completed[id]);
         const someDone = allIds.some((id) => completed[id]);
@@ -4565,6 +4776,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {} }) {
+    const isMobile = useIsMobile();
     const today = /* @__PURE__ */ new Date();
     const horizons = [30, 60, 90];
     const gq2 = (globalSearch || "").toLowerCase();
@@ -4600,23 +4812,23 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         onPrint: () => printView(`CashFlow Forecast - ${horizon} Days`)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : ""), style: {
+    )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : ""), style: {
       fontSize: 11,
       fontWeight: 700,
       color: "#fff",
       padding: "10px 14px",
-      textAlign: i >= 3 ? "right" : "left",
+      textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => !gq2 || ev.desc.toLowerCase().includes(gq2) || ev.category.toLowerCase().includes(gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--red)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
         padding: "8px 14px",
         textAlign: "right",
         fontWeight: 700,
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
-      } }, fmt(ev.balance)), (() => {
+      } }, fmt(ev.balance)), !isMobile && (() => {
         const m = ev.month;
         const cat = ev.category;
         const yr = ev.year;
@@ -5415,7 +5627,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           const monthsLeft = (t.getFullYear() - now.getFullYear()) * 12 + (t.getMonth() - now.getMonth());
           if (monthsLeft > 0) neededMonthly = Math.ceil(remaining / monthsLeft);
         }
-        const barColor = remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amber)" : "var(--navy)";
+        const barColor = remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amber)" : "var(--text)";
         return /* @__PURE__ */ React.createElement(
           "div",
           {
@@ -5958,6 +6170,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }, dashOrder = [], setDashOrder = () => {
   } }) {
     var _a;
+    const isMobile = useIsMobile();
+    const isPhone = useIsPhone();
     const [showCustomize, setShowCustomize] = useState(false);
     useEffect(() => {
       if (dashHidden.charts || dashHidden.incomeRow) {
@@ -6145,6 +6359,26 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const isInc = ev.type === "income";
+          const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)";
+          const amtColor = isInc ? "var(--greenDk)" : "var(--red)";
+          const barDiv = /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
+            height: "100%",
+            borderRadius: 2,
+            background: balColor,
+            width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
+          } }));
+          if (isMobile) {
+            return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 } }, /* @__PURE__ */ React.createElement("span", { style: {
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0
+            } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textMid)", flexShrink: 0 } }, label), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+          }
           return /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {
             fontSize: 13,
             color: "var(--textMid)",
@@ -6156,15 +6390,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             textOverflow: "ellipsis",
             whiteSpace: "nowrap"
           } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
-            color: isInc ? "var(--greenDk)" : "var(--red)"
+            color: amtColor
           } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
-            color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-          } }, fmt(ev.balance)))), /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
-            height: "100%",
-            borderRadius: 2,
-            background: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
-            width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
-          } })));
+            color: balColor
+          } }, fmt(ev.balance)))), barDiv);
         })));
       })()),
       kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--red)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 } }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 700, color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, "In ", lowestMon)))),
@@ -6175,7 +6404,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           onChange: setBalView,
           options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
         }
-      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "#1C2B3A" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--navy)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--navy)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--navy)", strokeWidth: 2.5, fill: "var(--navy)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--navy)" } })))))),
+      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
       surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -6183,7 +6412,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           onChange: setSurplusView,
           options: [{ id: "bar", icon: "\u25AE", label: "Bar" }, { id: "line", icon: "\u2571", label: "Line" }]
         }
-      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
+      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
         Line,
         {
           type: "monotone",
@@ -6194,7 +6423,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           dot: ({ cx, cy, payload }) => /* @__PURE__ */ React.createElement("circle", { key: cx, cx, cy, r: 4, fill: payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)", stroke: "none" }),
           activeDot: { r: 6 }
         }
-      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
+      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
       incExpChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -6202,16 +6431,16 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           onChange: setIncExpView,
           options: [{ id: "grouped", icon: "\u25AE\u25AE", label: "Grouped" }, { id: "stacked", icon: "\u25B0", label: "Stacked" }, { id: "line", icon: "\u2571", label: "Line" }]
         }
-      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
+      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
         BarChart,
         {
           data: summaries,
-          margin: { top: 4, right: 4, bottom: 0, left: 4 },
+          margin: { top: 4, right: 4, bottom: 34, left: 4 },
           barCategoryGap: incExpView === "stacked" ? "20%" : "10%"
         },
         /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
         /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }),
-        /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }),
+        /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }),
         /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
         /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }),
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
@@ -6501,7 +6730,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : "transparent"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "var(--green)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#FF8A7A" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px" } }))))))
       ))),
-      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 16 }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 16 }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
           key: yc.year,
@@ -9956,7 +10185,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       display: "inline-block",
       animation: pullActive ? "spin 0.8s linear infinite" : "none",
       fontSize: 14
-    } }, "\u21BB"), pullActive ? "Syncing with Gist\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area", style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
+    } }, "\u21BB"), pullActive ? "Syncing with Gist\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
