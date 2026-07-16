@@ -1047,6 +1047,10 @@ document.addEventListener('DOMContentLoaded',function(){
           .budget-monthly-table .budget-col-checkbox{width:26px!important;}
           .budget-monthly-table .budget-col-day{width:26px!important;}
           .budget-monthly-table .budget-col-desc{width:150px!important;max-width:150px!important;}
+          /* Category is hidden at the 768px breakpoint above; bring it back here
+             so the phone layout actually has all 7 columns the min-width assumes —
+             otherwise the table is left with ~170px of unlabeled blank space. */
+          .budget-monthly-table .budget-col-cat{display:table-cell!important;}
           .budget-monthly-table .budget-col-category{width:90px!important;}
           .budget-monthly-table .budget-col-income{width:85px!important;}
           .budget-monthly-table .budget-col-expense{width:85px!important;}
