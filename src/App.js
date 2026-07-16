@@ -1,33 +1,32 @@
   function App() {
     var _a;
     if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(SelfTestView, null);
-    const [users, setUsers] = useLS("cf_users", SEED_USERS);
-    useEffect(() => {
-      setUsers((prev) => {
-        const old = prev.find((u) => u.id === "user_001" && u.email === "ken.berry@cashflow.app");
-        if (!old) return prev;
-        return prev.map((u) => u.id === "user_001" ? __spreadProps(__spreadValues({}, u), {
-          email: "kenneth-berry@outlook.com",
-          passwordHash: hashPw("kenneth-berry@outlook.com", "Iloveme2026!")
-        }) : u);
-      });
-    }, []);
-    const [sessionUser, setSessionUser] = useState(null);
-    const login = (user) => {
-      const sess = { userId: user.id, at: Date.now() };
-      try {
-        sessionStorage.setItem("cf_session", JSON.stringify(sess));
-      } catch (e) {
-      }
-      setUsers((prev) => prev.map((u) => u.id === user.id ? __spreadProps(__spreadValues({}, u), { lastLogin: (/* @__PURE__ */ new Date()).toISOString() }) : u));
-      setSessionUser(user);
-    };
+    const {
+      configured: sbConfigured,
+      session,
+      authLoading,
+      household,
+      members,
+      membershipLoading,
+      createHousehold,
+      joinHousehold,
+      createInvite,
+      setMemberDisabled,
+      updateMyName,
+      signOut
+    } = useHousehold();
+    const sessionUser = useMemo(() => {
+      if (!session) return null;
+      const me = members.find((m) => m.user_id === session.user.id);
+      return {
+        id: session.user.id,
+        email: session.user.email,
+        fullName: (me && me.full_name) || session.user.email,
+        disabled: (me && me.disabled) || false
+      };
+    }, [session, members]);
     const logout = () => {
-      try {
-        sessionStorage.removeItem("cf_session");
-      } catch (e) {
-      }
-      setSessionUser(null);
+      signOut();
     };
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
     useEffect(() => {
@@ -48,22 +47,6 @@
       document.addEventListener("visibilitychange", onVis);
       return () => document.removeEventListener("visibilitychange", onVis);
     }, [lockTimeout, sessionUser]);
-    useEffect(() => {
-      try {
-        const raw = sessionStorage.getItem("cf_session");
-        if (!raw) return;
-        const sess = JSON.parse(raw);
-        let lsUsers;
-        try {
-          lsUsers = JSON.parse(localStorage.getItem("cf_users"));
-        } catch (e) {
-        }
-        const list = lsUsers || SEED_USERS;
-        const u = list.find((u2) => u2.id === sess.userId && !u2.disabled);
-        if (u) setSessionUser(u);
-      } catch (e) {
-      }
-    }, []);
     const [entries, setEntries] = useLS("cf_entries", SEED_ENTRIES);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
@@ -348,8 +331,59 @@
       setRegFilterStatus,
       aiApiKey,
       setAiApiKey,
-      users,
-      setUsers,
+      users: members.map((m) => ({ id: m.user_id, fullName: m.full_name, email: m.user_id === (sessionUser == null ? void 0 : sessionUser.id) ? sessionUser.email : "", disabled: m.disabled })),
+      setUsers: () => {
+      },
+      budgetTargets,
+      setBudgetTargets,
+      templates,
+      setTemplates,
+      completed,
+      setCompleted,
+      goals,
+      setGoals,
+      dashHidden,
+      setDashHidden,
+      dashOrder,
+      setDashOrder
+    });
+    const {
+      status: houseStatus,
+      msg: houseMsg,
+      saveData: houseSave,
+      loadData: houseLoad
+    } = useHouseholdData({
+      household,
+      entries,
+      setEntries,
+      overridesByYr,
+      setOverridesByYr,
+      yearConfigs,
+      setYearConfigs,
+      categories,
+      setCategories,
+      categoryColors,
+      setCategoryColors,
+      activeYear,
+      setActiveYear,
+      alertThreshold: alertThresh,
+      setAlertThreshold: setAlertThresh,
+      darkMode,
+      setDarkMode,
+      forecastHorizon,
+      setForecastHorizon,
+      colOrder,
+      setColOrder,
+      regFilter,
+      setRegFilter,
+      regFilterCats,
+      setRegFilterCats,
+      regFilterScheds,
+      setRegFilterScheds,
+      regFilterStatus,
+      setRegFilterStatus,
+      aiApiKey,
+      setAiApiKey,
       budgetTargets,
       setBudgetTargets,
       templates,
@@ -365,8 +399,8 @@
     });
     const gistToken = () => localStorage.getItem("cf_gist_token") || "";
     useEffect(() => {
-      gistLoadRef.current = gistLoad;
-    }, [gistLoad]);
+      gistLoadRef.current = houseLoad;
+    }, [houseLoad]);
     useEffect(() => {
       const onStart = (e) => {
         if (window.scrollY > 10) return;
@@ -565,8 +599,17 @@
       { id: "ai", label: "\u2726 AI Insights" },
       { id: "settings", label: "Settings" }
     ];
-    if (!sessionUser) {
-      return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(LoginView, { users, onLogin: login }));
+    if (authLoading) {
+      return null;
+    }
+    if (!session) {
+      return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(LoginView, null));
+    }
+    if (membershipLoading) {
+      return null;
+    }
+    if (!household) {
+      return /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut });
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
       fontWeight: 700,
@@ -851,7 +894,7 @@
         fontWeight: 700,
         color: "var(--text)",
         marginBottom: 20
-      } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }, { label: "Email", key: "email", type: "email" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
+      } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
         display: "block",
         fontSize: 11,
         fontWeight: 700,
@@ -877,32 +920,26 @@
             boxSizing: "border-box"
           }
         }
-      ))), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
           className: "cf-btn cf-btn--secondary", style: { padding: "8px 18px" }
         },
         "Cancel"
-      ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        const nm = pf.fullName.trim(), em = pf.email.trim().toLowerCase();
-        if (!nm || !em) {
-          setPfErr("Name and email are required.");
+      ), /* @__PURE__ */ React.createElement("button", { onClick: async () => {
+        const nm = pf.fullName.trim();
+        if (!nm) {
+          setPfErr("Name is required.");
           return;
         }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-          setPfErr("Enter a valid email.");
-          return;
+        try {
+          await updateMyName(nm);
+          setPfOk("Profile updated.");
+          setTimeout(() => setProfileForm(null), 900);
+        } catch (err) {
+          setPfErr(err.message || "Couldn't update your profile.");
         }
-        const dup = users.find((u) => u.email.toLowerCase() === em && u.id !== sessionUser.id);
-        if (dup) {
-          setPfErr("Email already in use.");
-          return;
-        }
-        setUsers((prev) => prev.map((u) => u.id === sessionUser.id ? __spreadProps(__spreadValues({}, u), { fullName: nm, email: em }) : u));
-        setSessionUser((su) => __spreadProps(__spreadValues({}, su), { fullName: nm, email: em }));
-        setPfOk("Profile updated.");
-        setTimeout(() => setProfileForm(null), 900);
       }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { style: {
         position: "fixed",
         inset: 0,
@@ -926,7 +963,7 @@
         marginBottom: 20
       } }, "Change Password"), [
         { label: "Current password", key: "current", val: pwf.current },
-        { label: "New password (min 6 chars)", key: "next", val: pwf.next },
+        { label: "New password (min 8 chars)", key: "next", val: pwf.next },
         { label: "Confirm new password", key: "confirm", val: pwf.confirm }
       ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
         display: "block",
@@ -961,28 +998,33 @@
           className: "cf-btn cf-btn--secondary", style: { padding: "8px 18px" }
         },
         "Cancel"
-      ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      ), /* @__PURE__ */ React.createElement("button", { onClick: async () => {
         if (!pwf.current || !pwf.next || !pwf.confirm) {
           setPfErr("All fields required.");
           return;
         }
-        const expectedHash = hashPw(sessionUser.email.toLowerCase(), pwf.current);
-        const user = users.find((u) => u.id === sessionUser.id);
-        if (!user || user.passwordHash !== expectedHash) {
-          setPfErr("Current password is incorrect.");
-          return;
-        }
-        if (pwf.next.length < 6) {
-          setPfErr("New password must be at least 6 characters.");
+        if (pwf.next.length < 8) {
+          setPfErr("New password must be at least 8 characters.");
           return;
         }
         if (pwf.next !== pwf.confirm) {
           setPfErr("New passwords don't match.");
           return;
         }
-        setUsers((prev) => prev.map((u) => u.id === sessionUser.id ? __spreadProps(__spreadValues({}, u), { passwordHash: hashPw(sessionUser.email.toLowerCase(), pwf.next) }) : u));
-        setPfOk("Password changed successfully.");
-        setTimeout(() => setProfileForm(null), 900);
+        setPfErr("");
+        try {
+          const { error: verifyErr } = await supabaseClient.auth.signInWithPassword({ email: sessionUser.email, password: pwf.current });
+          if (verifyErr) {
+            setPfErr("Current password is incorrect.");
+            return;
+          }
+          const { error: updateErr } = await supabaseClient.auth.updateUser({ password: pwf.next });
+          if (updateErr) throw updateErr;
+          setPfOk("Password changed successfully.");
+          setTimeout(() => setProfileForm(null), 900);
+        } catch (err) {
+          setPfErr(err.message || "Couldn't change your password.");
+        }
       }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Change Password")))));
     })())), /* @__PURE__ */ React.createElement("nav", { className: "tab-bar", "aria-label": "Primary", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontSize: 13,
@@ -1064,7 +1106,7 @@
       display: "inline-block",
       animation: pullActive ? "spin 0.8s linear infinite" : "none",
       fontSize: 14
-    } }, "\u21BB"), pullActive ? "Syncing with Gist\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
@@ -1076,7 +1118,7 @@
         budgetTargets,
         categories,
         categoryColors,
-        users,
+        users: members,
         sessionUser,
         entries,
         setYearConfigs,
@@ -1195,12 +1237,19 @@
         activeFlow,
         budgetTargets,
         setBudgetTargets,
-        users,
-        setUsers,
         sessionUser,
         logout,
         aiApiKey,
-        setAiApiKey
+        setAiApiKey,
+        sbConfigured,
+        houseStatus,
+        houseMsg,
+        houseSave,
+        houseLoad,
+        household,
+        members,
+        createInvite,
+        setMemberDisabled
       }
     ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), gistConflict && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 3500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "26px 24px", width: "min(440px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 10 } }, "\u26A0 Sync Conflict"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, marginBottom: 14 } }, "Another device saved to the Gist ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, new Date(gistConflict.remoteSavedAt).toLocaleString()), " \u2014 after this device last synced."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textMid)", background: "var(--stripe)", borderRadius: 8, padding: "10px 14px", marginBottom: 18 } }, "Remote: ", gistConflict.remoteEntries, " entries \xB7 This device: ", gistConflict.localEntries, " entries"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(
       "button",

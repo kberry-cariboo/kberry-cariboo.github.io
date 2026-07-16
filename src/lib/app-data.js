@@ -652,24 +652,6 @@
   };
   const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(v) / 1e3).toFixed(0) + "k";
   const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
-  function hashPw(email, pw) {
-    let h = 2166136261 >>> 0;
-    const s = (email || "").toLowerCase().trim() + ":" + (pw || "") + ":cf2026salt";
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619) >>> 0;
-    }
-    return h.toString(16).padStart(8, "0");
-  }
-  const SEED_USERS = [{
-    id: "user_001",
-    fullName: "Ken Berry",
-    email: "kenneth-berry@outlook.com",
-    passwordHash: hashPw("kenneth-berry@outlook.com", "Iloveme2026!"),
-    disabled: false,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    lastLogin: null
-  }];
   const daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
   function parseDate(str) {
     if (!str) return null;

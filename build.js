@@ -12,6 +12,8 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
 const APP_MODULES = [
   "src/lib/runtime.js",
+  "src/lib/supabase-config.js",
+  "src/lib/household-sync.js",
   "src/lib/app-data.js",
   "src/components/primitives.js",
   "src/components/forms.js",
@@ -29,6 +31,7 @@ function build() {
   const template = read("index.template.html");
   const reactBundle = read("src/vendor/react-bundle.js");
   const miniRecharts = read("src/vendor/mini-recharts.js");
+  const supabaseClient = read("src/vendor/supabase-client.js");
 
   const appCode =
     read("src/bootstrap-head.js") +
@@ -47,6 +50,7 @@ function build() {
   const output = template
     .replace("__REACT_BUNDLE__", () => reactBundle)
     .replace("__MINI_RECHARTS__", () => miniRecharts)
+    .replace("__SUPABASE_CLIENT__", () => supabaseClient)
     .replace("__APP_CODE__", () => appCode);
 
   fs.writeFileSync(path.join(ROOT, "index.html"), output);

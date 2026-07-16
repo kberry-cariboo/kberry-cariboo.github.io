@@ -359,3 +359,169 @@
       )
     );
   }
+  function HouseholdOnboardingView({ email, createHousehold, joinHousehold, signOut }) {
+    const [mode, setMode] = useState("create");
+    const [fullName, setFullName] = useState("");
+    const [code, setCode] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const iStyle = {
+      width: "100%",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 15,
+      padding: "10px 14px",
+      border: "1.5px solid var(--border)",
+      borderRadius: 8,
+      background: "var(--inputBg)",
+      color: "var(--text)",
+      outline: "none",
+      boxSizing: "border-box"
+    };
+    const submit = async () => {
+      if (!fullName.trim()) {
+        setError("Please enter your name.");
+        return;
+      }
+      if (mode === "join" && !code.trim()) {
+        setError("Please enter the invite code you were given.");
+        return;
+      }
+      setLoading(true);
+      setError("");
+      try {
+        if (mode === "create") await createHousehold(fullName.trim());
+        else await joinHousehold(code.trim(), fullName.trim());
+      } catch (err) {
+        setError(err.message || "Something went wrong. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      minHeight: "100vh",
+      background: "var(--headerBg)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      fontFamily: "Inter,sans-serif"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { width: "100%", maxWidth: 420 } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 28 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 48, marginBottom: 10 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 } }, "Signed in as ", email)), /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--bgCard)",
+      borderRadius: 16,
+      padding: 32,
+      boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
+      border: "1px solid var(--border)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8, textAlign: "center" } }, "One more step"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Create a new household budget, or join one a family member already set up."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMode("create");
+          setError("");
+        },
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "4px 10px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+          background: mode === "create" ? "var(--stripe)" : "transparent",
+          color: mode === "create" ? "var(--text)" : "var(--textLt)"
+        }
+      },
+      "Create household"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMode("join");
+          setError("");
+        },
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "4px 10px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+          background: mode === "join" ? "var(--stripe)" : "transparent",
+          color: mode === "join" ? "var(--text)" : "var(--textLt)"
+        }
+      },
+      "Join with invite code"
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 600,
+      color: "var(--textMid)",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 6
+    } }, "Your name"), /* @__PURE__ */ React.createElement("input", {
+      type: "text",
+      value: fullName,
+      onChange: (e) => {
+        setFullName(e.target.value);
+        setError("");
+      },
+      placeholder: "e.g. Ken",
+      style: iStyle
+    })), mode === "join" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 600,
+      color: "var(--textMid)",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 6
+    } }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
+      type: "text",
+      value: code,
+      onChange: (e) => {
+        setCode(e.target.value.toUpperCase());
+        setError("");
+      },
+      placeholder: "e.g. 4F9B2C1D",
+      style: __spreadProps(__spreadValues({}, iStyle), { fontFamily: "'IBM Plex Mono',monospace", letterSpacing: "0.05em" })
+    })), error && /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--redLt)",
+      border: "1px solid var(--red)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginTop: 8,
+      marginBottom: 8,
+      fontSize: 13,
+      color: "var(--red)",
+      fontWeight: 500
+    } }, error), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: submit,
+        disabled: loading,
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 15,
+          fontWeight: 700,
+          padding: "12px",
+          borderRadius: 8,
+          border: "none",
+          cursor: loading ? "wait" : "pointer",
+          background: "var(--navy)",
+          color: "#fff",
+          opacity: loading ? 0.7 : 1,
+          transition: "opacity 0.15s",
+          marginTop: 8
+        }
+      },
+      loading ? "One moment…" : mode === "create" ? "Create household" : "Join household"
+    )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: signOut,
+        style: { fontSize: 12, color: "rgba(255,255,255,0.4)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }
+      },
+      "Sign out"
+    ))));
+  }
