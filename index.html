@@ -2090,9 +2090,10 @@ document.addEventListener('DOMContentLoaded',function(){
         recurDays: t.recurDays || [],
         notes: t.notes || ""
       }));
-    } })), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Description *"), /* @__PURE__ */ React.createElement(
+    } })), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-desc" }, "Description *"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "ef-desc",
         autoFocus: true,
         className: inpCls(errors.desc),
         value: f.desc,
@@ -2102,9 +2103,10 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }, className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Type"), /* @__PURE__ */ React.createElement("select", { className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", marginLeft: 2 } }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }, className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", marginLeft: 2 } }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "ef-amount",
         type: "number",
         inputMode: "decimal",
         step: "0.01",
@@ -2117,12 +2119,13 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Category", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", marginLeft: 2 } }, "*")), /* @__PURE__ */ React.createElement("select", { className: inpCls(errors.category), value: f.category, onChange: (e) => {
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", marginLeft: 2 } }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
       set({ category: e.target.value });
       if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
-    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Date *"), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-date" }, "Date *"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "ef-date",
         type: "date",
         className: inpCls(errors.startDate),
         value: f.startDate,
@@ -2146,9 +2149,10 @@ document.addEventListener('DOMContentLoaded',function(){
       letterSpacing: "0.1em",
       textTransform: "uppercase",
       marginBottom: 10
-    } }, "Recurrence Settings"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 } }, f.recurUnit !== "semimonth" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Every"), /* @__PURE__ */ React.createElement(
+    } }, "Recurrence Settings"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 } }, f.recurUnit !== "semimonth" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-every" }, "Every"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "ef-recur-every",
         type: "number",
         inputMode: "decimal",
         min: "1",
@@ -2157,7 +2161,7 @@ document.addEventListener('DOMContentLoaded',function(){
         value: f.recurEvery,
         onChange: (e) => set({ recurEvery: parseInt(e.target.value) || 1 })
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Period"), /* @__PURE__ */ React.createElement("select", { className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 3, flexWrap: "wrap" } }, WEEKDAYS.map((wd, i) => {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 3, flexWrap: "wrap" } }, WEEKDAYS.map((wd, i) => {
       const isAnch = i === startWD, isSel = f.recurDays.includes(i) || isAnch, isLock = isAnch || f.recurEvery > 1;
       return /* @__PURE__ */ React.createElement(
         "button",
@@ -2180,9 +2184,10 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         wd.slice(0, 2)
       );
-    })), f.recurEvery === 1 && startWD !== null && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, WEEKDAYS[startWD], " is locked to your start date."), f.recurEvery > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--amber)", marginTop: 4 } }, "Every ", f.recurEvery, " weeks always lands on ", startWD !== null ? WEEKDAYS[startWD] : "the start day", ".")), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 10 } }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Until (optional)"), /* @__PURE__ */ React.createElement(
+    })), f.recurEvery === 1 && startWD !== null && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, WEEKDAYS[startWD], " is locked to your start date."), f.recurEvery > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--amber)", marginTop: 4 } }, "Every ", f.recurEvery, " weeks always lands on ", startWD !== null ? WEEKDAYS[startWD] : "the start day", ".")), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 10 } }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-until" }, "Until (optional)"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "ef-recur-until",
         type: "date",
         className: inpCls(errors.recurEnd),
         value: f.recurEnd,
@@ -2229,7 +2234,7 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
       ));
-    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Notes"), /* @__PURE__ */ React.createElement("input", { className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
+    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
       "img",
       {
         src: attachment,
