@@ -3534,9 +3534,10 @@ document.addEventListener('DOMContentLoaded',function(){
           padding: "0 0 0 8px"
         } }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", marginBottom: 18 } }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Description"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-desc" }, "Description"), /* @__PURE__ */ React.createElement(
           "input",
           {
+            id: "oem-desc",
             autoFocus: true,
             className: inpCls(false),
             value: desc,
@@ -3545,9 +3546,10 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Amount $"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-amount" }, "Amount $"), /* @__PURE__ */ React.createElement(
           "input",
           {
+            id: "oem-amount",
             type: "number",
             inputMode: "decimal",
             step: "0.01",
@@ -3561,9 +3563,10 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Date \u2014 ", MONTHS[ev.month], " (day of month)"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Date \u2014 ", MONTHS[ev.month], " (day of month)"), /* @__PURE__ */ React.createElement(
           "input",
           {
+            id: "oem-day",
             type: "number",
             inputMode: "numeric",
             min: 1,
@@ -3579,9 +3582,10 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, " \xB7 same as dragging this row to a new date")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Notes"), /* @__PURE__ */ React.createElement(
+        ), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, " \xB7 same as dragging this row to a new date")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
+            id: "oem-notes",
             className: inpCls(false),
             value: notes,
             onChange: (e) => setNotes(e.target.value),
@@ -5450,39 +5454,44 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             const lblCls = "field-label";
             const inpCls = (err) => "field-input" + (err ? " field-error" : "");
             const errTxt = (k) => goalErrors[k] && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, goalErrors[k]);
-            return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Goal name"), /* @__PURE__ */ React.createElement(
+            return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-name" }, "Goal name"), /* @__PURE__ */ React.createElement(
               "input",
               {
+                id: "goal-name",
                 autoFocus: true,
                 className: inpCls(goalErrors.name),
                 value: goalForm.name,
                 placeholder: "e.g. Property Taxes",
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { name: e.target.value }))
               }
-            ), errTxt("name")), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Target $"), /* @__PURE__ */ React.createElement(
+            ), errTxt("name")), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target" }, "Target $"), /* @__PURE__ */ React.createElement(
               MoneyInput,
               {
+                id: "goal-target",
                 className: inpCls(goalErrors.target),
                 value: goalForm.target,
                 onChange: (v) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { target: v }))
               }
-            ), errTxt("target")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Saved so far $"), /* @__PURE__ */ React.createElement(
+            ), errTxt("target")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-saved" }, "Saved so far $"), /* @__PURE__ */ React.createElement(
               MoneyInput,
               {
+                id: "goal-saved",
                 className: inpCls(goalErrors.saved),
                 value: goalForm.saved,
                 onChange: (v) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { saved: v }))
               }
-            ), errTxt("saved"))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Monthly funding $"), /* @__PURE__ */ React.createElement(
+            ), errTxt("saved"))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-monthly" }, "Monthly funding $"), /* @__PURE__ */ React.createElement(
               MoneyInput,
               {
+                id: "goal-monthly",
                 className: inpCls(goalErrors.monthly),
                 value: goalForm.monthly,
                 onChange: (v) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { monthly: v }))
               }
-            ), errTxt("monthly")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Target date"), /* @__PURE__ */ React.createElement(
+            ), errTxt("monthly")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target-date" }, "Target date"), /* @__PURE__ */ React.createElement(
               "input",
               {
+                id: "goal-target-date",
                 type: "date",
                 className: inpCls(goalErrors.targetDate),
                 value: goalForm.targetDate,
@@ -5792,61 +5801,30 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             if (e.target === e.currentTarget) setShowDebtForm(false);
           }
         },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px 24px 20px", width: "min(460px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "var(--textMid)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          display: "block",
-          marginBottom: 6
-        } }, "Description *"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px 24px 20px", width: "min(460px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description *"), /* @__PURE__ */ React.createElement(
           "input",
           {
+            id: "debt-desc",
             autoFocus: true,
             placeholder: "e.g. Personal Loan",
             value: debtFormData.label,
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { label: e.target.value })),
             onKeyDown: (e) => e.key === "Enter" && saveDebtForm(),
-            style: {
-              fontSize: 13,
-              padding: "9px 12px",
-              width: "100%",
-              border: "1.5px solid var(--border)",
-              borderRadius: 8,
-              background: "var(--inputBg)",
-              color: "var(--text)",
-              outline: "none",
-              boxSizing: "border-box"
-            }
+            className: "field-input"
           }
-        )), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "var(--textMid)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          display: "block",
-          marginBottom: 6
-        } }, "Current Balance $"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-balance" }, "Current Balance $"), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
+            id: "debt-balance",
             placeholder: "e.g. 10000",
             value: debtFormData.balance,
             className: "field-input field-input--mono",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { balance: v }))
           }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "var(--textMid)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          display: "block",
-          marginBottom: 6
-        } }, "Interest Rate %"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-rate" }, "Interest Rate %"), /* @__PURE__ */ React.createElement(
           "input",
           {
+            id: "debt-rate",
             type: "number",
             inputMode: "decimal",
             placeholder: "e.g. 5.9",
@@ -5854,17 +5832,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             className: "field-input field-input--mono",
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { rate: e.target.value }))
           }
-        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "var(--textMid)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          display: "block",
-          marginBottom: 6
-        } }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--textLt)" } }, "(optional)")), /* @__PURE__ */ React.createElement(
+        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--textLt)" } }, "(optional)")), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
+            id: "debt-payment",
             placeholder: "e.g. 500",
             value: debtFormData.payment,
             className: "field-input field-input--mono",
