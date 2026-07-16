@@ -2404,19 +2404,7 @@ document.addEventListener('DOMContentLoaded',function(){
       cursor: "pointer",
       fontSize: 18,
       color: "var(--textLt)"
-    } }, "\u2715")), !rows.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Upload a CSV file from your bank or spreadsheet. The file must have a header row. Required columns: ", /* @__PURE__ */ React.createElement("strong", null, "Description"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Amount"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Date"), "."), /* @__PURE__ */ React.createElement("label", { style: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 8,
-      fontSize: 13,
-      fontWeight: 600,
-      padding: "8px 16px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff"
-    } }, "Choose CSV File", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", style: { display: "none" }, onChange: handleFile }))), rows.length > 0 && !done && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--greenDk)", marginBottom: 14 } }, "\u2713 Loaded ", rows.length, " rows. Map your columns:"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" } }, sel("desc", "Description *"), sel("amount", "Amount *"), sel("date", "Date *"), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginBottom: 8 } }, err), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8 } }, /* @__PURE__ */ React.createElement(
+    } }, "\u2715")), !rows.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Upload a CSV file from your bank or spreadsheet. The file must have a header row. Required columns: ", /* @__PURE__ */ React.createElement("strong", null, "Description"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Amount"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Date"), "."), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--primary", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px" } }, "Choose CSV File", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", style: { display: "none" }, onChange: handleFile }))), rows.length > 0 && !done && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--greenDk)", marginBottom: 14 } }, "\u2713 Loaded ", rows.length, " rows. Map your columns:"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" } }, sel("desc", "Description *"), sel("amount", "Amount *"), sel("date", "Date *"), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginBottom: 8 } }, err), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8 } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: buildPreview,
@@ -2457,16 +2445,7 @@ document.addEventListener('DOMContentLoaded',function(){
       display: "flex",
       gap: 10,
       alignItems: "center"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, fontWeight: 600, color: "var(--text)" } }, p.desc), /* @__PURE__ */ React.createElement("span", { style: { color: p.type === "income" ? "var(--greenDk)" : "var(--red)", fontFamily: "IBM Plex Mono,monospace" } }, p.type === "income" ? "+" : "-", p.amount.toFixed(2)), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" } }, p.startDate), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" } }, p.category))))), done && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "20px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, marginBottom: 8 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" } }, "Import complete!"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: {
-      marginTop: 12,
-      fontSize: 12,
-      padding: "7px 16px",
-      borderRadius: 6,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff"
-    } }, "Done")));
+    } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, fontWeight: 600, color: "var(--text)" } }, p.desc), /* @__PURE__ */ React.createElement("span", { style: { color: p.type === "income" ? "var(--greenDk)" : "var(--red)", fontFamily: "IBM Plex Mono,monospace" } }, p.type === "income" ? "+" : "-", p.amount.toFixed(2)), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" } }, p.startDate), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" } }, p.category))))), done && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "20px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, marginBottom: 8 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" } }, "Import complete!"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "cf-btn cf-btn--primary", style: { marginTop: 12, fontSize: 12, padding: "7px 16px", borderRadius: 6 } }, "Done")));
   }
   function ContextMenu({ x, y, items, onClose }) {
     const menuRef = useRef(null);
@@ -3629,16 +3608,7 @@ document.addEventListener('DOMContentLoaded',function(){
             }
           },
           "\u21BA Reset entry"
-        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, style: {
-          fontSize: 13,
-          fontWeight: 700,
-          padding: "9px 24px",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          background: "var(--navy)",
-          color: "#fff"
-        } }, "Save"))
+        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "9px 24px" } }, "Save"))
       )
     );
   }
@@ -4471,17 +4441,7 @@ document.addEventListener('DOMContentLoaded',function(){
               setBvaModalData({ cat: "", target: "", editCat: null });
               setShowBvaModal(true);
             },
-            style: {
-              fontSize: 11,
-              fontWeight: 700,
-              padding: "6px 12px",
-              borderRadius: 7,
-              border: "none",
-              cursor: "pointer",
-              background: "var(--navy)",
-              color: "#fff",
-              whiteSpace: "nowrap"
-            }
+            className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }
           },
           "+ Add"
         ), /* @__PURE__ */ React.createElement(
@@ -5387,17 +5347,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         "button",
         {
           onClick: () => openGoalForm(null),
-          style: {
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "6px 14px",
-            borderRadius: 7,
-            border: "none",
-            cursor: "pointer",
-            background: "var(--navy)",
-            color: "#fff",
-            whiteSpace: "nowrap"
-          }
+          className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 7, whiteSpace: "nowrap" }
         },
         "+ Add"
       )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "18px 10px", fontSize: 13, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, "Save toward big expenses \u2014 property taxes, vacations, emergency fund."), /* @__PURE__ */ React.createElement(
@@ -5951,17 +5901,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         "button",
         {
           onClick: addManualRow,
-          style: {
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "6px 12px",
-            borderRadius: 7,
-            border: "none",
-            cursor: "pointer",
-            background: "var(--navy)",
-            color: "#fff",
-            whiteSpace: "nowrap"
-          }
+          className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }
         },
         "+ Add"
       ), /* @__PURE__ */ React.createElement(
@@ -7364,16 +7304,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           width: 120
         }
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, style: {
-      fontSize: 12,
-      fontWeight: 600,
-      padding: "7px 16px",
-      borderRadius: 6,
-      border: "none",
-      cursor: "pointer",
-      background: "var(--navy)",
-      color: "#fff"
-    } }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 8 } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", borderRadius: 6 } }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 8 } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, activeYear, alertThreshold, darkMode, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -9887,16 +9818,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setSessionUser((su) => __spreadProps(__spreadValues({}, su), { fullName: nm, email: em }));
         setPfOk("Profile updated.");
         setTimeout(() => setProfileForm(null), 900);
-      }, style: {
-        fontSize: 13,
-        fontWeight: 700,
-        padding: "8px 18px",
-        borderRadius: 8,
-        border: "none",
-        cursor: "pointer",
-        background: "var(--navy)",
-        color: "#fff"
-      } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { style: {
+      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { style: {
         position: "fixed",
         inset: 0,
         background: "rgba(0,0,0,0.5)",
@@ -9976,16 +9898,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setUsers((prev) => prev.map((u) => u.id === sessionUser.id ? __spreadProps(__spreadValues({}, u), { passwordHash: hashPw(sessionUser.email.toLowerCase(), pwf.next) }) : u));
         setPfOk("Password changed successfully.");
         setTimeout(() => setProfileForm(null), 900);
-      }, style: {
-        fontSize: 13,
-        fontWeight: 700,
-        padding: "8px 18px",
-        borderRadius: 8,
-        border: "none",
-        cursor: "pointer",
-        background: "var(--navy)",
-        color: "#fff"
-      } }, "Change Password")))));
+      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Change Password")))));
     })())), /* @__PURE__ */ React.createElement("div", { className: "tab-bar", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
       fontSize: 13,
       fontWeight: 600,
@@ -10041,16 +9954,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "button",
       {
         onClick: () => dismissBackup(true),
-        style: {
-          fontSize: 12,
-          fontWeight: 700,
-          padding: "7px 16px",
-          borderRadius: 7,
-          border: "none",
-          cursor: "pointer",
-          background: "var(--navy)",
-          color: "#fff"
-        }
+        className: "cf-btn cf-btn--primary", style: { fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 7 }
       },
       "\u2193 Export backup"
     ))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { style: {
