@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="CashFlow"/>
 <link rel="manifest" href="data:application/json,{%22name%22:%20%22CashFlow%20Budget%22,%20%22short_name%22:%20%22CashFlow%22,%20%22description%22:%20%22Personal%20cash%20flow%20and%20budget%20tracker%22,%20%22start_url%22:%20%22./%22,%20%22display%22:%20%22standalone%22,%20%22background_color%22:%20%22#F7F4EF%22,%20%22theme_color%22:%20%22#1C2B3A%22,%20%22orientation%22:%20%22any%22,%20%22icons%22:%20[{%22src%22:%20%22data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'><rect%20width='100'%20height='100'%20rx='20'%20fill='%231C2B3A'/><text%20y='.9em'%20font-size='80'%20x='10'>\ud83d\udcb0</text></svg>%22,%20%22sizes%22:%20%22any%22,%20%22type%22:%20%22image/svg+xml%22,%20%22purpose%22:%20%22any%20maskable%22}]}"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231C2B3A'/><text y='.9em' font-size='80' x='10'>%F0%9F%92%B0</text></svg>"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   html{height:100%;-webkit-text-size-adjust:100%;scrollbar-gutter:stable;}
@@ -265,7 +266,7 @@ react-dom/cjs/react-dom-client.production.js:
 
     // ── Lines / Areas ────────────────────────────────────────────────────────
     function renderLine(desc, filled) {
-      const { dataKey, stroke='#8884d8', fill='rgba(136,132,216,0.15)',
+      const { dataKey, stroke='#8884d8', fill='rgba(136,132,216,0.15)', fillOpacity=1,
               strokeWidth=2, dot, label } = desc.props;
       const pts = data.map((d, i) => [xMid(i), yv(Number(d[dataKey]) || 0)]);
       if (pts.length < 1) return null;
@@ -280,7 +281,7 @@ react-dom/cjs/react-dom-client.production.js:
         + ' L' + pts[0][0].toFixed(1) + ',' + y0.toFixed(1) + ' Z';
       const dr = (typeof dot === 'object' && dot?.r) ? dot.r : 3;
       return h(React.Fragment, { key: dataKey },
-        filled && h('path', { d: areaPath, fill, stroke:'none' }),
+        filled && h('path', { d: areaPath, fill, fillOpacity, stroke:'none' }),
         h('path', { d: linePath, fill:'none', stroke, strokeWidth }),
         pts.map(([cx,cy], i) => h('circle', {
           key: i, cx, cy, r: dr, fill: stroke, stroke:'none',
@@ -784,6 +785,329 @@ document.addEventListener('DOMContentLoaded',function(){
     accentLt: "#1A2942"
   };
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
+  const GLOBAL_STYLES = `
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        *{box-sizing:border-box;} html{scrollbar-gutter:stable;}
+        /* \u2500\u2500 Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) \u2500\u2500 */
+        .field-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
+          text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;}
+        .field-input{font-family:Inter,sans-serif;font-size:13px;padding:9px 12px;
+          border:1.5px solid var(--border);border-radius:8px;
+          background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
+        .field-input:focus{border-color:var(--navy);}
+        .field-input.field-error{border-color:var(--red);background:rgba(232,93,74,0.08);}
+        .field-input--mono{font-family:'IBM Plex Mono',monospace;}
+        .field-error-text{font-family:Inter,sans-serif;font-size:11px;color:var(--red);margin-top:4px;}
+        .field-hint-text{font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);margin-top:4px;}
+
+        /* \u2500\u2500 Shared component classes (replaces repeated inline styles) \u2500\u2500 */
+        .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
+          box-shadow:var(--shadowSm);padding:20px 24px;transition:box-shadow 0.2s ease, transform 0.2s ease;}
+        .cf-card--flush{padding:0;overflow:hidden;}
+        /* Typography */
+        .cf-text-ui{font-family:Inter,sans-serif;}
+        .cf-text-mono{font-family:'IBM Plex Mono',monospace;}
+        .cf-text-mono-13{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+        .cf-section-title-text{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
+        .cf-text-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
+          letter-spacing:0.06em;text-transform:uppercase;}
+        /* Buttons */
+        .cf-btn{font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 18px;
+          border-radius:8px;border:none;cursor:pointer;transition:filter 0.15s;}
+        .cf-btn--primary{background:var(--navy);color:#fff;}
+        .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
+        .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
+        .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
+        .cf-btn--sm{font-size:11px;padding:6px 12px;}
+        /* Layout helpers */
+        .cf-row{display:flex;align-items:center;}
+        .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
+        .cf-col{display:flex;flex-direction:column;}
+        .cf-gap-8{gap:8px;}
+        .cf-gap-12{gap:12px;}
+        body{margin:0;background:var(--bg);scrollbar-gutter:stable;
+          -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+        /* \u2500\u2500 Modern interaction polish (pointer devices) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        @media (hover:hover) and (pointer:fine){
+          /* Cards lift subtly on hover for depth */
+          .cf-card:hover{box-shadow:var(--shadowMd);}
+          /* All buttons get a gentle press/hover feel */
+          button{transition:filter 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;}
+          button:not(:disabled):hover{filter:brightness(1.06);}
+          button:not(:disabled):active{transform:translateY(0.5px) scale(0.985);}
+          /* Interactive rows highlight on hover */
+          .reg-table tbody tr:hover,
+          .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
+          /* Nav tabs + pills subtle hover */
+          .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
+        }
+        /* Accessible focus ring \u2014 keyboard only, consistent everywhere */
+        :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+        button:focus:not(:focus-visible){outline:none;}
+        /* Text inputs/selects get a visible focus ring on ANY focus (mouse or keyboard) \u2014
+           they have outline:none inline, so this restores feedback for pointer users. */
+        input:focus,select:focus,textarea:focus{
+          outline:2px solid var(--accent)!important;outline-offset:1px;
+          border-color:var(--accent)!important;
+        }
+        /* \u2500\u2500 UI polish \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        /* Bottom navigation: touch devices only */
+        .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
+          background:var(--bgCard);border-top:1px solid var(--border);
+          padding-bottom:env(safe-area-inset-bottom);
+          box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
+        @media (pointer:coarse){
+          .cf-bottomnav{display:flex;}
+          .tab-bar{display:none!important;}
+          .content-area{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
+          .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
+          .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
+          .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
+          .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
+        }
+        /* FAB: touch devices only, thumb-reach primary action */
+        .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
+          width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;
+          font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
+          box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;}
+        @media (pointer:coarse){.cf-fab{display:flex;align-items:center;justify-content:center;}}
+        /* Camera capture: touch devices only \u2014 desktop shows gallery picker alone */
+        .attach-camera{display:none!important;}
+        @media (pointer:coarse){.attach-camera{display:inline-flex!important;}}
+        html{-webkit-tap-highlight-color:transparent;}
+        /* Touch/no-hover devices: simple press feedback (hover handled by the pointer:fine block above) */
+        @media not (hover:hover){
+          button:active:not(:disabled){transform:scale(0.97);}
+        }
+        input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+        input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+        .modal-card{overscroll-behavior:contain;}
+        tr{transition:background 0.12s ease;}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}}
+        input,select,button,textarea{font-family:Inter,sans-serif;}
+
+        /* \u2500\u2500 Typography tokens \u2014 apply to all data content \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        /* Primary data text (descriptions, labels, names) */
+        .tx  {font-family:Inter,sans-serif;font-size:13px;color:var(--text);}
+        /* Secondary / metadata (categories, dates, schedule) */
+        .txm {font-family:Inter,sans-serif;font-size:13px;color:var(--textMid);}
+        /* Muted (notes, hints, historical, inactive) */
+        .txl {font-family:Inter,sans-serif;font-size:13px;color:var(--textLt);}
+        /* Monospace numbers (amounts, balances) */
+        .mno {font-family:'IBM Plex Mono',monospace;font-size:13px;}
+        /* Small caps section label (uppercase, letter-spaced) \u2014 intentionally 11px */
+        .lbl {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
+              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);}
+        /* Hint / help text below fields \u2014 intentionally 11px */
+        .hint{font-family:Inter,sans-serif;font-size:11px;color:var(--textLt);}
+
+        /* Table header cells \u2014 standardized */
+        .th  {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
+              text-transform:uppercase;letter-spacing:0.08em;color:#fff;padding:10px 14px;}
+        /* Standard data table body cell */
+        .td  {font-family:Inter,sans-serif;font-size:13px;color:var(--text);padding:9px 14px;}
+        /* Mono table body cell (amounts) */
+        .tdm {font-family:'IBM Plex Mono',monospace;font-size:13px;padding:9px 14px;text-align:right;}
+        .reg-table tr:hover td span[style*="opacity:0"]{opacity:1!important;}
+        /* \u2500\u2500 Budget Monthly grid columns \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+           Desktop: fixed layout + explicit widths so columns never shift
+           between months. Mobile overrides live in the \u2264480px block below. */
+        .budget-monthly-table{table-layout:fixed;}
+        .budget-monthly-table .budget-col-day{width:30px;}
+        .budget-monthly-table .budget-col-desc{width:auto;max-width:0;}
+        .budget-monthly-table .budget-col-category{width:120px;}
+        .budget-monthly-table .budget-col-income{width:105px;}
+        .budget-monthly-table .budget-col-expense{width:105px;}
+        .budget-monthly-table .budget-col-balance{width:120px;}
+        @media(max-width:700px){span[style*="opacity:0"]{opacity:1!important;}}
+        @keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+        @media(max-width:768px){
+          .search-box input{width:100%!important;flex:1;}
+          /* Hide header search on mobile \u2014 saves space for essential controls */
+          .header-search{display:none!important;}
+          /* Hide year pills on mobile \u2014 managed in Settings */
+          .year-pills-mobile{display:none!important;}
+        }
+        @media(max-width:768px){.help-btn{display:none!important;}}
+        @media print{[data-noprint]{display:none!important;}body{background:#fff!important;}.content-area{padding:0!important;}}
+
+        /* \u2500\u2500 Mobile layout \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        @media(max-width:768px){
+          /* Prevent iOS/Android auto-zoom on input focus (fires when font-size < 16px).
+             Targets the entry/CSV form panels and search boxes. Narrow tabular inputs
+             (monthly-amounts grid, budget targets) keep their compact size. */
+          .fab-panel input:not([type=checkbox]), .fab-panel select,
+          .search-box input, .header-search input { font-size: 16px !important; }
+          /* Bottom-sheet modals \u2014 slide up from bottom edge */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
+          display:flex;align-items:center;justify-content:center;padding:16px;}
+          .modal-overlay{align-items:flex-end!important;}
+          .modal-card{
+            border-radius:20px 20px 0 0!important;
+            width:100%!important;max-width:100%!important;
+            padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
+            max-height:92vh!important;overflow-y:auto!important;
+          }
+
+          /* Entry form: stack 3-col row on tablet */
+          .entry-form-row2{grid-template-columns:1fr!important;}
+          /* Register: switch to cards on mobile \u2014 table hidden */
+          .reg-cards{display:block!important;}
+          /* Prevent focus zoom on Android/iOS: inputs must render \u226516px */
+          input,select,textarea{font-size:16px!important;}
+          .wm-arrow{width:44px!important;height:44px!important;line-height:42px!important;font-size:16px!important;}
+          .reg-table-wrap{display:none!important;}
+          /* Header: single fixed row \u2014 never wraps */
+          .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
+          .logo-area img{height:23px!important;}
+          .year-pills{gap:3px!important;flex-wrap:wrap;}
+          /* Tab bar: scrollable, no scrollbar visible */
+          .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
+            padding-bottom:0!important;scrollbar-width:none;}
+          .tab-bar::-webkit-scrollbar{display:none;}
+          .tab-bar button{padding:10px 10px!important;font-size:11px!important;white-space:nowrap;}
+          /* Content padding */
+          .content-area{padding:12px 8px!important;margin-top:0!important;}
+          /* Kill any residual navy gap between tab-bar and content on mobile */
+          .tab-bar-outer{padding-bottom:0!important;overflow:hidden!important;}
+          /* KPI grids: 2-column on tablet/mobile */
+          .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
+          .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
+          /* Dashboard: charts stack, no overflow */
+          .chart-grid{grid-template-columns:1fr!important;gap:10px!important;}
+          /* Dashboard wrapper: no overflow */
+          .dash-wrap{overflow:hidden!important;max-width:100%!important;}
+          /* Month picker: tighter, arrows hidden (month pills are tappable) */
+          .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+            -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
+            padding-bottom:4px!important;margin-left:-6px!important;margin-right:-6px!important;
+            padding-left:6px!important;padding-right:6px!important;}
+          .month-picker::-webkit-scrollbar{display:none!important;}
+          .glance-grid{gap:6px!important;}
+          .bp-daily{display:none!important;}
+          .ef-save-template{display:none!important;}
+          .budget-subtab-pill .bp-label-full{display:none!important;}
+          .budget-subtab-pill{width:40px!important;height:40px!important;padding:0!important;
+            display:inline-flex!important;align-items:center!important;justify-content:center!important;
+            flex-shrink:0!important;font-size:16px!important;}
+          .budget-subtabs{margin-left:-4px!important;margin-right:-4px!important;padding-left:4px!important;padding-right:4px!important;}
+          .year-openbal{flex-basis:100%!important;order:5;}
+          .year-openbal input{flex:1 1 auto!important;width:auto!important;}
+          .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
+          .month-picker button{padding:4px 6px!important;font-size:10px!important;}
+          .month-nav-arrow{display:none!important;}
+          /* Budget monthly table: hide category */
+          .budget-col-cat{display:none!important;}
+          /* Forecast table: hide category, tighten padding */
+          .forecast-table td,.forecast-table th{padding:7px 8px!important;font-size:11px!important;}
+          .forecast-col-cat{display:none!important;}
+          .forecast-desc-cell{max-width:180px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+          /* Daily view: hide category label, shrink balance column */
+          .daily-card{grid-template-columns:44px 1fr 88px!important;}
+          .daily-cat{display:none!important;}
+          /* Register: keep all columns, scroll horizontally */
+          .reg-table{font-size:12px!important;}
+          .reg-table td,.reg-table th{padding:8px 10px!important;}
+          /* Action buttons: always visible, touch-friendly */
+          .reg-actions{white-space:nowrap;}
+          .reg-actions div{display:flex!important;gap:4px!important;}
+          .reg-actions button{padding:6px 8px!important;font-size:12px!important;}
+          /* Monthly amounts: 3 columns on mobile instead of 12 */
+          .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
+          /* FAB quick-add panel: near full-width, centered above FAB */
+          .fab-panel{left:12px!important;right:12px!important;bottom:84px!important;
+            width:auto!important;padding:16px!important;maxHeight:78vh!important;}
+          /* Budget: hide daily toggle, add button; show mobile-only label */
+          /* Register: hide add/import buttons \u2014 FAB handles these on mobile */
+        }
+        @media(max-width:480px){
+          /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
+          .kpi-grid{grid-template-columns:1fr 1fr!important;gap:6px!important;}
+          .kpi-grid-4{grid-template-columns:1fr 1fr!important;gap:6px!important;}
+          .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
+          .month-picker button{padding:3px 5px!important;font-size:9px!important;}
+          /* Hide \u2039 \u203A arrows on mobile \u2014 month buttons are tappable directly */
+          .month-nav-arrow{display:none!important;}
+          .daily-card{grid-template-columns:36px 1fr 76px!important;}
+          .daily-balance{min-width:72px!important;}
+          .content-area{padding:10px 6px!important;margin-top:0!important;}
+          .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;padding-bottom:0!important;overflow:hidden!important;}
+          .tab-bar{margin:0!important;padding:0!important;}
+          .tab-bar button{padding:10px 8px!important;font-size:10px!important;}
+          /* Cards: tighter padding on phone */
+          [style*="padding:"20px 24px""]{padding:14px 12px!important;}
+          /* Budget: description cell \u2014 ellipsis on overflow, no wrap */
+          .budget-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:none;}
+          /* Budget Monthly grid on phone: keep every column (Category, Income, Expense,
+             Balance) visible \u2014 matching Entries \u2014 by giving the table real intrinsic width
+             so the .hscroll wrapper's overflow-x:auto produces a genuine horizontal swipe,
+             the same way it always worked before. Nothing is hidden; Description gets a
+             sensible minimum width instead of being crushed to nothing. */
+          .budget-monthly-table{table-layout:fixed;min-width:640px!important;}
+          .budget-monthly-table .budget-col-checkbox{width:26px!important;}
+          .budget-monthly-table .budget-col-day{width:26px!important;}
+          .budget-monthly-table .budget-col-desc{width:150px!important;max-width:150px!important;}
+          .budget-monthly-table .budget-col-category{width:90px!important;}
+          .budget-monthly-table .budget-col-income{width:85px!important;}
+          .budget-monthly-table .budget-col-expense{width:85px!important;}
+          .budget-monthly-table .budget-col-balance{width:95px!important;}
+          /* BvA row \u2014 keep chip + amounts on one line on mobile */
+          .bva-row{flex-wrap:nowrap!important;}
+          .bva-amounts{flex-wrap:nowrap!important;}
+          /* Hide / $target on mobile \u2014 it's already visible in the input field */
+          .bva-target{display:none!important;}
+          /* Forecast: description cell \u2014 truncate on mobile */
+          .forecast-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px!important;}
+          /* Register filters: stack on phone */
+          .reg-col-cat,.reg-col-sched,.reg-col-until,.reg-col-notes{display:none!important;}
+          /* Register filter row: stack on phone */
+          .reg-filter-row{flex-wrap:wrap!important;gap:6px!important;}
+          /* Forecast confidence column: hide on phone to save width */
+          .forecast-conf-col{display:none!important;}
+        }
+
+
+        /* \u2500\u2500 Bottom-sheet modals on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .modal-card{background:var(--bgCard);border-radius:14px;box-shadow:var(--shadowXl);animation:slideUp 0.2s ease-out;}
+
+        /* \u2500\u2500 Two-column dashboard at \u22651400px \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        @media(min-width:1400px){
+          .content-area{max-width:1400px!important;padding:28px 40px!important;}
+        }
+
+        /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        /* Register: table on desktop, cards on mobile */
+        .reg-cards{display:none;}
+        /* Budget sub-tab labels: full text on desktop; icon-only, uniform size on mobile */
+        /* \u2500\u2500 Unified scroll utility \u2014 every grid scrolls like the register \u2500\u2500
+           hidden scrollbar (all engines) + vertical scrollport + horizontal overflow;
+           direct-child thead cells stick to the top while scrolling. */
+        .hscroll{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
+          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
+        .hscroll::-webkit-scrollbar{display:none;}
+        .hscroll>table>thead>tr>th{position:sticky;top:0;z-index:5;background:var(--navy);}
+        /* Stripe-headed tables (e.g. income sources) keep their stripe when sticky */
+        .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
+        /* Register wrap is now just an alias of the shared utility */
+        .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
+          scrollbar-width:none;-ms-overflow-style:none;}
+        .reg-table-wrap::-webkit-scrollbar{display:none;}
+        .reg-table thead .reg-th{position:sticky;top:0;z-index:5;}
+        /* Register desc: fill available space, truncate */
+        .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        /* Budget totals row sticky */
+        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);}
+
+        /* \u2500\u2500 44px minimum tap targets \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+        .reg-actions button{min-height:36px;min-width:36px;}
+
+        /* Keyboard shortcut hint in search placeholder */
+        #global-search::placeholder{color:var(--textLt);}
+
+
+`;
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function compressReceiptImage(file, cb) {
     if (!file) return;
@@ -9438,335 +9762,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     if (!sessionUser) {
       return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(LoginView, { users, onLogin: login }));
     }
-    return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, `
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
-        *{box-sizing:border-box;} html{scrollbar-gutter:stable;}
-        /* \u2500\u2500 Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) \u2500\u2500 */
-        .field-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
-          text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;}
-        .field-input{font-family:Inter,sans-serif;font-size:13px;padding:9px 12px;
-          border:1.5px solid var(--border);border-radius:8px;
-          background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
-        .field-input:focus{border-color:var(--navy);}
-        .field-input.field-error{border-color:var(--red);background:rgba(232,93,74,0.08);}
-        .field-input--mono{font-family:'IBM Plex Mono',monospace;}
-        .field-error-text{font-family:Inter,sans-serif;font-size:11px;color:var(--red);margin-top:4px;}
-        .field-hint-text{font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);margin-top:4px;}
-
-        /* \u2500\u2500 Shared component classes (replaces repeated inline styles) \u2500\u2500 */
-        .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
-          box-shadow:var(--shadowSm);padding:20px 24px;transition:box-shadow 0.2s ease, transform 0.2s ease;}
-        .cf-card--flush{padding:0;overflow:hidden;}
-        /* Typography */
-        .cf-text-ui{font-family:Inter,sans-serif;}
-        .cf-text-mono{font-family:'IBM Plex Mono',monospace;}
-        .cf-text-mono-13{font-family:'IBM Plex Mono',monospace;font-size:13px;}
-        .cf-section-title-text{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .cf-text-mono-13{font-family:'IBM Plex Mono',monospace;font-size:13px;}
-        .cf-section-title-text{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .cf-text-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
-          letter-spacing:0.06em;text-transform:uppercase;}
-        /* Buttons */
-        .cf-btn{font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 18px;
-          border-radius:8px;border:none;cursor:pointer;transition:filter 0.15s;}
-        .cf-btn--primary{background:var(--navy);color:#fff;}
-        .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
-        .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
-        .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
-        .cf-btn--sm{font-size:11px;padding:6px 12px;}
-        /* Layout helpers */
-        .cf-row{display:flex;align-items:center;}
-        .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
-        .cf-col{display:flex;flex-direction:column;}
-        .cf-gap-8{gap:8px;}
-        .cf-gap-12{gap:12px;}
-        body{margin:0;background:var(--bg);scrollbar-gutter:stable;
-          -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-        /* \u2500\u2500 Modern interaction polish (pointer devices) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        @media (hover:hover) and (pointer:fine){
-          /* Cards lift subtly on hover for depth */
-          .cf-card:hover{box-shadow:var(--shadowMd);}
-          /* All buttons get a gentle press/hover feel */
-          button{transition:filter 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;}
-          button:not(:disabled):hover{filter:brightness(1.06);}
-          button:not(:disabled):active{transform:translateY(0.5px) scale(0.985);}
-          /* Interactive rows highlight on hover */
-          .reg-table tbody tr:hover,
-          .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
-          /* Nav tabs + pills subtle hover */
-          .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
-        }
-        /* Accessible focus ring \u2014 keyboard only, consistent everywhere */
-        :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
-        button:focus:not(:focus-visible){outline:none;}
-        /* Text inputs/selects get a visible focus ring on ANY focus (mouse or keyboard) \u2014
-           they have outline:none inline, so this restores feedback for pointer users. */
-        input:focus,select:focus,textarea:focus{
-          outline:2px solid var(--accent)!important;outline-offset:1px;
-          border-color:var(--accent)!important;
-        }
-        /* \u2500\u2500 UI polish \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        /* Bottom navigation: touch devices only */
-        .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
-          background:var(--bgCard);border-top:1px solid var(--border);
-          padding-bottom:env(safe-area-inset-bottom);
-          box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
-        @media (pointer:coarse){
-          .cf-bottomnav{display:flex;}
-          .tab-bar{display:none!important;}
-          .content-area{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
-          .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
-          .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
-          .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
-          .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
-        }
-        /* FAB: touch devices only, thumb-reach primary action */
-        .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
-          width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;
-          font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
-          box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;}
-        @media (pointer:coarse){.cf-fab{display:flex;align-items:center;justify-content:center;}}
-        /* Camera capture: touch devices only \u2014 desktop shows gallery picker alone */
-        .attach-camera{display:none!important;}
-        @media (pointer:coarse){.attach-camera{display:inline-flex!important;}}
-        html{-webkit-tap-highlight-color:transparent;}
-        /* Touch/no-hover devices: simple press feedback (hover handled by the pointer:fine block above) */
-        @media not (hover:hover){
-          button:active:not(:disabled){transform:scale(0.97);}
-        }
-        input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-        input[type=number]{-moz-appearance:textfield;appearance:textfield;}
-        .modal-card{overscroll-behavior:contain;}
-        tr{transition:background 0.12s ease;}
-        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}}
-        input,select,button,textarea{font-family:Inter,sans-serif;}
-
-        /* \u2500\u2500 Typography tokens \u2014 apply to all data content \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        /* Primary data text (descriptions, labels, names) */
-        .tx  {font-family:Inter,sans-serif;font-size:13px;color:var(--text);}
-        /* Secondary / metadata (categories, dates, schedule) */
-        .txm {font-family:Inter,sans-serif;font-size:13px;color:var(--textMid);}
-        /* Muted (notes, hints, historical, inactive) */
-        .txl {font-family:Inter,sans-serif;font-size:13px;color:var(--textLt);}
-        /* Monospace numbers (amounts, balances) */
-        .mno {font-family:'IBM Plex Mono',monospace;font-size:13px;}
-        /* Small caps section label (uppercase, letter-spaced) \u2014 intentionally 11px */
-        .lbl {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
-              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);}
-        /* Hint / help text below fields \u2014 intentionally 11px */
-        .hint{font-family:Inter,sans-serif;font-size:11px;color:var(--textLt);}
-
-        /* Table header cells \u2014 standardized */
-        .th  {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
-              text-transform:uppercase;letter-spacing:0.08em;color:#fff;padding:10px 14px;}
-        /* Standard data table body cell */
-        .td  {font-family:Inter,sans-serif;font-size:13px;color:var(--text);padding:9px 14px;}
-        /* Mono table body cell (amounts) */
-        .tdm {font-family:'IBM Plex Mono',monospace;font-size:13px;padding:9px 14px;text-align:right;}
-        .reg-table tr:hover td span[style*="opacity:0"]{opacity:1!important;}
-        /* \u2500\u2500 Budget Monthly grid columns \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-           Desktop: fixed layout + explicit widths so columns never shift
-           between months. Mobile overrides live in the \u2264480px block below. */
-        .budget-monthly-table{table-layout:fixed;}
-        .budget-monthly-table .budget-col-day{width:30px;}
-        .budget-monthly-table .budget-col-desc{width:auto;max-width:0;}
-        .budget-monthly-table .budget-col-category{width:120px;}
-        .budget-monthly-table .budget-col-income{width:105px;}
-        .budget-monthly-table .budget-col-expense{width:105px;}
-        .budget-monthly-table .budget-col-balance{width:120px;}
-        @media(max-width:700px){span[style*="opacity:0"]{opacity:1!important;}}
-        @keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
-        @media(max-width:768px){
-          .search-box input{width:100%!important;flex:1;}
-          /* Hide header search on mobile \u2014 saves space for essential controls */
-          .header-search{display:none!important;}
-          /* Hide year pills on mobile \u2014 managed in Settings */
-          .year-pills-mobile{display:none!important;}
-        }
-        @media(max-width:768px){.help-btn{display:none!important;}}
-        @media print{[data-noprint]{display:none!important;}body{background:#fff!important;}.content-area{padding:0!important;}}
-
-        /* \u2500\u2500 Mobile layout \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        @media(max-width:768px){
-          /* Prevent iOS/Android auto-zoom on input focus (fires when font-size < 16px).
-             Targets the entry/CSV form panels and search boxes. Narrow tabular inputs
-             (monthly-amounts grid, budget targets) keep their compact size. */
-          .fab-panel input:not([type=checkbox]), .fab-panel select,
-          .search-box input, .header-search input { font-size: 16px !important; }
-          /* Bottom-sheet modals \u2014 slide up from bottom edge */
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
-          display:flex;align-items:center;justify-content:center;padding:16px;}
-          .modal-overlay{align-items:flex-end!important;}
-          .modal-card{
-            border-radius:20px 20px 0 0!important;
-            width:100%!important;max-width:100%!important;
-            padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
-            max-height:92vh!important;overflow-y:auto!important;
-          }
-
-          /* Entry form: stack 3-col row on tablet */
-          .entry-form-row2{grid-template-columns:1fr!important;}
-          /* Register: switch to cards on mobile \u2014 table hidden */
-          .reg-cards{display:block!important;}
-          /* Prevent focus zoom on Android/iOS: inputs must render \u226516px */
-          input,select,textarea{font-size:16px!important;}
-          .wm-arrow{width:44px!important;height:44px!important;line-height:42px!important;font-size:16px!important;}
-          .reg-table-wrap{display:none!important;}
-          /* Header: single fixed row \u2014 never wraps */
-          .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
-          .logo-area img{height:23px!important;}
-          .year-pills{gap:3px!important;flex-wrap:wrap;}
-          /* Tab bar: scrollable, no scrollbar visible */
-          .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
-            padding-bottom:0!important;scrollbar-width:none;}
-          .tab-bar::-webkit-scrollbar{display:none;}
-          .tab-bar button{padding:10px 10px!important;font-size:11px!important;white-space:nowrap;}
-          /* Content padding */
-          .content-area{padding:12px 8px!important;margin-top:0!important;}
-          /* Kill any residual navy gap between tab-bar and content on mobile */
-          .tab-bar-outer{padding-bottom:0!important;overflow:hidden!important;}
-          /* KPI grids: 2-column on tablet/mobile */
-          .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
-          .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
-          /* Dashboard: charts stack, no overflow */
-          .chart-grid{grid-template-columns:1fr!important;gap:10px!important;}
-          /* Dashboard wrapper: no overflow */
-          .dash-wrap{overflow:hidden!important;max-width:100%!important;}
-          /* Month picker: tighter, arrows hidden (month pills are tappable) */
-          .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
-            -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
-            padding-bottom:4px!important;margin-left:-6px!important;margin-right:-6px!important;
-            padding-left:6px!important;padding-right:6px!important;}
-          .month-picker::-webkit-scrollbar{display:none!important;}
-          .glance-grid{gap:6px!important;}
-          .bp-daily{display:none!important;}
-          .ef-save-template{display:none!important;}
-          .budget-subtab-pill .bp-label-full{display:none!important;}
-          .budget-subtab-pill{width:40px!important;height:40px!important;padding:0!important;
-            display:inline-flex!important;align-items:center!important;justify-content:center!important;
-            flex-shrink:0!important;font-size:16px!important;}
-          .budget-subtabs{margin-left:-4px!important;margin-right:-4px!important;padding-left:4px!important;padding-right:4px!important;}
-          .year-openbal{flex-basis:100%!important;order:5;}
-          .year-openbal input{flex:1 1 auto!important;width:auto!important;}
-          .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
-          .month-picker button{padding:4px 6px!important;font-size:10px!important;}
-          .month-nav-arrow{display:none!important;}
-          /* Budget monthly table: hide category */
-          .budget-col-cat{display:none!important;}
-          /* Forecast table: hide category, tighten padding */
-          .forecast-table td,.forecast-table th{padding:7px 8px!important;font-size:11px!important;}
-          .forecast-col-cat{display:none!important;}
-          .forecast-desc-cell{max-width:180px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
-          /* Daily view: hide category label, shrink balance column */
-          .daily-card{grid-template-columns:44px 1fr 88px!important;}
-          .daily-cat{display:none!important;}
-          /* Register: keep all columns, scroll horizontally */
-          .reg-table{font-size:12px!important;}
-          .reg-table td,.reg-table th{padding:8px 10px!important;}
-          /* Action buttons: always visible, touch-friendly */
-          .reg-actions{white-space:nowrap;}
-          .reg-actions div{display:flex!important;gap:4px!important;}
-          .reg-actions button{padding:6px 8px!important;font-size:12px!important;}
-          /* Monthly amounts: 3 columns on mobile instead of 12 */
-          .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          /* FAB quick-add panel: near full-width, centered above FAB */
-          .fab-panel{left:12px!important;right:12px!important;bottom:84px!important;
-            width:auto!important;padding:16px!important;maxHeight:78vh!important;}
-          /* Budget: hide daily toggle, add button; show mobile-only label */
-          /* Register: hide add/import buttons \u2014 FAB handles these on mobile */
-        }
-        @media(max-width:480px){
-          /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
-          .kpi-grid{grid-template-columns:1fr 1fr!important;gap:6px!important;}
-          .kpi-grid-4{grid-template-columns:1fr 1fr!important;gap:6px!important;}
-          .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
-          .month-picker button{padding:3px 5px!important;font-size:9px!important;}
-          /* Hide \u2039 \u203A arrows on mobile \u2014 month buttons are tappable directly */
-          .month-nav-arrow{display:none!important;}
-          .daily-card{grid-template-columns:36px 1fr 76px!important;}
-          .daily-balance{min-width:72px!important;}
-          .content-area{padding:10px 6px!important;margin-top:0!important;}
-          .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;padding-bottom:0!important;overflow:hidden!important;}
-          .tab-bar{margin:0!important;padding:0!important;}
-          .tab-bar button{padding:10px 8px!important;font-size:10px!important;}
-          /* Cards: tighter padding on phone */
-          [style*="padding:"20px 24px""]{padding:14px 12px!important;}
-          /* Budget: description cell \u2014 ellipsis on overflow, no wrap */
-          .budget-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:none;}
-          /* Budget Monthly grid on phone: keep every column (Category, Income, Expense,
-             Balance) visible \u2014 matching Entries \u2014 by giving the table real intrinsic width
-             so the .hscroll wrapper's overflow-x:auto produces a genuine horizontal swipe,
-             the same way it always worked before. Nothing is hidden; Description gets a
-             sensible minimum width instead of being crushed to nothing. */
-          .budget-monthly-table{table-layout:fixed;min-width:640px!important;}
-          .budget-monthly-table .budget-col-checkbox{width:26px!important;}
-          .budget-monthly-table .budget-col-day{width:26px!important;}
-          .budget-monthly-table .budget-col-desc{width:150px!important;max-width:150px!important;}
-          .budget-monthly-table .budget-col-category{width:90px!important;}
-          .budget-monthly-table .budget-col-income{width:85px!important;}
-          .budget-monthly-table .budget-col-expense{width:85px!important;}
-          .budget-monthly-table .budget-col-balance{width:95px!important;}
-          /* BvA row \u2014 keep chip + amounts on one line on mobile */
-          .bva-row{flex-wrap:nowrap!important;}
-          .bva-amounts{flex-wrap:nowrap!important;}
-          /* Hide / $target on mobile \u2014 it's already visible in the input field */
-          .bva-target{display:none!important;}
-          /* Forecast: description cell \u2014 truncate on mobile */
-          .forecast-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px!important;}
-          /* Register filters: stack on phone */
-          .reg-col-cat,.reg-col-sched,.reg-col-until,.reg-col-notes{display:none!important;}
-        }
-
-
-        /* \u2500\u2500 Bottom-sheet modals on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .modal-card{background:var(--bgCard);border-radius:14px;box-shadow:var(--shadowXl);animation:slideUp 0.2s ease-out;}
-
-        /* \u2500\u2500 Two-column dashboard at \u22651400px \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        @media(min-width:1400px){
-          .content-area{max-width:1400px!important;padding:28px 40px!important;}
-        }
-
-        /* \u2500\u2500 Register table: card view on mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        /* Register: table on desktop, cards on mobile */
-        .reg-cards{display:none;}
-        /* Budget sub-tab labels: full text on desktop; icon-only, uniform size on mobile */
-        /* \u2500\u2500 Unified scroll utility \u2014 every grid scrolls like the register \u2500\u2500
-           hidden scrollbar (all engines) + vertical scrollport + horizontal overflow;
-           direct-child thead cells stick to the top while scrolling. */
-        .hscroll{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
-          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
-        .hscroll::-webkit-scrollbar{display:none;}
-        .hscroll>table>thead>tr>th{position:sticky;top:0;z-index:5;background:var(--navy);}
-        /* Stripe-headed tables (e.g. income sources) keep their stripe when sticky */
-        .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
-        /* Register wrap is now just an alias of the shared utility */
-        .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
-          scrollbar-width:none;-ms-overflow-style:none;}
-        .reg-table-wrap::-webkit-scrollbar{display:none;}
-        .reg-table thead .reg-th{position:sticky;top:0;z-index:5;}
-        /* Register desc: fill available space, truncate */
-        .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        /* Budget totals row sticky */
-        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);}
-
-        /* \u2500\u2500 44px minimum tap targets \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-        .reg-actions button{min-height:36px;min-width:36px;}
-
-        /* Keyboard shortcut hint in search placeholder */
-        #global-search::placeholder{color:var(--textLt);}
-          .reg-filter-row{flex-wrap:wrap!important;gap:6px!important;}
-          /* Forecast confidence column: hide on phone to save width */
-          .forecast-conf-col{display:none!important;}
-          /* Debt tracker: single column inputs */
-          /* Onboarding: full width */
-          /* AI Insights: smaller padding */
-          /* Settings year row: wrap more aggressively */
-        }
-
-
-      `), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
+    return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
       fontWeight: 700,
       padding: "4px 12px",
       borderRadius: "16px",
