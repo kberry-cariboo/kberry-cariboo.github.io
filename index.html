@@ -1960,16 +1960,25 @@ document.addEventListener('DOMContentLoaded',function(){
       onConfirm();
     }, style: { fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
   }
-  const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" } }, /* @__PURE__ */ React.createElement("div", { onClick: () => onChange(!value), style: {
-    position: "relative",
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    cursor: "pointer",
-    background: value ? "var(--navy)" : "var(--border)",
-    transition: "background 0.2s",
-    flexShrink: 0
-  } }, /* @__PURE__ */ React.createElement("div", { style: {
+  const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, userSelect: "none" } }, /* @__PURE__ */ React.createElement("button", {
+    type: "button",
+    role: "switch",
+    "aria-checked": value,
+    "aria-label": label || void 0,
+    onClick: () => onChange(!value),
+    style: {
+      position: "relative",
+      width: 44,
+      height: 24,
+      borderRadius: 12,
+      border: "none",
+      padding: 0,
+      cursor: "pointer",
+      background: value ? "var(--navy)" : "var(--border)",
+      transition: "background 0.2s",
+      flexShrink: 0
+    }
+  }, /* @__PURE__ */ React.createElement("div", { style: {
     position: "absolute",
     top: 3,
     left: value ? 23 : 3,
@@ -1979,7 +1988,7 @@ document.addEventListener('DOMContentLoaded',function(){
     background: "#fff",
     transition: "left 0.2s",
     boxShadow: "0 1px 4px rgba(0,0,0,0.2)"
-  } })), label && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", fontWeight: 600 } }, label));
+  } })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), style: { fontSize: 13, color: "var(--text)", fontWeight: 600, cursor: "pointer" } }, label));
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
     var _a, _b, _c, _d, _e;
     const [attachment, setAttachment] = useState((initial == null ? void 0 : initial.attachment) || null);
