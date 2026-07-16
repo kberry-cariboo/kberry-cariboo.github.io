@@ -804,6 +804,8 @@ document.addEventListener('DOMContentLoaded',function(){
         .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
           box-shadow:var(--shadowSm);padding:20px 24px;transition:box-shadow 0.2s ease, transform 0.2s ease;}
         .cf-card--flush{padding:0;overflow:hidden;}
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
+          display:flex;align-items:center;justify-content:center;padding:16px;}
         /* Typography */
         .cf-text-ui{font-family:Inter,sans-serif;}
         .cf-text-mono{font-family:'IBM Plex Mono',monospace;}
@@ -817,6 +819,7 @@ document.addEventListener('DOMContentLoaded',function(){
         .cf-btn--primary{background:var(--navy);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
+        .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
         .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
         .cf-btn--sm{font-size:11px;padding:6px 12px;}
         /* Layout helpers */
@@ -939,8 +942,6 @@ document.addEventListener('DOMContentLoaded',function(){
           .fab-panel input:not([type=checkbox]), .fab-panel select,
           .search-box input, .header-search input { font-size: 16px !important; }
           /* Bottom-sheet modals \u2014 slide up from bottom edge */
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
-          display:flex;align-items:center;justify-content:center;padding:16px;}
           .modal-overlay{align-items:flex-end!important;}
           .modal-card{
             border-radius:20px 20px 0 0!important;
@@ -1937,6 +1938,24 @@ document.addEventListener('DOMContentLoaded',function(){
     },
     o.icon || o.label
   )));
+  const PillToggle = ({ options, value, onChange, gap = 6, fontSize = 12, fontWeight = 600, padding = "6px 14px", borderRadius = 20 }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: o.id,
+      onClick: () => onChange(o.id),
+      style: {
+        fontSize,
+        fontWeight,
+        padding,
+        borderRadius,
+        border: "none",
+        cursor: "pointer",
+        background: value === o.id ? "var(--navy)" : "var(--border)",
+        color: value === o.id ? "#fff" : "var(--textMid)"
+      }
+    },
+    o.label
+  )));
   const ChartTip = ({ active, payload, label }) => {
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
@@ -2881,16 +2900,7 @@ document.addEventListener('DOMContentLoaded',function(){
           return /* @__PURE__ */ React.createElement("td", { key: col });
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } }, ["all", "income", "expense"].map((f2) => /* @__PURE__ */ React.createElement("button", { key: f2, onClick: () => setFilter(f2), style: {
-      fontSize: 12,
-      fontWeight: 600,
-      padding: "6px 14px",
-      borderRadius: 20,
-      border: "none",
-      cursor: "pointer",
-      background: filter === f2 ? "var(--navy)" : "var(--border)",
-      color: filter === f2 ? "#fff" : "var(--textMid)"
-    } }, f2 === "all" ? "All Types" : f2 === "income" ? "Income" : "Expenses")))), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, /* @__PURE__ */ React.createElement(
       FilterPill,
       {
         label: "Category",
@@ -4299,94 +4309,7 @@ document.addEventListener('DOMContentLoaded',function(){
             setEditingEv(null);
           } : null
         }
-      ), bvaCtxMenu && /* @__PURE__ */ React.createElement(
-        ContextMenu,
-        {
-          x: bvaCtxMenu.x,
-          y: bvaCtxMenu.y,
-          onClose: () => setBvaCtxMenu(null),
-          items: [
-            { icon: "\u270E", label: "Edit target", action: () => {
-              setBvaModalData({ cat: bvaCtxMenu.cat, target: String(bvaCtxMenu.target || ""), editCat: bvaCtxMenu.cat });
-              setShowBvaModal(true);
-            } },
-            { icon: "\u2715", label: "Remove target", action: () => {
-              const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
-              setBudgetTargets((prev) => {
-                const n = __spreadValues({}, prev);
-                if (n[bk]) {
-                  const m = __spreadValues({}, n[bk]);
-                  delete m[bvaCtxMenu.cat];
-                  n[bk] = m;
-                }
-                return n;
-              });
-            }, danger: true }
-          ]
-        }
-      ), showBvaModal && (() => {
-        const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
-        const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
-        const saveBva = () => {
-          const t = parseFloat(bvaModalData.target);
-          if (!bvaModalData.cat || isNaN(t) || t < 0) return;
-          setBudgetTargets((prev) => __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: Math.round(t * 100) / 100 }) }));
-          setShowBvaModal(false);
-        };
-        return /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "modal-overlay",
-            onClick: (e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setShowBvaModal(false);
-            }
-          },
-          /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 11, fontWeight: 700, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 6 } }, "Category"), /* @__PURE__ */ React.createElement(
-            "select",
-            {
-              autoFocus: true,
-              value: bvaModalData.cat,
-              onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { cat: e.target.value })),
-              style: { fontSize: 13, padding: "9px 12px", width: "100%", border: "1.5px solid var(--border)", borderRadius: 8, background: "var(--inputBg)", color: "var(--text)", outline: "none" }
-            },
-            /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"),
-            availCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-          )) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Category: ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 11, fontWeight: 700, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 6 } }, "Monthly Budget Target $"), /* @__PURE__ */ React.createElement(
-            "input",
-            {
-              autoFocus: !!bvaModalData.editCat,
-              type: "number",
-              inputMode: "decimal",
-              min: "0",
-              placeholder: "e.g. 1500",
-              className: "field-input field-input--mono",
-              value: bvaModalData.target,
-              onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { target: e.target.value })),
-              onKeyDown: (e) => {
-                if (e.key === "Enter") saveBva();
-              }
-            }
-          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false), className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "9px 20px" } }, "Cancel"), /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: saveBva,
-              disabled: !bvaModalData.cat || !bvaModalData.target,
-              style: {
-                fontSize: 13,
-                fontWeight: 700,
-                padding: "9px 24px",
-                borderRadius: 8,
-                border: "none",
-                cursor: bvaModalData.cat && bvaModalData.target ? "pointer" : "not-allowed",
-                background: bvaModalData.cat && bvaModalData.target ? "var(--navy)" : "var(--border)",
-                color: bvaModalData.cat && bvaModalData.target ? "#fff" : "var(--textMid)"
-              }
-            },
-            bvaModalData.editCat ? "Save Target" : "Add Line"
-          )))
-        );
-      })(), budgetCtx && /* @__PURE__ */ React.createElement(
+      ), budgetCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
           x: budgetCtx.x,
@@ -4474,6 +4397,86 @@ document.addEventListener('DOMContentLoaded',function(){
         color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
         textAlign: "right"
       } }, fmt(dayObj.balance))))))), days.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)", padding: "32px 24px" } }, "No activity this month."))),
+      bvaCtxMenu && /* @__PURE__ */ React.createElement(
+        ContextMenu,
+        {
+          x: bvaCtxMenu.x,
+          y: bvaCtxMenu.y,
+          onClose: () => setBvaCtxMenu(null),
+          items: [
+            { icon: "\u270E", label: "Edit target", action: () => {
+              setBvaModalData({ cat: bvaCtxMenu.cat, target: String(bvaCtxMenu.target || ""), editCat: bvaCtxMenu.cat });
+              setShowBvaModal(true);
+            } },
+            { icon: "\u2715", label: "Remove target", action: () => {
+              const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+              setBudgetTargets((prev) => {
+                const n = __spreadValues({}, prev);
+                if (n[bk]) {
+                  const m = __spreadValues({}, n[bk]);
+                  delete m[bvaCtxMenu.cat];
+                  n[bk] = m;
+                }
+                return n;
+              });
+            }, danger: true }
+          ]
+        }
+      ), showBvaModal && (() => {
+        const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+        const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
+        const saveBva = () => {
+          const t = parseFloat(bvaModalData.target);
+          if (!bvaModalData.cat || isNaN(t) || t < 0) return;
+          setBudgetTargets((prev) => __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: Math.round(t * 100) / 100 }) }));
+          setShowBvaModal(false);
+        };
+        return /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: "modal-overlay",
+            onClick: (e) => {
+              e.stopPropagation();
+              if (e.target === e.currentTarget) setShowBvaModal(false);
+            }
+          },
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category"), /* @__PURE__ */ React.createElement(
+            "select",
+            {
+              autoFocus: true,
+              value: bvaModalData.cat,
+              onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { cat: e.target.value })),
+              className: "field-input"
+            },
+            /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"),
+            availCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+          )) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Category: ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $"), /* @__PURE__ */ React.createElement(
+            "input",
+            {
+              autoFocus: !!bvaModalData.editCat,
+              type: "number",
+              inputMode: "decimal",
+              min: "0",
+              placeholder: "e.g. 1500",
+              className: "field-input field-input--mono",
+              value: bvaModalData.target,
+              onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { target: e.target.value })),
+              onKeyDown: (e) => {
+                if (e.key === "Enter") saveBva();
+              }
+            }
+          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false), className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "9px 20px" } }, "Cancel"), /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: saveBva,
+              disabled: !bvaModalData.cat || !bvaModalData.target,
+              className: "cf-btn cf-btn--primary",
+              style: { padding: "9px 24px" }
+            },
+            bvaModalData.editCat ? "Save Target" : "Add Line"
+          )))
+        );
+      })(),
       budgetSub === "bva" && (() => {
         const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
@@ -4636,16 +4639,7 @@ document.addEventListener('DOMContentLoaded',function(){
       letterSpacing: "0.12em",
       textTransform: "uppercase",
       color: "var(--textLt)"
-    } }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, horizons.map((h) => /* @__PURE__ */ React.createElement("button", { key: h, onClick: () => setHorizon(h), style: {
-      fontSize: 12,
-      fontWeight: 600,
-      padding: "6px 14px",
-      borderRadius: 20,
-      border: "none",
-      cursor: "pointer",
-      background: horizon === h ? "var(--navy)" : "var(--border)",
-      color: horizon === h ? "#fff" : "var(--textMid)"
-    } }, h, " days"))))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, '\u{1F50D} Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
+    } }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, '\u{1F50D} Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onCSV: () => {
@@ -6011,15 +6005,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           "button",
           {
             onClick: () => setShowDebtForm(false),
-            style: {
-              fontSize: 13,
-              padding: "9px 20px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              cursor: "pointer",
-              background: "transparent",
-              color: "var(--textMid)"
-            }
+            className: "cf-btn cf-btn--secondary",
+            style: { padding: "9px 20px" }
           },
           "Cancel"
         ), /* @__PURE__ */ React.createElement(
@@ -6027,16 +6014,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           {
             onClick: saveDebtForm,
             disabled: !debtFormData.label.trim(),
-            style: {
-              fontSize: 13,
-              fontWeight: 700,
-              padding: "9px 24px",
-              borderRadius: 8,
-              border: "none",
-              cursor: debtFormData.label.trim() ? "pointer" : "not-allowed",
-              background: debtFormData.label.trim() ? "var(--navy)" : "var(--border)",
-              color: debtFormData.label.trim() ? "#fff" : "var(--textMid)"
-            }
+            className: "cf-btn cf-btn--primary",
+            style: { padding: "9px 24px" }
           },
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
@@ -6402,16 +6381,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
       ))))),
-      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, [{ id: "bar", icon: "\u25AC" }, { id: "pie", icon: "\u25D1" }].map((v) => /* @__PURE__ */ React.createElement("button", { key: v.id, onClick: () => setCatView(v.id), style: {
-        fontSize: 11,
-        fontWeight: 700,
-        padding: "3px 10px",
-        borderRadius: 6,
-        border: "none",
-        cursor: "pointer",
-        background: catView === v.id ? "var(--navy)" : "var(--border)",
-        color: catView === v.id ? "#fff" : "var(--textMid)"
-      } }, v.icon))) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
+      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "bar", label: "\u25AC" }, { id: "pie", label: "\u25D1" }], value: catView, onChange: setCatView, gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 6 }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
         return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
           height: "100%",
@@ -6695,16 +6665,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : "transparent"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "var(--green)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#FF8A7A" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px" } }))))))
       ))),
-      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, yoyMetrics.map((m) => /* @__PURE__ */ React.createElement("button", { key: m.id, onClick: () => setYoyMetric(m.id), style: {
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "5px 12px",
-        borderRadius: 16,
-        border: "none",
-        cursor: "pointer",
-        background: yoyMetric === m.id ? "var(--navy)" : "var(--border)",
-        color: yoyMetric === m.id ? "#fff" : "var(--textMid)"
-      } }, m.label))) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 16 }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: (v) => "$" + (v / 1e3).toFixed(0) + "k", tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
           key: yc.year,
@@ -6824,24 +6785,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         categories,
         setTab
       }
-    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10, gap: 6 } }, ["My entries", "All users"].map((label, i) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: i,
-        onClick: () => setSharedView(i === 1),
-        style: {
-          fontSize: 11,
-          fontWeight: 600,
-          padding: "5px 14px",
-          borderRadius: 20,
-          border: "none",
-          cursor: "pointer",
-          background: sharedView === (i === 1) ? "var(--navy)" : "var(--border)",
-          color: sharedView === (i === 1) ? "#fff" : "var(--textMid)"
-        }
-      },
-      label
-    ))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 20 })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const out = [];
