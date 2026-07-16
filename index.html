@@ -1781,6 +1781,15 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   const Card = ({ children, style = {}, className = "" }) => /* @__PURE__ */ React.createElement("div", { className: `cf-card ${className}`.trim(), style }, children);
   const SectionTitle = ({ children, action }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between", style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
+  const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, message), actionLabel && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onAction,
+      className: "cf-btn cf-btn--primary",
+      style: { fontSize: 12, fontWeight: 700, padding: "8px 18px" }
+    },
+    actionLabel
+  ));
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: color || "var(--text)", lineHeight: 1 } }, value), sub && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, sub));
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null }) => {
     const stripRef = useRef(null);
@@ -3203,15 +3212,12 @@ document.addEventListener('DOMContentLoaded',function(){
         }
       },
       selIds.has(e.id) ? "\u2713" : ""
-    )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."), !(search || globalSearch) && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: openNew,
-        className: "cf-btn cf-btn--primary",
-        style: { fontSize: 12, fontWeight: 700, padding: "8px 18px" }
-      },
-      "+ Add Entry"
-    )))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
+    )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
+      icon: search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}",
+      message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
+      actionLabel: !(search || globalSearch) && "+ Add Entry",
+      onAction: openNew
+    })))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
       const archived = isArchived(e, activeYear);
       const arcStyle = {
         color: archived ? "var(--textLt)" : "var(--text)",
@@ -3295,15 +3301,12 @@ document.addEventListener('DOMContentLoaded',function(){
           maxWidth: 120
         } }, e.notes))
       );
-    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters."), !(search || globalSearch) && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: openNew,
-        className: "cf-btn cf-btn--primary",
-        style: { fontSize: 12, fontWeight: 700, padding: "8px 18px" }
-      },
-      "+ Add Entry"
-    )))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
+      icon: search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}",
+      message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
+      actionLabel: !(search || globalSearch) && "+ Add Entry",
+      onAction: openNew
+    })))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -4492,18 +4495,15 @@ document.addEventListener('DOMContentLoaded',function(){
           color: "var(--textLt)",
           textAlign: "center",
           padding: "8px 0"
-        } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, "No budget lines yet. Track a category against a monthly target."), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
-              setBvaModalData({ cat: "", target: "", editCat: null });
-              setShowBvaModal(true);
-            },
-            className: "cf-btn cf-btn--primary",
-            style: { fontSize: 12, fontWeight: 700, padding: "8px 18px" }
-          },
-          "+ Add Budget Line"
-        )), cats.map((cat) => {
+        } }, /* @__PURE__ */ React.createElement(EmptyState, {
+          icon: "\u{1F3AF}",
+          message: "No budget lines yet. Track a category against a monthly target.",
+          actionLabel: "+ Add Budget Line",
+          onAction: () => {
+            setBvaModalData({ cat: "", target: "", editCat: null });
+            setShowBvaModal(true);
+          }
+        })), cats.map((cat) => {
           const actual = Math.round((catExpenses[cat] || 0) * 100) / 100;
           const target = Math.round((targets[cat] || 0) * 100) / 100;
           const diff = Math.round((actual - target) * 100) / 100;
@@ -5386,15 +5386,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 7, whiteSpace: "nowrap" }
         },
         "+ Add"
-      )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "18px 10px", fontSize: 13, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, "Save toward big expenses \u2014 property taxes, vacations, emergency fund."), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => openGoalForm(null),
-          className: "cf-btn cf-btn--primary",
-          style: { fontSize: 12, fontWeight: 700, padding: "8px 18px" }
-        },
-        "+ Add Goal"
-      )) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, goals.map((g) => {
+      )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "18px 10px", fontSize: 13, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
+        icon: "\u{1F3AF}",
+        message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
+        actionLabel: "+ Add Goal",
+        onAction: () => openGoalForm(null)
+      })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, goals.map((g) => {
         const pct = g.target > 0 ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
         const remaining = Math.max(0, g.target - g.saved);
         let projLabel = null, onTrack = null;
