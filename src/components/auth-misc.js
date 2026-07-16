@@ -187,7 +187,9 @@
       minWidth: 12
     } }, secs, "s"));
   }
-  function LoginView({ users, onLogin }) {
+  function LoginView() {
+    const configured = isSupabaseConfigured();
+    const [mode, setMode] = useState("signin");
     const [email, setEmail] = useState(() => {
       try {
         return localStorage.getItem("cf_saved_email") || "";
@@ -204,107 +206,67 @@
       }
     });
     const [error, setError] = useState("");
+    const [info, setInfo] = useState("");
     const [loading, setLoading] = useState(false);
     const [showPw, setShowPw] = useState(false);
-    const [hasBio, setHasBio] = useState(false);
-    useEffect(() => {
-      var _a, _b;
-      const credId = localStorage.getItem("cf_bio_credential");
-      if (credId && window.PublicKeyCredential) {
-        (_b = (_a = window.PublicKeyCredential).isUserVerifyingPlatformAuthenticatorAvailable) == null ? void 0 : _b.call(_a).then((ok) => {
-          if (ok) setHasBio(true);
-        }).catch(() => {
-        });
-      }
-    }, []);
-    const doLogin = (user) => {
+    const rememberEmail = (e) => {
       if (remember) {
         try {
-          localStorage.setItem("cf_saved_email", user.email);
-        } catch (e) {
+          localStorage.setItem("cf_saved_email", e);
+        } catch (err) {
         }
       } else {
         try {
           localStorage.removeItem("cf_saved_email");
-        } catch (e) {
+        } catch (err) {
         }
       }
-      onLogin(user);
     };
-    const attemptLogin = () => {
+    const attemptLogin = async () => {
       const e = email.trim().toLowerCase();
       if (!e || !password) {
         setError("Please enter your email and password.");
         return;
       }
+      if (mode === "signup" && password.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
       setLoading(true);
-      const h = hashPw(e, password);
-      const u = (users || []).find((u2) => u2.email.toLowerCase() === e && u2.passwordHash === h);
-      setTimeout(() => {
-        var _a, _b;
-        setLoading(false);
-        if (!u) {
-          setError("Incorrect email or password. Please try again.");
-          return;
-        }
-        if (u.disabled) {
-          setError("Your account has been disabled. Contact an administrator.");
-          return;
-        }
-        setError("");
-        doLogin(u);
-        if (window.PublicKeyCredential && !localStorage.getItem("cf_bio_credential")) {
-          (_b = (_a = window.PublicKeyCredential).isUserVerifyingPlatformAuthenticatorAvailable) == null ? void 0 : _b.call(_a).then((ok) => {
-            if (ok) registerBiometric(u);
-          }).catch(() => {
-          });
-        }
-      }, 400);
-    };
-    const registerBiometric = async (user) => {
+      setError("");
+      setInfo("");
       try {
-        const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const uid = new TextEncoder().encode(user.id);
-        const cred = await navigator.credentials.create({ publicKey: {
-          challenge,
-          timeout: 6e4,
-          rp: { name: "CashFlow Budget" },
-          user: { id: uid, name: user.email, displayName: user.fullName },
-          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "preferred" },
-          attestation: "none"
-        } });
-        const credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
-        localStorage.setItem("cf_bio_credential", credId);
-        localStorage.setItem("cf_bio_userid", user.id);
-        setHasBio(true);
-      } catch (e) {
+        if (mode === "signin") {
+          const { error: err } = await supabaseClient.auth.signInWithPassword({ email: e, password });
+          if (err) throw err;
+          rememberEmail(e);
+        } else {
+          const { error: err } = await supabaseClient.auth.signUp({ email: e, password });
+          if (err) throw err;
+          rememberEmail(e);
+          setInfo("Account created! If your project requires email confirmation, check your inbox, then sign in below.");
+          setMode("signin");
+          setPassword("");
+        }
+      } catch (err) {
+        setError(err.message || "Something went wrong. Please try again.");
+      } finally {
+        setLoading(false);
       }
     };
-    const biometricLogin = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const credIdStr = localStorage.getItem("cf_bio_credential");
-        if (!credIdStr) throw new Error("No biometric credential registered.");
-        const credId = Uint8Array.from(atob(credIdStr), (c) => c.charCodeAt(0));
-        const challenge = crypto.getRandomValues(new Uint8Array(32));
-        await navigator.credentials.get({ publicKey: {
-          challenge,
-          timeout: 6e4,
-          userVerification: "preferred",
-          allowCredentials: [{ id: credId, type: "public-key" }]
-        } });
-        const userId = localStorage.getItem("cf_bio_userid");
-        const u = (users || []).find((u2) => u2.id === userId && !u2.disabled);
-        if (!u) throw new Error("User not found. Please sign in with password.");
-        setLoading(false);
-        doLogin(u);
-      } catch (e) {
-        setLoading(false);
-        if (e.name !== "NotAllowedError") setError(e.message || "Biometric authentication failed.");
-      }
-    };
+    if (!configured) {
+      return /* @__PURE__ */ React.createElement("div", { style: {
+        minHeight: "100vh",
+        background: "var(--headerBg)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        fontFamily: "Inter,sans-serif",
+        textAlign: "center"
+      } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 48, marginBottom: 20 } }), /* @__PURE__ */ React.createElement("div", { style: { color: "#fff", fontSize: 15, fontWeight: 600, marginBottom: 8 } }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { style: { color: "rgba(255,255,255,0.55)", fontSize: 13, maxWidth: 360, lineHeight: 1.6 } }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
+    }
     return /* @__PURE__ */ React.createElement("div", { style: {
       minHeight: "100vh",
       background: "var(--headerBg)",
@@ -320,7 +282,47 @@
       padding: 32,
       boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
       border: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 24, textAlign: "center" } }, "Sign in to your account"), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: {
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8, textAlign: "center" } }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMode("signin");
+          setError("");
+          setInfo("");
+        },
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "4px 10px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+          background: mode === "signin" ? "var(--stripe)" : "transparent",
+          color: mode === "signin" ? "var(--text)" : "var(--textLt)"
+        }
+      },
+      "Sign in"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMode("signup");
+          setError("");
+          setInfo("");
+        },
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "4px 10px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+          background: mode === "signup" ? "var(--stripe)" : "transparent",
+          color: mode === "signup" ? "var(--text)" : "var(--textLt)"
+        }
+      },
+      "Create account"
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: {
       display: "block",
       fontSize: 12,
       fontWeight: 600,
@@ -369,7 +371,7 @@
       {
         id: "pw-input",
         type: showPw ? "text" : "password",
-        autoComplete: "current-password",
+        autoComplete: mode === "signin" ? "current-password" : "new-password",
         value: password,
         onChange: (e) => {
           setPassword(e.target.value);
@@ -432,7 +434,16 @@
       fontSize: 13,
       color: "var(--red)",
       fontWeight: 500
-    } }, error), /* @__PURE__ */ React.createElement(
+    } }, error), info && /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--greenLt)",
+      border: "1px solid var(--green)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginBottom: 16,
+      fontSize: 13,
+      color: "var(--greenDk)",
+      fontWeight: 500
+    } }, info), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -449,35 +460,11 @@
           background: "var(--navy)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
-          transition: "opacity 0.15s",
-          marginBottom: hasBio ? 12 : 0
+          transition: "opacity 0.15s"
         }
       },
-      loading ? "Signing in\u2026" : "Sign in"
-    ), hasBio && !loading && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: biometricLogin,
-        style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 14,
-          fontWeight: 600,
-          padding: "11px",
-          borderRadius: 8,
-          border: "1.5px solid var(--border)",
-          cursor: "pointer",
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, "\u{1F510}"),
-      " Sign in with Face ID / Touch ID"
-    )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Access restricted to authorised users only.", /* @__PURE__ */ React.createElement("br", null), "Contact your administrator if you need access.")));
+      loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
+    )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
   function SelfTestView() {
     const results = useMemo(() => {

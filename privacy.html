@@ -130,71 +130,74 @@
 
   <h3>2. Data Storage</h3>
   <p>
-    All budget data you enter &mdash; including entries, categories, overrides, and
-    preferences &mdash; is stored <strong>locally in your web browser</strong> using the
-    browser&rsquo;s <code>localStorage</code> API.
+    CashFlow requires a free account (email and password) to use. Your budget data
+    &mdash; entries, categories, overrides, and preferences &mdash; is stored in a
+    <strong>Supabase</strong> project (a hosted Postgres database) that the app&rsquo;s
+    operator controls, scoped to your account with row-level security so only you and
+    the household members you invite can read or write it. A copy is also cached in
+    your browser&rsquo;s <code>localStorage</code> for offline use and faster loading.
   </p>
   <ul>
-    <li>No data is transmitted to or stored on any external server.</li>
-    <li>No databases or back-end services are used.</li>
-    <li>Clearing your browser data will remove all locally stored CashFlow data.</li>
+    <li>Your password is never stored or seen by CashFlow &mdash; authentication is
+    handled entirely by Supabase Auth.</li>
+    <li>Clearing your browser data removes the local cache only; your data remains in
+    Supabase and reloads the next time you sign in.</li>
   </ul>
 
-  <h3>3. Google Drive Integration (Optional)</h3>
+  <h3>3. Household Sharing &amp; GitHub Gist (Optional Manual Backup)</h3>
   <p>
-    CashFlow offers an <strong>optional</strong> Google Drive sync feature that allows you to
-    save and load your budget data to your own Google Drive account. This feature uses
-    the Google Drive API with the following scope:
+    You can invite family members to share your budget (a &ldquo;household&rdquo;).
+    Each person signs in with their own email and password; invited members can read
+    and write the same shared budget data.
   </p>
-  <ul>
-    <li><code>https://www.googleapis.com/auth/drive.file</code> &mdash; allows CashFlow to
-    create, read, and edit <strong>only files it creates</strong> (a single file named
-    <code>CashFlow_Data.json</code>). CashFlow cannot access any other files in your
-    Google Drive.</li>
-  </ul>
-  <p>When you use Google Drive sync:</p>
-  <ul>
-    <li>Authentication is handled entirely by Google&rsquo;s Identity Services. CashFlow
-    never sees, stores, or transmits your Google password.</li>
-    <li>An OAuth access token is held <strong>in memory only</strong> for the duration of
-    your browser session. It is not saved to disk or localStorage.</li>
-    <li>No refresh tokens are stored. You must re-authenticate each session.</li>
-  </ul>
+  <p>
+    CashFlow also offers an <strong>optional</strong> manual backup/import feature
+    using a GitHub Gist you create and control, via a GitHub Personal Access Token you
+    generate and paste into the app. This token is stored only in your browser&rsquo;s
+    localStorage and is sent only to GitHub&rsquo;s API, directly from your browser.
+    This is a manual, opt-in feature &mdash; it is not used for automatic sync.
+  </p>
 
   <h3>4. Information We Collect</h3>
-  <p>CashFlow does <strong>not</strong> collect, store, or transmit any personal information.
-  Specifically:</p>
+  <p>CashFlow does <strong>not</strong> collect, store, or transmit any personal
+  information beyond what&rsquo;s described above. Specifically:</p>
   <ul>
     <li>No analytics or tracking scripts are used.</li>
     <li>No cookies are set by the application.</li>
-    <li>No personal data is sent to any server.</li>
-    <li>No advertising networks or third-party services are integrated (other than
-    Google Drive, if you opt in).</li>
+    <li>No personal data is sent to any server other than Supabase (required) and,
+    if you opt in, GitHub&rsquo;s Gist API.</li>
+    <li>No advertising networks or other third-party services are integrated.</li>
   </ul>
 
   <h3>5. Third-Party Services</h3>
-  <p>CashFlow loads the following third-party resources via CDN:</p>
+  <p>
+    CashFlow is a self-contained app &mdash; its code, fonts, and icons are hosted
+    alongside it rather than loaded from a CDN. It communicates with the following
+    third-party services:
+  </p>
   <ul>
-    <li><strong>React &amp; ReactDOM</strong> &mdash; UI framework (cdn.jsdelivr.net)</li>
-    <li><strong>Recharts</strong> &mdash; charting library (cdn.jsdelivr.net)</li>
-    <li><strong>Google Fonts</strong> &mdash; Inter font family (fonts.googleapis.com)</li>
-    <li><strong>Google Identity Services</strong> &mdash; OAuth authentication (accounts.google.com)</li>
-    <li><strong>Google API Client</strong> &mdash; Drive API access (apis.google.com)</li>
+    <li><strong>Supabase</strong> &mdash; authentication and database storage for your
+    budget data (required to use the app).</li>
+    <li><strong>GitHub Gist API</strong> &mdash; only if you opt into the manual
+    backup/import feature, using a token you provide.</li>
+    <li><strong>Anthropic API</strong> &mdash; only if you enter your own API key for
+    the optional AI Insights feature; requests go directly from your browser to
+    Anthropic using your key.</li>
   </ul>
   <p>
-    These services are governed by their own privacy policies. CashFlow does not control
-    or have access to any data these services may collect.
+    These services are governed by their own privacy policies. CashFlow does not
+    control or have access to any data these services may collect.
   </p>
 
   <h3>6. Data Retention &amp; Deletion</h3>
   <ul>
-    <li><strong>Local data:</strong> Persists in your browser until you clear it. You can
-    delete all CashFlow data at any time by clearing your browser&rsquo;s localStorage
-    for this site.</li>
-    <li><strong>Google Drive data:</strong> The <code>CashFlow_Data.json</code> file remains
-    in your Google Drive until you delete it. You can revoke CashFlow&rsquo;s access at
-    any time at
-    <a href="https://myaccount.google.com/permissions">https://myaccount.google.com/permissions</a>.</li>
+    <li><strong>Local cache:</strong> Persists in your browser until you clear it or
+    use the in-app &ldquo;Reset Local Cache&rdquo; option; your Supabase data is
+    unaffected either way.</li>
+    <li><strong>Supabase data:</strong> Remains in the project until you delete your
+    account or ask the app&rsquo;s operator to delete it.</li>
+    <li><strong>GitHub Gist data:</strong> If you use the optional Gist backup, the
+    Gist remains in your own GitHub account until you delete it there.</li>
   </ul>
 
   <h3>7. Children&rsquo;s Privacy</h3>

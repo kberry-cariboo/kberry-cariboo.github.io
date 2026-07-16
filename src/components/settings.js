@@ -292,13 +292,81 @@
       }
     )));
   }
+  function GistMigrationPanel({ household, onImported }) {
+    const [status, setStatus] = useState("idle");
+    const [preview, setPreview] = useState(null);
+    const [msg, setMsg] = useState("");
+    const hasGist = !!(localStorage.getItem("cf_gist_token") && localStorage.getItem("cf_gist_id"));
+    if (!hasGist || !household) return null;
+    const fetchPreview = async () => {
+      setStatus("fetching");
+      setMsg("");
+      try {
+        const tok = localStorage.getItem("cf_gist_token");
+        const gid = localStorage.getItem("cf_gist_id");
+        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: { Authorization: `token ${tok}`, Accept: "application/vnd.github+json" } });
+        if (!r.ok) throw new Error(`GitHub ${r.status}`);
+        const d = await r.json();
+        const file = d.files && d.files["CashFlow_Data.json"];
+        if (!file || !file.content) throw new Error("No CashFlow_Data.json file found in your Gist.");
+        setPreview(JSON.parse(file.content));
+        setStatus("preview");
+      } catch (e) {
+        setStatus("error");
+        setMsg(e.message);
+      }
+    };
+    const doImport = async () => {
+      if (!preview) return;
+      setStatus("importing");
+      setMsg("");
+      try {
+        const legacyProfiles = {};
+        (preview.users || []).forEach((u) => {
+          if (u && u.id) legacyProfiles[u.id] = u.fullName || "";
+        });
+        const payload = __spreadValues({}, preview);
+        delete payload.users;
+        payload.legacyProfiles = legacyProfiles;
+        payload.schemaVersion = SCHEMA_VERSION;
+        payload.savedAt = (/* @__PURE__ */ new Date()).toISOString();
+        const { error } = await supabaseClient.from("household_data").update({
+          data: payload,
+          updated_at: (/* @__PURE__ */ new Date()).toISOString()
+        }).eq("household_id", household.id);
+        if (error) throw error;
+        const { data: check, error: checkErr } = await supabaseClient.from("household_data").select("data").eq("household_id", household.id).maybeSingle();
+        if (checkErr) throw checkErr;
+        const importedCount = ((check && check.data && check.data.entries) || []).length;
+        const expectedCount = (preview.entries || []).length;
+        if (importedCount !== expectedCount) throw new Error(`Verification failed: expected ${expectedCount} entries, found ${importedCount} after import. Your Gist is untouched — nothing was lost.`);
+        await onImported();
+        setStatus("done");
+        setMsg(`Imported ${importedCount} entries successfully. Your Gist was not modified.`);
+      } catch (e) {
+        setStatus("error");
+        setMsg(e.message);
+      }
+    };
+    return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--amber)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "☁ Import your existing Gist data"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "We found a GitHub Gist connection saved on this device. You can import its data into your new Supabase household — this only adds data, it never modifies or deletes your Gist, and you can re-run it any time."), status === "idle" && /* @__PURE__ */ React.createElement("button", { onClick: fetchPreview, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px" } }, "Check my Gist"), status === "fetching" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Checking your Gist…"), status === "preview" && preview && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
+      fontSize: 12,
+      color: "var(--textMid)",
+      background: "var(--stripe)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginBottom: 14
+    } }, "Found ", (preview.entries || []).length, " entries \xB7 ", (preview.categories || []).length, " categories \xB7 last saved ", preview.savedAt ? new Date(preview.savedAt).toLocaleString() : "unknown date"), /* @__PURE__ */ React.createElement("button", { onClick: doImport, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px" } }, "Import into household")), status === "importing" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Importing…"), status === "done" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--greenDk)", fontWeight: 600 } }, "✓ ", msg), status === "error" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--red)", marginBottom: 8 } }, "❌ ", msg), /* @__PURE__ */ React.createElement("button", { onClick: fetchPreview, className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px" } }, "Retry")));
+  }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, listSnapshots = null, restoreSnapshot = null, downloadBackup = null, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
-  }, users = [], setUsers = () => {
   }, sessionUser = null, logout = () => {
-  }, aiApiKey = "", setAiApiKey }) {
+  }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseSave = () => {
+  }, houseLoad = () => {
+  }, household = null, members = [], createInvite = () => {
+  }, setMemberDisabled = () => {
+  } }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -315,10 +383,9 @@
     const [settingsPage, setSettingsPage] = useState("general");
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [showAiKey, setShowAiKey] = useState(false);
-    const [userForm, setUserForm] = useState(null);
-    const [uf, setUf] = useState({ fullName: "", email: "", password: "", disabled: false });
-    const [ufErr, setUfErr] = useState({});
-    const [userMsg, setUserMsg] = useState("");
+    const [inviteCode, setInviteCode] = useState("");
+    const [inviteBusy, setInviteBusy] = useState(false);
+    const [memberMsg, setMemberMsg] = useState("");
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [historyOpen, setHistoryOpen] = useState({});
     const sortedYears = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -466,6 +533,7 @@
       width: "fit-content"
     } }, [
       { id: "general", label: "\u2699  General" },
+      { id: "household", label: "\u{1F46A} Household" },
       { id: "templates", label: "\u{1F4CB} Templates" },
       { id: "audit", label: "\u{1F550} Audit" }
     ].map(({ id, label }) => /* @__PURE__ */ React.createElement(
@@ -687,7 +755,31 @@
       fontSize: 12,
       marginTop: 10,
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Auto Sync"), /* @__PURE__ */ React.createElement(
+    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "10px 14px",
+      borderRadius: 8,
+      background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
+      border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20 } }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => houseSave(false),
+        disabled: houseStatus === "syncing",
+        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+      },
+      "\u2b06 Save Now"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => houseLoad(),
+        disabled: houseStatus === "syncing",
+        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+      },
+      "\u2b07 Reload from Cloud"
+    ))), /* @__PURE__ */ React.createElement(GistMigrationPanel, { household, onImported: houseLoad }), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Manual Backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 12 } }, "No longer auto-syncs \u2014 use this as an independent manual backup, or to move data between devices."), /* @__PURE__ */ React.createElement(
       GistSettingsPanel,
       {
         gistStatus,
@@ -931,35 +1023,78 @@
         },
         onCancel: () => setConfirmTgtReset(false)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Permanently erase all CashFlow data stored on this device \u2014 entries, overrides, categories, templates, budget targets, years, and sync settings. This cannot be undone. Export a backup first if you might need this data again."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Clear this device's local cache \u2014 entries, overrides, categories, templates, budget targets, years, and local preferences. ", household ? "Your data in Supabase is not affected \u2014 the app will reload it from the cloud right after." : "Export a backup first if you might need this data again.", " This cannot be undone locally."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmWipe(true),
         className: "cf-btn cf-btn--danger", style: { padding: "9px 20px", border: "1px solid var(--red)" }
       },
-      "\u{1F5D1} Reset All App Data"
+      "\u{1F5D1} Reset Local Cache"
     ), confirmWipe && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
-        title: "Reset all app data?",
-        message: "This will permanently delete all entries, overrides, categories, templates, budget targets, and saved years from this device. This cannot be undone.",
+        title: "Reset local cache?",
+        message: household ? "This clears entries, overrides, categories, templates, budget targets, and saved years cached on this device, then reloads them fresh from Supabase. Your cloud data is not deleted." : "This will permanently delete all entries, overrides, categories, templates, budget targets, and saved years from this device. This cannot be undone.",
         confirmLabel: "Reset Everything",
         onConfirm: () => {
           try {
-            const savedUsers = localStorage.getItem("cf_users");
             Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
-            if (savedUsers) localStorage.setItem("cf_users", savedUsers);
-          } catch (e) {
-          }
-          try {
-            sessionStorage.removeItem("cf_session");
           } catch (e) {
           }
           window.location.reload();
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
+    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => /* @__PURE__ */ React.createElement("div", { key: m.user_id, style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 0",
+      borderBottom: "1px solid var(--border)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontWeight: 400 } }, "(You)")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \xB7 Disabled" : "")), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: async () => {
+          setMemberMsg("");
+          try {
+            await setMemberDisabled(m.user_id, !m.disabled);
+          } catch (e) {
+            setMemberMsg(e.message || "Only the household owner can do this.");
+          }
+        },
+        className: m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+      },
+      m.disabled ? "Enable" : "Disable"
+    ))), memberMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 10 } }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: async () => {
+          setInviteBusy(true);
+          try {
+            const code = await createInvite();
+            setInviteCode(code);
+          } catch (e) {
+            setMemberMsg(e.message || "Couldn't create an invite code.");
+          }
+          setInviteBusy(false);
+        },
+        disabled: inviteBusy,
+        className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px" }
+      },
+      inviteBusy ? "Generating…" : "Generate invite code"
+    ), inviteCode && /* @__PURE__ */ React.createElement("div", { style: {
+      marginTop: 14,
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 20,
+      fontWeight: 700,
+      letterSpacing: "0.1em",
+      textAlign: "center",
+      padding: "14px",
+      borderRadius: 8,
+      background: "var(--stripe)",
+      border: "1px solid var(--border)",
+      color: "var(--text)"
+    } }, inviteCode))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 13,
       color: "var(--textLt)",
       fontStyle: "italic"
@@ -1085,8 +1220,6 @@
     const [conflict, setConflict] = useState(null);
     const lastSyncedAt = useRef(null);
     const [msg, setMsg] = useState("");
-    const saveTimer = useRef(null);
-    const initialized = useRef(false);
     const pendingSync = useRef(false);
     useEffect(() => {
       const onOnline = () => {
@@ -1500,39 +1633,6 @@
       darkMode,
       forecastHorizon,
       users,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder
-    ]);
-    useEffect(() => {
-      if (initialized.current) return;
-      initialized.current = true;
-      if (token() && gistId()) loadData();
-    }, []);
-    useEffect(() => {
-      if (!token() || !gistId()) return;
-      if (!initialized.current) return;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveData(true), 2e3);
-      return () => clearTimeout(saveTimer.current);
-    }, [
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      alertThreshold,
-      darkMode,
-      activeYear,
-      budgetTargets,
-      templates,
-      completed,
-      forecastHorizon,
       colOrder,
       regFilter,
       regFilterCats,
