@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>CashFlow Budget</title>
+<meta name="theme-color" content="#1C2B3A"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="CashFlow"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{height:100%;-webkit-text-size-adjust:100%;scrollbar-gutter:stable;}
+  body{height:100%;background:#1C2B3A;font-family:Inter,sans-serif;overflow-x:hidden;scrollbar-gutter:stable;}
+  #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;}
+  .bbar{width:180px;height:3px;background:#243447;border-radius:2px;overflow:hidden;}
+  .bfill{height:100%;background:#fff;border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
+  @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
+  svg{max-width:100%;}
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="boot">
+    <div style="font-size:36px;margin-bottom:4px">💰</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;font-size:16px;letter-spacing:0.04em">CashFlow</div>
+    <div class="bbar"><div class="bfill"></div></div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
+  </div>
+</div>
+<script>__REACT_BUNDLE__</script>
+<script>__MINI_RECHARTS__</script>
+<script>__APP_CODE__</script>
+</body>
+</html>

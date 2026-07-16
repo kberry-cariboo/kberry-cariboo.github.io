@@ -1,0 +1,64 @@
+name: Build index.html from src/
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "src/**"
+      - "index.template.html"
+      - "build.js"
+  pull_request:
+    paths:
+      - "src/**"
+      - "index.template.html"
+      - "build.js"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build index.html
+        run: node build.js
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Everywhere except pushes to main, just verify the build matches what
+      # was committed — an out-of-sync index.html should fail here rather
+      # than silently drift until it's merged.
+      - name: Fail if index.html is out of date
+        if: steps.diff.outputs.changed == 'true' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: |
+          echo "::error::index.html is out of sync with src/. Run 'node build.js' locally and commit the result."
+          git diff --stat -- index.html
+          exit 1
+
+      # On pushes to main, commit the freshly-built index.html back so
+      # GitHub Pages (which serves index.html directly from the branch root)
+      # always reflects the current src/.
+      - name: Commit rebuilt index.html
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Rebuild index.html from src/ [skip ci]"
+          git push
