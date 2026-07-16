@@ -950,7 +950,7 @@ document.addEventListener('DOMContentLoaded',function(){
            Desktop: fixed layout + explicit widths so columns never shift
            between months. Mobile overrides live in the \u2264480px block below. */
         .budget-monthly-table{table-layout:fixed;}
-        .budget-monthly-table .budget-col-day{width:30px;}
+        .budget-monthly-table .budget-col-day{width:38px;}
         .budget-monthly-table .budget-col-desc{width:auto;max-width:0;}
         .budget-monthly-table .budget-col-category{width:120px;}
         .budget-monthly-table .budget-col-income{width:105px;}
@@ -4419,9 +4419,9 @@ document.addEventListener('DOMContentLoaded',function(){
           fontSize: 11,
           fontWeight: 700,
           color: "#fff",
-          padding: "10px 14px",
+          padding: "10px 6px",
           textAlign: "left",
-          letterSpacing: "0.08em",
+          letterSpacing: "0.04em",
           textTransform: "uppercase"
         } }, "Day"), bCols.map((col) => /* @__PURE__ */ React.createElement(
           "th",
@@ -4453,7 +4453,7 @@ document.addEventListener('DOMContentLoaded',function(){
         background: "var(--amberLt)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day", style: { width: 30, background: "var(--amberLt)", padding: 0 } }), bCols.map((col) => {
+      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day", style: { width: 40, background: "var(--amberLt)", padding: 0 } }), bCols.map((col) => {
         if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13", style: { fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open));
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc", style: { fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" } }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
@@ -4468,7 +4468,7 @@ document.addEventListener('DOMContentLoaded',function(){
         background: "var(--navy)",
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
-      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day", style: { width: 30, background: "var(--navy)", padding: 0 } }), bCols.map((col) => {
+      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day", style: { width: 40, background: "var(--navy)", padding: 0 } }), bCols.map((col) => {
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc", style: { fontSize: 12, fontWeight: 700, padding: "10px 14px", color: "#fff", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" } }, "Monthly Totals");
         if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat budget-col-category", style: { padding: "10px 14px" } });
         if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13", style: { fontWeight: 700, padding: "10px 14px", textAlign: "right", color: "var(--green)" } }, fmt(s.income));
