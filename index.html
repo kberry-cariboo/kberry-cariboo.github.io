@@ -6784,18 +6784,20 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       padding: "8px 12px",
       background: "var(--stripe)",
       borderRadius: 6
-    } }, "1. Go to ", /* @__PURE__ */ React.createElement("strong", null, "github.com \u2192 Settings \u2192 Developer settings \u2192 Personal access tokens \u2192 Tokens (classic)"), /* @__PURE__ */ React.createElement("br", null), "2. Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate new token"), ", tick ", /* @__PURE__ */ React.createElement("strong", null, "gist"), ", copy the token", /* @__PURE__ */ React.createElement("br", null), "3. Paste below and click Connect"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, "GitHub Personal Access Token *"), /* @__PURE__ */ React.createElement(
+    } }, "1. Go to ", /* @__PURE__ */ React.createElement("strong", null, "github.com \u2192 Settings \u2192 Developer settings \u2192 Personal access tokens \u2192 Tokens (classic)"), /* @__PURE__ */ React.createElement("br", null), "2. Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate new token"), ", tick ", /* @__PURE__ */ React.createElement("strong", null, "gist"), ", copy the token", /* @__PURE__ */ React.createElement("br", null), "3. Paste below and click Connect"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { htmlFor: "gist-token", style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4, display: "block" } }, "GitHub Personal Access Token *"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "gist-token",
         style: iStyle,
         type: "password",
         placeholder: "ghp_xxxxxxxxxxxxxxxxxxxx",
         value: tmpTok,
         onChange: (e) => setTmpTok(e.target.value)
       }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, "Gist ID ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)" } }, "\u2014 leave blank to auto-create on first connect")), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { htmlFor: "gist-id", style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4, display: "block" } }, "Gist ID ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)" } }, "\u2014 leave blank to auto-create on first connect")), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "gist-id",
         style: iStyle,
         type: "text",
         placeholder: "Auto-created on first connect",
@@ -7473,6 +7475,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       {
         style: __spreadProps(__spreadValues({}, inp), { flex: 1 }),
         value: newCat,
+        "aria-label": "New category name",
         placeholder: "New category name\u2026",
         onChange: (e) => {
           setNewCat(e.target.value);
