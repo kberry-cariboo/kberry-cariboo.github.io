@@ -7123,6 +7123,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       "input",
       {
         type: showAiKey ? "text" : "password",
+        "aria-label": "Anthropic API Key",
         value: aiApiKey,
         onChange: (e) => setAiApiKey(e.target.value),
         placeholder: "sk-ant-api03-...",
@@ -7161,9 +7162,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       "Clear key"
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
+        id: "alert-threshold",
         type: "number",
         inputMode: "decimal",
         step: "100",
@@ -7482,9 +7484,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       fontSize: 13,
       fontWeight: 600,
       padding: "8px 18px"
-    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", style: { fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
       "select",
       {
+        id: "auto-lock-select",
         value: lockTimeout,
         onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
         style: {
