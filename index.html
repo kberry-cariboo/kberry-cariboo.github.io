@@ -2560,7 +2560,7 @@ document.addEventListener('DOMContentLoaded',function(){
       },
       items.map(
         (item, i) => item === "---" ? /* @__PURE__ */ React.createElement("div", { key: i, style: { height: 1, background: "var(--border)", margin: "3px 8px" } }) : /* @__PURE__ */ React.createElement(
-          "div",
+          "button",
           {
             key: i,
             onClick: () => {
@@ -2570,7 +2570,11 @@ document.addEventListener('DOMContentLoaded',function(){
             style: {
               fontSize: 13,
               padding: "9px 16px",
+              border: "none",
+              width: "100%",
               cursor: "pointer",
+              textAlign: "left",
+              background: "transparent",
               color: item.danger ? "var(--red)" : "var(--text)",
               display: "flex",
               alignItems: "center",
@@ -3446,14 +3450,22 @@ document.addEventListener('DOMContentLoaded',function(){
       });
     };
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      "div",
+      "button",
       {
+        type: "button",
         onClick: toggle,
+        "aria-expanded": !collapsed,
         style: {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           gap: 10,
+          width: "100%",
+          border: "none",
+          background: "transparent",
+          padding: 0,
+          font: "inherit",
+          textAlign: "left",
           cursor: "pointer",
           userSelect: "none",
           marginBottom: collapsed ? 0 : 2
@@ -4308,14 +4320,15 @@ document.addEventListener('DOMContentLoaded',function(){
         padding: "12px 8px",
         borderRight: "1px solid var(--border)"
       } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
-        "div",
+        "button",
         {
+          type: "button",
           onClick: () => openOccurrenceEdit(ev),
           onContextMenu: (e) => {
             e.preventDefault();
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
           },
-          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4, cursor: "pointer", borderRadius: 6, padding: "4px 6px" },
+          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4, cursor: "pointer", borderRadius: 6, padding: "4px 6px", width: "100%", border: "none", background: "transparent", font: "inherit", textAlign: "left" },
           onMouseEnter: (e) => e.currentTarget.style.background = "rgba(47,84,150,0.06)",
           onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
         },
@@ -6635,8 +6648,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const critical = alerts.filter((a) => a.balance < 0);
     const warning = alerts.filter((a) => a.balance >= 0);
     const renderAlertRow = (ev, i) => /* @__PURE__ */ React.createElement(
-      "div",
+      "button",
       {
+        type: "button",
         onClick: () => {
           window.__cfGoBudgetSub ? window.__cfGoBudgetSub("forecast") : setTab("budget");
         },
@@ -6648,6 +6662,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           borderRadius: 8,
           marginBottom: 6,
           cursor: "pointer",
+          width: "100%",
+          font: "inherit",
+          textAlign: "left",
           background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
           border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`,
           transition: "opacity 0.15s"
