@@ -2386,9 +2386,10 @@ document.addEventListener('DOMContentLoaded',function(){
       onImport(imported);
       setDone(true);
     };
-    const sel = (field, label) => /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, label), /* @__PURE__ */ React.createElement(
+    const sel = (field, label) => /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4, display: "block" } }, label), /* @__PURE__ */ React.createElement(
       "select",
       {
+        id: `csv-map-${field}`,
         value: map[field],
         onChange: (e) => setMap((m) => __spreadProps(__spreadValues({}, m), { [field]: e.target.value })),
         style: {
