@@ -10090,7 +10090,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       dashOrder,
       setDashOrder
     });
-    const gistToken = () => localStorage.getItem("cf_gist_token") || "";
     useEffect(() => {
       gistLoadRef.current = houseLoad;
     }, [houseLoad]);
@@ -10356,36 +10355,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       },
       "\u2715"
-    )), gistToken() && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => gistSave(false),
-        disabled: gistStatus === "syncing",
-        title: gistStatus === "syncing" ? "Saving to Gist\u2026" : gistStatus === "error" ? `Gist error: ${gistMsg || ""}` : `Save to Gist${gistMsg ? ` \u2014 ${gistMsg}` : ""}`,
-        "aria-label": "Save to Gist",
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "0 12px",
-          height: 36,
-          minWidth: 40,
-          justifyContent: "center",
-          borderRadius: 8,
-          cursor: gistStatus === "syncing" ? "wait" : "pointer",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid",
-          flexShrink: 0,
-          borderColor: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.25)",
-          background: gistStatus === "ok" ? "rgba(39,174,115,0.15)" : gistStatus === "error" ? "rgba(232,93,74,0.15)" : "rgba(255,255,255,0.07)",
-          color: gistStatus === "error" ? "var(--red)" : gistStatus === "ok" ? "var(--green)" : "rgba(255,255,255,0.7)",
-          transition: "all 0.15s"
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, gistStatus === "syncing" ? "\u27F3" : gistStatus === "error" ? "\u2717" : "\u2601"),
-      /* @__PURE__ */ React.createElement("span", { className: "help-btn" }, "Save")
-    ), (() => {
+    )), (() => {
       const today2 = /* @__PURE__ */ new Date();
       const n90 = new Date(today2);
       n90.setDate(today2.getDate() + 90);
