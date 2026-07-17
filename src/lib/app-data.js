@@ -393,6 +393,19 @@
            that zooms the page out and scales/displaces position:fixed chrome
            (bottom nav). Wide content belongs in an .hscroll container. */
         html,body{overflow-x:hidden;overflow-x:clip;}
+        /* ── Mobile app-shell scrolling ─────────────────────────────────────
+           On touch devices the page body must never scroll: a scrolling body
+           collapses/expands the browser's URL bar, and position:fixed chrome
+           (the bottom nav) shifts with that animation. Instead the app root
+           (.app-scroll) is a fixed-height internal scroller — the browser bar
+           never moves, so neither does the nav. Desktop keeps normal body
+           scrolling for keyboard/scroll-wheel ergonomics. */
+        @media (pointer:coarse){
+          html,body{height:100%;overflow:hidden;}
+          .app-scroll{height:100vh;height:100dvh;overflow-y:auto;overflow-x:clip;
+            -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+        }
+        @media print{html,body{height:auto;overflow:visible;}.app-scroll{height:auto!important;overflow:visible!important;}}
         .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
         .settings-page-pills::-webkit-scrollbar{display:none;}
         /* \u2500\u2500 Modern interaction polish (pointer devices) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */

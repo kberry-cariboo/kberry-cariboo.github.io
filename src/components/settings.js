@@ -122,12 +122,28 @@
         live = false;
       };
     }, []);
+    const [lockOnLaunch, setLockOnLaunch] = useState(() => {
+      try {
+        return localStorage.getItem("cf_lock_on_launch") === "1";
+      } catch (e) {
+        return false;
+      }
+    });
+    const toggleLockOnLaunch = (v) => {
+      setLockOnLaunch(v);
+      try {
+        if (v) localStorage.setItem("cf_lock_on_launch", "1");
+        else localStorage.removeItem("cf_lock_on_launch");
+      } catch (e) {
+      }
+    };
     const toggleBiometric = async () => {
       if (!sessionUser || bioBusy) return;
       setBioMsg("");
       if (bioEnabled) {
         clearBiometric(sessionUser.id);
         setBioEnabled(false);
+        toggleLockOnLaunch(false);
         return;
       }
       setBioBusy(true);
@@ -135,7 +151,7 @@
         await registerBiometric(sessionUser.id, sessionUser.email, sessionUser.fullName);
         setBioEnabled(true);
       } catch (e) {
-        setBioMsg(e.name === "NotAllowedError" ? "Cancelled — nothing was changed." : e.message || "Couldn't set up Face ID / Touch ID on this device.");
+        setBioMsg(e.name === "NotAllowedError" ? "Cancelled — nothing was changed." : e.message || "Couldn't set up fingerprint / face unlock on this device.");
       } finally {
         setBioBusy(false);
       }
@@ -730,7 +746,7 @@
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with Face ID / Touch ID or your password."), sessionUser && bioSupported && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with Face ID / Touch ID" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password."), sessionUser && bioSupported && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),

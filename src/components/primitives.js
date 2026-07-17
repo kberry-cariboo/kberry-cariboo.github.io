@@ -56,9 +56,9 @@
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => setScrolling(false), 400);
       };
-      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true, capture: true });
       return () => {
-        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("scroll", onScroll, { capture: true });
         clearTimeout(idleTimer);
       };
     }, []);

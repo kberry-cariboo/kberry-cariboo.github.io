@@ -1382,6 +1382,19 @@ document.addEventListener('DOMContentLoaded',function(){
            that zooms the page out and scales/displaces position:fixed chrome
            (bottom nav). Wide content belongs in an .hscroll container. */
         html,body{overflow-x:hidden;overflow-x:clip;}
+        /* ── Mobile app-shell scrolling ─────────────────────────────────────
+           On touch devices the page body must never scroll: a scrolling body
+           collapses/expands the browser's URL bar, and position:fixed chrome
+           (the bottom nav) shifts with that animation. Instead the app root
+           (.app-scroll) is a fixed-height internal scroller — the browser bar
+           never moves, so neither does the nav. Desktop keeps normal body
+           scrolling for keyboard/scroll-wheel ergonomics. */
+        @media (pointer:coarse){
+          html,body{height:100%;overflow:hidden;}
+          .app-scroll{height:100vh;height:100dvh;overflow-y:auto;overflow-x:clip;
+            -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+        }
+        @media print{html,body{height:auto;overflow:visible;}.app-scroll{height:auto!important;overflow:visible!important;}}
         .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
         .settings-page-pills::-webkit-scrollbar{display:none;}
         /* \u2500\u2500 Modern interaction polish (pointer devices) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
@@ -2154,9 +2167,9 @@ document.addEventListener('DOMContentLoaded',function(){
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => setScrolling(false), 400);
       };
-      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true, capture: true });
       return () => {
-        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("scroll", onScroll, { capture: true });
         clearTimeout(idleTimer);
       };
     }, []);
@@ -7792,12 +7805,28 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         live = false;
       };
     }, []);
+    const [lockOnLaunch, setLockOnLaunch] = useState(() => {
+      try {
+        return localStorage.getItem("cf_lock_on_launch") === "1";
+      } catch (e) {
+        return false;
+      }
+    });
+    const toggleLockOnLaunch = (v) => {
+      setLockOnLaunch(v);
+      try {
+        if (v) localStorage.setItem("cf_lock_on_launch", "1");
+        else localStorage.removeItem("cf_lock_on_launch");
+      } catch (e) {
+      }
+    };
     const toggleBiometric = async () => {
       if (!sessionUser || bioBusy) return;
       setBioMsg("");
       if (bioEnabled) {
         clearBiometric(sessionUser.id);
         setBioEnabled(false);
+        toggleLockOnLaunch(false);
         return;
       }
       setBioBusy(true);
@@ -7805,7 +7834,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         await registerBiometric(sessionUser.id, sessionUser.email, sessionUser.fullName);
         setBioEnabled(true);
       } catch (e) {
-        setBioMsg(e.name === "NotAllowedError" ? "Cancelled — nothing was changed." : e.message || "Couldn't set up Face ID / Touch ID on this device.");
+        setBioMsg(e.name === "NotAllowedError" ? "Cancelled — nothing was changed." : e.message || "Couldn't set up fingerprint / face unlock on this device.");
       } finally {
         setBioBusy(false);
       }
@@ -8400,7 +8429,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with Face ID / Touch ID or your password."), sessionUser && bioSupported && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with Face ID / Touch ID" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password."), sessionUser && bioSupported && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
@@ -9241,7 +9270,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           marginBottom: 10
         }
       },
-      checking ? "Checking…" : "Unlock with Face ID / Touch ID"
+      checking ? "Checking…" : "Unlock with fingerprint / face"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -9362,7 +9391,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           cursor: "pointer"
         }
       },
-      "Use Face ID / Touch ID instead"
+      "Use fingerprint / face instead"
     ))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -9608,7 +9637,16 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       signOut();
     };
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
-    const [locked, setLocked] = useState(false);
+    // "Fingerprint sign-on": when enabled, the app starts locked and the lock
+    // screen immediately prompts for the device biometric (fingerprint / face).
+    // The Supabase session persists underneath — this gates the UI on-device.
+    const [locked, setLocked] = useState(() => {
+      try {
+        return localStorage.getItem("cf_lock_on_launch") === "1";
+      } catch (e) {
+        return false;
+      }
+    });
     useEffect(() => {
       if (!lockTimeout || !sessionUser) return;
       const KEY = "cf_hidden_at";
@@ -9628,8 +9666,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return () => document.removeEventListener("visibilitychange", onVis);
     }, [lockTimeout, sessionUser]);
     useEffect(() => {
-      if (!sessionUser) setLocked(false);
-    }, [sessionUser]);
+      // Clear the lock only on a real signed-out state — during startup the
+      // session is still loading and the launch lock must survive until the
+      // lock screen can prompt for the fingerprint.
+      if (!authLoading && !session) setLocked(false);
+    }, [authLoading, session]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
@@ -9937,7 +9978,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }, [houseLoad]);
     useEffect(() => {
       const onStart = (e) => {
-        if (window.scrollY > 10) return;
+        const sc = document.querySelector(".app-scroll");
+        if (window.scrollY > 10 || sc && sc.scrollTop > 10) return;
         if (document.querySelector(".modal-overlay")) return;
         ptrRef.current = { startY: e.touches[0].clientY, active: true };
       };
@@ -10147,7 +10189,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     if (locked) {
       return /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout });
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll", style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
       fontWeight: 700,
       padding: "4px 12px",
       borderRadius: "16px",
