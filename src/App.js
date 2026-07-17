@@ -756,6 +756,14 @@
           setMenuOpen(false);
           setTab("settings");
         } },
+        { label: "Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
+          setMenuOpen(false);
+          setTab("settings");
+          setTimeout(() => {
+            const el = document.getElementById("sec-security");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 150);
+        } },
         { label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
           setMenuOpen(false);
           setShowHelp(true);
