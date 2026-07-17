@@ -763,6 +763,11 @@ document.addEventListener('DOMContentLoaded',function(){
     const initialized = useRef(false);
     const saveTimer = useRef(null);
     const lastLoadedHousehold = useRef(null);
+    // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
+    // receipts table holds server-side. Used to diff on save so only
+    // added/changed/removed images travel over the network. Receipts are
+    // strictly per-occurrence; entry-level attachments no longer exist.
+    const receiptCache = useRef({});
     const applyPayload = useCallback((d) => {
       if (!d) return;
       if (d.entries) setEntries(d.entries);
@@ -787,9 +792,45 @@ document.addEventListener('DOMContentLoaded',function(){
       if (d.completed) setCompleted(d.completed);
       if (d.aiApiKey && setAiApiKey) setAiApiKey(d.aiApiKey);
     }, [setEntries, setOverridesByYr, setYearConfigs, setCategories, setCategoryColors, setActiveYear, setAlertThreshold, setDarkMode, setForecastHorizon, setGoals, setDashHidden, setDashOrder, setColOrder, setRegFilter, setRegFilterCats, setRegFilterScheds, setRegFilterStatus, setBudgetTargets, setTemplates, setCompleted, setAiApiKey]);
+    // Receipt images live in the receipts table as binary blobs, not inside the
+    // save payload — the payload only carries the rest of each entry/override.
+    const stripAttachments = (list) => (list || []).map((e) => {
+      if (!e || e.attachment === void 0) return e;
+      const copy = Object.assign({}, e);
+      delete copy.attachment;
+      return copy;
+    });
+    const stripOverrideAttachments = (byYr) => {
+      const out = {};
+      Object.keys(byYr || {}).forEach((year) => {
+        const yOvs = byYr[year] || {};
+        out[year] = {};
+        Object.keys(yOvs).forEach((k) => {
+          const o = yOvs[k];
+          if (o && o.attachment !== void 0) {
+            const copy = Object.assign({}, o);
+            delete copy.attachment;
+            out[year][k] = copy;
+          } else {
+            out[year][k] = o;
+          }
+        });
+      });
+      return out;
+    };
+    const collectAttachments = useCallback(() => {
+      const map = {};
+      Object.keys(overridesByYr || {}).forEach((year) => {
+        const yOvs = overridesByYr[year] || {};
+        Object.keys(yOvs).forEach((k) => {
+          if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
+        });
+      });
+      return map;
+    }, [overridesByYr]);
     const buildPayload = useCallback(() => ({
-      entries,
-      overridesByYr,
+      entries: stripAttachments(entries),
+      overridesByYr: stripOverrideAttachments(overridesByYr),
       yearConfigs,
       categories,
       categoryColors,
@@ -817,28 +858,67 @@ document.addEventListener('DOMContentLoaded',function(){
       setStatus("syncing");
       setMsg("Loading…");
       try {
-        const { data, error } = await supabaseClient.from("household_data").select("data").eq("household_id", household.id).maybeSingle();
+        const { data, error } = await supabaseClient.rpc("load_household");
         if (error) throw error;
-        applyPayload((data && data.data) || {});
+        const payload = (data && data.data) || {};
+        const receipts = (data && data.receipts) || [];
+        const rmap = {};
+        receipts.forEach((r) => {
+          if (r && r.ownerKey && r.b64) rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+        });
+        receiptCache.current = Object.assign({}, rmap);
+        // Re-attach receipt images to the occurrences they belong to so the
+        // rest of the app keeps seeing plain `attachment` data URLs.
+        if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+          Object.keys(payload.overridesByYr).forEach((year) => {
+            const yOvs = payload.overridesByYr[year] || {};
+            Object.keys(yOvs).forEach((k) => {
+              const src = rmap["override:" + year + ":" + k];
+              if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+            });
+          });
+        }
+        applyPayload(payload);
+        initialized.current = true;
         setStatus("ok");
         setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
         setStatus("error");
-        setMsg("❌ " + e.message);
+        setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
         return false;
       }
     }, [household, applyPayload]);
+    const syncReceipts = useCallback(async () => {
+      const current = collectAttachments();
+      const cached = receiptCache.current;
+      const parse = (dataUrl) => {
+        const m = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl || "");
+        return m ? { mime: m[1], b64: m[2] } : null;
+      };
+      for (const key of Object.keys(current)) {
+        if (cached[key] === current[key]) continue;
+        const img = parse(current[key]);
+        if (!img) continue;
+        const { error } = await supabaseClient.rpc("put_receipt", { p_owner_key: key, p_mime: img.mime, p_b64: img.b64 });
+        if (error) throw error;
+        cached[key] = current[key];
+      }
+      for (const key of Object.keys(cached)) {
+        if (current[key]) continue;
+        const { error } = await supabaseClient.rpc("delete_receipt", { p_owner_key: key });
+        if (error) throw error;
+        delete cached[key];
+      }
+    }, [collectAttachments]);
     const saveData = useCallback(async (silent = false) => {
       if (!supabaseClient || !household) return false;
       if (!silent) setStatus("syncing");
       try {
         const payload = buildPayload();
-        const { error } = await supabaseClient.from("household_data").update({
-          data: payload,
-          updated_at: (/* @__PURE__ */ new Date()).toISOString()
-        }).eq("household_id", household.id);
+        const { error } = await supabaseClient.rpc("save_household", { p_data: payload });
         if (error) throw error;
+        await syncReceipts();
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -847,18 +927,23 @@ document.addEventListener('DOMContentLoaded',function(){
         setMsg("❌ " + e.message);
         return false;
       }
-    }, [household, buildPayload]);
+    }, [household, buildPayload, syncReceipts]);
     useEffect(() => {
       if (!household) {
         lastLoadedHousehold.current = null;
         initialized.current = false;
+        receiptCache.current = {};
         return;
       }
       if (lastLoadedHousehold.current === household.id) return;
       lastLoadedHousehold.current = household.id;
       initialized.current = false;
-      loadData().then(() => {
-        initialized.current = true;
+      // Autosave stays disabled until a load succeeds (loadData flips
+      // `initialized` on success) — saving after a failed load would overwrite
+      // the household with this device's (possibly empty) local state. A manual
+      // "Reload from Cloud" retries and re-enables autosave when it succeeds.
+      loadData().then((ok) => {
+        if (!ok) lastLoadedHousehold.current = null;
       });
     }, [household, loadData]);
     useEffect(() => {
@@ -894,7 +979,7 @@ document.addEventListener('DOMContentLoaded',function(){
   const CategoriesContext = createContext({ categories: [], categoryColors: {} });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
   const LOGO_SRC = "data:image/png;base64,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";
-  const SCHEMA_VERSION = 5;
+  const SCHEMA_VERSION = 7;
   const DEFAULT_ALERT_THRESHOLD = 1500;
   const APP_VERSION = CF_VERSION;
   function migrateData() {
@@ -993,6 +1078,26 @@ document.addEventListener('DOMContentLoaded',function(){
           write("cf_budgtargets", {});
         }
       } catch (e) {
+      }
+    }
+    if (storedVersion < 6) {
+      // GitHub Gist sync was removed — clear its stored credentials/state.
+      try {
+        localStorage.removeItem("cf_gist_token");
+        localStorage.removeItem("cf_gist_id");
+        localStorage.removeItem("cf_last_snapshot");
+      } catch (e) {
+      }
+    }
+    if (storedVersion < 7) {
+      // Receipts are per-occurrence only now: move any entry-level attachment
+      // onto the entry's start-date occurrence so the image is kept.
+      const entries = readJSON("cf_entries", null);
+      if (Array.isArray(entries) && entries.some((e) => e && e.attachment)) {
+        const ovr = readJSON("cf_overrides", {});
+        const res = moveEntryAttachmentsToOverrides(entries, ovr && typeof ovr === "object" ? ovr : {});
+        write("cf_entries", res.entries);
+        write("cf_overrides", res.overridesByYr);
       }
     }
     try {
@@ -1570,6 +1675,34 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     img.src = URL.createObjectURL(file);
   }
+  // Receipts are strictly per-occurrence. Legacy data (old backups, old
+  // localStorage) may still carry an entry-level `attachment`; this moves each
+  // one onto the entry's start-date occurrence so the image survives.
+  function moveEntryAttachmentsToOverrides(entries, overridesByYr) {
+    let moved = 0;
+    const ovs = {};
+    Object.keys(overridesByYr || {}).forEach((y) => {
+      ovs[y] = __spreadValues({}, overridesByYr[y] || {});
+    });
+    const cleaned = (entries || []).map((e) => {
+      if (!e || !e.attachment) return e;
+      const d = parseDate(e.startDate);
+      if (d && !isNaN(d)) {
+        const year = d.getFullYear();
+        const occId = `${e.id}-${year}-${d.getMonth()}-${d.getDate()}`;
+        ovs[year] = ovs[year] || {};
+        const existing = ovs[year][occId] || {};
+        if (existing.attachment === void 0) {
+          ovs[year][occId] = __spreadProps(__spreadValues({}, existing), { attachment: e.attachment });
+        }
+      }
+      moved++;
+      const copy = __spreadValues({}, e);
+      delete copy.attachment;
+      return copy;
+    });
+    return { entries: cleaned, overridesByYr: ovs, moved };
+  }
   const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const DEFAULT_CATEGORIES = [
@@ -1740,7 +1873,7 @@ document.addEventListener('DOMContentLoaded',function(){
           amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
-          attachment: ov.attachment !== void 0 ? ov.attachment : e.attachment || null,
+          attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
           month: m,
           day: effD,
@@ -2416,14 +2549,6 @@ document.addEventListener('DOMContentLoaded',function(){
   } })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), style: { fontSize: 13, color: "var(--text)", fontWeight: 600, cursor: "pointer" } }, label));
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
     var _a, _b, _c, _d, _e;
-    const [attachment, setAttachment] = useState((initial == null ? void 0 : initial.attachment) || null);
-    const attachFile = (e) => {
-      compressReceiptImage(e.target.files[0], (b64) => {
-        if (b64) setAttachment(b64);
-      });
-      e.target.value = "";
-    };
-    const [lightbox, setLightbox] = useState(false);
     const today = todayStr();
     const blank = {
       desc: "",
@@ -2496,8 +2621,7 @@ document.addEventListener('DOMContentLoaded',function(){
         amount: parseFloat(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: ma,
-        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : [],
-        attachment
+        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
@@ -2659,23 +2783,7 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
       ));
-    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
-      "img",
-      {
-        src: attachment,
-        alt: "attachment",
-        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
-        onClick: () => setLightbox(true)
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => setAttachment(null),
-        style: { fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
-      },
-      "Remove"
-    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", onClick: handleSave, style: { fontSize: 13, fontWeight: 600, padding: "9px 22px" } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel, style: { fontSize: 13, padding: "9px 16px" } }, "Cancel"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", onClick: handleSave, style: { fontSize: 13, fontWeight: 600, padding: "9px 22px" } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel, style: { fontSize: 13, padding: "9px 16px" } }, "Cancel"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const amt = parseFloat(f.amount) || 0;
       onSaveTemplate({
         desc: f.desc,
@@ -3274,7 +3382,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, e.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Has receipt" }, "\u{1F4CE}"), archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
@@ -3737,7 +3845,7 @@ document.addEventListener('DOMContentLoaded',function(){
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap"
-        }, arcStyle) }, e.desc, e.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Has receipt" }, "\u{1F4CE}"), archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13", style: {
+        }, arcStyle) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13", style: {
           fontWeight: 600,
           whiteSpace: "nowrap",
           flexShrink: 0,
@@ -7581,309 +7689,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       marginBottom: 10
     } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
-  function GistSettingsPanel({ gistStatus, gistMsg, gistSave, gistLoad, gistCreate, listSnapshots = null, restoreSnapshot = null, downloadBackup = null }) {
-    const [snaps, setSnaps] = useState(null);
-    const [snapsBusy, setSnapsBusy] = useState(false);
-    const [confirmRestore, setConfirmRestore] = useState(null);
-    const refreshSnaps = async () => {
-      if (!listSnapshots) return;
-      setSnapsBusy(true);
-      try {
-        setSnaps(await listSnapshots());
-      } catch (e) {
-        setSnaps([]);
-      }
-      setSnapsBusy(false);
-    };
-    const [tok, setTok] = useState(() => localStorage.getItem("cf_gist_token") || "");
-    const [gid, setGid] = useState(() => localStorage.getItem("cf_gist_id") || "");
-    const [editing, setEditing] = useState(false);
-    const [tmpTok, setTmpTok] = useState("");
-    const [tmpGid, setTmpGid] = useState("");
-    const isConfigured = !!(tok && gid);
-    const iStyle = {
-      fontSize: 12,
-      padding: "7px 10px",
-      border: "1px solid var(--border)",
-      borderRadius: 6,
-      background: "var(--inputBg)",
-      color: "var(--text)",
-      outline: "none",
-      width: "100%"
-    };
-    const btnSt = (bg, disabled) => ({
-      fontSize: 12,
-      fontWeight: 600,
-      padding: "7px 16px",
-      borderRadius: 6,
-      border: "none",
-      cursor: disabled ? "not-allowed" : "pointer",
-      background: bg,
-      color: "#fff",
-      opacity: disabled ? 0.6 : 1
-    });
-    const disconnect = () => {
-      localStorage.removeItem("cf_gist_token");
-      localStorage.removeItem("cf_gist_id");
-      setTok("");
-      setGid("");
-      setEditing(false);
-    };
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      marginBottom: 14,
-      padding: "10px 14px",
-      borderRadius: 8,
-      background: isConfigured ? "rgba(39,174,115,0.08)" : "var(--stripe)",
-      border: `1px solid ${isConfigured ? "rgba(39,174,115,0.25)" : "var(--border)"}`
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20 } }, isConfigured ? "\u2601" : "\u2699"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, isConfigured ? "Auto-sync active" : "Not configured"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, isConfigured ? `Gist ID: ${gid.slice(0, 8)}\u2026 \xB7 Changes save automatically` : "Enter your GitHub token to enable auto-save across devices")), gistMsg && /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 11,
-      textAlign: "right",
-      maxWidth: 160,
-      color: gistStatus === "error" ? "var(--red)" : gistStatus === "syncing" ? "var(--amber)" : "var(--greenDk)"
-    } }, gistMsg)), isConfigured && !editing && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => gistSave(false),
-        disabled: gistStatus === "syncing",
-        style: btnSt("var(--greenDk)", gistStatus === "syncing")
-      },
-      "\u2B06 Save Now"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => gistLoad(),
-        disabled: gistStatus === "syncing",
-        style: btnSt("var(--navyMid)", gistStatus === "syncing")
-      },
-      "\u2B07 Load from Gist"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setTmpTok(tok);
-          setTmpGid(gid);
-          setEditing(true);
-        },
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
-      },
-      "Edit Token"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: disconnect,
-        className: "cf-btn cf-btn--danger", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
-      },
-      "Disconnect"
-    )), (!isConfigured || editing) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 13,
-      color: "var(--textLt)",
-      lineHeight: 1.6,
-      padding: "8px 12px",
-      background: "var(--stripe)",
-      borderRadius: 6
-    } }, "1. Go to ", /* @__PURE__ */ React.createElement("strong", null, "github.com \u2192 Settings \u2192 Developer settings \u2192 Personal access tokens \u2192 Tokens (classic)"), /* @__PURE__ */ React.createElement("br", null), "2. Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate new token"), ", tick ", /* @__PURE__ */ React.createElement("strong", null, "gist"), ", copy the token", /* @__PURE__ */ React.createElement("br", null), "3. Paste below and click Connect"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { htmlFor: "gist-token", style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4, display: "block" } }, "GitHub Personal Access Token *"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "gist-token",
-        style: iStyle,
-        type: "password",
-        placeholder: "ghp_xxxxxxxxxxxxxxxxxxxx",
-        value: tmpTok,
-        onChange: (e) => setTmpTok(e.target.value)
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { htmlFor: "gist-id", style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4, display: "block" } }, "Gist ID ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amber)" } }, "\u2014 leave blank to auto-create on first connect")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "gist-id",
-        style: iStyle,
-        type: "text",
-        placeholder: "Auto-created on first connect",
-        value: tmpGid,
-        onChange: (e) => setTmpGid(e.target.value)
-      }
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        disabled: !tmpTok.trim() || gistStatus === "syncing",
-        style: __spreadProps(__spreadValues({}, btnSt("var(--navy)", !tmpTok.trim() || gistStatus === "syncing")), { flex: 1 }),
-        onClick: async () => {
-          const t = tmpTok.trim();
-          if (!t) return;
-          try {
-            localStorage.setItem("cf_gist_token", t);
-            if (tmpGid.trim()) {
-              localStorage.setItem("cf_gist_id", tmpGid.trim());
-              setTok(t);
-              setGid(tmpGid.trim());
-              setEditing(false);
-            } else {
-              const newId = await gistCreate(t);
-              if (newId) {
-                setTok(t);
-                setGid(newId);
-                setEditing(false);
-              }
-            }
-          } catch (err) {
-            toast("Couldn't save your Gist connection \u2014 your browser storage may be full.", "error");
-          }
-        }
-      },
-      tmpGid.trim() ? "Connect" : "Connect & Create Gist"
-    ), editing && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setEditing(false),
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "8px 14px", borderRadius: 6 }
-      },
-      "Cancel"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "var(--text)" } }, "\u{1F4BE} Backups"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, downloadBackup && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: downloadBackup,
-        style: {
-          fontSize: 11,
-          fontWeight: 600,
-          padding: "5px 12px",
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--navy)"
-        }
-      },
-      "\u2B07 Download backup"
-    ), listSnapshots && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: refreshSnaps,
-        disabled: snapsBusy,
-        style: {
-          fontSize: 11,
-          fontWeight: 600,
-          padding: "5px 12px",
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          cursor: snapsBusy ? "wait" : "pointer",
-          background: "transparent",
-          color: "var(--textMid)"
-        }
-      },
-      snapsBusy ? "\u27F3 Loading\u2026" : snaps === null ? "View snapshots" : "\u21BB Refresh"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginBottom: snaps && snaps.length ? 10 : 0 } }, "Snapshots are kept automatically in your Gist (last 3, rotated every 6 hours and before any overwrite)."), snaps !== null && (snaps.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)" } }, "No snapshots yet \u2014 they'll appear after your next few saves.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, snaps.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.n, style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: 10,
-      background: "var(--stripe)",
-      border: "1px solid var(--border)",
-      borderRadius: 8,
-      padding: "8px 12px",
-      flexWrap: "wrap"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, "Snapshot ", s.n), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", marginLeft: 8 } }, s.savedAt ? new Date(s.savedAt).toLocaleString() : "unknown date", " \xB7 ", s.entries, " entries", s.goals ? ` \xB7 ${s.goals} goals` : "")), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setConfirmRestore(s),
-        style: {
-          fontSize: 11,
-          fontWeight: 700,
-          padding: "5px 14px",
-          borderRadius: 6,
-          border: "1px solid var(--amber)",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--amber)"
-        }
-      },
-      "Restore"
-    ))))), confirmRestore && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: `Restore snapshot ${confirmRestore.n}?`,
-        confirmLabel: "Restore",
-        message: `Your data will be replaced with the snapshot from ${confirmRestore.savedAt ? new Date(confirmRestore.savedAt).toLocaleString() : "an earlier save"}. Your current data is preserved as Snapshot 1, so this can be undone.`,
-        onCancel: () => setConfirmRestore(null),
-        onConfirm: async () => {
-          const n = confirmRestore.n;
-          setConfirmRestore(null);
-          if (restoreSnapshot) {
-            await restoreSnapshot(n);
-            refreshSnaps();
-          }
-        }
-      }
-    )));
-  }
-  function GistMigrationPanel({ household, onImported }) {
-    const [status, setStatus] = useState("idle");
-    const [preview, setPreview] = useState(null);
-    const [msg, setMsg] = useState("");
-    const hasGist = !!(localStorage.getItem("cf_gist_token") && localStorage.getItem("cf_gist_id"));
-    if (!hasGist || !household) return null;
-    const fetchPreview = async () => {
-      setStatus("fetching");
-      setMsg("");
-      try {
-        const tok = localStorage.getItem("cf_gist_token");
-        const gid = localStorage.getItem("cf_gist_id");
-        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: { Authorization: `token ${tok}`, Accept: "application/vnd.github+json" } });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        const d = await r.json();
-        const file = d.files && d.files["CashFlow_Data.json"];
-        if (!file || !file.content) throw new Error("No CashFlow_Data.json file found in your Gist.");
-        setPreview(JSON.parse(file.content));
-        setStatus("preview");
-      } catch (e) {
-        setStatus("error");
-        setMsg(e.message);
-      }
-    };
-    const doImport = async () => {
-      if (!preview) return;
-      setStatus("importing");
-      setMsg("");
-      try {
-        const legacyProfiles = {};
-        (preview.users || []).forEach((u) => {
-          if (u && u.id) legacyProfiles[u.id] = u.fullName || "";
-        });
-        const payload = __spreadValues({}, preview);
-        delete payload.users;
-        payload.legacyProfiles = legacyProfiles;
-        payload.schemaVersion = SCHEMA_VERSION;
-        payload.savedAt = (/* @__PURE__ */ new Date()).toISOString();
-        const { error } = await supabaseClient.from("household_data").update({
-          data: payload,
-          updated_at: (/* @__PURE__ */ new Date()).toISOString()
-        }).eq("household_id", household.id);
-        if (error) throw error;
-        const { data: check, error: checkErr } = await supabaseClient.from("household_data").select("data").eq("household_id", household.id).maybeSingle();
-        if (checkErr) throw checkErr;
-        const importedCount = ((check && check.data && check.data.entries) || []).length;
-        const expectedCount = (preview.entries || []).length;
-        if (importedCount !== expectedCount) throw new Error(`Verification failed: expected ${expectedCount} entries, found ${importedCount} after import. Your Gist is untouched — nothing was lost.`);
-        await onImported();
-        setStatus("done");
-        setMsg(`Imported ${importedCount} entries successfully. Your Gist was not modified.`);
-      } catch (e) {
-        setStatus("error");
-        setMsg(e.message);
-      }
-    };
-    return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--amber)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "☁ Import your existing Gist data"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "We found a GitHub Gist connection saved on this device. You can import its data into your new Supabase household — this only adds data, it never modifies or deletes your Gist, and you can re-run it any time."), status === "idle" && /* @__PURE__ */ React.createElement("button", { onClick: fetchPreview, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px" } }, "Check my Gist"), status === "fetching" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Checking your Gist…"), status === "preview" && preview && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 12,
-      color: "var(--textMid)",
-      background: "var(--stripe)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 14
-    } }, "Found ", (preview.entries || []).length, " entries \xB7 ", (preview.categories || []).length, " categories \xB7 last saved ", preview.savedAt ? new Date(preview.savedAt).toLocaleString() : "unknown date"), /* @__PURE__ */ React.createElement("button", { onClick: doImport, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px" } }, "Import into household")), status === "importing" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Importing…"), status === "done" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--greenDk)", fontWeight: 600 } }, "✓ ", msg), status === "error" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--red)", marginBottom: 8 } }, "❌ ", msg), /* @__PURE__ */ React.createElement("button", { onClick: fetchPreview, className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px" } }, "Retry")));
-  }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
-  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, gistStatus, gistMsg, gistSave, gistLoad, gistCreate, listSnapshots = null, restoreSnapshot = null, downloadBackup = null, installPrompt = null, triggerInstall = () => {
+  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, goals = [], setGoals = () => {
+  }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
@@ -8124,7 +7933,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       ["sec-appearance", "Appearance"],
       ["sec-years", "Budget Years"],
       ["sec-backup", "Backup"],
-      ["sec-gist", "GitHub Gist"],
       ["sec-categories", "Categories"],
       ["sec-security", "Security"],
       ["sec-danger", "Danger Zone"]
@@ -8319,7 +8127,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         }
       }
     ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", borderRadius: 6 } }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 8 } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, activeYear, alertThreshold, darkMode, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -8333,11 +8141,19 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       reader.onload = (ev) => {
         try {
           const d = JSON.parse(ev.target.result);
-          if (d.entries) setEntries(d.entries);
-          if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
+          const fixed = moveEntryAttachmentsToOverrides(
+            Array.isArray(d.entries) ? d.entries : [],
+            d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
+          );
+          if (d.entries) setEntries(fixed.entries);
+          if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
           if (d.yearConfigs) setYearConfigs(d.yearConfigs);
           if (d.categories) setCategories(d.categories);
           if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
+          if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
+          if (Array.isArray(d.templates)) setTemplates(d.templates);
+          if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
+          if (Array.isArray(d.goals)) setGoals(d.goals);
           if (d.activeYear) setActiveYear(d.activeYear);
           if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
           if (d.darkMode != null) setDarkMode(d.darkMode);
@@ -8376,52 +8192,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
       },
       "\u2b07 Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(GistMigrationPanel, { household, onImported: houseLoad }), /* @__PURE__ */ React.createElement(Card, { id: "sec-gist", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Manual Backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 12 } }, "No longer auto-syncs \u2014 use this as an independent manual backup, or to move data between devices."), /* @__PURE__ */ React.createElement(
-      GistSettingsPanel,
-      {
-        gistStatus,
-        gistMsg,
-        gistSave,
-        gistLoad,
-        gistCreate,
-        listSnapshots,
-        restoreSnapshot,
-        downloadBackup
-      }
-    ), (() => {
-      let bytes = 0, count = 0;
-      try {
-        entries.forEach((e) => {
-          if (e.attachment) {
-            bytes += e.attachment.length;
-            count++;
-          }
-        });
-        Object.values(overridesByYr || {}).forEach((yr) => Object.values(yr || {}).forEach((o) => {
-          if (o && o.attachment) {
-            bytes += o.attachment.length;
-            count++;
-          }
-        }));
-      } catch (e) {
-      }
-      if (count === 0) return null;
-      const kb = Math.round(bytes / 1024);
-      const warn = kb >= 500;
-      const pct = Math.min(100, Math.round(kb / 1024 * 100));
-      return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "var(--text)" } }, "\u{1F4CE} Receipt storage \u2014 ", count, " attachment", count !== 1 ? "s" : ""), /* @__PURE__ */ React.createElement("span", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 12,
-        fontWeight: 700,
-        color: warn ? "var(--amber)" : "var(--textMid)"
-      } }, kb, " KB / ~1 MB")), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
-        height: "100%",
-        width: pct + "%",
-        borderRadius: 3,
-        background: warn ? "var(--amber)" : "var(--greenDk)",
-        transition: "width 0.3s ease"
-      } })), warn && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--amber)", marginTop: 6 } }, "Approaching the sync payload limit \u2014 consider removing receipts from older entries."));
-    })()), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -8756,499 +8527,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         ))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, paddingLeft: 12, borderLeft: "2px solid var(--border)" } }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
     })())));
-  }
-  function useGistSync({
-    entries,
-    setEntries,
-    overridesByYr,
-    setOverridesByYr,
-    yearConfigs,
-    budgetTargets,
-    setBudgetTargets,
-    templates,
-    setTemplates,
-    completed,
-    setCompleted,
-    goals = [],
-    setGoals = () => {
-    },
-    dashHidden = {},
-    setDashHidden = () => {
-    },
-    dashOrder = [],
-    setDashOrder = () => {
-    },
-    setYearConfigs,
-    categories,
-    setCategories,
-    categoryColors = {},
-    setCategoryColors = () => {
-    },
-    activeYear,
-    setActiveYear,
-    alertThreshold,
-    setAlertThreshold,
-    darkMode,
-    setDarkMode,
-    forecastHorizon = 90,
-    setForecastHorizon = () => {
-    },
-    colOrder = [],
-    setColOrder = () => {
-    },
-    regFilter = "all",
-    setRegFilter = () => {
-    },
-    regFilterCats = [],
-    setRegFilterCats = () => {
-    },
-    regFilterScheds = [],
-    setRegFilterScheds = () => {
-    },
-    regFilterStatus = [],
-    setRegFilterStatus = () => {
-    },
-    aiApiKey = "",
-    setAiApiKey,
-    users = [],
-    setUsers
-  }) {
-    const FILE = "CashFlow_Data.json";
-    const [status, setStatus] = useState("idle");
-    const [conflict, setConflict] = useState(null);
-    const lastSyncedAt = useRef(null);
-    const [msg, setMsg] = useState("");
-    const pendingSync = useRef(false);
-    useEffect(() => {
-      const onOnline = () => {
-        if (pendingSync.current) {
-          pendingSync.current = false;
-          setMsg("Back online \u2014 syncing\u2026");
-          setTimeout(() => saveData(true), 1e3);
-        }
-      };
-      window.addEventListener("online", onOnline);
-      return () => window.removeEventListener("online", onOnline);
-    }, []);
-    const listSnapshots = useCallback(async () => {
-      try {
-        const tok = token(), gid = gistId();
-        if (!tok || !gid) return [];
-        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-        if (!r.ok) return [];
-        const d = await r.json();
-        return [1, 2, 3].map((n) => {
-          var _a;
-          const f = (_a = d.files) == null ? void 0 : _a[`CashFlow_Snapshot_${n}.json`];
-          if (!(f == null ? void 0 : f.content)) return null;
-          try {
-            const pl = JSON.parse(f.content);
-            return { n, savedAt: pl.savedAt || null, entries: (pl.entries || []).length, goals: (pl.goals || []).length };
-          } catch (e) {
-            return null;
-          }
-        }).filter(Boolean);
-      } catch (e) {
-        return [];
-      }
-    }, []);
-    const restoreSnapshot = useCallback(async (n) => {
-      var _a, _b, _c, _d;
-      try {
-        const tok = token(), gid = gistId();
-        if (!tok || !gid) return false;
-        setStatus("syncing");
-        setMsg(`Restoring snapshot ${n}\u2026`);
-        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        const d = await r.json();
-        const snap = (_b = (_a = d.files) == null ? void 0 : _a[`CashFlow_Snapshot_${n}.json`]) == null ? void 0 : _b.content;
-        if (!snap) throw new Error("Snapshot not found");
-        const cur = (_d = (_c = d.files) == null ? void 0 : _c[FILE]) == null ? void 0 : _d.content;
-        const files = { [FILE]: { content: snap } };
-        if (cur) files["CashFlow_Snapshot_1.json"] = { content: cur };
-        const w = await fetch(`https://api.github.com/gists/${gid}`, {
-          method: "PATCH",
-          headers: hdrs(tok),
-          body: JSON.stringify({ files })
-        });
-        if (!w.ok) throw new Error(`GitHub ${w.status}`);
-        await loadData();
-        setMsg(`Snapshot ${n} restored.`);
-        toast(`Snapshot ${n} restored`);
-        return true;
-      } catch (e) {
-        setStatus("error");
-        setMsg("Restore failed: " + e.message);
-        toast("Restore failed: " + e.message, "error");
-        return false;
-      }
-    }, []);
-    const downloadBackup = useCallback(() => {
-      try {
-        const payload = JSON.stringify({
-          entries,
-          overridesByYr,
-          yearConfigs,
-          categories,
-          categoryColors,
-          budgetTargets,
-          templates,
-          completed,
-          activeYear,
-          alertThreshold,
-          darkMode,
-          forecastHorizon,
-          users,
-          colOrder,
-          regFilter,
-          regFilterCats,
-          regFilterScheds,
-          regFilterStatus,
-          goals,
-          dashHidden,
-          dashOrder,
-          schemaVersion: SCHEMA_VERSION,
-          savedAt: (/* @__PURE__ */ new Date()).toISOString()
-        }, null, 2);
-        const blob = new Blob([payload], { type: "application/json" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          URL.revokeObjectURL(a.href);
-          a.remove();
-        }, 100);
-        toast("Backup downloaded");
-      } catch (e) {
-        toast("Backup failed: " + e.message, "error");
-      }
-    }, [
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      budgetTargets,
-      templates,
-      completed,
-      activeYear,
-      alertThreshold,
-      darkMode,
-      forecastHorizon,
-      users,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder
-    ]);
-    const token = () => localStorage.getItem("cf_gist_token") || "";
-    const gistId = () => localStorage.getItem("cf_gist_id") || "";
-    const hdrs = (tok) => ({
-      "Authorization": `token ${tok}`,
-      "Accept": "application/vnd.github+json",
-      "Content-Type": "application/json"
-    });
-    const saveData = useCallback(async (silent = false, force = false) => {
-      var _a, _b, _c, _d;
-      const tok = token().trim();
-      const gid = gistId().trim();
-      if (!tok || !gid) return;
-      if (!silent) {
-        setStatus("syncing");
-        setMsg("Saving\u2026");
-      } else setStatus("syncing");
-      try {
-        const aiReports = {};
-        try {
-          Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => {
-            try {
-              const v = localStorage.getItem(k);
-              if (v) aiReports[k.replace("cf_ai_report_", "")] = JSON.parse(v);
-            } catch (e) {
-            }
-          });
-        } catch (e) {
-        }
-        let remoteFiles = null;
-        try {
-          const chk = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-          if (chk.ok) {
-            const cd = await chk.json();
-            remoteFiles = cd.files || null;
-          }
-        } catch (e) {
-        }
-        if (!force && remoteFiles) {
-          try {
-            const remoteRaw = (_a = remoteFiles[FILE]) == null ? void 0 : _a.content;
-            if (remoteRaw) {
-              const remote = JSON.parse(remoteRaw);
-              if (remote.savedAt && lastSyncedAt.current && remote.savedAt > lastSyncedAt.current) {
-                setConflict({
-                  remoteSavedAt: remote.savedAt,
-                  remoteEntries: (remote.entries || []).length,
-                  localEntries: entries.length,
-                  remoteData: remote
-                });
-                setStatus("error");
-                setMsg("\u26A0 Sync conflict \u2014 another device saved newer data.");
-                return;
-              }
-            }
-          } catch (e) {
-          }
-        }
-        const snapFiles = {};
-        try {
-          const SNAP_MS = 6 * 60 * 60 * 1e3;
-          const lastSnap = parseInt(localStorage.getItem("cf_last_snapshot") || "0", 10);
-          const due = force || Date.now() - lastSnap > SNAP_MS;
-          if (due && remoteFiles && ((_b = remoteFiles[FILE]) == null ? void 0 : _b.content)) {
-            snapFiles["CashFlow_Snapshot_1.json"] = { content: remoteFiles[FILE].content };
-            if ((_c = remoteFiles["CashFlow_Snapshot_1.json"]) == null ? void 0 : _c.content)
-              snapFiles["CashFlow_Snapshot_2.json"] = { content: remoteFiles["CashFlow_Snapshot_1.json"].content };
-            if ((_d = remoteFiles["CashFlow_Snapshot_2.json"]) == null ? void 0 : _d.content)
-              snapFiles["CashFlow_Snapshot_3.json"] = { content: remoteFiles["CashFlow_Snapshot_2.json"].content };
-            try {
-              localStorage.setItem("cf_last_snapshot", String(Date.now()));
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-        const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-        const payload = JSON.stringify({
-          entries,
-          overridesByYr,
-          yearConfigs,
-          categories,
-          categoryColors,
-          budgetTargets,
-          templates,
-          completed,
-          activeYear,
-          alertThreshold,
-          darkMode,
-          forecastHorizon,
-          aiReports,
-          users,
-          colOrder,
-          regFilter,
-          regFilterCats,
-          regFilterScheds,
-          regFilterStatus,
-          goals,
-          dashHidden,
-          dashOrder,
-          schemaVersion: SCHEMA_VERSION,
-          savedAt: nowIso
-        }, null, 2);
-        const r = await fetch(`https://api.github.com/gists/${gid}`, {
-          method: "PATCH",
-          headers: hdrs(tok),
-          body: JSON.stringify({ files: __spreadValues({ [FILE]: { content: payload } }, snapFiles) })
-        });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        lastSyncedAt.current = nowIso;
-        setConflict(null);
-        setStatus("ok");
-        if (!silent) haptic();
-        setMsg("Auto-saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
-      } catch (e) {
-        if (!navigator.onLine) {
-          pendingSync.current = true;
-          setStatus("error");
-          setMsg("\u{1F4F6} Offline \u2014 will sync when reconnected.");
-        } else {
-          setStatus("error");
-          setMsg("\u274C " + e.message);
-        }
-      }
-    }, [
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      budgetTargets,
-      templates,
-      completed,
-      activeYear,
-      alertThreshold,
-      darkMode,
-      forecastHorizon,
-      users,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder
-    ]);
-    const loadData = useCallback(async () => {
-      var _a, _b;
-      const tok = token().trim();
-      const gid = gistId().trim();
-      if (!tok || !gid) return false;
-      setStatus("syncing");
-      setMsg("Loading from Gist\u2026");
-      try {
-        const r = await fetch(`https://api.github.com/gists/${gid}`, { headers: hdrs(tok) });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        const data = await r.json();
-        const raw = (_b = (_a = data.files) == null ? void 0 : _a[FILE]) == null ? void 0 : _b.content;
-        if (!raw) throw new Error("File not found in Gist");
-        const d = JSON.parse(raw);
-        if (d.entries) setEntries(d.entries);
-        if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
-        if (d.yearConfigs) setYearConfigs(d.yearConfigs);
-        if (d.categories) setCategories(d.categories);
-        if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-        if (d.activeYear) setActiveYear(d.activeYear);
-        if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-        if (d.darkMode != null) setDarkMode(d.darkMode);
-        if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
-        if (Array.isArray(d.goals)) setGoals(d.goals);
-        if (d.dashHidden && typeof d.dashHidden === "object") setDashHidden(d.dashHidden);
-        if (Array.isArray(d.dashOrder)) setDashOrder(d.dashOrder);
-        if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
-        if (d.savedAt) lastSyncedAt.current = d.savedAt;
-        if (d.regFilter) setRegFilter(d.regFilter);
-        if (Array.isArray(d.regFilterCats)) setRegFilterCats(d.regFilterCats);
-        if (Array.isArray(d.regFilterScheds)) setRegFilterScheds(d.regFilterScheds);
-        if (Array.isArray(d.regFilterStatus)) setRegFilterStatus(d.regFilterStatus);
-        if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
-        if (d.templates) setTemplates(d.templates);
-        if (d.completed) setCompleted(d.completed);
-        if (d.users && Array.isArray(d.users) && setUsers) {
-          setUsers((prev) => {
-            const merged = [...prev];
-            (d.users || []).forEach((u) => {
-              if (!merged.find((x) => x.id === u.id)) merged.push(u);
-              else {
-                const idx = merged.findIndex((x) => x.id === u.id);
-                if (idx >= 0) merged[idx] = __spreadValues(__spreadValues({}, merged[idx]), u);
-              }
-            });
-            return merged;
-          });
-        }
-        if (d.aiReports && typeof d.aiReports === "object") {
-          try {
-            Object.entries(d.aiReports).forEach(([year, report]) => {
-              localStorage.setItem(`cf_ai_report_${year}`, JSON.stringify(report));
-            });
-          } catch (e) {
-          }
-        }
-        setStatus("ok");
-        setMsg("Loaded " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
-        return true;
-      } catch (e) {
-        setStatus("error");
-        setMsg("\u274C " + e.message);
-        return false;
-      }
-    }, []);
-    const createGist = useCallback(async (tok) => {
-      setStatus("syncing");
-      setMsg("Creating Gist\u2026");
-      try {
-        const aiReports = {};
-        try {
-          Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => {
-            try {
-              const v = localStorage.getItem(k);
-              if (v) aiReports[k.replace("cf_ai_report_", "")] = JSON.parse(v);
-            } catch (e) {
-            }
-          });
-        } catch (e) {
-        }
-        const payload = JSON.stringify({
-          entries,
-          overridesByYr,
-          yearConfigs,
-          categories,
-          categoryColors,
-          budgetTargets,
-          templates,
-          completed,
-          activeYear,
-          alertThreshold,
-          darkMode,
-          forecastHorizon,
-          aiReports,
-          users,
-          colOrder,
-          regFilter,
-          regFilterCats,
-          regFilterScheds,
-          regFilterStatus,
-          schemaVersion: SCHEMA_VERSION,
-          savedAt: (/* @__PURE__ */ new Date()).toISOString()
-        }, null, 2);
-        const r = await fetch("https://api.github.com/gists", {
-          method: "POST",
-          headers: hdrs(tok),
-          body: JSON.stringify({
-            description: "CashFlow Budget Data",
-            public: false,
-            files: { [FILE]: { content: payload } }
-          })
-        });
-        if (!r.ok) throw new Error(`GitHub ${r.status}`);
-        const data = await r.json();
-        localStorage.setItem("cf_gist_id", data.id);
-        setStatus("ok");
-        setMsg("Gist created \u2713 Auto-save is now active.");
-        return data.id;
-      } catch (e) {
-        setStatus("error");
-        setMsg("\u274C " + e.message);
-        return null;
-      }
-    }, [
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      budgetTargets,
-      templates,
-      completed,
-      activeYear,
-      alertThreshold,
-      darkMode,
-      forecastHorizon,
-      users,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder
-    ]);
-    return { status, msg, saveData, loadData, createGist, listSnapshots, restoreSnapshot, downloadBackup, conflict, resolveConflict: (keepMine) => {
-      if (keepMine) {
-        setConflict(null);
-        saveData(false, true);
-      } else if (conflict == null ? void 0 : conflict.remoteData) {
-        setConflict(null);
-        loadData();
-      } else setConflict(null);
-    } };
   }
   class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -10046,12 +9324,13 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         const c = document.createElement("canvas");
         return !!c.getContext("2d");
       });
-      t("Gist payload round-trip keeps all fields", () => {
+      t("Sync payload round-trip keeps all fields", () => {
         const payload = {
           entries: [entry],
           overridesByYr: {},
-          yearConfigs: {},
+          yearConfigs: [],
           categories: ["A"],
+          categoryColors: { A: "#123456" },
           budgetTargets: {},
           templates: [],
           completed: {},
@@ -10059,27 +9338,33 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           alertThreshold: 500,
           darkMode: false,
           forecastHorizon: 60,
-          aiReports: [],
-          users: [],
           colOrder: ["desc"],
           regFilter: "all",
           regFilterCats: [],
           regFilterScheds: [],
           regFilterStatus: [],
           goals: [{ id: 1, name: "G", target: 100, saved: 25, monthly: 10 }],
+          dashHidden: {},
+          dashOrder: [],
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         };
         const rt = JSON.parse(JSON.stringify(payload));
-        return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === 5 && rt.goals[0].saved === 25;
+        return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === SCHEMA_VERSION && rt.goals[0].saved === 25;
       });
-      t("override attachment wins over base", () => {
-        const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64BASE" });
+      t("receipts are per-occurrence only", () => {
+        const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64LEGACY" });
         const evsA = expandEntries([ent], 2026, {});
         const ovA = {};
         ovA[evsA[0].id] = { attachment: "base64OVERRIDE" };
         const evsB = expandEntries([ent], 2026, ovA);
-        return evsA[0].attachment === "base64BASE" && evsB[0].attachment === "base64OVERRIDE" && evsB[1].attachment === "base64BASE";
+        return evsA[0].attachment === null && evsB[0].attachment === "base64OVERRIDE" && evsB[1].attachment === null;
+      });
+      t("legacy entry attachment migrates to start-date occurrence", () => {
+        const ent = { id: 9, desc: "T", type: "expense", amount: 5, repeats: true, recurUnit: "month", recurEvery: 1, startDate: "2026-01-15", attachment: "base64LEGACY" };
+        const res = moveEntryAttachmentsToOverrides([ent], {});
+        const ov = res.overridesByYr[2026] && res.overridesByYr[2026]["9-2026-0-15"];
+        return res.moved === 1 && res.entries[0].attachment === void 0 && !!ov && ov.attachment === "base64LEGACY";
       });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];
@@ -10422,7 +9707,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [pullProgress, setPullProgress] = useState(0);
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
-    const gistLoadRef = useRef(null);
+    const houseLoadRef = useRef(null);
     useEffect(() => {
       window.__cfSetTab = setTab;
       return () => {
@@ -10485,64 +9770,6 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     };
     const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     const {
-      status: gistStatus,
-      msg: gistMsg,
-      saveData: gistSave,
-      loadData: gistLoad,
-      createGist: gistCreate,
-      listSnapshots,
-      restoreSnapshot,
-      downloadBackup,
-      conflict: gistConflict,
-      resolveConflict
-    } = useGistSync({
-      entries,
-      setEntries,
-      overridesByYr,
-      setOverridesByYr,
-      yearConfigs,
-      setYearConfigs,
-      categories,
-      setCategories,
-      categoryColors,
-      setCategoryColors,
-      activeYear,
-      setActiveYear,
-      alertThreshold: alertThresh,
-      setAlertThreshold: setAlertThresh,
-      darkMode,
-      setDarkMode,
-      forecastHorizon,
-      setForecastHorizon,
-      colOrder,
-      setColOrder,
-      regFilter,
-      setRegFilter,
-      regFilterCats,
-      setRegFilterCats,
-      regFilterScheds,
-      setRegFilterScheds,
-      regFilterStatus,
-      setRegFilterStatus,
-      aiApiKey,
-      setAiApiKey,
-      users: members.map((m) => ({ id: m.user_id, fullName: m.full_name, email: m.user_id === (sessionUser == null ? void 0 : sessionUser.id) ? sessionUser.email : "", disabled: m.disabled })),
-      setUsers: () => {
-      },
-      budgetTargets,
-      setBudgetTargets,
-      templates,
-      setTemplates,
-      completed,
-      setCompleted,
-      goals,
-      setGoals,
-      dashHidden,
-      setDashHidden,
-      dashOrder,
-      setDashOrder
-    });
-    const {
       status: houseStatus,
       msg: houseMsg,
       saveData: houseSave,
@@ -10593,7 +9820,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setDashOrder
     });
     useEffect(() => {
-      gistLoadRef.current = houseLoad;
+      houseLoadRef.current = houseLoad;
     }, [houseLoad]);
     useEffect(() => {
       const onStart = (e) => {
@@ -10613,7 +9840,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           setPullActive(true);
           setTimeout(() => setPullActive(false), 2500);
           try {
-            if (gistLoadRef.current) gistLoadRef.current();
+            if (houseLoadRef.current) houseLoadRef.current();
           } catch (e) {
           }
         }
@@ -11388,14 +10615,10 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setOverridesByYr,
         entries,
         setEntries,
-        gistStatus,
-        gistMsg,
-        gistSave,
-        gistLoad,
-        gistCreate,
-        listSnapshots,
-        restoreSnapshot,
-        downloadBackup,
+        completed,
+        setCompleted,
+        goals,
+        setGoals,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,
@@ -11419,22 +10642,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         createInvite,
         setMemberDisabled
       }
-    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), gistConflict && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 3500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "26px 24px", width: "min(440px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 10 } }, "\u26A0 Sync Conflict"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, marginBottom: 14 } }, "Another device saved to the Gist ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, new Date(gistConflict.remoteSavedAt).toLocaleString()), " \u2014 after this device last synced."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textMid)", background: "var(--stripe)", borderRadius: 8, padding: "10px 14px", marginBottom: 18 } }, "Remote: ", gistConflict.remoteEntries, " entries \xB7 This device: ", gistConflict.localEntries, " entries"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => resolveConflict(false),
-        className: "cf-btn cf-btn--primary",
-        style: { fontSize: 13, fontWeight: 700, padding: "11px" }
-      },
-      "\u2B07 Load their version (recommended)"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => resolveConflict(true),
-        style: { fontSize: 13, padding: "11px", borderRadius: 8, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
-      },
-      "\u2B06 Overwrite with my version"
-    )))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
+    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
         entry: undoStack[undoStack.length - 1],

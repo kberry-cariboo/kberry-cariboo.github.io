@@ -231,7 +231,7 @@
     const [pullProgress, setPullProgress] = useState(0);
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
-    const gistLoadRef = useRef(null);
+    const houseLoadRef = useRef(null);
     useEffect(() => {
       window.__cfSetTab = setTab;
       return () => {
@@ -294,64 +294,6 @@
     };
     const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     const {
-      status: gistStatus,
-      msg: gistMsg,
-      saveData: gistSave,
-      loadData: gistLoad,
-      createGist: gistCreate,
-      listSnapshots,
-      restoreSnapshot,
-      downloadBackup,
-      conflict: gistConflict,
-      resolveConflict
-    } = useGistSync({
-      entries,
-      setEntries,
-      overridesByYr,
-      setOverridesByYr,
-      yearConfigs,
-      setYearConfigs,
-      categories,
-      setCategories,
-      categoryColors,
-      setCategoryColors,
-      activeYear,
-      setActiveYear,
-      alertThreshold: alertThresh,
-      setAlertThreshold: setAlertThresh,
-      darkMode,
-      setDarkMode,
-      forecastHorizon,
-      setForecastHorizon,
-      colOrder,
-      setColOrder,
-      regFilter,
-      setRegFilter,
-      regFilterCats,
-      setRegFilterCats,
-      regFilterScheds,
-      setRegFilterScheds,
-      regFilterStatus,
-      setRegFilterStatus,
-      aiApiKey,
-      setAiApiKey,
-      users: members.map((m) => ({ id: m.user_id, fullName: m.full_name, email: m.user_id === (sessionUser == null ? void 0 : sessionUser.id) ? sessionUser.email : "", disabled: m.disabled })),
-      setUsers: () => {
-      },
-      budgetTargets,
-      setBudgetTargets,
-      templates,
-      setTemplates,
-      completed,
-      setCompleted,
-      goals,
-      setGoals,
-      dashHidden,
-      setDashHidden,
-      dashOrder,
-      setDashOrder
-    });
-    const {
       status: houseStatus,
       msg: houseMsg,
       saveData: houseSave,
@@ -402,7 +344,7 @@
       setDashOrder
     });
     useEffect(() => {
-      gistLoadRef.current = houseLoad;
+      houseLoadRef.current = houseLoad;
     }, [houseLoad]);
     useEffect(() => {
       const onStart = (e) => {
@@ -422,7 +364,7 @@
           setPullActive(true);
           setTimeout(() => setPullActive(false), 2500);
           try {
-            if (gistLoadRef.current) gistLoadRef.current();
+            if (houseLoadRef.current) houseLoadRef.current();
           } catch (e) {
           }
         }
@@ -1197,14 +1139,10 @@
         setOverridesByYr,
         entries,
         setEntries,
-        gistStatus,
-        gistMsg,
-        gistSave,
-        gistLoad,
-        gistCreate,
-        listSnapshots,
-        restoreSnapshot,
-        downloadBackup,
+        completed,
+        setCompleted,
+        goals,
+        setGoals,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,
@@ -1228,22 +1166,7 @@
         createInvite,
         setMemberDisabled
       }
-    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), gistConflict && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 3500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "26px 24px", width: "min(440px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 10 } }, "\u26A0 Sync Conflict"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, marginBottom: 14 } }, "Another device saved to the Gist ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, new Date(gistConflict.remoteSavedAt).toLocaleString()), " \u2014 after this device last synced."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textMid)", background: "var(--stripe)", borderRadius: 8, padding: "10px 14px", marginBottom: 18 } }, "Remote: ", gistConflict.remoteEntries, " entries \xB7 This device: ", gistConflict.localEntries, " entries"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => resolveConflict(false),
-        className: "cf-btn cf-btn--primary",
-        style: { fontSize: 13, fontWeight: 700, padding: "11px" }
-      },
-      "\u2B07 Load their version (recommended)"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => resolveConflict(true),
-        style: { fontSize: 13, padding: "11px", borderRadius: 8, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
-      },
-      "\u2B06 Overwrite with my version"
-    )))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
+    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
         entry: undoStack[undoStack.length - 1],

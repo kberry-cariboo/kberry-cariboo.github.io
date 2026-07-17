@@ -1,13 +1,5 @@
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
     var _a, _b, _c, _d, _e;
-    const [attachment, setAttachment] = useState((initial == null ? void 0 : initial.attachment) || null);
-    const attachFile = (e) => {
-      compressReceiptImage(e.target.files[0], (b64) => {
-        if (b64) setAttachment(b64);
-      });
-      e.target.value = "";
-    };
-    const [lightbox, setLightbox] = useState(false);
     const today = todayStr();
     const blank = {
       desc: "",
@@ -80,8 +72,7 @@
         amount: parseFloat(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: ma,
-        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : [],
-        attachment
+        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
@@ -243,23 +234,7 @@
           }
         }
       ));
-    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) }), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
-      "img",
-      {
-        src: attachment,
-        alt: "attachment",
-        style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
-        onClick: () => setLightbox(true)
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => setAttachment(null),
-        style: { fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
-      },
-      "Remove"
-    ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", onClick: handleSave, style: { fontSize: 13, fontWeight: 600, padding: "9px 22px" } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel, style: { fontSize: 13, padding: "9px 16px" } }, "Cancel"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    })))))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", onClick: handleSave, style: { fontSize: 13, fontWeight: 600, padding: "9px 22px" } }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel, style: { fontSize: 13, padding: "9px 16px" } }, "Cancel"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const amt = parseFloat(f.amount) || 0;
       onSaveTemplate({
         desc: f.desc,
