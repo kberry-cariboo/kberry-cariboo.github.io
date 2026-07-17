@@ -241,7 +241,7 @@
           if (err) throw err;
           rememberEmail(e);
         } else {
-          const { error: err } = await supabaseClient.auth.signUp({ email: e, password });
+          const { error: err } = await supabaseClient.auth.signUp({ email: e, password, options: { emailRedirectTo: location.origin + location.pathname } });
           if (err) throw err;
           rememberEmail(e);
           setInfo("Account created! If your project requires email confirmation, check your inbox, then sign in below.");

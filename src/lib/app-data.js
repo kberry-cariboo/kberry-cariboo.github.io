@@ -695,50 +695,6 @@
     if (!e.recurEnd) return false;
     return e.recurEnd < yearStart;
   }
-  const SEED_ENTRIES = [
-    { id: 1, desc: "Ken - Payroll", type: "income", amount: 4500, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "semimonth", recurDays: [], recurEnd: "", category: "Income", notes: "1st & 15th" },
-    { id: 2, desc: "Mel - Payroll", type: "income", amount: 3236.49, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "semimonth", recurDays: [], recurEnd: "", category: "Income", notes: "1st & 15th" },
-    { id: 3, desc: "Mortgage", type: "expense", amount: 2091.66, startDate: "2026-01-02", repeats: true, recurEvery: 2, recurUnit: "week", recurDays: [], recurEnd: "", category: "Housing", notes: "Bi-weekly Fri" },
-    { id: 4, desc: "Child Support (1st)", type: "expense", amount: 1879.74, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Personal", notes: "" },
-    { id: 5, desc: "Child Support (15th)", type: "expense", amount: 1713.07, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Personal", notes: "" },
-    { id: 6, desc: "Ken - Life Insurance", type: "expense", amount: 49.5, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Insurance", notes: "" },
-    { id: 7, desc: "Tractor Payment", type: "expense", amount: 734.75, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "2028-06-01", category: "Transportation", notes: "" },
-    { id: 8, desc: "Scotiabank Fees", type: "expense", amount: 30.95, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    { id: 9, desc: "CC-Scotia Infinite", type: "expense", amount: 600, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    { id: 10, desc: "CC-ScotiaLine", type: "expense", amount: 300, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    { id: 11, desc: "CC-Scotia Value Visa", type: "expense", amount: 500, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    { id: 12, desc: "Groceries & Animals", type: "expense", amount: 500, startDate: "2026-01-01", repeats: true, recurEvery: 2, recurUnit: "week", recurDays: [], recurEnd: "", category: "Food", notes: "Bi-weekly" },
-    { id: 13, desc: "Truck Payment", type: "expense", amount: 636.94, startDate: "2026-01-02", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Transportation", notes: "" },
-    { id: 14, desc: "ICBC - Car Insurance", type: "expense", amount: 181, startDate: "2026-01-06", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Insurance", notes: "" },
-    { id: 15, desc: "Trailer Payment", type: "expense", amount: 235.11, startDate: "2026-01-08", repeats: true, recurEvery: 1, recurUnit: "semimonth", recurDays: [], recurEnd: "", category: "Transportation", notes: "8th & 22nd" },
-    { id: 16, desc: "CC-Amex", type: "expense", amount: 900, startDate: "2026-01-08", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    {
-      id: 17,
-      desc: "Hydro",
-      type: "expense",
-      amount: 210,
-      startDate: "2026-01-13",
-      repeats: true,
-      recurEvery: 1,
-      recurUnit: "month",
-      recurDays: [],
-      recurEnd: "",
-      category: "Utilities",
-      notes: "Seasonal",
-      monthlyAmounts: [310, 295, 270, 210, 160, 120, 110, 115, 150, 230, 280, 310]
-    },
-    { id: 18, desc: "Internet", type: "expense", amount: 164.64, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Utilities", notes: "" },
-    { id: 19, desc: "TV Streaming", type: "expense", amount: 60.44, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Subscriptions", notes: "" },
-    { id: 20, desc: "Tesla Subscription", type: "expense", amount: 15.78, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Subscriptions", notes: "" },
-    { id: 21, desc: "Spotify", type: "expense", amount: 20.15, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Subscriptions", notes: "" },
-    { id: 22, desc: "CC-BMO Line of Credit", type: "expense", amount: 600, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    { id: 23, desc: "CC-Triangle MC", type: "expense", amount: 500, startDate: "2026-01-15", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Debt / Credit", notes: "" },
-    { id: 24, desc: "ICBC - Truck Insurance", type: "expense", amount: 200.59, startDate: "2026-01-20", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Insurance", notes: "" },
-    { id: 25, desc: "Car Payment", type: "expense", amount: 1246.92, startDate: "2026-01-25", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Transportation", notes: "" },
-    { id: 26, desc: "Koodo Phone Bill", type: "expense", amount: 131.05, startDate: "2026-01-28", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Utilities", notes: "" },
-    { id: 27, desc: "House Insurance", type: "expense", amount: 347.8, startDate: "2026-01-01", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Insurance", notes: "" },
-    { id: 28, desc: "Ken's Haircut", type: "expense", amount: 34.5, startDate: "2026-01-13", repeats: true, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", category: "Personal", notes: "" }
-  ];
   function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
