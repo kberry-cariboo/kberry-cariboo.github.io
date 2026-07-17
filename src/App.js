@@ -29,6 +29,7 @@
       signOut();
     };
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
+    const [locked, setLocked] = useState(false);
     useEffect(() => {
       if (!lockTimeout || !sessionUser) return;
       const KEY = "cf_hidden_at";
@@ -39,7 +40,7 @@
           } else {
             const at = parseInt(sessionStorage.getItem(KEY) || "0", 10);
             sessionStorage.removeItem(KEY);
-            if (at && Date.now() - at > lockTimeout * 6e4) logout();
+            if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
           }
         } catch (err) {
         }
@@ -47,6 +48,9 @@
       document.addEventListener("visibilitychange", onVis);
       return () => document.removeEventListener("visibilitychange", onVis);
     }, [lockTimeout, sessionUser]);
+    useEffect(() => {
+      if (!sessionUser) setLocked(false);
+    }, [sessionUser]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
@@ -609,6 +613,9 @@
     }
     if (!household) {
       return /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut });
+    }
+    if (locked) {
+      return /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout });
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
       fontWeight: 700,
