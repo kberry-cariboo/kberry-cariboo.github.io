@@ -4588,7 +4588,8 @@ document.addEventListener('DOMContentLoaded',function(){
       letterSpacing: "0.1em",
       textTransform: "uppercase"
     } }, label);
-    const renderEventCard = (ev) => {
+    const renderEventCard = (ev, opts = {}) => {
+      const hideDayLabel = !!opts.hideDayLabel;
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
       const isSel = selIds.has(ev.id);
@@ -4660,7 +4661,7 @@ document.addEventListener('DOMContentLoaded',function(){
             whiteSpace: "nowrap",
             minWidth: 0
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 4 } }, /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 600,
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--red)"
@@ -4699,9 +4700,7 @@ document.addEventListener('DOMContentLoaded',function(){
         return { day, events: evs, balance: runBal };
       }).filter((d) => d.events.length > 0);
     }, [monthEvents, s, monthIdx]);
-    useEffect(() => {
-      if (isMobile && budgetSub === "daily") setBudgetSub("monthly");
-    }, [isMobile, budgetSub]);
+    const renderDailyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "28px 14px", textAlign: "center", fontSize: 13, color: "var(--textLt)" } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : days.map((dayObj) => /* @__PURE__ */ React.createElement(React.Fragment, { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderPeriodCardHdr(`${MONTHS[monthIdx]} ${dayObj.day}`), dayObj.events.map((ev) => renderEventCard(ev, { hideDayLabel: true })))));
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
       const t = e.target;
@@ -5032,7 +5031,7 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
         }
-      )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
+      )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
         display: "grid",
         gridTemplateColumns: "60px 1fr 180px",
         borderBottom: "1px solid var(--border)",
