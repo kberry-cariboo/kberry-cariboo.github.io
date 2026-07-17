@@ -684,6 +684,16 @@ document.addEventListener('DOMContentLoaded',function(){
       if (error) throw error;
       await refreshMembership(session.user.id);
     }, [household, session, refreshMembership]);
+    // Rename any member row. RLS allows your own row always and other rows
+    // only for the owner — a silently-filtered update returns zero rows, which
+    // we surface as a permission error instead of a fake success.
+    const updateMemberName = useCallback(async (userId, fullName) => {
+      if (!supabaseClient || !household || !session) return;
+      const { data, error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", userId).select("user_id");
+      if (error) throw error;
+      if (!data || !data.length) throw new Error("Only the household owner can rename other members.");
+      await refreshMembership(session.user.id);
+    }, [household, session, refreshMembership]);
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
@@ -699,6 +709,7 @@ document.addEventListener('DOMContentLoaded',function(){
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      updateMemberName,
       updateMyName,
       signOut
     };
@@ -1320,7 +1331,7 @@ document.addEventListener('DOMContentLoaded',function(){
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/plexmono-400.woff2') format('woff2');}
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/plexmono-600.woff2') format('woff2');}
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/plexmono-700.woff2') format('woff2');}
-        *{box-sizing:border-box;} html{scrollbar-gutter:stable;}
+        *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
         /* \u2500\u2500 Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) \u2500\u2500 */
         .field-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
           text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;}
@@ -1535,6 +1546,7 @@ document.addEventListener('DOMContentLoaded',function(){
           .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
           .month-picker button{padding:4px 6px!important;font-size:10px!important;}
           .month-nav-arrow{display:none!important;}
+          .month-today-pill{display:none!important;}
           /* Budget monthly table: hide category */
           .budget-col-cat{display:none!important;}
           /* Forecast table: hide category, tighten padding */
@@ -1567,6 +1579,7 @@ document.addEventListener('DOMContentLoaded',function(){
           .month-picker button{padding:3px 5px!important;font-size:9px!important;}
           /* Hide \u2039 \u203A arrows on mobile \u2014 month buttons are tappable directly */
           .month-nav-arrow{display:none!important;}
+          .month-today-pill{display:none!important;}
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
           .daily-balance{min-width:72px!important;}
           .content-area{padding:10px 6px!important;margin-top:0!important;}
@@ -1645,6 +1658,10 @@ document.addEventListener('DOMContentLoaded',function(){
 
         /* \u2500\u2500 44px minimum tap targets \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         .reg-actions button{min-height:36px;min-width:36px;}
+
+        /* AI report: two-column card grid on wide screens */
+        .ai-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px;}
+        @media(max-width:900px){.ai-report-grid{grid-template-columns:1fr;}}
 
         /* Keyboard shortcut hint in search placeholder */
         #global-search::placeholder{color:var(--textLt);}
@@ -2038,6 +2055,14 @@ document.addEventListener('DOMContentLoaded',function(){
       return null;
     }
   }
+  // One search predicate for every view: description, category, notes, and
+  // amount (with >N / <N / exact operators). Empty query matches everything.
+  function eventMatchesSearch(ev, q) {
+    if (!q) return true;
+    const amtMatch = matchesAmountQuery(q, ev.amount);
+    if (amtMatch !== null) return amtMatch;
+    return (ev.desc || "").toLowerCase().includes(q) || (ev.category || "").toLowerCase().includes(q) || (ev.notes || "").toLowerCase().includes(q);
+  }
   function matchesAmountQuery(q, amount) {
     const s = (q || "").trim();
     if (/^>\s*[\d.]+$/.test(s)) return amount > parseFloat(s.slice(1));
@@ -2384,6 +2409,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return value !== cur && /* @__PURE__ */ React.createElement(
         "button",
         {
+          className: "month-today-pill",
           onClick: () => onChange(cur),
           title: "Jump to current month",
           "aria-label": "Jump to current month",
@@ -3326,10 +3352,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
     }).filter((e) => {
       const q = (search || globalSearch || "").toLowerCase();
-      if (!q) return true;
-      const amtMatch = matchesAmountQuery(q, e.amount);
-      if (amtMatch !== null) return amtMatch;
-      return e.desc.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.notes || "").toLowerCase().includes(q);
+      return eventMatchesSearch(e, q);
     }).filter((e) => {
       if (!dateFrom && !dateTo) return true;
       const sd = e.startDate || "";
@@ -4016,8 +4039,7 @@ document.addEventListener('DOMContentLoaded',function(){
       { id: "dashboard", icon: "home", label: "Home" },
       { id: "budget", icon: "calendar", label: "Budget" },
       { id: "plan", icon: "target", label: "Plan" },
-      { id: "ai", icon: "sparkle", label: "AI" },
-      { id: "settings", icon: "settings", label: "Settings" }
+      { id: "ai", icon: "sparkle", label: "AI" }
     ];
     return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary" }, items.map((it) => /* @__PURE__ */ React.createElement(
       "button",
@@ -4555,13 +4577,19 @@ document.addEventListener('DOMContentLoaded',function(){
     const matchingMonths = useMemo(() => {
       if (!gq) return /* @__PURE__ */ new Set();
       const s2 = /* @__PURE__ */ new Set();
-      flow.filter((ev) => ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)).forEach((ev) => s2.add(ev.month));
+      flow.filter((ev) => eventMatchesSearch(ev, gq)).forEach((ev) => s2.add(ev.month));
       return s2;
     }, [gq, flow]);
     useEffect(() => {
       if (!gq) return;
-      const latest = [...matchingMonths].sort((a, b) => b - a)[0];
-      if (latest !== void 0 && latest !== monthIdx) setMonthIdx(latest);
+      const arr = [...matchingMonths];
+      if (!arr.length) return;
+      // "Most recent" month with a match: the latest one up to today (for the
+      // current year), falling back to the earliest future match.
+      const nowMo = (/* @__PURE__ */ new Date()).getFullYear() === activeYear ? (/* @__PURE__ */ new Date()).getMonth() : 11;
+      const past = arr.filter((m) => m <= nowMo);
+      const target = past.length ? Math.max(...past) : Math.min(...arr);
+      if (target !== monthIdx) setMonthIdx(target);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
     const view = budgetSub === "daily" ? "daily" : "monthly";
@@ -4613,7 +4641,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [monthIdx, budgetSub]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
-    const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
+    const monthEvents = flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
@@ -5527,7 +5555,7 @@ document.addEventListener('DOMContentLoaded',function(){
       ExportBar,
       {
         onCSV: () => {
-          const rows = futureEvents.filter((ev) => !gq2 || ev.desc.toLowerCase().includes(gq2) || ev.category.toLowerCase().includes(gq2)).map((ev) => {
+          const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
             return [dateStr, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance];
           });
@@ -5543,7 +5571,7 @@ document.addEventListener('DOMContentLoaded',function(){
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => !gq2 || ev.desc.toLowerCase().includes(gq2) || ev.category.toLowerCase().includes(gq2)).map((ev, i) => {
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
       return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--red)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
         padding: "8px 14px",
@@ -5954,11 +5982,14 @@ Provide your assessment using these EXACT section headers (in markdown ## format
 ## Budget Performance
 ## Cash Flow & Risk
 ## Savings Goals
-Assess progress on each savings goal in savingsGoals (percent funded, whether monthly funding will meet the target date) and recommend funding adjustments.
-
 ## Priority Action Items
 
-For each section, use bullet points (- ) and be direct and specific. In "Priority Action Items", number the top 5 actions with concrete steps and target amounts where possible. Conclude with an overall financial health score from 1-10 with brief justification.`;
+Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
+- 2-4 bullets (- ) per section, one short sentence each (under ~18 words), every bullet anchored to a specific dollar amount or category from the data.
+- No preamble, no restating the data tables, no generic advice, no hedging filler ("consider", "you may want to").
+- Savings Goals: one bullet per goal \u2014 percent funded, on/off track for its target date, and the exact monthly adjustment if off track.
+- Priority Action Items: exactly the top 5 as a numbered list, one line each, with a concrete dollar target where possible.
+- Finish with "Score: N/10" and one sentence of justification.`;
       try {
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -5970,8 +6001,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: 2e3,
-            system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Provide practical, specific, empathetic advice. Format responses in clean Markdown.",
+            max_tokens: 1200,
+            system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Be blunt and brief: short, numbers-first bullets, no filler. Format responses in clean Markdown.",
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -6113,7 +6144,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         color,
         lineHeight: 1
       } }, score, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textLt)" } }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--text)" } }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
-    })(), report.map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    })(), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, report.map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 0, gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
       gap: 10,
@@ -6194,7 +6225,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         lineHeight: 1.6,
         marginBottom: 6
       } }, /* @__PURE__ */ React.createElement(BoldText, { text: plain }));
-    }))), /* @__PURE__ */ React.createElement("div", { style: {
+    })))), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 11,
       color: "var(--textLt)",
       textAlign: "center",
@@ -6793,7 +6824,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             id: "debt-balance",
             placeholder: "e.g. 10000",
             value: debtFormData.balance,
-            className: "field-input field-input--mono",
+            className: "field-input",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { balance: v }))
           }
         )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-rate" }, "Interest Rate %"), /* @__PURE__ */ React.createElement(
@@ -6804,7 +6835,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             inputMode: "decimal",
             placeholder: "e.g. 5.9",
             value: debtFormData.rate,
-            className: "field-input field-input--mono",
+            className: "field-input",
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { rate: e.target.value }))
           }
         ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--textLt)" } }, "(optional)")), /* @__PURE__ */ React.createElement(
@@ -6813,7 +6844,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             id: "debt-payment",
             placeholder: "e.g. 500",
             value: debtFormData.payment,
-            className: "field-input field-input--mono",
+            className: "field-input",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: v }))
           }
         ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 5 } }, "Leave blank for auto-detected debts from your budget entries."))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 } }, /* @__PURE__ */ React.createElement(
@@ -7433,7 +7464,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
           }
         )),
-        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
           fontSize: 11,
           fontWeight: 700,
           color: "#fff",
@@ -7459,7 +7490,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
           return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)", position: "sticky", right: 0, boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }, fmt(m.close)));
         }))))),
-        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, tableLayout: "fixed" } }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { style: { width: 110 } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } }), /* @__PURE__ */ React.createElement("col", { style: { width: "22%" } })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
+        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
           fontSize: 11,
           fontWeight: 700,
           color: "#fff",
@@ -7700,6 +7731,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
   }, houseLoad = () => {
   }, household = null, members = [], createInvite = () => {
   }, setMemberDisabled = () => {
+  }, updateMemberName = async () => {
   } }) {
     setAiApiKey = setAiApiKey || (() => {
     });
@@ -7720,6 +7752,25 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [inviteCode, setInviteCode] = useState("");
     const [inviteBusy, setInviteBusy] = useState(false);
     const [memberMsg, setMemberMsg] = useState("");
+    const [editMemberId, setEditMemberId] = useState(null);
+    const [editMemberVal, setEditMemberVal] = useState("");
+    const [memberBusy, setMemberBusy] = useState(false);
+    const saveMemberName = async (userId) => {
+      const name = editMemberVal.trim();
+      if (!name) {
+        setMemberMsg("Name can't be empty.");
+        return;
+      }
+      setMemberBusy(true);
+      setMemberMsg("");
+      try {
+        await updateMemberName(userId, name);
+        setEditMemberId(null);
+      } catch (e) {
+        setMemberMsg(e.message || "Couldn't rename this member.");
+      }
+      setMemberBusy(false);
+    };
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
@@ -7764,16 +7815,12 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         setYearMsg(`Year ${y} already exists.`);
         return;
       }
+      // Adding a year never touches existing years' data. Ongoing recurring
+      // entries flow into the new year automatically via expandEntries; the
+      // only thing seeded is a copy of the previous year's budget targets.
+      // (Entries used to have their end dates cleared here, which retroactively
+      // resurrected ended entries in earlier years — that was a data bug.)
       const prevYear = y - 1;
-      const prevYearEnd = `${prevYear}-12-31`;
-      let extendedCount = 0;
-      setEntries((prev) => prev.map((e) => {
-        if (e.repeats && e.recurEnd && e.recurEnd <= prevYearEnd && e.recurEnd >= prevYear + "-01-01") {
-          extendedCount++;
-          return __spreadProps(__spreadValues({}, e), { recurEnd: "" });
-        }
-        return e;
-      }));
       let copiedTargets = 0;
       setBudgetTargets((prev) => {
         const next = __spreadValues({}, prev);
@@ -7790,9 +7837,9 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       setNewYear("");
-      const parts = [`Year ${y} added.`];
-      if (extendedCount > 0) parts.push(`${extendedCount} recurring entr${extendedCount === 1 ? "y" : "ies"} extended.`);
-      if (copiedTargets > 0) parts.push(`${copiedTargets} budget targets copied from ${prevYear}.`);
+      const parts = [`Year ${y} added — ${prevYear} is untouched.`];
+      if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
+      parts.push(`Recurring entries without an end date carry forward automatically.`);
       setYearMsg(parts.join(" "));
     };
     const delYear = (yr) => {
@@ -8414,27 +8461,72 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => /* @__PURE__ */ React.createElement("div", { key: m.user_id, style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "10px 0",
-      borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontWeight: 400 } }, "(You)")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \xB7 Disabled" : "")), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: async () => {
-          setMemberMsg("");
-          try {
-            await setMemberDisabled(m.user_id, !m.disabled);
-          } catch (e) {
-            setMemberMsg(e.message || "Only the household owner can do this.");
+    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => {
+      const isEditing = editMemberId === m.user_id;
+      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 0",
+        borderBottom: "1px solid var(--border)",
+        flexWrap: "wrap"
+      } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, isEditing ? /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          autoFocus: true,
+          "aria-label": "Member name",
+          className: "field-input",
+          style: { maxWidth: 260 },
+          value: editMemberVal,
+          onChange: (e) => setEditMemberVal(e.target.value),
+          onKeyDown: (e) => {
+            if (e.key === "Enter") saveMemberName(m.user_id);
+            if (e.key === "Escape") setEditMemberId(null);
           }
+        }
+      ) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontWeight: 400 } }, "(You)")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \xB7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => saveMemberName(m.user_id),
+          disabled: memberBusy,
+          className: "cf-btn cf-btn--primary", style: { fontSize: 11, padding: "5px 14px", borderRadius: 6 }
         },
-        className: m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
-      },
-      m.disabled ? "Enable" : "Disable"
-    ))), memberMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 10 } }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
+        memberBusy ? "Saving\u2026" : "Save"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setEditMemberId(null),
+          disabled: memberBusy,
+          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+        },
+        "Cancel"
+      )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setMemberMsg("");
+            setEditMemberId(m.user_id);
+            setEditMemberVal(m.full_name || "");
+          },
+          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+        },
+        "\u270E Edit"
+      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: async () => {
+            setMemberMsg("");
+            try {
+              await setMemberDisabled(m.user_id, !m.disabled);
+            } catch (e) {
+              setMemberMsg(e.message || "Only the household owner can do this.");
+            }
+          },
+          className: m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+        },
+        m.disabled ? "Enable" : "Disable"
+      )));
+    }), memberMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 10 } }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: async () => {
@@ -9488,6 +9580,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      updateMemberName,
       updateMyName,
       signOut
     } = useHousehold();
@@ -9697,6 +9790,16 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
     const [regFilterScheds, setRegFilterScheds] = useLS("cf_reg_filter_scheds", []);
     const [regFilterStatus, setRegFilterStatus] = useLS("cf_reg_filter_status", []);
     const [globalSearch, setGlobalSearch] = useState("");
+    const prevSearchRef = useRef("");
+    useEffect(() => {
+      const had = !!prevSearchRef.current;
+      prevSearchRef.current = globalSearch;
+      if (!globalSearch || had) return;
+      // Starting a search shows results in the Budget monthly view (which
+      // jumps to the most recent matching month), not the Entries register.
+      setTab("budget");
+      setBudgetSub("monthly");
+    }, [globalSearch]);
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
@@ -10017,8 +10120,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
       { id: "plan", label: "Plan" },
-      { id: "ai", label: "\u2726 AI Insights" },
-      { id: "settings", label: "Settings" }
+      { id: "ai", label: "\u2726 AI Insights" }
     ];
     if (authLoading) {
       return null;
@@ -10640,7 +10742,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         household,
         members,
         createInvite,
-        setMemberDisabled
+        setMemberDisabled,
+        updateMemberName
       }
     ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,

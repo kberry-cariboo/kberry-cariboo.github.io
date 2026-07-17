@@ -81,6 +81,16 @@
       if (error) throw error;
       await refreshMembership(session.user.id);
     }, [household, session, refreshMembership]);
+    // Rename any member row. RLS allows your own row always and other rows
+    // only for the owner — a silently-filtered update returns zero rows, which
+    // we surface as a permission error instead of a fake success.
+    const updateMemberName = useCallback(async (userId, fullName) => {
+      if (!supabaseClient || !household || !session) return;
+      const { data, error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", userId).select("user_id");
+      if (error) throw error;
+      if (!data || !data.length) throw new Error("Only the household owner can rename other members.");
+      await refreshMembership(session.user.id);
+    }, [household, session, refreshMembership]);
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
@@ -96,6 +106,7 @@
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      updateMemberName,
       updateMyName,
       signOut
     };

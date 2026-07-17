@@ -342,7 +342,7 @@
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/plexmono-400.woff2') format('woff2');}
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/plexmono-600.woff2') format('woff2');}
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/plexmono-700.woff2') format('woff2');}
-        *{box-sizing:border-box;} html{scrollbar-gutter:stable;}
+        *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
         /* \u2500\u2500 Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) \u2500\u2500 */
         .field-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
           text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;}
@@ -557,6 +557,7 @@
           .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
           .month-picker button{padding:4px 6px!important;font-size:10px!important;}
           .month-nav-arrow{display:none!important;}
+          .month-today-pill{display:none!important;}
           /* Budget monthly table: hide category */
           .budget-col-cat{display:none!important;}
           /* Forecast table: hide category, tighten padding */
@@ -589,6 +590,7 @@
           .month-picker button{padding:3px 5px!important;font-size:9px!important;}
           /* Hide \u2039 \u203A arrows on mobile \u2014 month buttons are tappable directly */
           .month-nav-arrow{display:none!important;}
+          .month-today-pill{display:none!important;}
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
           .daily-balance{min-width:72px!important;}
           .content-area{padding:10px 6px!important;margin-top:0!important;}
@@ -667,6 +669,10 @@
 
         /* \u2500\u2500 44px minimum tap targets \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         .reg-actions button{min-height:36px;min-width:36px;}
+
+        /* AI report: two-column card grid on wide screens */
+        .ai-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px;}
+        @media(max-width:900px){.ai-report-grid{grid-template-columns:1fr;}}
 
         /* Keyboard shortcut hint in search placeholder */
         #global-search::placeholder{color:var(--textLt);}
@@ -1059,6 +1065,14 @@
     } catch (err) {
       return null;
     }
+  }
+  // One search predicate for every view: description, category, notes, and
+  // amount (with >N / <N / exact operators). Empty query matches everything.
+  function eventMatchesSearch(ev, q) {
+    if (!q) return true;
+    const amtMatch = matchesAmountQuery(q, ev.amount);
+    if (amtMatch !== null) return amtMatch;
+    return (ev.desc || "").toLowerCase().includes(q) || (ev.category || "").toLowerCase().includes(q) || (ev.notes || "").toLowerCase().includes(q);
   }
   function matchesAmountQuery(q, amount) {
     const s = (q || "").trim();

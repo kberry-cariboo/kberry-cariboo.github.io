@@ -317,6 +317,7 @@
       return value !== cur && /* @__PURE__ */ React.createElement(
         "button",
         {
+          className: "month-today-pill",
           onClick: () => onChange(cur),
           title: "Jump to current month",
           "aria-label": "Jump to current month",

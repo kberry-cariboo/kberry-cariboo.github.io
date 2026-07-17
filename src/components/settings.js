@@ -67,6 +67,7 @@
   }, houseLoad = () => {
   }, household = null, members = [], createInvite = () => {
   }, setMemberDisabled = () => {
+  }, updateMemberName = async () => {
   } }) {
     setAiApiKey = setAiApiKey || (() => {
     });
@@ -87,6 +88,25 @@
     const [inviteCode, setInviteCode] = useState("");
     const [inviteBusy, setInviteBusy] = useState(false);
     const [memberMsg, setMemberMsg] = useState("");
+    const [editMemberId, setEditMemberId] = useState(null);
+    const [editMemberVal, setEditMemberVal] = useState("");
+    const [memberBusy, setMemberBusy] = useState(false);
+    const saveMemberName = async (userId) => {
+      const name = editMemberVal.trim();
+      if (!name) {
+        setMemberMsg("Name can't be empty.");
+        return;
+      }
+      setMemberBusy(true);
+      setMemberMsg("");
+      try {
+        await updateMemberName(userId, name);
+        setEditMemberId(null);
+      } catch (e) {
+        setMemberMsg(e.message || "Couldn't rename this member.");
+      }
+      setMemberBusy(false);
+    };
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
@@ -131,16 +151,12 @@
         setYearMsg(`Year ${y} already exists.`);
         return;
       }
+      // Adding a year never touches existing years' data. Ongoing recurring
+      // entries flow into the new year automatically via expandEntries; the
+      // only thing seeded is a copy of the previous year's budget targets.
+      // (Entries used to have their end dates cleared here, which retroactively
+      // resurrected ended entries in earlier years — that was a data bug.)
       const prevYear = y - 1;
-      const prevYearEnd = `${prevYear}-12-31`;
-      let extendedCount = 0;
-      setEntries((prev) => prev.map((e) => {
-        if (e.repeats && e.recurEnd && e.recurEnd <= prevYearEnd && e.recurEnd >= prevYear + "-01-01") {
-          extendedCount++;
-          return __spreadProps(__spreadValues({}, e), { recurEnd: "" });
-        }
-        return e;
-      }));
       let copiedTargets = 0;
       setBudgetTargets((prev) => {
         const next = __spreadValues({}, prev);
@@ -157,9 +173,9 @@
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       setNewYear("");
-      const parts = [`Year ${y} added.`];
-      if (extendedCount > 0) parts.push(`${extendedCount} recurring entr${extendedCount === 1 ? "y" : "ies"} extended.`);
-      if (copiedTargets > 0) parts.push(`${copiedTargets} budget targets copied from ${prevYear}.`);
+      const parts = [`Year ${y} added — ${prevYear} is untouched.`];
+      if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
+      parts.push(`Recurring entries without an end date carry forward automatically.`);
       setYearMsg(parts.join(" "));
     };
     const delYear = (yr) => {
@@ -781,27 +797,72 @@
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => /* @__PURE__ */ React.createElement("div", { key: m.user_id, style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "10px 0",
-      borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontWeight: 400 } }, "(You)")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \xB7 Disabled" : "")), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: async () => {
-          setMemberMsg("");
-          try {
-            await setMemberDisabled(m.user_id, !m.disabled);
-          } catch (e) {
-            setMemberMsg(e.message || "Only the household owner can do this.");
+    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => {
+      const isEditing = editMemberId === m.user_id;
+      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 0",
+        borderBottom: "1px solid var(--border)",
+        flexWrap: "wrap"
+      } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, isEditing ? /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          autoFocus: true,
+          "aria-label": "Member name",
+          className: "field-input",
+          style: { maxWidth: 260 },
+          value: editMemberVal,
+          onChange: (e) => setEditMemberVal(e.target.value),
+          onKeyDown: (e) => {
+            if (e.key === "Enter") saveMemberName(m.user_id);
+            if (e.key === "Escape") setEditMemberId(null);
           }
+        }
+      ) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontWeight: 400 } }, "(You)")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \xB7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => saveMemberName(m.user_id),
+          disabled: memberBusy,
+          className: "cf-btn cf-btn--primary", style: { fontSize: 11, padding: "5px 14px", borderRadius: 6 }
         },
-        className: m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
-      },
-      m.disabled ? "Enable" : "Disable"
-    ))), memberMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 10 } }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
+        memberBusy ? "Saving\u2026" : "Save"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setEditMemberId(null),
+          disabled: memberBusy,
+          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+        },
+        "Cancel"
+      )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setMemberMsg("");
+            setEditMemberId(m.user_id);
+            setEditMemberVal(m.full_name || "");
+          },
+          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+        },
+        "\u270E Edit"
+      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: async () => {
+            setMemberMsg("");
+            try {
+              await setMemberDisabled(m.user_id, !m.disabled);
+            } catch (e) {
+              setMemberMsg(e.message || "Only the household owner can do this.");
+            }
+          },
+          className: m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+        },
+        m.disabled ? "Enable" : "Disable"
+      )));
+    }), memberMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 10 } }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: async () => {

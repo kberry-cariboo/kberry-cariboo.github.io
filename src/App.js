@@ -12,6 +12,7 @@
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      updateMemberName,
       updateMyName,
       signOut
     } = useHousehold();
@@ -221,6 +222,16 @@
     const [regFilterScheds, setRegFilterScheds] = useLS("cf_reg_filter_scheds", []);
     const [regFilterStatus, setRegFilterStatus] = useLS("cf_reg_filter_status", []);
     const [globalSearch, setGlobalSearch] = useState("");
+    const prevSearchRef = useRef("");
+    useEffect(() => {
+      const had = !!prevSearchRef.current;
+      prevSearchRef.current = globalSearch;
+      if (!globalSearch || had) return;
+      // Starting a search shows results in the Budget monthly view (which
+      // jumps to the most recent matching month), not the Entries register.
+      setTab("budget");
+      setBudgetSub("monthly");
+    }, [globalSearch]);
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
@@ -541,8 +552,7 @@
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
       { id: "plan", label: "Plan" },
-      { id: "ai", label: "\u2726 AI Insights" },
-      { id: "settings", label: "Settings" }
+      { id: "ai", label: "\u2726 AI Insights" }
     ];
     if (authLoading) {
       return null;
@@ -1164,7 +1174,8 @@
         household,
         members,
         createInvite,
-        setMemberDisabled
+        setMemberDisabled,
+        updateMemberName
       }
     ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
