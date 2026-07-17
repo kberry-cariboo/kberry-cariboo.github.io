@@ -378,7 +378,7 @@
           setError("");
         },
         onKeyDown: (e) => e.key === "Enter" && attemptLogin(),
-        placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+        placeholder: mode === "signin" ? "Enter your password" : "At least 8 characters",
         style: {
           width: "100%",
           fontFamily: "Inter,sans-serif",

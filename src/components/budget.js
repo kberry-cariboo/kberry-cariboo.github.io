@@ -986,7 +986,32 @@
               flexShrink: 1,
               overflow: "hidden",
               textOverflow: "ellipsis"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, "\u25B2", fmt(diff)))),
+            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, "\u25B2", fmt(diff)), /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                onClick: (e) => {
+                  e.stopPropagation();
+                  setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target });
+                },
+                "aria-label": `Edit ${cat} budget target`,
+                style: {
+                  width: 22,
+                  height: 22,
+                  flexShrink: 0,
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  background: "transparent",
+                  color: "var(--textLt)",
+                  fontSize: 15,
+                  lineHeight: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }
+              },
+              "\u22EE"
+            ))),
             target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
               height: "100%",
               width: `${pct}%`,

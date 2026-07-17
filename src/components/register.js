@@ -633,7 +633,33 @@
           flexShrink: 0,
           color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--red)",
           textDecoration: archived ? "line-through" : "none"
-        } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))),
+        } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: (ev) => {
+              ev.stopPropagation();
+              openCtx(ev, e);
+            },
+            "aria-label": "Entry actions",
+            style: {
+              width: 26,
+              height: 26,
+              flexShrink: 0,
+              marginTop: -2,
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--textLt)",
+              fontSize: 16,
+              lineHeight: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }
+          },
+          "⋮"
+        )),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { style: {
           fontSize: 11,
           color: "var(--textMid)"
