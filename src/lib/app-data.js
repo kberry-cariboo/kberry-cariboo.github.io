@@ -389,6 +389,12 @@
         .cf-gap-12{gap:12px;}
         body{margin:0;background:var(--bg);scrollbar-gutter:stable;
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+        /* Stray horizontal overflow must never widen the mobile layout viewport —
+           that zooms the page out and scales/displaces position:fixed chrome
+           (bottom nav). Wide content belongs in an .hscroll container. */
+        html,body{overflow-x:hidden;overflow-x:clip;}
+        .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
+        .settings-page-pills::-webkit-scrollbar{display:none;}
         /* \u2500\u2500 Modern interaction polish (pointer devices) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         @media (hover:hover) and (pointer:fine){
           /* Cards lift subtly on hover for depth */

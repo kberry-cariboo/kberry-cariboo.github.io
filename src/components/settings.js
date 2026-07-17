@@ -278,8 +278,10 @@
       padding: "4px",
       background: "var(--border)",
       borderRadius: 12,
-      width: "fit-content"
-    } }, [
+      width: "fit-content",
+      maxWidth: "100%",
+      overflowX: "auto"
+    }, className: "settings-page-pills" }, [
       { id: "general", label: "\u2699  General" },
       { id: "household", label: "\u{1F46A} Household" },
       { id: "templates", label: "\u{1F4CB} Templates" },
@@ -296,6 +298,8 @@
           borderRadius: 9,
           border: "none",
           cursor: "pointer",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
           transition: "all 0.15s",
           background: settingsPage === id ? "var(--bgCard)" : "transparent",
           color: settingsPage === id ? "var(--text)" : "var(--textMid)",

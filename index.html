@@ -1378,6 +1378,12 @@ document.addEventListener('DOMContentLoaded',function(){
         .cf-gap-12{gap:12px;}
         body{margin:0;background:var(--bg);scrollbar-gutter:stable;
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+        /* Stray horizontal overflow must never widen the mobile layout viewport —
+           that zooms the page out and scales/displaces position:fixed chrome
+           (bottom nav). Wide content belongs in an .hscroll container. */
+        html,body{overflow-x:hidden;overflow-x:clip;}
+        .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
+        .settings-page-pills::-webkit-scrollbar{display:none;}
         /* \u2500\u2500 Modern interaction polish (pointer devices) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         @media (hover:hover) and (pointer:fine){
           /* Cards lift subtly on hover for depth */
@@ -7942,8 +7948,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       padding: "4px",
       background: "var(--border)",
       borderRadius: 12,
-      width: "fit-content"
-    } }, [
+      width: "fit-content",
+      maxWidth: "100%",
+      overflowX: "auto"
+    }, className: "settings-page-pills" }, [
       { id: "general", label: "\u2699  General" },
       { id: "household", label: "\u{1F46A} Household" },
       { id: "templates", label: "\u{1F4CB} Templates" },
@@ -7960,6 +7968,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           borderRadius: 9,
           border: "none",
           cursor: "pointer",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
           transition: "all 0.15s",
           background: settingsPage === id ? "var(--bgCard)" : "transparent",
           color: settingsPage === id ? "var(--text)" : "var(--textMid)",
