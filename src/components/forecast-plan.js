@@ -447,15 +447,15 @@ ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${d.balance.toLocaleStr
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
 ${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${r.actual.toLocaleString()} vs Target $${r.target.toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(r.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
 
-Provide your assessment using these EXACT section headers (in markdown ## format):
+Provide your assessment using these EXACT section headers, in this order (markdown ## format):
 ## Executive Summary
-## Income Analysis
+## Priority Action Items
+## Cash Flow & Risk
+## Budget Performance
 ## Spending Analysis
 ## Debt Management
-## Budget Performance
-## Cash Flow & Risk
+## Income Analysis
 ## Savings Goals
-## Priority Action Items
 
 Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
 - 2-4 bullets (- ) per section, one short sentence each (under ~18 words), every bullet anchored to a specific dollar amount or category from the data.
@@ -514,6 +514,62 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "Budget Performance": "var(--navy)",
       "Cash Flow & Risk": "var(--amber)",
       "Priority Action Items": "var(--greenDk)"
+    };
+    // Sections render most-actionable-first regardless of the order the model
+    // produced (older cached reports predate the ordered prompt).
+    const SECTION_ORDER = ["Executive Summary", "Priority Action Items", "Cash Flow & Risk", "Budget Performance", "Spending Analysis", "Debt Management", "Income Analysis", "Savings Goals"];
+    const orderedReport = useMemo(() => {
+      if (!report) return null;
+      const rank = (t) => {
+        const i = SECTION_ORDER.indexOf(t);
+        return i < 0 ? 99 : i;
+      };
+      return [...report].sort((a, b) => rank(a.title) - rank(b.title));
+    }, [report]);
+    // The same numbers the model was given, used to draw charts next to its
+    // bullets — the visual carries the data, the text carries the judgement.
+    const vizCtx = useMemo(() => {
+      try {
+        return report ? buildContext() : null;
+      } catch (e) {
+        return null;
+      }
+    }, [report, flow, openBal, budgetTargets, activeYear]);
+    const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, style: { marginBottom: 9 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { className: "txm", style: { fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, label), /* @__PURE__ */ React.createElement("span", { className: "mno", style: { fontSize: 12, whiteSpace: "nowrap" } }, value, sub && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontFamily: "Inter,sans-serif", fontSize: 11 } }, " ", sub))), /* @__PURE__ */ React.createElement("div", { style: { height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { width: Math.max(3, Math.min(100, fillPct)) + "%", height: "100%", borderRadius: 4, background: fillColor } })));
+    const sectionViz = (t) => {
+      const c = vizCtx;
+      if (!c) return null;
+      const wrap = (kids) => /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, kids);
+      if (t === "Spending Analysis" && c.topExpenseCategories.length) {
+        const rows = c.topExpenseCategories.slice(0, 5);
+        const max = rows[0].total || 1;
+        return wrap(rows.map((r) => /* @__PURE__ */ React.createElement(VizRow, { key: r.category, label: r.category, fillPct: r.total / max * 100, fillColor: "var(--accent)", value: fmt(r.total), sub: r.pctOfExpenses + "%", rowTitle: `${r.category}: ${fmt(r.total)} (${r.pctOfExpenses}% of expenses)` })));
+      }
+      if (t === "Income Analysis" && c.incomeCategories.length) {
+        const rows = c.incomeCategories.slice(0, 5);
+        const max = rows[0].total || 1;
+        return wrap(rows.map((r) => /* @__PURE__ */ React.createElement(VizRow, { key: r.category, label: r.category, fillPct: r.total / max * 100, fillColor: "var(--greenDk)", value: fmt(r.total), rowTitle: `${r.category}: ${fmt(r.total)} YTD` })));
+      }
+      if (t === "Budget Performance" && c.budgetVsActual.length) {
+        const rows = c.budgetVsActual.slice(0, 5);
+        return wrap(rows.map((r) => /* @__PURE__ */ React.createElement(VizRow, { key: r.category, label: r.category, fillPct: r.target > 0 ? r.actual / r.target * 100 : 100, fillColor: r.variance > 0 ? "var(--red)" : "var(--greenDk)", value: fmt(r.actual), sub: `/ ${fmt(r.target)} \u00B7 ${r.variance > 0 ? "over" : "under"} by ${fmt(Math.abs(r.variance))}`, rowTitle: `${r.category}: actual ${fmt(r.actual)} vs target ${fmt(r.target)}` })));
+      }
+      if (t === "Debt Management" && (c.debtTrackerItems.length || c.debtObligations.length)) {
+        if (c.debtTrackerItems.length) {
+          const max = Math.max(...c.debtTrackerItems.map((d) => d.balance), 1);
+          return wrap(c.debtTrackerItems.map((d) => /* @__PURE__ */ React.createElement(VizRow, { key: d.name, label: d.name + (d.rate ? ` \u00B7 ${d.rate}%` : ""), fillPct: d.balance / max * 100, fillColor: "var(--accent)", value: fmt(d.balance), sub: d.monthlyPayment ? `\u00B7 ${fmt(d.monthlyPayment)}/mo` : "", rowTitle: `${d.name}: balance ${fmt(d.balance)} at ${d.rate}%` })));
+        }
+        const max = Math.max(...c.debtObligations.map((d) => d.ytdPaid), 1);
+        return wrap(c.debtObligations.slice(0, 5).map((d) => /* @__PURE__ */ React.createElement(VizRow, { key: d.category, label: d.category, fillPct: d.ytdPaid / max * 100, fillColor: "var(--accent)", value: fmt(d.ytdPaid), sub: "paid YTD", rowTitle: `${d.category}: ${fmt(d.ytdPaid)} paid YTD` })));
+      }
+      if (t === "Savings Goals" && c.savingsGoals.length) {
+        return wrap(c.savingsGoals.map((g) => /* @__PURE__ */ React.createElement(VizRow, { key: g.name, label: g.name, fillPct: g.pct, fillColor: "var(--greenDk)", value: g.pct + "%", sub: `${fmt(g.saved)} / ${fmt(g.target)}`, rowTitle: `${g.name}: ${fmt(g.saved)} of ${fmt(g.target)} (${g.pct}%)` })));
+      }
+      if (t === "Cash Flow & Risk" && c.monthlyBreakdown.length) {
+        const maxAbs = Math.max(...c.monthlyBreakdown.map((m) => Math.abs(m.surplus)), 1);
+        return /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginBottom: 6 } }, "Monthly surplus (above line) / shortfall (below line)"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 3 } }, c.monthlyBreakdown.map((m) => /* @__PURE__ */ React.createElement("div", { key: m.month, title: `${m.month}: ${fmt(m.surplus, true)}`, style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { position: "relative", height: 56 } }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", left: 0, right: 0, top: "50%", borderTop: "1px solid var(--border)" } }), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", left: "18%", right: "18%", borderRadius: 2, background: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)", height: Math.max(2, Math.round(Math.abs(m.surplus) / maxAbs * 26)), bottom: m.surplus >= 0 ? "50%" : "auto", top: m.surplus < 0 ? "50%" : "auto" } })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, textAlign: "center", color: "var(--textLt)", marginTop: 2 } }, m.month[0])))));
+      }
+      return null;
     };
     return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.5 } }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", marginTop: 4 } }, "Last run: ", lastRun.toLocaleTimeString())), !apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: {
       marginTop: 16,
@@ -617,7 +673,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         color,
         lineHeight: 1
       } }, score, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textLt)" } }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--text)" } }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
-    })(), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, report.map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 0, gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { style: {
+    })(), vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }), /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in \u00B7 ${fmt(vizCtx.totalExpenses)} out` }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, (orderedReport || report).map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 0, gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
       gap: 10,
@@ -628,7 +684,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       fontSize: 15,
       fontWeight: 700,
       color: sectionColor[section.title] || "var(--navy)"
-    } }, section.title)), section.items.map((line, li) => {
+    } }, section.title)), sectionViz(section.title), section.items.map((line, li) => {
       const raw = line.trim();
       if (!raw) return null;
       if (/^[-*_]{3,}$/.test(raw)) return /* @__PURE__ */ React.createElement("hr", { key: li, style: { border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" } });
@@ -645,7 +701,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const isBold = raw.match(/^\*\*(.+)\*\*$/);
       const isNumbered = raw.match(/^\d+\.\s+/);
       const isBullet = raw.match(/^[-*]\s+/);
-      const text = raw.replace(/^\*\*|\*\*$/g, "").replace(/^[-*\d+\.]\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
+      const text = raw.replace(/^\*\*|\*\*$/g, "").replace(/^(\d+\.|[-*])\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
       if (isBold) return /* @__PURE__ */ React.createElement("div", { key: li, style: {
         fontSize: 13,
         fontWeight: 700,
