@@ -164,7 +164,7 @@
       const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, e.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Has receipt" }, "\u{1F4CE}"), archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: __spreadValues({ fontSize: 13, padding: "10px 12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "40%", minWidth: 120 }, arcText) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"));
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
@@ -627,7 +627,7 @@
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap"
-        }, arcStyle) }, e.desc, e.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Has receipt" }, "\u{1F4CE}"), archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13", style: {
+        }, arcStyle) }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 11, fontStyle: "italic" } }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13", style: {
           fontWeight: 600,
           whiteSpace: "nowrap",
           flexShrink: 0,

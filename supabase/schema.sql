@@ -189,10 +189,13 @@ create table if not exists household_settings (
   updated_by uuid references auth.users(id)
 );
 
--- Receipt images, stored as binary blobs in the database.
--- owner_key ties a receipt to what it's attached to:
---   'entry:<entryId>'                    — attachment on a register entry
---   'override:<year>:<occurrenceId>'     — attachment on a single occurrence
+-- Receipt images, stored as binary blobs in the database. Receipts are strictly
+-- per-occurrence — each dated instance of a (possibly repeating) entry has its
+-- own receipt slot:
+--   'override:<year>:<occurrenceId>'     — the only form the app writes
+-- ('entry:<entryId>' keys appear transiently while migrating legacy blob data
+--  and are re-keyed to the entry's start-date occurrence by the migration
+--  blocks at the bottom of this file.)
 create table if not exists receipts (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references households(id) on delete cascade,
@@ -821,7 +824,9 @@ begin
 end $$;
 
 -- Store (insert or replace) one receipt image for the caller's household.
--- p_b64 is the raw base64 image data (no data: URL prefix).
+-- p_b64 is the raw base64 image data (no data: URL prefix). Only
+-- per-occurrence keys are accepted — receipts always belong to a single
+-- dated instance, never to a whole (possibly repeating) entry.
 create or replace function put_receipt(p_owner_key text, p_mime text, p_b64 text)
 returns void
 language plpgsql
@@ -831,8 +836,8 @@ as $$
 declare
   hid uuid := cf_my_household();
 begin
-  if p_owner_key is null or p_owner_key !~ '^(entry:|override:)' then
-    raise exception 'Invalid receipt owner key.';
+  if p_owner_key is null or p_owner_key !~ '^override:' then
+    raise exception 'Invalid receipt owner key: receipts are per-occurrence (override:<year>:<occurrenceId>).';
   end if;
   insert into receipts (household_id, owner_key, mime, data)
   values (hid, p_owner_key, coalesce(nullif(p_mime, ''), 'image/jpeg'), decode(p_b64, 'base64'))
@@ -952,5 +957,48 @@ begin
     raise notice 'No households needed migration (already migrated or no legacy data).';
   else
     raise notice 'Migration complete: % household(s) migrated. The legacy household_data table was kept as a backup.', migrated;
+  end if;
+end $$;
+
+-- Receipts are per-occurrence only: re-key any legacy entry-level receipts
+-- ('entry:<id>', from blob data migrated before this rule) onto the entry's
+-- start-date occurrence, creating the matching entry_overrides row so the app
+-- picks the image up. If that occurrence already has its own receipt, the
+-- per-occurrence one wins and the entry-level copy is dropped. Idempotent:
+-- after one run no 'entry:%' receipts remain.
+do $$
+declare
+  r record;
+  yr int;
+  occ text;
+  tgt text;
+  moved int := 0;
+begin
+  for r in
+    select rc.id as receipt_id, rc.household_id, e.id as entry_id, e.start_date
+    from receipts rc
+    join entries e
+      on e.household_id = rc.household_id
+     and rc.owner_key = 'entry:' || e.id
+  loop
+    yr := extract(year from r.start_date)::int;
+    occ := r.entry_id || '-' || yr || '-'
+        || (extract(month from r.start_date)::int - 1) || '-'
+        || extract(day from r.start_date)::int;
+    tgt := 'override:' || yr || ':' || occ;
+    if exists (select 1 from receipts x
+               where x.household_id = r.household_id and x.owner_key = tgt) then
+      delete from receipts where id = r.receipt_id;
+    else
+      insert into entry_overrides (household_id, year, occurrence_id)
+      values (r.household_id, yr, occ)
+      on conflict (household_id, year, occurrence_id) do nothing;
+      update receipts set owner_key = tgt, updated_at = now() where id = r.receipt_id;
+      moved := moved + 1;
+    end if;
+  end loop;
+  delete from receipts where owner_key like 'entry:%';
+  if moved > 0 then
+    raise notice 'Re-keyed % entry-level receipt(s) to their start-date occurrence.', moved;
   end if;
 end $$;

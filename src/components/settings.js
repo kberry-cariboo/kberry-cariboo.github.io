@@ -508,8 +508,12 @@
       reader.onload = (ev) => {
         try {
           const d = JSON.parse(ev.target.result);
-          if (d.entries) setEntries(d.entries);
-          if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
+          const fixed = moveEntryAttachmentsToOverrides(
+            Array.isArray(d.entries) ? d.entries : [],
+            d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
+          );
+          if (d.entries) setEntries(fixed.entries);
+          if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
           if (d.yearConfigs) setYearConfigs(d.yearConfigs);
           if (d.categories) setCategories(d.categories);
           if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);

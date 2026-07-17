@@ -778,13 +778,19 @@
         const rt = JSON.parse(JSON.stringify(payload));
         return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === SCHEMA_VERSION && rt.goals[0].saved === 25;
       });
-      t("override attachment wins over base", () => {
-        const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64BASE" });
+      t("receipts are per-occurrence only", () => {
+        const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64LEGACY" });
         const evsA = expandEntries([ent], 2026, {});
         const ovA = {};
         ovA[evsA[0].id] = { attachment: "base64OVERRIDE" };
         const evsB = expandEntries([ent], 2026, ovA);
-        return evsA[0].attachment === "base64BASE" && evsB[0].attachment === "base64OVERRIDE" && evsB[1].attachment === "base64BASE";
+        return evsA[0].attachment === null && evsB[0].attachment === "base64OVERRIDE" && evsB[1].attachment === null;
+      });
+      t("legacy entry attachment migrates to start-date occurrence", () => {
+        const ent = { id: 9, desc: "T", type: "expense", amount: 5, repeats: true, recurUnit: "month", recurEvery: 1, startDate: "2026-01-15", attachment: "base64LEGACY" };
+        const res = moveEntryAttachmentsToOverrides([ent], {});
+        const ov = res.overridesByYr[2026] && res.overridesByYr[2026]["9-2026-0-15"];
+        return res.moved === 1 && res.entries[0].attachment === void 0 && !!ov && ov.attachment === "base64LEGACY";
       });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];

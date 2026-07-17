@@ -160,9 +160,10 @@
     const initialized = useRef(false);
     const saveTimer = useRef(null);
     const lastLoadedHousehold = useRef(null);
-    // ownerKey ('entry:<id>' / 'override:<year>:<occId>') -> data URL, mirroring
-    // what the receipts table holds server-side. Used to diff on save so only
-    // added/changed/removed images travel over the network.
+    // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
+    // receipts table holds server-side. Used to diff on save so only
+    // added/changed/removed images travel over the network. Receipts are
+    // strictly per-occurrence; entry-level attachments no longer exist.
     const receiptCache = useRef({});
     const applyPayload = useCallback((d) => {
       if (!d) return;
@@ -216,9 +217,6 @@
     };
     const collectAttachments = useCallback(() => {
       const map = {};
-      (entries || []).forEach((e) => {
-        if (e && e.attachment) map["entry:" + e.id] = e.attachment;
-      });
       Object.keys(overridesByYr || {}).forEach((year) => {
         const yOvs = overridesByYr[year] || {};
         Object.keys(yOvs).forEach((k) => {
@@ -226,7 +224,7 @@
         });
       });
       return map;
-    }, [entries, overridesByYr]);
+    }, [overridesByYr]);
     const buildPayload = useCallback(() => ({
       entries: stripAttachments(entries),
       overridesByYr: stripOverrideAttachments(overridesByYr),
@@ -266,14 +264,8 @@
           if (r && r.ownerKey && r.b64) rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
         });
         receiptCache.current = Object.assign({}, rmap);
-        // Re-attach receipt images to the entries/overrides they belong to so
-        // the rest of the app keeps seeing plain `attachment` data URLs.
-        if (Array.isArray(payload.entries)) {
-          payload.entries = payload.entries.map((e) => {
-            const src = rmap["entry:" + e.id];
-            return src ? Object.assign({}, e, { attachment: src }) : e;
-          });
-        }
+        // Re-attach receipt images to the occurrences they belong to so the
+        // rest of the app keeps seeing plain `attachment` data URLs.
         if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
           Object.keys(payload.overridesByYr).forEach((year) => {
             const yOvs = payload.overridesByYr[year] || {};
