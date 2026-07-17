@@ -47,7 +47,7 @@
       document.addEventListener("visibilitychange", onVis);
       return () => document.removeEventListener("visibilitychange", onVis);
     }, [lockTimeout, sessionUser]);
-    const [entries, setEntries] = useLS("cf_entries", SEED_ENTRIES);
+    const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
     const [activeYear, setActiveYear] = useLS("cf_activeYear", 2026);
