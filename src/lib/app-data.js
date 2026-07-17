@@ -693,7 +693,7 @@
         .reg-actions button{min-height:36px;min-width:36px;}
 
         /* AI report: two-column card grid on wide screens */
-        .ai-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px;}
+        .ai-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
         @media(max-width:900px){.ai-report-grid{grid-template-columns:1fr;}}
 
         /* Keyboard shortcut hint in search placeholder */
