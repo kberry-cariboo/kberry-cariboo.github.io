@@ -94,8 +94,7 @@
       { id: "dashboard", icon: "home", label: "Home" },
       { id: "budget", icon: "calendar", label: "Budget" },
       { id: "plan", icon: "target", label: "Plan" },
-      { id: "ai", icon: "sparkle", label: "AI" },
-      { id: "settings", icon: "settings", label: "Settings" }
+      { id: "ai", icon: "sparkle", label: "AI" }
     ];
     return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary" }, items.map((it) => /* @__PURE__ */ React.createElement(
       "button",

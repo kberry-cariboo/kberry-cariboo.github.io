@@ -565,7 +565,7 @@
           marginBottom: 10
         }
       },
-      checking ? "Checking…" : "Unlock with Face ID / Touch ID"
+      checking ? "Checking…" : "Unlock with fingerprint / face"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -686,7 +686,7 @@
           cursor: "pointer"
         }
       },
-      "Use Face ID / Touch ID instead"
+      "Use fingerprint / face instead"
     ))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
       "button",
       {

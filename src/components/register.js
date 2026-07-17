@@ -108,10 +108,7 @@
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
     }).filter((e) => {
       const q = (search || globalSearch || "").toLowerCase();
-      if (!q) return true;
-      const amtMatch = matchesAmountQuery(q, e.amount);
-      if (amtMatch !== null) return amtMatch;
-      return e.desc.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.notes || "").toLowerCase().includes(q);
+      return eventMatchesSearch(e, q);
     }).filter((e) => {
       if (!dateFrom && !dateTo) return true;
       const sd = e.startDate || "";

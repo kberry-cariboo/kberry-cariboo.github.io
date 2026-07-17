@@ -56,9 +56,9 @@
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => setScrolling(false), 400);
       };
-      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true, capture: true });
       return () => {
-        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("scroll", onScroll, { capture: true });
         clearTimeout(idleTimer);
       };
     }, []);
@@ -317,6 +317,7 @@
       return value !== cur && /* @__PURE__ */ React.createElement(
         "button",
         {
+          className: "month-today-pill",
           onClick: () => onChange(cur),
           title: "Jump to current month",
           "aria-label": "Jump to current month",

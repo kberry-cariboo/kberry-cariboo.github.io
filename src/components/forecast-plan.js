@@ -28,7 +28,7 @@
       ExportBar,
       {
         onCSV: () => {
-          const rows = futureEvents.filter((ev) => !gq2 || ev.desc.toLowerCase().includes(gq2) || ev.category.toLowerCase().includes(gq2)).map((ev) => {
+          const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
             return [dateStr, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance];
           });
@@ -44,7 +44,7 @@
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left",
       letterSpacing: "0.08em",
       textTransform: "uppercase"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => !gq2 || ev.desc.toLowerCase().includes(gq2) || ev.category.toLowerCase().includes(gq2)).map((ev, i) => {
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
       return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--red)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
         padding: "8px 14px",
@@ -455,11 +455,14 @@ Provide your assessment using these EXACT section headers (in markdown ## format
 ## Budget Performance
 ## Cash Flow & Risk
 ## Savings Goals
-Assess progress on each savings goal in savingsGoals (percent funded, whether monthly funding will meet the target date) and recommend funding adjustments.
-
 ## Priority Action Items
 
-For each section, use bullet points (- ) and be direct and specific. In "Priority Action Items", number the top 5 actions with concrete steps and target amounts where possible. Conclude with an overall financial health score from 1-10 with brief justification.`;
+Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
+- 2-4 bullets (- ) per section, one short sentence each (under ~18 words), every bullet anchored to a specific dollar amount or category from the data.
+- No preamble, no restating the data tables, no generic advice, no hedging filler ("consider", "you may want to").
+- Savings Goals: one bullet per goal \u2014 percent funded, on/off track for its target date, and the exact monthly adjustment if off track.
+- Priority Action Items: exactly the top 5 as a numbered list, one line each, with a concrete dollar target where possible.
+- Finish with "Score: N/10" and one sentence of justification.`;
       try {
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -471,8 +474,8 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: 2e3,
-            system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Provide practical, specific, empathetic advice. Format responses in clean Markdown.",
+            max_tokens: 1200,
+            system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Be blunt and brief: short, numbers-first bullets, no filler. Format responses in clean Markdown.",
             messages: [{ role: "user", content: prompt }]
           })
         });
@@ -614,7 +617,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         color,
         lineHeight: 1
       } }, score, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textLt)" } }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--text)" } }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
-    })(), report.map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    })(), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, report.map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, style: { marginBottom: 0, gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
       gap: 10,
@@ -695,7 +698,7 @@ For each section, use bullet points (- ) and be direct and specific. In "Priorit
         lineHeight: 1.6,
         marginBottom: 6
       } }, /* @__PURE__ */ React.createElement(BoldText, { text: plain }));
-    }))), /* @__PURE__ */ React.createElement("div", { style: {
+    })))), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 11,
       color: "var(--textLt)",
       textAlign: "center",

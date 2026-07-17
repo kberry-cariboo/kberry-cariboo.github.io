@@ -12,6 +12,7 @@
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      updateMemberName,
       updateMyName,
       signOut
     } = useHousehold();
@@ -29,7 +30,16 @@
       signOut();
     };
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
-    const [locked, setLocked] = useState(false);
+    // "Fingerprint sign-on": when enabled, the app starts locked and the lock
+    // screen immediately prompts for the device biometric (fingerprint / face).
+    // The Supabase session persists underneath — this gates the UI on-device.
+    const [locked, setLocked] = useState(() => {
+      try {
+        return localStorage.getItem("cf_lock_on_launch") === "1";
+      } catch (e) {
+        return false;
+      }
+    });
     useEffect(() => {
       if (!lockTimeout || !sessionUser) return;
       const KEY = "cf_hidden_at";
@@ -49,8 +59,11 @@
       return () => document.removeEventListener("visibilitychange", onVis);
     }, [lockTimeout, sessionUser]);
     useEffect(() => {
-      if (!sessionUser) setLocked(false);
-    }, [sessionUser]);
+      // Clear the lock only on a real signed-out state — during startup the
+      // session is still loading and the launch lock must survive until the
+      // lock screen can prompt for the fingerprint.
+      if (!authLoading && !session) setLocked(false);
+    }, [authLoading, session]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
@@ -221,6 +234,16 @@
     const [regFilterScheds, setRegFilterScheds] = useLS("cf_reg_filter_scheds", []);
     const [regFilterStatus, setRegFilterStatus] = useLS("cf_reg_filter_status", []);
     const [globalSearch, setGlobalSearch] = useState("");
+    const prevSearchRef = useRef("");
+    useEffect(() => {
+      const had = !!prevSearchRef.current;
+      prevSearchRef.current = globalSearch;
+      if (!globalSearch || had) return;
+      // Starting a search shows results in the Budget monthly view (which
+      // jumps to the most recent matching month), not the Entries register.
+      setTab("budget");
+      setBudgetSub("monthly");
+    }, [globalSearch]);
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
@@ -348,7 +371,8 @@
     }, [houseLoad]);
     useEffect(() => {
       const onStart = (e) => {
-        if (window.scrollY > 10) return;
+        const sc = document.querySelector(".app-scroll");
+        if (window.scrollY > 10 || sc && sc.scrollTop > 10) return;
         if (document.querySelector(".modal-overlay")) return;
         ptrRef.current = { startY: e.touches[0].clientY, active: true };
       };
@@ -541,8 +565,7 @@
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
       { id: "plan", label: "Plan" },
-      { id: "ai", label: "\u2726 AI Insights" },
-      { id: "settings", label: "Settings" }
+      { id: "ai", label: "\u2726 AI Insights" }
     ];
     if (authLoading) {
       return null;
@@ -559,7 +582,7 @@
     if (locked) {
       return /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout });
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll", style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
       fontWeight: 700,
       padding: "4px 12px",
       borderRadius: "16px",
@@ -1164,7 +1187,8 @@
         household,
         members,
         createInvite,
-        setMemberDisabled
+        setMemberDisabled,
+        updateMemberName
       }
     ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,

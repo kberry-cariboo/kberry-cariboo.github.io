@@ -105,13 +105,19 @@
     const matchingMonths = useMemo(() => {
       if (!gq) return /* @__PURE__ */ new Set();
       const s2 = /* @__PURE__ */ new Set();
-      flow.filter((ev) => ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)).forEach((ev) => s2.add(ev.month));
+      flow.filter((ev) => eventMatchesSearch(ev, gq)).forEach((ev) => s2.add(ev.month));
       return s2;
     }, [gq, flow]);
     useEffect(() => {
       if (!gq) return;
-      const latest = [...matchingMonths].sort((a, b) => b - a)[0];
-      if (latest !== void 0 && latest !== monthIdx) setMonthIdx(latest);
+      const arr = [...matchingMonths];
+      if (!arr.length) return;
+      // "Most recent" month with a match: the latest one up to today (for the
+      // current year), falling back to the earliest future match.
+      const nowMo = (/* @__PURE__ */ new Date()).getFullYear() === activeYear ? (/* @__PURE__ */ new Date()).getMonth() : 11;
+      const past = arr.filter((m) => m <= nowMo);
+      const target = past.length ? Math.max(...past) : Math.min(...arr);
+      if (target !== monthIdx) setMonthIdx(target);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
     const view = budgetSub === "daily" ? "daily" : "monthly";
@@ -163,7 +169,7 @@
     }, [monthIdx, budgetSub]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
-    const monthEvents = flow.filter((ev) => ev.month === monthIdx && (!gq || ev.desc.toLowerCase().includes(gq) || ev.category.toLowerCase().includes(gq)));
+    const monthEvents = flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
