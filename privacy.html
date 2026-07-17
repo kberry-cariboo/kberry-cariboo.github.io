@@ -144,18 +144,16 @@
     Supabase and reloads the next time you sign in.</li>
   </ul>
 
-  <h3>3. Household Sharing &amp; GitHub Gist (Optional Manual Backup)</h3>
+  <h3>3. Household Sharing</h3>
   <p>
     You can invite family members to share your budget (a &ldquo;household&rdquo;).
     Each person signs in with their own email and password; invited members can read
     and write the same shared budget data.
   </p>
   <p>
-    CashFlow also offers an <strong>optional</strong> manual backup/import feature
-    using a GitHub Gist you create and control, via a GitHub Personal Access Token you
-    generate and paste into the app. This token is stored only in your browser&rsquo;s
-    localStorage and is sent only to GitHub&rsquo;s API, directly from your browser.
-    This is a manual, opt-in feature &mdash; it is not used for automatic sync.
+    Receipt photos you attach to entries are compressed in your browser and stored
+    as image blobs in the same Supabase database as the rest of your budget data,
+    protected by the same household access rules.
   </p>
 
   <h3>4. Information We Collect</h3>
@@ -165,7 +163,7 @@
     <li>No analytics or tracking scripts are used.</li>
     <li>No cookies are set by the application.</li>
     <li>No personal data is sent to any server other than Supabase (required) and,
-    if you opt in, GitHub&rsquo;s Gist API.</li>
+    if you opt into AI Insights, Anthropic&rsquo;s API.</li>
     <li>No advertising networks or other third-party services are integrated.</li>
   </ul>
 
@@ -177,9 +175,7 @@
   </p>
   <ul>
     <li><strong>Supabase</strong> &mdash; authentication and database storage for your
-    budget data (required to use the app).</li>
-    <li><strong>GitHub Gist API</strong> &mdash; only if you opt into the manual
-    backup/import feature, using a token you provide.</li>
+    budget data, including receipt images (required to use the app).</li>
     <li><strong>Anthropic API</strong> &mdash; only if you enter your own API key for
     the optional AI Insights feature; requests go directly from your browser to
     Anthropic using your key.</li>
@@ -195,9 +191,8 @@
     use the in-app &ldquo;Reset Local Cache&rdquo; option; your Supabase data is
     unaffected either way.</li>
     <li><strong>Supabase data:</strong> Remains in the project until you delete your
-    account or ask the app&rsquo;s operator to delete it.</li>
-    <li><strong>GitHub Gist data:</strong> If you use the optional Gist backup, the
-    Gist remains in your own GitHub account until you delete it there.</li>
+    account or ask the app&rsquo;s operator to delete it. Removing a receipt from an
+    entry deletes the stored image on the next sync.</li>
   </ul>
 
   <h3>7. Children&rsquo;s Privacy</h3>

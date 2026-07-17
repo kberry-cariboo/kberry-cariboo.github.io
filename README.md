@@ -39,14 +39,17 @@ A GitHub Actions workflow (`.github/workflows/build.yml`) rebuilds `index.html` 
 
 ## Supabase setup
 
-CashFlow requires a Supabase project for authentication and data storage (it replaced
-an earlier fake client-side login and GitHub Gist sync). To run your own instance:
+CashFlow requires a Supabase project for authentication and data storage. To run
+your own instance:
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the SQL Editor in your project and run the entire contents of
-   `supabase/schema.sql` — it creates the `households`, `household_members`,
-   `household_invites`, and `household_data` tables, Row Level Security policies,
-   and the `create_household`/`create_invite`/`join_household` RPC functions.
+   `supabase/schema.sql` — it creates the household tables plus the normalized
+   budget tables (`entries`, `entry_overrides`, `categories`, `year_configs`,
+   `budget_targets`, `templates`, `completed_occurrences`, `goals`,
+   `household_settings`, and `receipts`), Row Level Security policies, and the
+   RPC functions the app talks to (`load_household`/`save_household`/
+   `put_receipt`/`delete_receipt` plus the household lifecycle RPCs).
 3. In your project's API settings, copy the **Project URL** and **anon public key**.
 4. Paste them into `src/lib/supabase-config.js` (`SUPABASE_URL` / `SUPABASE_ANON_KEY`)
    and run `node build.js`. The anon key is safe to ship in client-side code — Row
@@ -55,12 +58,22 @@ an earlier fake client-side login and GitHub Gist sync). To run your own instanc
    household** (you become its owner) or **join one** with an invite code from
    another member.
 
-If you were previously using the GitHub Gist sync feature, sign in, create or join
-your household, then use **Settings → General → Import your existing Gist data** to
-pull your saved data in. That import is additive and read-only against the Gist —
-it never modifies or deletes it, and can be re-run any time. GitHub Gist sync remains
-available afterward as a manual backup/import tool (Settings → General), it's just no
-longer the automatic sync path — Supabase is.
+### Data model & migration from the old blob store
+
+Budget data is stored in **normalized tables** — one row per entry, override,
+category, budget target, goal, and so on — rather than the single JSONB blob the
+app used before. Receipt photos are stored as **binary blobs (`bytea`) in the
+`receipts` table**, referenced by what they're attached to, so they no longer
+ride along inside every sync payload. All reads/writes go through the
+`load_household`/`save_household` RPCs, which keep each save atomic.
+
+If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
+migration block at the end automatically copies each household's old
+`household_data` blob into the new tables (extracting inline base64 receipt
+images into `receipts`) the first time it runs. The legacy `household_data`
+table is left untouched as a backup — verify your data in the app, then drop it
+whenever you like. The earlier GitHub Gist sync/backup feature has been removed
+entirely; use **Settings → Backup** for local JSON export/import.
 
 ## Fonts, icons, manifest
 

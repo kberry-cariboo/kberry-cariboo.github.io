@@ -160,6 +160,10 @@
     const initialized = useRef(false);
     const saveTimer = useRef(null);
     const lastLoadedHousehold = useRef(null);
+    // ownerKey ('entry:<id>' / 'override:<year>:<occId>') -> data URL, mirroring
+    // what the receipts table holds server-side. Used to diff on save so only
+    // added/changed/removed images travel over the network.
+    const receiptCache = useRef({});
     const applyPayload = useCallback((d) => {
       if (!d) return;
       if (d.entries) setEntries(d.entries);
@@ -184,9 +188,48 @@
       if (d.completed) setCompleted(d.completed);
       if (d.aiApiKey && setAiApiKey) setAiApiKey(d.aiApiKey);
     }, [setEntries, setOverridesByYr, setYearConfigs, setCategories, setCategoryColors, setActiveYear, setAlertThreshold, setDarkMode, setForecastHorizon, setGoals, setDashHidden, setDashOrder, setColOrder, setRegFilter, setRegFilterCats, setRegFilterScheds, setRegFilterStatus, setBudgetTargets, setTemplates, setCompleted, setAiApiKey]);
+    // Receipt images live in the receipts table as binary blobs, not inside the
+    // save payload — the payload only carries the rest of each entry/override.
+    const stripAttachments = (list) => (list || []).map((e) => {
+      if (!e || e.attachment === void 0) return e;
+      const copy = Object.assign({}, e);
+      delete copy.attachment;
+      return copy;
+    });
+    const stripOverrideAttachments = (byYr) => {
+      const out = {};
+      Object.keys(byYr || {}).forEach((year) => {
+        const yOvs = byYr[year] || {};
+        out[year] = {};
+        Object.keys(yOvs).forEach((k) => {
+          const o = yOvs[k];
+          if (o && o.attachment !== void 0) {
+            const copy = Object.assign({}, o);
+            delete copy.attachment;
+            out[year][k] = copy;
+          } else {
+            out[year][k] = o;
+          }
+        });
+      });
+      return out;
+    };
+    const collectAttachments = useCallback(() => {
+      const map = {};
+      (entries || []).forEach((e) => {
+        if (e && e.attachment) map["entry:" + e.id] = e.attachment;
+      });
+      Object.keys(overridesByYr || {}).forEach((year) => {
+        const yOvs = overridesByYr[year] || {};
+        Object.keys(yOvs).forEach((k) => {
+          if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
+        });
+      });
+      return map;
+    }, [entries, overridesByYr]);
     const buildPayload = useCallback(() => ({
-      entries,
-      overridesByYr,
+      entries: stripAttachments(entries),
+      overridesByYr: stripOverrideAttachments(overridesByYr),
       yearConfigs,
       categories,
       categoryColors,
@@ -214,28 +257,73 @@
       setStatus("syncing");
       setMsg("Loading…");
       try {
-        const { data, error } = await supabaseClient.from("household_data").select("data").eq("household_id", household.id).maybeSingle();
+        const { data, error } = await supabaseClient.rpc("load_household");
         if (error) throw error;
-        applyPayload((data && data.data) || {});
+        const payload = (data && data.data) || {};
+        const receipts = (data && data.receipts) || [];
+        const rmap = {};
+        receipts.forEach((r) => {
+          if (r && r.ownerKey && r.b64) rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+        });
+        receiptCache.current = Object.assign({}, rmap);
+        // Re-attach receipt images to the entries/overrides they belong to so
+        // the rest of the app keeps seeing plain `attachment` data URLs.
+        if (Array.isArray(payload.entries)) {
+          payload.entries = payload.entries.map((e) => {
+            const src = rmap["entry:" + e.id];
+            return src ? Object.assign({}, e, { attachment: src }) : e;
+          });
+        }
+        if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+          Object.keys(payload.overridesByYr).forEach((year) => {
+            const yOvs = payload.overridesByYr[year] || {};
+            Object.keys(yOvs).forEach((k) => {
+              const src = rmap["override:" + year + ":" + k];
+              if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+            });
+          });
+        }
+        applyPayload(payload);
+        initialized.current = true;
         setStatus("ok");
         setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
         setStatus("error");
-        setMsg("❌ " + e.message);
+        setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
         return false;
       }
     }, [household, applyPayload]);
+    const syncReceipts = useCallback(async () => {
+      const current = collectAttachments();
+      const cached = receiptCache.current;
+      const parse = (dataUrl) => {
+        const m = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl || "");
+        return m ? { mime: m[1], b64: m[2] } : null;
+      };
+      for (const key of Object.keys(current)) {
+        if (cached[key] === current[key]) continue;
+        const img = parse(current[key]);
+        if (!img) continue;
+        const { error } = await supabaseClient.rpc("put_receipt", { p_owner_key: key, p_mime: img.mime, p_b64: img.b64 });
+        if (error) throw error;
+        cached[key] = current[key];
+      }
+      for (const key of Object.keys(cached)) {
+        if (current[key]) continue;
+        const { error } = await supabaseClient.rpc("delete_receipt", { p_owner_key: key });
+        if (error) throw error;
+        delete cached[key];
+      }
+    }, [collectAttachments]);
     const saveData = useCallback(async (silent = false) => {
       if (!supabaseClient || !household) return false;
       if (!silent) setStatus("syncing");
       try {
         const payload = buildPayload();
-        const { error } = await supabaseClient.from("household_data").update({
-          data: payload,
-          updated_at: (/* @__PURE__ */ new Date()).toISOString()
-        }).eq("household_id", household.id);
+        const { error } = await supabaseClient.rpc("save_household", { p_data: payload });
         if (error) throw error;
+        await syncReceipts();
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -244,18 +332,23 @@
         setMsg("❌ " + e.message);
         return false;
       }
-    }, [household, buildPayload]);
+    }, [household, buildPayload, syncReceipts]);
     useEffect(() => {
       if (!household) {
         lastLoadedHousehold.current = null;
         initialized.current = false;
+        receiptCache.current = {};
         return;
       }
       if (lastLoadedHousehold.current === household.id) return;
       lastLoadedHousehold.current = household.id;
       initialized.current = false;
-      loadData().then(() => {
-        initialized.current = true;
+      // Autosave stays disabled until a load succeeds (loadData flips
+      // `initialized` on success) — saving after a failed load would overwrite
+      // the household with this device's (possibly empty) local state. A manual
+      // "Reload from Cloud" retries and re-enables autosave when it succeeds.
+      loadData().then((ok) => {
+        if (!ok) lastLoadedHousehold.current = null;
       });
     }, [household, loadData]);
     useEffect(() => {

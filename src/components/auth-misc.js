@@ -750,12 +750,13 @@
         const c = document.createElement("canvas");
         return !!c.getContext("2d");
       });
-      t("Gist payload round-trip keeps all fields", () => {
+      t("Sync payload round-trip keeps all fields", () => {
         const payload = {
           entries: [entry],
           overridesByYr: {},
-          yearConfigs: {},
+          yearConfigs: [],
           categories: ["A"],
+          categoryColors: { A: "#123456" },
           budgetTargets: {},
           templates: [],
           completed: {},
@@ -763,19 +764,19 @@
           alertThreshold: 500,
           darkMode: false,
           forecastHorizon: 60,
-          aiReports: [],
-          users: [],
           colOrder: ["desc"],
           regFilter: "all",
           regFilterCats: [],
           regFilterScheds: [],
           regFilterStatus: [],
           goals: [{ id: 1, name: "G", target: 100, saved: 25, monthly: 10 }],
+          dashHidden: {},
+          dashOrder: [],
           schemaVersion: SCHEMA_VERSION,
           savedAt: (/* @__PURE__ */ new Date()).toISOString()
         };
         const rt = JSON.parse(JSON.stringify(payload));
-        return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === 5 && rt.goals[0].saved === 25;
+        return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === SCHEMA_VERSION && rt.goals[0].saved === 25;
       });
       t("override attachment wins over base", () => {
         const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64BASE" });
