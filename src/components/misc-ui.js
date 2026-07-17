@@ -147,12 +147,13 @@
       it.label
     )));
   }
-  function CollapseHeader({ id, title, summary, children }) {
+  function CollapseHeader({ id, title, summary, children, defaultCollapsed = false }) {
     const [collapsed, setCollapsed] = useState(() => {
       try {
-        return localStorage.getItem("cf_collapse_" + id) === "1";
+        const stored = localStorage.getItem("cf_collapse_" + id);
+        return stored === null ? defaultCollapsed : stored === "1";
       } catch (e) {
-        return false;
+        return defaultCollapsed;
       }
     });
     const toggle = () => {

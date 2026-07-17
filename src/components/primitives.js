@@ -42,12 +42,26 @@
   }, onImportCSV = null }) {
     const [menu, setMenu] = useState(false);
     const [form, setForm] = useState(false);
+    const [scrolling, setScrolling] = useState(false);
     useEffect(() => {
       if (open) {
         setForm(true);
         setMenu(false);
       }
     }, [open]);
+    useEffect(() => {
+      let idleTimer = null;
+      const onScroll = () => {
+        setScrolling(true);
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => setScrolling(false), 400);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      return () => {
+        window.removeEventListener("scroll", onScroll);
+        clearTimeout(idleTimer);
+      };
+    }, []);
     const closeForm = () => {
       setForm(false);
       setOpen(false);
@@ -178,8 +192,9 @@
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "background 0.2s,transform 0.2s",
-          transform: fabActive ? "rotate(45deg)" : "rotate(0deg)"
+          transition: "background 0.2s,transform 0.2s,opacity 0.2s",
+          transform: fabActive ? "rotate(45deg)" : "rotate(0deg)",
+          opacity: scrolling && !fabActive ? 0.4 : 1
         }
       },
       "+"
@@ -235,7 +250,7 @@
       /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", marginLeft: 8 } }, t.type === "income" ? "+" : "-", fmt(t.amount))
     ))));
   }
-  const Card = ({ children, style = {}, className = "" }) => /* @__PURE__ */ React.createElement("div", { className: `cf-card ${className}`.trim(), style }, children);
+  const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
   const SectionTitle = ({ children, action }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between", style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
   const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, marginBottom: 8 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, message), actionLabel && /* @__PURE__ */ React.createElement(
     "button",

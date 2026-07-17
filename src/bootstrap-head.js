@@ -1,4 +1,4 @@
-const CF_VERSION='v174';
+const CF_VERSION='v175';
 if('serviceWorker'in navigator){const sw=`const CACHE='cf-${CF_VERSION}';
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()).then(()=>self.clients.matchAll({type:'window'})).then(cs=>cs.forEach(c=>c.postMessage({type:'CF_SW_ACTIVATED',cache:CACHE}))));});

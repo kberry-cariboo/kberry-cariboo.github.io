@@ -555,7 +555,48 @@
         }
       },
       label
-    ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Required for the AI Insights tab. Your key is saved with your household's data in Supabase (so it's shared across your own devices and household members) and sent directly to Anthropic from your browser when you run a report \u2014 never to any third party. Anyone able to run script in this page could read it, same as any other browser-side API key. Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      gap: 6,
+      overflowX: "auto",
+      WebkitOverflowScrolling: "touch",
+      paddingBottom: 14,
+      marginBottom: 6
+    } }, [
+      ["sec-ai-key", "AI Key"],
+      ["sec-alert", "Alert Threshold"],
+      ["sec-appearance", "Appearance"],
+      ["sec-years", "Budget Years"],
+      ["sec-backup", "Backup"],
+      ["sec-gist", "GitHub Gist"],
+      ["sec-categories", "Categories"],
+      ["sec-security", "Security"],
+      ["sec-danger", "Danger Zone"]
+    ].map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        key: anchorId,
+        href: `#${anchorId}`,
+        onClick: (e) => {
+          e.preventDefault();
+          const el = document.getElementById(anchorId);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        },
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "6px 12px",
+          borderRadius: 20,
+          border: "1px solid var(--border)",
+          background: "var(--bgCard)",
+          color: "var(--textMid)",
+          textDecoration: "none",
+          whiteSpace: "nowrap",
+          flexShrink: 0
+        }
+      },
+      label
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Required for the AI Insights tab. Your key is saved with your household's data in Supabase (so it's shared across your own devices and household members) and sent directly to Anthropic from your browser when you run a report \u2014 never to any third party. Anyone able to run script in this page could read it, same as any other browser-side API key. Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
@@ -607,7 +648,7 @@
         }
       },
       "Clear key"
-    ))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", null, "🔑"), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -619,7 +660,7 @@
         value: alertThreshold,
         onChange: (e) => setAlertThreshold(roundMoney(Math.max(0, parseFloat(e.target.value) || 0)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         display: "flex",
@@ -721,7 +762,7 @@
           width: 120
         }
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", borderRadius: 6 } }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 8 } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", borderRadius: 6 } }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 8 } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, activeYear, alertThreshold, darkMode, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -755,7 +796,7 @@
       fontSize: 12,
       marginTop: 10,
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { style: {
+    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
       gap: 12,
@@ -779,7 +820,7 @@
         className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
       },
       "\u2b07 Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(GistMigrationPanel, { household, onImported: houseLoad }), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Manual Backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 12 } }, "No longer auto-syncs \u2014 use this as an independent manual backup, or to move data between devices."), /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(GistMigrationPanel, { household, onImported: houseLoad }), /* @__PURE__ */ React.createElement(Card, { id: "sec-gist", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "GitHub Gist \u2014 Manual Backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 12 } }, "No longer auto-syncs \u2014 use this as an independent manual backup, or to move data between devices."), /* @__PURE__ */ React.createElement(
       GistSettingsPanel,
       {
         gistStatus,
@@ -824,7 +865,7 @@
         background: warn ? "var(--amber)" : "var(--greenDk)",
         transition: "width 0.3s ease"
       } })), warn && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--amber)", marginTop: 6 } }, "Approaching the sync payload limit \u2014 consider removing receipts from older entries."));
-    })()), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    })()), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -835,6 +876,7 @@
         style: {
           display: "flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: 10,
           padding: "8px 12px",
           borderRadius: 8,
@@ -894,7 +936,7 @@
           onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
           style: { position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", padding: 0, border: "none" }
         }
-      )), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: 1 } }, cat), categoryColors[cat] && /* @__PURE__ */ React.createElement(
+      )), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: 1 } }, cat), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", marginLeft: "auto", flexShrink: 0 } }, categoryColors[cat] && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setCategoryColors((p) => {
@@ -918,7 +960,7 @@
         setEditIdx(i);
         setEditVal(cat);
         setEditColor(null);
-      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Edit"), /* @__PURE__ */ React.createElement("button", { onClick: () => delCat(i), className: "cf-btn cf-btn--compact cf-btn--danger" }, "Remove"))
+      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Edit"), /* @__PURE__ */ React.createElement("button", { onClick: () => delCat(i), className: "cf-btn cf-btn--compact cf-btn--danger" }, "Remove")))
     ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { title: "Pick a color (optional \u2014 auto-assigned if left default)", style: {
       position: "relative",
       width: 22,
@@ -954,7 +996,7 @@
       fontSize: 13,
       fontWeight: 600,
       padding: "8px 18px"
-    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", style: { fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", style: { fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: "auto-lock-select",
@@ -974,7 +1016,7 @@
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
@@ -1023,7 +1065,7 @@
         },
         onCancel: () => setConfirmTgtReset(false)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Clear this device's local cache \u2014 entries, overrides, categories, templates, budget targets, years, and local preferences. ", household ? "Your data in Supabase is not affected \u2014 the app will reload it from the cloud right after." : "Export a backup first if you might need this data again.", " This cannot be undone locally."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-danger", style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Clear this device's local cache \u2014 entries, overrides, categories, templates, budget targets, years, and local preferences. ", household ? "Your data in Supabase is not affected \u2014 the app will reload it from the cloud right after." : "Export a backup first if you might need this data again.", " This cannot be undone locally."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmWipe(true),
