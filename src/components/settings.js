@@ -388,6 +388,37 @@
     const [memberMsg, setMemberMsg] = useState("");
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [historyOpen, setHistoryOpen] = useState({});
+    const [bioSupported, setBioSupported] = useState(false);
+    const [bioEnabled, setBioEnabled] = useState(() => !!(sessionUser && getBiometricCredId(sessionUser.id)));
+    const [bioBusy, setBioBusy] = useState(false);
+    const [bioMsg, setBioMsg] = useState("");
+    useEffect(() => {
+      let live = true;
+      isBiometricAvailable().then((v) => {
+        if (live) setBioSupported(v);
+      });
+      return () => {
+        live = false;
+      };
+    }, []);
+    const toggleBiometric = async () => {
+      if (!sessionUser || bioBusy) return;
+      setBioMsg("");
+      if (bioEnabled) {
+        clearBiometric(sessionUser.id);
+        setBioEnabled(false);
+        return;
+      }
+      setBioBusy(true);
+      try {
+        await registerBiometric(sessionUser.id, sessionUser.email, sessionUser.fullName);
+        setBioEnabled(true);
+      } catch (e) {
+        setBioMsg(e.name === "NotAllowedError" ? "Cancelled — nothing was changed." : e.message || "Couldn't set up Face ID / Touch ID on this device.");
+      } finally {
+        setBioBusy(false);
+      }
+    };
     const sortedYears = [...yearConfigs].sort((a, b) => a.year - b.year);
     const addYear = () => {
       const y = parseInt(newYear);
@@ -1016,7 +1047,7 @@
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Signs you out if the app stays hidden or backgrounded longer than the selected time.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with Face ID / Touch ID or your password."), sessionUser && bioSupported && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with Face ID / Touch ID" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),

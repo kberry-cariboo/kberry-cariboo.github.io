@@ -466,6 +466,243 @@
       loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
     )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
+  function LockScreen({ sessionUser, onUnlock, onSignOut }) {
+    const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
+    const [mode, setMode] = useState(() => hasBiometric ? "biometric" : "password");
+    const [checking, setChecking] = useState(false);
+    const [bioError, setBioError] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPw, setShowPw] = useState(false);
+    const [pwError, setPwError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const triedOnMount = useRef(false);
+    const tryBiometric = async () => {
+      setChecking(true);
+      setBioError("");
+      try {
+        await verifyBiometric(sessionUser.id);
+        onUnlock();
+      } catch (e) {
+        setBioError("Couldn't verify — try again, or use your password.");
+      } finally {
+        setChecking(false);
+      }
+    };
+    useEffect(() => {
+      if (hasBiometric && !triedOnMount.current) {
+        triedOnMount.current = true;
+        tryBiometric();
+      }
+    }, []);
+    const unlockWithPassword = async () => {
+      if (!password) {
+        setPwError("Enter your password.");
+        return;
+      }
+      setLoading(true);
+      setPwError("");
+      try {
+        const { error: err } = await supabaseClient.auth.signInWithPassword({ email: sessionUser.email, password });
+        if (err) throw err;
+        onUnlock();
+      } catch (e) {
+        setPwError(e.message || "That password didn't work.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      position: "fixed",
+      inset: 0,
+      zIndex: 5e3,
+      background: "var(--headerBg)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      fontFamily: "Inter,sans-serif"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { width: "100%", maxWidth: 380 } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 28 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, marginBottom: 16 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "#fff" } }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 } }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--bgCard)",
+      borderRadius: 16,
+      padding: 28,
+      boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
+      border: "1px solid var(--border)"
+    } }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: 64,
+      height: 64,
+      borderRadius: "50%",
+      background: "var(--accentLt)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 28,
+      margin: "0 auto 16px"
+    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--redLt)",
+      border: "1px solid var(--red)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginBottom: 14,
+      fontSize: 13,
+      color: "var(--red)"
+    } }, bioError), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: tryBiometric,
+        disabled: checking,
+        style: {
+          width: "100%",
+          fontSize: 15,
+          fontWeight: 700,
+          padding: "12px",
+          borderRadius: 8,
+          border: "none",
+          cursor: checking ? "wait" : "pointer",
+          background: "var(--navy)",
+          color: "#fff",
+          opacity: checking ? 0.7 : 1,
+          marginBottom: 10
+        }
+      },
+      checking ? "Checking…" : "Unlock with Face ID / Touch ID"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMode("password");
+          setBioError("");
+        },
+        style: {
+          width: "100%",
+          fontSize: 13,
+          fontWeight: 600,
+          padding: "10px",
+          borderRadius: 8,
+          border: "none",
+          background: "transparent",
+          color: "var(--textMid)",
+          cursor: "pointer"
+        }
+      },
+      "Use password instead"
+    )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { style: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 600,
+      color: "var(--textMid)",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 6
+    } }, "Password"), /* @__PURE__ */ React.createElement("div", { style: { position: "relative", marginBottom: 14 } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: showPw ? "text" : "password",
+        autoFocus: true,
+        autoComplete: "current-password",
+        value: password,
+        onChange: (e) => {
+          setPassword(e.target.value);
+          setPwError("");
+        },
+        onKeyDown: (e) => e.key === "Enter" && unlockWithPassword(),
+        placeholder: "Enter your password",
+        style: {
+          width: "100%",
+          fontFamily: "Inter,sans-serif",
+          fontSize: 15,
+          padding: "10px 44px 10px 14px",
+          border: "1.5px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--inputBg)",
+          color: "var(--text)",
+          outline: "none",
+          boxSizing: "border-box"
+        }
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowPw((v) => !v),
+        "aria-label": showPw ? "Hide password" : "Show password",
+        style: {
+          position: "absolute",
+          right: 10,
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          color: "var(--textLt)",
+          fontSize: 16,
+          padding: 4
+        }
+      },
+      showPw ? "🙈" : "👁"
+    )), pwError && /* @__PURE__ */ React.createElement("div", { style: {
+      background: "var(--redLt)",
+      border: "1px solid var(--red)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginBottom: 14,
+      fontSize: 13,
+      color: "var(--red)"
+    } }, pwError), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: unlockWithPassword,
+        disabled: loading,
+        style: {
+          width: "100%",
+          fontSize: 15,
+          fontWeight: 700,
+          padding: "12px",
+          borderRadius: 8,
+          border: "none",
+          cursor: loading ? "wait" : "pointer",
+          background: "var(--navy)",
+          color: "#fff",
+          opacity: loading ? 0.7 : 1,
+          marginBottom: hasBiometric ? 10 : 0
+        }
+      },
+      loading ? "Unlocking…" : "Unlock"
+    ), hasBiometric && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setMode("biometric");
+          setPwError("");
+        },
+        style: {
+          width: "100%",
+          fontSize: 13,
+          fontWeight: 600,
+          padding: "10px",
+          borderRadius: 8,
+          border: "none",
+          background: "transparent",
+          color: "var(--textMid)",
+          cursor: "pointer"
+        }
+      },
+      "Use Face ID / Touch ID instead"
+    ))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: onSignOut,
+        style: {
+          fontSize: 12,
+          color: "rgba(255,255,255,0.4)",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          textDecoration: "underline"
+        }
+      },
+      "Not you? Sign out"
+    ))));
+  }
   function SelfTestView() {
     const results = useMemo(() => {
       const out = [];
