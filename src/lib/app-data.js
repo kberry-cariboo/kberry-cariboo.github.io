@@ -404,6 +404,9 @@
           html,body{height:100%;overflow:hidden;}
           .app-scroll{height:100vh;height:100dvh;overflow-y:auto;overflow-x:clip;
             -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+          /* The root is a column flexbox: with a fixed height its children
+             would flex-shrink and crush the header/footer to nothing. */
+          .app-scroll>*{flex-shrink:0;}
         }
         @media print{html,body{height:auto;overflow:visible;}.app-scroll{height:auto!important;overflow:visible!important;}}
         .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
