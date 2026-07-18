@@ -11,6 +11,22 @@
     } catch (e) {
     }
     if (storedVersion >= SCHEMA_VERSION) return;
+    // Fresh install: nothing to migrate — just stamp the schema version.
+    // Running the steps anyway persists empty arrays (cf_categories = []),
+    // which shadows the useLS defaults forever: a new user would get an empty
+    // category list and couldn't fill the entry form's required Category field.
+    let isFresh = false;
+    try {
+      isFresh = storedVersion === 0 && localStorage.getItem("cf_entries") == null && localStorage.getItem("cf_categories") == null;
+    } catch (e) {
+    }
+    if (isFresh) {
+      try {
+        localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
+      } catch (e) {
+      }
+      return;
+    }
     const readJSON = (key, fallback) => {
       try {
         const s = localStorage.getItem(key);
@@ -49,11 +65,12 @@
     }
     if (storedVersion < 2) {
       const entries = readJSON("cf_entries", []);
-      const cats = readJSON("cf_categories", []);
-      if (Array.isArray(cats) && Array.isArray(entries)) {
+      const cats = readJSON("cf_categories", null);
+      if (Array.isArray(entries) && (Array.isArray(cats) || entries.length > 0)) {
         const used = entries.map((e) => e.category).filter(Boolean);
-        const merged = [.../* @__PURE__ */ new Set([...cats, ...used])].sort((a, b) => a.localeCompare(b));
-        write("cf_categories", merged);
+        const merged = [.../* @__PURE__ */ new Set([...cats || [], ...used])].sort((a, b) => a.localeCompare(b));
+        // never persist an empty list over the useLS default
+        if (merged.length > 0) write("cf_categories", merged);
       }
     }
     if (storedVersion < 3) {

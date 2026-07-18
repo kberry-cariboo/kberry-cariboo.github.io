@@ -147,6 +147,17 @@ Verified in four live scenarios (desktop/mobile × credential registered/not) wi
 
 **Remaining item in this class:** the QuickAdd FAB still renders on desktop (see U3) — same principle, recommended same fix.
 
+## 7b. Full regression test *(added Jul 18, evening)*
+
+A 29-test Playwright suite now lives at **`tests/regression.mjs`** (`node tests/regression.mjs`; needs Playwright + Chromium; run `node build.js` first). It serves the repo's `index.html` itself, stubs Supabase with fictional demo data, and click-drives: the built-in `?selftest` unit/render suite, every dashboard chart + toggle + tooltip, month navigation, occurrence editing, mark-paid, BvA, forecast horizons, an add-entry flow end-to-end, search, goals, settings (categories, live dark-mode flip), the AI tab, mobile bottom-nav/FAB/cards, dark-mode active-state visibility (computed-style assertions), biometric gating, and both auth screens. **Current status: 29/29 pass, zero JS errors.**
+
+Regression testing found and fixed four real defects:
+
+1. **Fresh installs got zero categories** *(critical, pre-existing — the old audit's C2 bug class, still live)*: `migrateData()` ran its steps on brand-new profiles and persisted `cf_categories: []`, permanently shadowing the `DEFAULT_CATEGORIES` fallback — a new user could not fill the entry form's required Category field. Fixed with a fresh-install guard (stamp schema version and return) plus the `<2` step no longer writes an empty list it didn't read.
+2. **Desktop lost its add-entry path** *(regression from U3's FAB hiding — caught same day)*: the hidden quick-add panel was also the target of the `N` shortcut. The register toolbar now has visible desktop "+ Add Entry" / "Import CSV" buttons, and `N` routes to the register's own form on fine-pointer devices.
+3. **Backup nudge covered modal action buttons**: it rendered at z-index 3000, above open form panels (1500) and modals (2000) — hiding "Save Entry". Now 1450, below anything interactive.
+4. **Dark-mode bottom-nav active tab was dimmer than inactive tabs** (the `--primary` fill is darker than `--textLt` in dark): active items now use `--text` (identical in light mode, bright in dark). Also fixed a stale built-in self-test that skipped `computeFlow`, so `?selftest` is 34/34 again.
+
 ## 8. Feature suggestions (open list, not yet implemented)
 
 Ordered by value-to-effort for a cash-flow app:

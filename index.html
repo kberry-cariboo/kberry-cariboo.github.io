@@ -1053,6 +1053,22 @@ document.addEventListener('DOMContentLoaded',function(){
     } catch (e) {
     }
     if (storedVersion >= SCHEMA_VERSION) return;
+    // Fresh install: nothing to migrate — just stamp the schema version.
+    // Running the steps anyway persists empty arrays (cf_categories = []),
+    // which shadows the useLS defaults forever: a new user would get an empty
+    // category list and couldn't fill the entry form's required Category field.
+    let isFresh = false;
+    try {
+      isFresh = storedVersion === 0 && localStorage.getItem("cf_entries") == null && localStorage.getItem("cf_categories") == null;
+    } catch (e) {
+    }
+    if (isFresh) {
+      try {
+        localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
+      } catch (e) {
+      }
+      return;
+    }
     const readJSON = (key, fallback) => {
       try {
         const s = localStorage.getItem(key);
@@ -1091,11 +1107,12 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     if (storedVersion < 2) {
       const entries = readJSON("cf_entries", []);
-      const cats = readJSON("cf_categories", []);
-      if (Array.isArray(cats) && Array.isArray(entries)) {
+      const cats = readJSON("cf_categories", null);
+      if (Array.isArray(entries) && (Array.isArray(cats) || entries.length > 0)) {
         const used = entries.map((e) => e.category).filter(Boolean);
-        const merged = [.../* @__PURE__ */ new Set([...cats, ...used])].sort((a, b) => a.localeCompare(b));
-        write("cf_categories", merged);
+        const merged = [.../* @__PURE__ */ new Set([...cats || [], ...used])].sort((a, b) => a.localeCompare(b));
+        // never persist an empty list over the useLS default
+        if (merged.length > 0) write("cf_categories", merged);
       }
     }
     if (storedVersion < 3) {
@@ -3639,6 +3656,14 @@ document.addEventListener('DOMContentLoaded',function(){
           width: 200
         }
       }
+    ), !isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      { onClick: openNew, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", whiteSpace: "nowrap" } },
+      "+ Add Entry"
+    ), !isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      { onClick: () => setShowCSV((v) => !v), className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", whiteSpace: "nowrap" } },
+      "Import CSV"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       color: "var(--amber)",
@@ -4169,7 +4194,7 @@ document.addEventListener('DOMContentLoaded',function(){
           border: "none",
           cursor: "pointer",
           background: "transparent",
-          color: tab === it.id ? "var(--primary)" : "var(--textLt)",
+          color: tab === it.id ? "var(--text)" : "var(--textLt)",
           fontSize: 9,
           fontWeight: tab === it.id ? 700 : 500
         }
@@ -9578,7 +9603,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
-      const sums = getMonthSummaries(evs, 1e3);
+      const sums = getMonthSummaries(computeFlow(evs, 1e3), 1e3);
       t("getMonthSummaries 12 months", () => sums.length === 12);
       t("Jan close = open - expense", () => Math.abs(sums[0].close - (1e3 - 100)) < 0.01);
       const ov = {};
@@ -10213,7 +10238,18 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return () => mq.removeEventListener("change", handler);
     }, []);
     useEffect(() => {
-      const h = () => setFabOpen(true);
+      const h = () => {
+        // Desktop hides the floating quick-add panel; open the register's own
+        // entry form there instead (jumping to Entries first if needed).
+        const fine = window.matchMedia && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+        if (fine) {
+          setTab("budget");
+          setBudgetSub("entries");
+          setTimeout(() => window.__regOpenNew && window.__regOpenNew(), 50);
+        } else {
+          setFabOpen(true);
+        }
+      };
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
     }, []);
@@ -10782,7 +10818,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       bottom: 80,
       left: "50%",
       transform: "translateX(-50%)",
-      zIndex: 3e3,
+      // Below open panels/modals (1500/2000): a passive reminder must never
+      // cover a form's action buttons.
+      zIndex: 1450,
       background: "var(--bgCard)",
       border: "1px solid var(--amber)",
       borderRadius: 14,

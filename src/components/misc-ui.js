@@ -129,7 +129,7 @@
           border: "none",
           cursor: "pointer",
           background: "transparent",
-          color: tab === it.id ? "var(--primary)" : "var(--textLt)",
+          color: tab === it.id ? "var(--text)" : "var(--textLt)",
           fontSize: 9,
           fontWeight: tab === it.id ? 700 : 500
         }

@@ -456,7 +456,18 @@
       return () => mq.removeEventListener("change", handler);
     }, []);
     useEffect(() => {
-      const h = () => setFabOpen(true);
+      const h = () => {
+        // Desktop hides the floating quick-add panel; open the register's own
+        // entry form there instead (jumping to Entries first if needed).
+        const fine = window.matchMedia && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+        if (fine) {
+          setTab("budget");
+          setBudgetSub("entries");
+          setTimeout(() => window.__regOpenNew && window.__regOpenNew(), 50);
+        } else {
+          setFabOpen(true);
+        }
+      };
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
     }, []);
@@ -1025,7 +1036,9 @@
       bottom: 80,
       left: "50%",
       transform: "translateX(-50%)",
-      zIndex: 3e3,
+      // Below open panels/modals (1500/2000): a passive reminder must never
+      // cover a form's action buttons.
+      zIndex: 1450,
       background: "var(--bgCard)",
       border: "1px solid var(--amber)",
       borderRadius: 14,

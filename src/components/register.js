@@ -300,6 +300,14 @@
           width: 200
         }
       }
+    ), !isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      { onClick: openNew, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", whiteSpace: "nowrap" } },
+      "+ Add Entry"
+    ), !isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      { onClick: () => setShowCSV((v) => !v), className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", whiteSpace: "nowrap" } },
+      "Import CSV"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       color: "var(--amber)",

@@ -723,7 +723,7 @@
       const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
-      const sums = getMonthSummaries(evs, 1e3);
+      const sums = getMonthSummaries(computeFlow(evs, 1e3), 1e3);
       t("getMonthSummaries 12 months", () => sums.length === 12);
       t("Jan close = open - expense", () => Math.abs(sums[0].close - (1e3 - 100)) < 0.01);
       const ov = {};
