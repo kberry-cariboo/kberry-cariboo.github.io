@@ -85,6 +85,18 @@
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "3,17 9,11 13,15 21,7" }), /* @__PURE__ */ React.createElement("polyline", { points: "15,7 21,7 21,13" }));
       case "file-list":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 2h8l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 13, x2: 16, y2: 13 }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 17, x2: 16, y2: 17 }));
+      case "chart-bar":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 20, x2: 6, y2: 12 }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 20, x2: 12, y2: 5 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 20, x2: 18, y2: 9 }));
+      case "chart-grouped":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 20, x2: 5, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 20, x2: 9, y2: 14 }), /* @__PURE__ */ React.createElement("line", { x1: 15, y1: 20, x2: 15, y2: 6 }), /* @__PURE__ */ React.createElement("line", { x1: 19, y1: 20, x2: 19, y2: 12 }));
+      case "chart-stacked":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 5, y: 11, width: 5, height: 9 }), /* @__PURE__ */ React.createElement("rect", { x: 5, y: 5, width: 5, height: 6 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 13, width: 5, height: 7 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 8, width: 5, height: 5 }));
+      case "chart-line":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "4,17 9,11 14,14 20,6" }));
+      case "chart-area":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 19V13l5-5 5 3 6-6v14z", fill: "currentColor", fillOpacity: 0.25 }), /* @__PURE__ */ React.createElement("polyline", { points: "4,13 9,8 14,11 20,5" }));
+      case "chart-pie":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 8 }), /* @__PURE__ */ React.createElement("path", { d: "M12 4v8l6 5" }));
       default:
         return null;
     }
@@ -117,7 +129,7 @@
           border: "none",
           cursor: "pointer",
           background: "transparent",
-          color: tab === it.id ? "var(--navy)" : "var(--textLt)",
+          color: tab === it.id ? "var(--primary)" : "var(--textLt)",
           fontSize: 9,
           fontWeight: tab === it.id ? 700 : 500
         }
@@ -509,7 +521,7 @@
           borderRadius: 8,
           border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
           transition: "opacity 0.15s",

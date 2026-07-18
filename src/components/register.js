@@ -165,7 +165,7 @@
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--red)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (e.type === "income" ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: __spreadValues({ fontSize: 13, padding: "10px 12px", whiteSpace: "nowrap" }, arcMeta) }, e.startDate || "\u2014");
         case "schedule":
@@ -628,9 +628,9 @@
           fontWeight: 600,
           whiteSpace: "nowrap",
           flexShrink: 0,
-          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--red)",
+          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
-        } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)), /* @__PURE__ */ React.createElement(
+        } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: (ev) => {

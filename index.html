@@ -110,11 +110,25 @@ react-dom/cjs/react-dom-client.production.js:
     if (yHi === yLo) return innerH / 2;
     return innerH - ((val - yLo) / (yHi - yLo)) * innerH;
   }
-  function niceY(dataMin, dataMax) {
-    const lo = Math.min(dataMin, 0);
-    const hi = Math.max(dataMax, 0);
-    const pad = (hi - lo) * 0.12 || 1;
-    return [lo - pad, hi + pad];
+  // "Nice" axis scale: pick a 1/2/2.5/5×10^n step, snap the domain outward to
+  // step multiples, so gridlines land on round values ($5k, $10k) instead of
+  // arbitrary equal divisions of the padded extent.
+  function niceScale(dataMin, dataMax, maxTicks = 6) {
+    let lo = Math.min(dataMin, 0);
+    let hi = Math.max(dataMax, 0);
+    if (lo === hi) { hi = lo + 1; }
+    const rawStep = (hi - lo) / Math.max(maxTicks - 1, 1);
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const norm = rawStep / mag;
+    // steps limited to 1/2/5×10^n — the $k axis formatter rounds to whole
+    // thousands, so a 2.5k step would label as misleading "$3k, $5k, $8k"
+    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    const niceLo = Math.floor(lo / step) * step;
+    const niceHi = Math.ceil(hi / step) * step;
+    const ticks = [];
+    // epsilon guards float drift so the last tick is included
+    for (let t = niceLo; t <= niceHi + step * 1e-6; t += step) ticks.push(Math.abs(t) < step * 1e-9 ? 0 : t);
+    return { lo: niceLo, hi: niceHi, ticks };
   }
   function getExtent(data, keys) {
     let lo = Infinity, hi = -Infinity;
@@ -174,16 +188,19 @@ react-dom/cjs/react-dom-client.production.js:
     const yAxisLabel = yDesc?.props?.label;
     const xLabelText = xAxisLabel ? (typeof xAxisLabel==='string'?xAxisLabel:xAxisLabel.value) : null;
     const yLabelText = yAxisLabel ? (typeof yAxisLabel==='string'?yAxisLabel:yAxisLabel.value) : null;
-    // Equal left/right margins — Y-axis labels render INSIDE the chart area
-    // so no extra left margin is needed. Data area is perfectly centered.
+    // Y-axis labels get a real left gutter (YAxis `width` prop, default 40) so
+    // they never collide with the first data column.
+    const yGutter = yDesc ? (yDesc.props?.width || 40) : 0;
     const M  = { top:14, right:16,
                  bottom: xLabelText ? 54 : 34,
                  left:   16, ...mg };
+    M.left += yGutter;
     // Read CSS variables for dark mode support
     const root=typeof document!=='undefined'?document.documentElement:null;
     const cs=root?getComputedStyle(root):null;
     const cssGrid  = cs?.getPropertyValue('--border')?.trim() || '#e5e7eb';
     const cssTick  = cs?.getPropertyValue('--textMid')?.trim() || '#888';
+    const cssSurface = cs?.getPropertyValue('--bgCard')?.trim() || '#fff';
     const iW = Math.max(width  - M.left - M.right, 10);
     const iH = Math.max(height - M.top  - M.bottom, 10);
     const [tip, setTip] = useState(null);
@@ -204,8 +221,9 @@ react-dom/cjs/react-dom-client.production.js:
     ].filter(Boolean);
 
     const [rawLo, rawHi] = getExtent(data, allKeys);
-    const [yLo, yHi]    = niceY(rawLo, rawHi);
-    const ytValues       = mkTicks(yLo, yHi, 5);
+    const scale          = niceScale(rawLo, rawHi);
+    const yLo = scale.lo, yHi = scale.hi;
+    const ytValues       = scale.ticks;
     const yFmt           = yDesc?.props?.tickFormatter || defaultFmt;
 
     const bw   = data.length > 0 ? iW / data.length : iW;
@@ -241,17 +259,17 @@ react-dom/cjs/react-dom-client.production.js:
             fill: cf, rx: r, ry: r,
             onMouseMove: e => {
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-              setTip({ x: e.clientX-svg.left+M.left, y: e.clientY-svg.top, idx: i, d });
+              setTip({ x: e.clientX-svg.left, y: e.clientY-svg.top, idx: i, d });
             },
             onTouchStart: e => {
               const t=e.touches&&e.touches[0]; if(!t) return;
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-              setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d });
+              setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
             },
             onTouchMove: e => {
               const t=e.touches&&e.touches[0]; if(!t) return;
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-              setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d });
+              setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
             },
             onMouseLeave: () => setTip(null)
           }),
@@ -259,7 +277,7 @@ react-dom/cjs/react-dom-client.production.js:
             x: x + bwi/2,
             y: v >= 0 ? barY - 4 : barY + barH + 11,
             textAnchor:'middle', fontSize:9, fontFamily:'Inter,sans-serif',
-            fill:'var(--textMid)', pointerEvents:'none'
+            fill:cssTick, pointerEvents:'none'
           }, lblFmt(v))
         );
       });
@@ -268,7 +286,7 @@ react-dom/cjs/react-dom-client.production.js:
     // ── Lines / Areas ────────────────────────────────────────────────────────
     function renderLine(desc, filled) {
       const { dataKey, stroke='#8884d8', fill='rgba(136,132,216,0.15)', fillOpacity=1,
-              strokeWidth=2, dot, label } = desc.props;
+              strokeWidth=2, dot, label, strokeDasharray, endLabel, name } = desc.props;
       const pts = data.map((d, i) => [xMid(i), yv(Number(d[dataKey]) || 0)]);
       if (pts.length < 1) return null;
       const lblFmt = label ? (typeof label==='function' ? label : (label.formatter || (v=>v))) : null;
@@ -281,30 +299,39 @@ react-dom/cjs/react-dom-client.production.js:
         + ' L' + pts[pts.length-1][0].toFixed(1) + ',' + y0.toFixed(1)
         + ' L' + pts[0][0].toFixed(1) + ',' + y0.toFixed(1) + ' Z';
       const dr = (typeof dot === 'object' && dot?.r) ? dot.r : 3;
+      const last = pts[pts.length - 1];
       return h(React.Fragment, { key: dataKey },
         filled && h('path', { d: areaPath, fill, fillOpacity, stroke:'none' }),
-        h('path', { d: linePath, fill:'none', stroke, strokeWidth }),
+        h('path', { d: linePath, fill:'none', stroke, strokeWidth, strokeDasharray }),
+        // Direct series label at the line's end — identity survives without the
+        // legend (colorblind/print case). Halo keeps it readable over the grid.
+        endLabel && h('text', {
+          x: last[0], y: last[1] - 9, textAnchor: 'end',
+          fontSize: 11, fontWeight: 600, fontFamily: 'Inter,sans-serif',
+          fill: stroke, stroke: cssSurface, strokeWidth: 3,
+          style: { paintOrder: 'stroke', pointerEvents: 'none' }
+        }, name || dataKey),
         pts.map(([cx,cy], i) => h('circle', {
           key: i, cx, cy, r: dr, fill: stroke, stroke:'none',
           onMouseMove: e => {
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-            setTip({ x: e.clientX-svg.left+M.left, y: e.clientY-svg.top, idx: i, d: data[i] });
+            setTip({ x: e.clientX-svg.left, y: e.clientY-svg.top, idx: i, d: data[i] });
           },
           onTouchStart: e => {
             const t=e.touches&&e.touches[0]; if(!t) return;
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-            setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d: data[i] });
+            setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d: data[i] });
           },
           onTouchMove: e => {
             const t=e.touches&&e.touches[0]; if(!t) return;
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-            setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d: data[i] });
+            setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d: data[i] });
           },
           onMouseLeave: () => setTip(null)
         })),
         lblFmt && pts.map(([cx,cy], i) => h('text', {
           key: 'lbl'+i, x:cx, y:cy-8, textAnchor:'middle', fontSize:9,
-          fontFamily:'Inter,sans-serif', fill:'var(--textMid)', pointerEvents:'none'
+          fontFamily:'Inter,sans-serif', fill:cssTick, pointerEvents:'none'
         }, lblFmt(Number(data[i][dataKey]) || 0)))
       );
     }
@@ -350,7 +377,7 @@ react-dom/cjs/react-dom-client.production.js:
           const v = tip.d[k];
           if (v === undefined) return null;
           const fv = fmt2 ? fmt2(v) : (typeof v==='number' ? v.toFixed(2) : v);
-          return h('div', { key:k, style:{ color:'#555' } }, k + ': ' + fv);
+          return h('div', { key:k, style:{ color:'var(--textMid)' } }, k + ': ' + fv);
         })
       );
     }
@@ -381,6 +408,28 @@ react-dom/cjs/react-dom-client.production.js:
           stacked.map((d, gi)   => renderBar(d, 0,  1)),
           // Lines
           lineDescs.map(d => renderLine(d, false)),
+          // Full-height invisible hover columns: line/area dots are tiny targets,
+          // so each x-index gets a plot-height hit area instead (bars keep their own).
+          barDescs.length === 0 && (lineDescs.length > 0 || areaDescs.length > 0) && tipDesc &&
+            data.map((d, i) => h('rect', {
+              key: 'hz' + i, x: i * bw, y: 0, width: bw, height: iH,
+              fill: 'transparent',
+              onMouseMove: e => {
+                const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                setTip({ x: e.clientX-svg.left, y: e.clientY-svg.top, idx: i, d });
+              },
+              onTouchStart: e => {
+                const t=e.touches&&e.touches[0]; if(!t) return;
+                const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
+              },
+              onTouchMove: e => {
+                const t=e.touches&&e.touches[0]; if(!t) return;
+                const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
+              },
+              onMouseLeave: () => setTip(null)
+            })),
           // X axis line + labels
           h('line', { x1:0, y1:iH, x2:iW, y2:iH, stroke:cssGrid, strokeWidth:1 }),
           data.map((d, i) => {
@@ -392,19 +441,19 @@ react-dom/cjs/react-dom-client.production.js:
               fill: t.fill || cssTick
             }, d[xKey]);
           }),
-          // Y axis labels — rendered INSIDE chart area at left edge, overlaid on grid
+          // Y axis labels — right-aligned in the reserved left gutter
           ytValues.map((t, i) =>
-            h('text', { key:i, x:4, y:yv(t)-3, textAnchor:'start',
+            h('text', { key:i, x:-8, y:yv(t)+3, textAnchor:'end',
               fontSize: yDesc?.props?.tick?.fontSize || 10,
               fontFamily: yDesc?.props?.tick?.fontFamily || 'IBM Plex Mono,monospace',
-              fill: yDesc?.props?.tick?.fill || '#aaa',
+              fill: yDesc?.props?.tick?.fill || cssTick,
               style:{ pointerEvents:'none' }
             }, yFmt(t))
           ),
           // X axis title
           xLabelText && h('text', {
             key:'xlabel', x:iW/2, y:iH+40, textAnchor:'middle',
-            fontSize:11, fontWeight:600, fontFamily:'Inter,sans-serif', fill:'#6b7280'
+            fontSize:11, fontWeight:600, fontFamily:'Inter,sans-serif', fill:cssTick
           }, xLabelText)
         )
       ),
@@ -432,6 +481,10 @@ react-dom/cjs/react-dom-client.production.js:
   // ── PieChart ──────────────────────────────────────────────────────────────
   function PieChart({ width=300, height=250, children }) {
     const [tip, setTip] = useState(null);
+    // SVG presentation attributes can't resolve var(); read computed theme colors
+    const pcs = typeof document!=='undefined' ? getComputedStyle(document.documentElement) : null;
+    const pieSurface = pcs?.getPropertyValue('--bgCard')?.trim() || '#fff';
+    const pieText    = pcs?.getPropertyValue('--textMid')?.trim() || '#555';
     const arr      = Children.toArray(children);
     const pieDescs = arr.filter(c=>c.type===Pie);
     const tipDesc  = arr.find(c=>c.type===Tooltip);
@@ -480,7 +533,7 @@ react-dom/cjs/react-dom-client.production.js:
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'
       }, cStyle) },
         h('div', { style:{ fontWeight:600, marginBottom:2 } }, tip.name),
-        h('div', { style:{ color:'#555' } }, fv)
+        h('div', { style:{ color:'var(--textMid)' } }, fv)
       );
     }
 
@@ -491,7 +544,7 @@ react-dom/cjs/react-dom-client.production.js:
         style:{ display:'block' }
       },
         slices.map((s, i) => h(React.Fragment, { key:i },
-          h('path', { d:s.path, fill:s.fill, stroke:'#fff', strokeWidth:1.5,
+          h('path', { d:s.path, fill:s.fill, stroke:pieSurface, strokeWidth:1.5,
             onMouseMove: e => {
               const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
               setTip({ x:e.clientX-r.left, y:e.clientY-r.top, name:s.name, value:s.value });
@@ -511,7 +564,7 @@ react-dom/cjs/react-dom-client.production.js:
           s.labelText && h('text', {
             x:s.lx, y:s.ly,
             textAnchor: s.lx > width/2 ? 'start' : 'end',
-            fontSize:9, fontFamily:'Inter,sans-serif', fill:'#555',
+            fontSize:11, fontFamily:'Inter,sans-serif', fill:pieText,
             dominantBaseline:'middle', pointerEvents:'none'
           }, s.labelText)
         ))
@@ -1291,7 +1344,11 @@ document.addEventListener('DOMContentLoaded',function(){
     shadowLg: "0 12px 32px rgba(28,43,58,0.12), 0 4px 8px rgba(28,43,58,0.06)",
     shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
     accent: "#2F6FED",
-    accentLt: "#EAF1FE"
+    accentLt: "#EAF1FE",
+    // Interactive fills (active pills, primary buttons, FAB). Same as the brand
+    // navy in light mode; dark mode needs its own value because there the navy
+    // doubles as a surface color and active states would vanish into it.
+    primary: "#1C2B3A"
   };
   const DARK = {
     navy: "#0F1923",
@@ -1320,7 +1377,8 @@ document.addEventListener('DOMContentLoaded',function(){
     shadowLg: "0 12px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)",
     shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
     accent: "#5B8DEF",
-    accentLt: "#1A2942"
+    accentLt: "#1A2942",
+    primary: "#4E729C"
   };
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const GLOBAL_STYLES = `
@@ -1351,7 +1409,7 @@ document.addEventListener('DOMContentLoaded',function(){
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:16px;}
         .skip-link{position:absolute;left:-9999px;top:0;z-index:3000;
-          background:var(--navy);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
+          background:var(--primary);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
           font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-decoration:none;}
         .skip-link:focus{left:0;}
         /* Typography */
@@ -1364,7 +1422,7 @@ document.addEventListener('DOMContentLoaded',function(){
         /* Buttons */
         .cf-btn{font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 18px;
           border-radius:8px;border:none;cursor:pointer;transition:filter 0.15s;}
-        .cf-btn--primary{background:var(--navy);color:#fff;}
+        .cf-btn--primary{background:var(--primary);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
         .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
@@ -1439,9 +1497,16 @@ document.addEventListener('DOMContentLoaded',function(){
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
         }
+        /* QuickAdd FAB is a thumb-reach control: hide it on fine-pointer desktops,
+           where the header and per-view buttons already cover add/import. */
+        @media (hover:hover) and (pointer:fine){
+          .cf-quickfab{display:none!important;}
+          .cf-quickfab-panel{display:none!important;}
+          .cf-quickfab-menu{display:none!important;}
+        }
         /* FAB: touch devices only, thumb-reach primary action */
         .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
-          width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;
+          width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;
           font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
           box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;}
         @media (pointer:coarse){.cf-fab{display:flex;align-items:center;justify-content:center;}}
@@ -1761,22 +1826,25 @@ document.addEventListener('DOMContentLoaded',function(){
     "Gifts / Events",
     "Other"
   ];
+  // Validated categorical palette (OKLab lightness band, chroma floor, adjacent
+  // CVD separation, 3:1 contrast on white — all pass). The old set had three
+  // near-identical greens and two colors that read as gray. Hue families kept.
   const DEFAULT_CATEGORY_COLORS = {
-    "Income": "#29AE29",
-    "Housing": "#3985D0",
-    "Insurance": "#5A626E",
-    "Transportation": "#D08539",
-    "Food": "#85D039",
-    "Utilities": "#39D085",
-    "Subscriptions": "#8539D0",
-    "Debt / Credit": "#AE2929",
-    "Savings / RRSP": "#29AEAE",
-    "Medical": "#AE29AE",
-    "Education": "#2929AE",
-    "Personal": "#D03985",
-    "Farm / Animals": "#785032",
-    "Gifts / Events": "#963C6E",
-    "Other": "#AEAE29"
+    "Income": "#217F4C",
+    "Housing": "#2F6FB8",
+    "Insurance": "#5E70C4",
+    "Transportation": "#C06722",
+    "Food": "#6B8E23",
+    "Utilities": "#0E9483",
+    "Subscriptions": "#7E3FBF",
+    "Debt / Credit": "#B03A30",
+    "Savings / RRSP": "#1189B5",
+    "Medical": "#A8309F",
+    "Education": "#4348B8",
+    "Personal": "#C22F6E",
+    "Farm / Animals": "#96551C",
+    "Gifts / Events": "#8E4585",
+    "Other": "#8F8A26"
   };
   const DEFAULT_REG_COLS = ["desc", "type", "amount", "startDate", "schedule", "until", "category", "notes"];
   const DEFAULT_BUDGET_COLS = ["desc", "category", "income", "expense", "balance"];
@@ -1793,10 +1861,12 @@ document.addEventListener('DOMContentLoaded',function(){
     actions: ""
   };
   const roundMoney = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+  // One negative-number convention app-wide: a minus sign, never parentheses
+  // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
     const abs = Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (n < 0) return `($${abs})`;
+    if (n < 0) return `-$${abs}`;
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
@@ -2095,22 +2165,24 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     return null;
   }
+  // Fallback palette for custom categories — same validated set, in an order
+  // whose neighbours stay separable under CVD simulation.
   const CAT_PALETTE = [
-    "#2F5496",
-    "#E85D4A",
-    "#27AE73",
-    "#F5A623",
-    "#8E44AD",
-    "#16A085",
-    "#D35400",
-    "#2980B9",
-    "#C0392B",
-    "#27AE60",
-    "#7F8C8D",
-    "#F39C12",
-    "#1ABC9C",
-    "#9B59B6",
-    "#34495E"
+    "#217F4C",
+    "#2F6FB8",
+    "#C06722",
+    "#4348B8",
+    "#0E9483",
+    "#B03A30",
+    "#1189B5",
+    "#7E3FBF",
+    "#6B8E23",
+    "#C22F6E",
+    "#5E70C4",
+    "#96551C",
+    "#A8309F",
+    "#8F8A26",
+    "#8E4585"
   ];
   function getCatColor(category, categories, categoryColors = {}) {
     if (categoryColors && categoryColors[category]) return categoryColors[category];
@@ -2137,7 +2209,10 @@ document.addEventListener('DOMContentLoaded',function(){
       whiteSpace: "nowrap"
     }, style) }, category);
   };
-  const Sparkline = ({ data, color = "var(--navy)", height = 32, width = 80 }) => {
+  // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
+  // trend coloring was misleading (a red line beside a green income KPI, green
+  // for rising expenses), so it's gone — pass `color` explicitly if needed.
+  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80 }) => {
     if (!data || data.length < 2) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -2148,9 +2223,7 @@ document.addEventListener('DOMContentLoaded',function(){
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
     const lastPt = pts[pts.length - 1];
-    const trend = data[data.length - 1] >= data[0];
-    const lineColor = trend ? "var(--greenDk)" : "var(--red)";
-    return /* @__PURE__ */ React.createElement("svg", { width, height, style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: lineColor, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: lineColor }));
+    return /* @__PURE__ */ React.createElement("svg", { width, height, style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
   function QuickAddFAB({ categories, templates = [], setTemplates, onSave, open = false, setOpen = () => {
   }, onImportCSV = null }) {
@@ -2297,7 +2370,7 @@ document.addEventListener('DOMContentLoaded',function(){
           borderRadius: "50%",
           border: "none",
           cursor: "pointer",
-          background: fabActive ? "var(--red)" : "var(--navy)",
+          background: fabActive ? "var(--red)" : "var(--primary)",
           color: "#fff",
           fontSize: 24,
           fontWeight: 300,
@@ -2440,11 +2513,11 @@ document.addEventListener('DOMContentLoaded',function(){
             fontWeight: 700,
             padding: "6px 12px",
             borderRadius: 20,
-            border: "1.5px dashed var(--navy)",
+            border: "1.5px dashed var(--primary)",
             cursor: "pointer",
             flexShrink: 0,
             background: "transparent",
-            color: "var(--navy)"
+            color: "var(--primary)"
           }
         },
         "\u25CF ",
@@ -2468,7 +2541,7 @@ document.addEventListener('DOMContentLoaded',function(){
             cursor: "pointer",
             position: "relative",
             flexShrink: 0,
-            background: isActive ? "var(--navy)" : hasMatch ? "var(--amberLt)" : "var(--border)",
+            background: isActive ? "var(--primary)" : hasMatch ? "var(--amberLt)" : "var(--border)",
             color: isActive ? "#fff" : hasMatch ? "var(--amber)" : "var(--textMid)",
             outline: hasMatch && !isActive ? "2px solid var(--amber)" : "none"
           }
@@ -2508,7 +2581,7 @@ document.addEventListener('DOMContentLoaded',function(){
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        background: value === o.id ? "var(--navy)" : "var(--border)",
+        background: value === o.id ? "var(--primary)" : "var(--border)",
         color: value === o.id ? "#fff" : "var(--textMid)"
       }
     },
@@ -2526,7 +2599,7 @@ document.addEventListener('DOMContentLoaded',function(){
         borderRadius,
         border: "none",
         cursor: "pointer",
-        background: value === o.id ? "var(--navy)" : "var(--border)",
+        background: value === o.id ? "var(--primary)" : "var(--border)",
         color: value === o.id ? "#fff" : "var(--textMid)"
       }
     },
@@ -2536,7 +2609,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
     return /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--navy)",
+      background: "var(--primary)",
       borderRadius: 12,
       padding: "11px 15px",
       boxShadow: "var(--shadowLg)",
@@ -2580,7 +2653,7 @@ document.addEventListener('DOMContentLoaded',function(){
       border: "none",
       padding: 0,
       cursor: "pointer",
-      background: value ? "var(--navy)" : "var(--border)",
+      background: value ? "var(--primary)" : "var(--border)",
       transition: "background 0.2s",
       flexShrink: 0
     }
@@ -2774,7 +2847,7 @@ document.addEventListener('DOMContentLoaded',function(){
             borderRadius: 6,
             cursor: isLock ? "default" : "pointer",
             border: isAnch ? `2px solid var(--amber)` : "none",
-            background: isSel ? isAnch ? "var(--navy)" : "var(--navyLt)" : "var(--border)",
+            background: isSel ? isAnch ? "var(--primary)" : "var(--navyLt)" : "var(--border)",
             color: isSel ? "#fff" : "var(--textMid)",
             opacity: !isSel && isLock ? 0.4 : 1
           }
@@ -3190,10 +3263,10 @@ document.addEventListener('DOMContentLoaded',function(){
         style: {
           fontSize: 12,
           padding: "6px 14px",
-          border: "1.5px solid " + (allSel ? "var(--border)" : "var(--navy)"),
+          border: "1.5px solid " + (allSel ? "var(--border)" : "var(--primary)"),
           borderRadius: 20,
           background: allSel ? "var(--bgCard)" : "rgba(28,43,58,0.07)",
-          color: allSel ? "var(--text)" : "var(--navy)",
+          color: allSel ? "var(--text)" : "var(--primary)",
           outline: "none",
           cursor: "pointer",
           display: "flex",
@@ -3236,7 +3309,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onClick: () => onChange([])
       },
       /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => {
-      }, style: { cursor: "pointer", accentColor: "var(--navy)" } }),
+      }, style: { cursor: "pointer", accentColor: "var(--primary)" } }),
       "All ",
       label,
       "s"
@@ -3259,7 +3332,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onClick: () => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value])
         },
         /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: sel, onChange: () => {
-        }, style: { cursor: "pointer", accentColor: "var(--navy)" } }),
+        }, style: { cursor: "pointer", accentColor: "var(--primary)" } }),
         o.label
       );
     })));
@@ -3431,7 +3504,7 @@ document.addEventListener('DOMContentLoaded',function(){
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { padding: "10px 12px", opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--red)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { fontWeight: 600, padding: "10px 12px", color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (e.type === "income" ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: __spreadValues({ fontSize: 13, padding: "10px 12px", whiteSpace: "nowrap" }, arcMeta) }, e.startDate || "\u2014");
         case "schedule":
@@ -3894,9 +3967,9 @@ document.addEventListener('DOMContentLoaded',function(){
           fontWeight: 600,
           whiteSpace: "nowrap",
           flexShrink: 0,
-          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--red)",
+          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
-        } }, e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)), /* @__PURE__ */ React.createElement(
+        } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: (ev) => {
@@ -4052,6 +4125,18 @@ document.addEventListener('DOMContentLoaded',function(){
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "3,17 9,11 13,15 21,7" }), /* @__PURE__ */ React.createElement("polyline", { points: "15,7 21,7 21,13" }));
       case "file-list":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 2h8l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 13, x2: 16, y2: 13 }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 17, x2: 16, y2: 17 }));
+      case "chart-bar":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 20, x2: 6, y2: 12 }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 20, x2: 12, y2: 5 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 20, x2: 18, y2: 9 }));
+      case "chart-grouped":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 20, x2: 5, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 20, x2: 9, y2: 14 }), /* @__PURE__ */ React.createElement("line", { x1: 15, y1: 20, x2: 15, y2: 6 }), /* @__PURE__ */ React.createElement("line", { x1: 19, y1: 20, x2: 19, y2: 12 }));
+      case "chart-stacked":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 5, y: 11, width: 5, height: 9 }), /* @__PURE__ */ React.createElement("rect", { x: 5, y: 5, width: 5, height: 6 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 13, width: 5, height: 7 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 8, width: 5, height: 5 }));
+      case "chart-line":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "4,17 9,11 14,14 20,6" }));
+      case "chart-area":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 19V13l5-5 5 3 6-6v14z", fill: "currentColor", fillOpacity: 0.25 }), /* @__PURE__ */ React.createElement("polyline", { points: "4,13 9,8 14,11 20,5" }));
+      case "chart-pie":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 8 }), /* @__PURE__ */ React.createElement("path", { d: "M12 4v8l6 5" }));
       default:
         return null;
     }
@@ -4084,7 +4169,7 @@ document.addEventListener('DOMContentLoaded',function(){
           border: "none",
           cursor: "pointer",
           background: "transparent",
-          color: tab === it.id ? "var(--navy)" : "var(--textLt)",
+          color: tab === it.id ? "var(--primary)" : "var(--textLt)",
           fontSize: 9,
           fontWeight: tab === it.id ? 700 : 500
         }
@@ -4476,7 +4561,7 @@ document.addEventListener('DOMContentLoaded',function(){
           borderRadius: 8,
           border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
           transition: "opacity 0.15s",
@@ -4696,7 +4781,7 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           style: {
             background: selIds.has(ev.id) ? "var(--stripe)" : isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
-            borderBottom: isDropTarget ? "2px solid var(--navy)" : "1px solid var(--border)",
+            borderBottom: isDropTarget ? "2px solid var(--primary)" : "1px solid var(--border)",
             cursor: "pointer",
             opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
@@ -4730,7 +4815,7 @@ document.addEventListener('DOMContentLoaded',function(){
               alignItems: "center",
               justifyContent: "center",
               border: isDone || selIds.has(ev.id) ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : selIds.has(ev.id) ? "var(--navy)" : "transparent",
+              background: isDone ? "var(--greenDk)" : selIds.has(ev.id) ? "var(--primary)" : "transparent",
               color: "#fff",
               fontSize: 12,
               lineHeight: 1
@@ -4782,7 +4867,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13", style: {
             padding: "8px 14px",
             textAlign: "right",
-            color: isDone ? "var(--textLt)" : "var(--red)",
+            color: isDone ? "var(--textLt)" : "var(--text)",
             fontWeight: 600,
             textDecoration: isDone ? "line-through" : "none"
           } }, ev.type === "expense" ? fmt(ev.amount) : "");
@@ -4791,7 +4876,7 @@ document.addEventListener('DOMContentLoaded',function(){
             textAlign: "right",
             fontWeight: 700,
             textDecoration: isDone ? "line-through" : "none",
-            color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+            color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
           } }, fmt(ev.balance));
           return null;
         })
@@ -4882,7 +4967,7 @@ document.addEventListener('DOMContentLoaded',function(){
               alignItems: "center",
               justifyContent: "center",
               border: isDone || isSel ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : isSel ? "var(--navy)" : "transparent",
+              background: isDone ? "var(--greenDk)" : isSel ? "var(--primary)" : "transparent",
               color: "#fff",
               fontSize: 13,
               lineHeight: 1
@@ -4906,13 +4991,13 @@ document.addEventListener('DOMContentLoaded',function(){
         }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 600,
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--red)"
+          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 700,
           minWidth: 74,
           textAlign: "right",
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
         } }, fmt(ev.balance)))))
       );
     };
@@ -4925,7 +5010,7 @@ document.addEventListener('DOMContentLoaded',function(){
       borderBottom: "1px solid var(--border)"
     } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
       fontWeight: 700,
-      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "28px 14px", textAlign: "center", fontSize: 13, color: "var(--textLt)" } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), period1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), period2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
@@ -4986,7 +5071,7 @@ document.addEventListener('DOMContentLoaded',function(){
         transform: "translateX(-50%)",
         bottom: "calc(18px + env(safe-area-inset-bottom))",
         zIndex: 1450,
-        background: "var(--navy)",
+        background: "var(--primary)",
         borderRadius: 26,
         padding: "8px 10px 8px 18px",
         boxShadow: "var(--shadowXl)",
@@ -5067,7 +5152,9 @@ document.addEventListener('DOMContentLoaded',function(){
             border: "none",
             cursor: "pointer",
             background: "transparent",
-            color: "var(--navy)"
+            color: "var(--primary)",
+            whiteSpace: "nowrap",
+            flexShrink: 0
           }
         },
         "Got it"
@@ -5081,7 +5168,7 @@ document.addEventListener('DOMContentLoaded',function(){
         borderRadius: 6,
         border: "1px solid var(--amber)"
       } }, '\u{1F50D} Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
-      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--greenDk)" })),
+      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
       budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
@@ -5174,7 +5261,7 @@ document.addEventListener('DOMContentLoaded',function(){
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
       } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day", style: { width: 40, background: "var(--amberLt)", padding: 0 } }), bCols.map((col) => {
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13", style: { fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open));
+        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13", style: { fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)" } }, fmt(s.open));
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc", style: { fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" } }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
         return /* @__PURE__ */ React.createElement("td", { key: col, className: cls, style: { padding: "8px 14px" } });
@@ -5286,7 +5373,7 @@ document.addEventListener('DOMContentLoaded',function(){
         justifyContent: "center",
         padding: "12px 8px",
         borderRight: "1px solid var(--border)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--primary)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
         "button",
         {
           type: "button",
@@ -5487,7 +5574,7 @@ document.addEventListener('DOMContentLoaded',function(){
               flexShrink: 1,
               overflow: "hidden",
               textOverflow: "ellipsis"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, "\u25B2", fmt(diff)), /* @__PURE__ */ React.createElement(
+            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, fmt(diff) + " over"), /* @__PURE__ */ React.createElement(
               "button",
               {
                 onClick: (e) => {
@@ -5543,7 +5630,7 @@ document.addEventListener('DOMContentLoaded',function(){
           } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             fontWeight: 700,
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: tColor } }, "\u25B2", fmt(tDiff))));
+          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: tColor } }, fmt(tDiff) + " over")));
         })()));
       })()
     );
@@ -5596,11 +5683,11 @@ document.addEventListener('DOMContentLoaded',function(){
       textTransform: "uppercase"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--red)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--text)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--text)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
         padding: "8px 14px",
         textAlign: "right",
         fontWeight: 700,
-        color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+        color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), !isMobile && (() => {
         const m = ev.month;
@@ -5608,12 +5695,13 @@ document.addEventListener('DOMContentLoaded',function(){
         const yr = ev.year;
         const target = (budgetTargets[`${yr}:${m}`] || {})[cat] || 0;
         const isIncome = ev.type === "income";
-        if (isIncome) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)" } }, "\u2713"));
+        if (isIncome) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" }, title: "Scheduled income" }, "\u2713"));
         if (!target) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center", color: "var(--textLt)" } }, "\u2014");
         const pct = Math.round(ev.amount / target * 100);
         const conf = pct <= 100 ? 100 : pct <= 120 ? 75 : pct <= 150 ? 50 : 25;
-        const color = conf >= 75 ? "var(--greenDk)" : conf >= 50 ? "var(--amber)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color, fontWeight: 600 } }, conf, "%"));
+        if (conf === 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" }, title: "Within budget target" }, "\u2713"));
+        const color = conf >= 50 ? "var(--amber)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color, fontWeight: 600 }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
     })))))));
   }
@@ -5789,11 +5877,11 @@ document.addEventListener('DOMContentLoaded',function(){
         color: "#fff"
       } }, expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish")))
     ];
-    return /* @__PURE__ */ React.createElement(Card, { style: { maxWidth: 480, margin: "0 auto 24px", border: "2px solid var(--navy)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
+    return /* @__PURE__ */ React.createElement(Card, { style: { maxWidth: 480, margin: "0 auto 24px", border: "2px solid var(--primary)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
       width: 10,
       height: 10,
       borderRadius: "50%",
-      background: i <= step ? "var(--navy)" : "var(--border)",
+      background: i <= step ? "var(--primary)" : "var(--border)",
       transition: "background 0.2s"
     } }))), steps[step]);
   }
@@ -6056,12 +6144,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "Priority Action Items": "\u2705"
     };
     const sectionColor = {
-      "Executive Summary": "var(--navy)",
+      "Executive Summary": "var(--primary)",
       "Income Analysis": "var(--greenDk)",
       "Spending Analysis": "var(--amber)",
       "Debt Management": "var(--red)",
       "Savings Goals": "var(--greenDk)",
-      "Budget Performance": "var(--navy)",
+      "Budget Performance": "var(--primary)",
       "Cash Flow & Risk": "var(--amber)",
       "Priority Action Items": "var(--greenDk)"
     };
@@ -6137,7 +6225,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         style: {
           fontSize: 13,
           fontWeight: 700,
-          color: "var(--navy)",
+          color: "var(--primary)",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -6158,7 +6246,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           borderRadius: 10,
           border: "none",
           cursor: loading || !apiKey.trim() ? "not-allowed" : "pointer",
-          background: loading || !apiKey.trim() ? "var(--border)" : "var(--navy)",
+          background: loading || !apiKey.trim() ? "var(--border)" : "var(--primary)",
           color: loading || !apiKey.trim() ? "var(--textMid)" : "#fff",
           transition: "all 0.15s",
           display: "flex",
@@ -6233,7 +6321,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, sectionIcon[section.title] || "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 15,
       fontWeight: 700,
-      color: sectionColor[section.title] || "var(--navy)"
+      color: sectionColor[section.title] || "var(--primary)"
     } }, section.title)), sectionViz(section.title), section.items.map((line, li) => {
       const raw = line.trim();
       if (!raw) return null;
@@ -6263,7 +6351,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         minWidth: 22,
         height: 22,
         borderRadius: "50%",
-        background: "var(--navy)",
+        background: "var(--primary)",
         color: "#fff",
         fontSize: 11,
         fontWeight: 700,
@@ -6424,7 +6512,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setGoalErrors({});
         setShowGoalForm(true);
       };
-      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "Savings Goals"), /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => openGoalForm(null),
@@ -6432,7 +6520,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         },
         "+ Add"
       )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "18px 10px", fontSize: 13, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-        icon: "\u{1F3AF}",
+        icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, style: { color: "var(--textLt)" } }),
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
@@ -6588,7 +6676,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
                 type: "checkbox",
                 checked: goalForm.linkEntry,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { linkEntry: e.target.checked })),
-                style: { width: 16, height: 16, accentColor: "var(--navy)" }
+                style: { width: 16, height: 16, accentColor: "var(--primary)" }
               }
             ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--textMid)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement(
               "input",
@@ -6596,7 +6684,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
                 type: "checkbox",
                 checked: goalForm.payoutEntry,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { payoutEntry: e.target.checked })),
-                style: { width: 16, height: 16, accentColor: "var(--navy)" }
+                style: { width: 16, height: 16, accentColor: "var(--primary)" }
               }
             ), "Add the payout as a one-time expense on the target date (models the spending in your forecast)")));
           })(),
@@ -7072,10 +7160,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [effectiveFlow]);
+    // Income groups by entry description, not category — most income shares one
+    // "Income" category, which collapsed this widget into a single useless bar.
     const incTotals = useMemo(() => {
       const map = {};
       effectiveFlow.filter((e) => e.type === "income").forEach((e) => {
-        map[e.category] = (map[e.category] || 0) + e.amount;
+        const key = e.desc || e.category || "Income";
+        map[key] = (map[key] || 0) + e.amount;
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [effectiveFlow]);
@@ -7174,8 +7265,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         fontSize: 16,
         fontWeight: 700,
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
-      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
+      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6, display: "inline-block", whiteSpace: "nowrap" } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
+      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6, display: "inline-block", whiteSpace: "nowrap" } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
         today.setHours(0, 0, 0, 0);
@@ -7219,14 +7310,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const isInc = ev.type === "income";
-          const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)";
-          const amtColor = isInc ? "var(--greenDk)" : "var(--red)";
-          const barDiv = /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
-            height: "100%",
-            borderRadius: 2,
-            background: balColor,
-            width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
-          } }));
+          const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)";
+          const amtColor = isInc ? "var(--greenDk)" : "var(--text)";
+          const barDiv = null;
           if (isMobile) {
             return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 } }, /* @__PURE__ */ React.createElement("span", { style: {
               fontSize: 13,
@@ -7262,7 +7348,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           value: balView,
           onChange: setBalView,
-          options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
+          options: [{ id: "area", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-area", size: 15 }), label: "Area" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }, { id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }]
         }
       ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
       surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
@@ -7270,7 +7356,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           value: surplusView,
           onChange: setSurplusView,
-          options: [{ id: "bar", icon: "\u25AE", label: "Bar" }, { id: "line", icon: "\u2571", label: "Line" }]
+          options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
       ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
         Line,
@@ -7289,9 +7375,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           value: incExpView,
           onChange: setIncExpView,
-          options: [{ id: "grouped", icon: "\u25AE\u25AE", label: "Grouped" }, { id: "stacked", icon: "\u25B0", label: "Stacked" }, { id: "line", icon: "\u2571", label: "Line" }]
+          options: [{ id: "grouped", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 15 }), label: "Grouped" }, { id: "stacked", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-stacked", size: 15 }), label: "Stacked" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
-      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
+      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
         BarChart,
         {
           data: summaries,
@@ -7306,7 +7392,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
       ))))),
-      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "bar", label: "\u25AC" }, { id: "pie", label: "\u25D1" }], value: catView, onChange: setCatView, gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 6 }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
+      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
         return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
           height: "100%",
@@ -7341,11 +7427,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           value: incView,
           onChange: setIncView,
-          options: [{ id: "bar", icon: "\u25AC", label: "Bars" }, { id: "pie", icon: "\u25D1", label: "Pie" }]
+          options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }]
         }
       ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", textAlign: "center", padding: "20px 0" } }, "No income entries"), incTotals.map(([cat, total], i) => {
         const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: "var(--greenDk)", opacity: 0.7 + 0.3 * (1 - i / incTotals.length) } })));
+        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] } })));
       })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
@@ -7358,12 +7444,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           label: ({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : "",
           labelLine: true
         },
-        incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: ["#27AE73", "#2ECC8A", "#16A085", "#1ABC9C", "#2980B9", "#3498DB"][i % 6] }))
+        incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: CAT_PALETTE[i % CAT_PALETTE.length] }))
       ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))))),
       bvaYear: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
         const _now = /* @__PURE__ */ new Date();
         const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
-        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date") : null;
+        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono", style: { fontSize: 10 } }, "spent / budget")) : null;
       })(), (() => {
         const now = /* @__PURE__ */ new Date();
         const isCurrentYear = now.getFullYear() === activeYear;
@@ -7393,7 +7479,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center"
-          } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 28, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
+          } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 8, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
         }
         const rows = cats.map((c) => {
           const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
@@ -7411,7 +7497,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           color: r.over ? r.color : "var(--text)"
-        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: r.color } }, "\u25B2", fmt(r.diff)))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
+        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
           height: "100%",
           width: `${r.pct}%`,
           borderRadius: 3,
@@ -7433,7 +7519,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           fontWeight: 700,
           color: tOver ? tColor : "var(--text)"
-        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))));
+        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: tColor } }, fmt(tDiff) + " over"))));
       })())),
       debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         let dData = {};
@@ -7530,7 +7616,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           {
             value: summaryView,
             onChange: setSummaryView,
-            options: [{ id: "table", icon: "\u2261", label: "Table" }, { id: "heat", icon: "\u25FC", label: "Heatmap" }]
+            options: [{ id: "table", icon: /* @__PURE__ */ React.createElement(Icon, { name: "file-list", size: 15 }), label: "Table" }, { id: "heat", icon: /* @__PURE__ */ React.createElement(Icon, { name: "grid", size: 15 }), label: "Heatmap" }]
           }
         )), /* @__PURE__ */ React.createElement(
           ExportBar,
@@ -7567,7 +7653,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
           const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
-          return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)", position: "sticky", right: 0, boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }, fmt(m.close)));
+          return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)", position: "sticky", right: 0, boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }, fmt(m.close)));
         }))))),
         summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
           fontSize: 11,
@@ -7584,7 +7670,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           right: i === 4 ? 0 : "auto",
           background: i === 4 ? "var(--navy)" : "transparent",
           boxShadow: i === 4 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
-        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
+        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--text)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--text)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
           fontWeight: 700,
           padding: "9px 16px",
           textAlign: "right",
@@ -7594,12 +7680,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           fontWeight: 700,
           padding: "9px 16px",
           textAlign: "right",
-          color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+          color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
           position: "sticky",
           right: 0,
           boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.18)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "var(--green)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#FF8A7A" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px", position: "sticky", right: 0, background: "var(--navy)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }))))))
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px", position: "sticky", right: 0, background: "var(--navy)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }))))))
       ))),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 16 }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
@@ -7689,7 +7775,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               type: "checkbox",
               checked: !dashHidden[id],
               onChange: (e) => setDashHidden((prev) => __spreadProps(__spreadValues({}, prev), { [id]: !e.target.checked })),
-              style: { width: 16, height: 16, accentColor: "var(--navy)", flexShrink: 0 }
+              style: { width: 16, height: 16, accentColor: "var(--primary)", flexShrink: 0 }
             }
           ), /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 0, opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === 0 ? 0.3 : 1 }), disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }), disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
         })),
@@ -7853,6 +7939,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
+    // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
+    // devices. If it's already enabled (e.g. legacy desktop setup), keep the block
+    // visible so it can still be turned off.
+    const isCoarse = useIsCoarsePointer();
     const [bioEnabled, setBioEnabled] = useState(() => !!(sessionUser && getBiometricCredId(sessionUser.id)));
     const [bioBusy, setBioBusy] = useState(false);
     const [bioMsg, setBioMsg] = useState("");
@@ -8112,7 +8202,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         href: "https://console.anthropic.com",
         target: "_blank",
         rel: "noopener noreferrer",
-        style: { color: "var(--navy)" }
+        style: { color: "var(--primary)" }
       },
       "console.anthropic.com"
     ), "."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
@@ -8182,7 +8272,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         borderRadius: 8,
         marginBottom: 6,
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
-        border: `1px solid ${activeYear === yc.year ? "var(--navy)" : "var(--border)"}`
+        border: `1px solid ${activeYear === yc.year ? "var(--primary)" : "var(--border)"}`
       } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)", minWidth: 52 } }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal", style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)", whiteSpace: "nowrap" } }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
         "input",
         {
@@ -8211,7 +8301,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         borderRadius: 6,
         border: "1px solid var(--border)",
         cursor: "pointer",
-        background: activeYear === yc.year ? "var(--navy)" : "transparent",
+        background: activeYear === yc.year ? "var(--primary)" : "transparent",
         color: activeYear === yc.year ? "#fff" : "var(--textMid)"
       } }, activeYear === yc.year ? "Active" : "Switch"), (() => {
         const nextY = yc.year + 1;
@@ -8239,9 +8329,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             title: `Copy ${yc.year} budget targets to ${nextY}`,
             style: {
               fontSize: 11,
-              color: "var(--navy)",
+              color: "var(--primary)",
               background: "none",
-              border: "1px solid var(--navy)",
+              border: "1px solid var(--primary)",
               cursor: "pointer",
               padding: "4px 10px",
               borderRadius: 6,
@@ -8489,7 +8579,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password."), sessionUser && bioSupported && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, bioEnabled ? "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password." : "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your password."), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
@@ -8498,9 +8588,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           fontWeight: 600,
           padding: "9px 20px",
           borderRadius: 8,
-          border: "1px solid var(--navy)",
+          border: "1px solid var(--primary)",
           cursor: "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff"
         }
       },
@@ -8882,7 +8972,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           bottom: "calc(84px + env(safe-area-inset-bottom))",
           zIndex: 3e3,
           cursor: "pointer",
-          background: t.kind === "error" ? "var(--red)" : "var(--navy)",
+          background: t.kind === "error" ? "var(--red)" : "var(--primary)",
           color: "#fff",
           fontSize: 13,
           fontWeight: 600,
@@ -8918,7 +9008,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 2500,
-      background: "var(--navy)",
+      background: "var(--primary)",
       color: "#fff",
       borderRadius: 12,
       padding: "12px 20px",
@@ -9183,7 +9273,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         id: "remember-chk",
         checked: remember,
         onChange: (e) => setRemember(e.target.checked),
-        style: { width: 15, height: 15, cursor: "pointer", accentColor: "var(--navy)" }
+        style: { width: 15, height: 15, cursor: "pointer", accentColor: "var(--primary)" }
       }
     ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", style: {
       fontFamily: "Inter,sans-serif",
@@ -9222,7 +9312,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           borderRadius: 8,
           border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
           transition: "opacity 0.15s"
@@ -9324,7 +9414,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           borderRadius: 8,
           border: "none",
           cursor: checking ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: checking ? 0.7 : 1,
           marginBottom: 10
@@ -9425,7 +9515,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           borderRadius: 8,
           border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
           marginBottom: hasBiometric ? 10 : 0
@@ -9611,7 +9701,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return out;
     }, []);
     const passed = results.filter((r) => r.ok).length;
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, margin: "40px auto", padding: "0 20px" } }, /* @__PURE__ */ React.createElement("h2", { style: { color: "var(--text)", fontSize: 18, marginBottom: 6 } }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: passed === results.length ? "var(--greenDk)" : "var(--red)", marginBottom: 18, fontWeight: 700 } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 } }, /* @__PURE__ */ React.createElement("span", { style: { color: r.ok ? "var(--greenDk)" : "var(--red)", fontWeight: 700, width: 18 } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)", flex: 1 } }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 11 } }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, style: { display: "inline-block", marginTop: 20, fontSize: 13, color: "var(--navy)" } }, "\u2190 Back to app"));
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, margin: "40px auto", padding: "0 20px" } }, /* @__PURE__ */ React.createElement("h2", { style: { color: "var(--text)", fontSize: 18, marginBottom: 6 } }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: passed === results.length ? "var(--greenDk)" : "var(--red)", marginBottom: 18, fontWeight: 700 } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 } }, /* @__PURE__ */ React.createElement("span", { style: { color: r.ok ? "var(--greenDk)" : "var(--red)", fontWeight: 700, width: 18 } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)", flex: 1 } }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 11 } }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, style: { display: "inline-block", marginTop: 20, fontSize: 13, color: "var(--primary)" } }, "\u2190 Back to app"));
   }
   function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
@@ -9657,7 +9747,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           cursor: "pointer",
           whiteSpace: "nowrap",
           flexShrink: 0,
-          background: value === s.id ? "var(--navy)" : "var(--stripe)",
+          background: value === s.id ? "var(--primary)" : "var(--stripe)",
           color: value === s.id ? "#fff" : "var(--textMid)"
         }
       },
@@ -9697,6 +9787,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       signOut();
     };
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
+    // Biometric setup is only offered on touch devices; the menu shortcut also
+    // disappears once a credential is registered (managed from Settings after that).
+    const isCoarsePointer = useIsCoarsePointer();
+    const [bioAvailable, setBioAvailable] = useState(false);
+    useEffect(() => {
+      let live = true;
+      isBiometricAvailable().then((v) => {
+        if (live) setBioAvailable(v);
+      });
+      return () => {
+        live = false;
+      };
+    }, []);
     // "Fingerprint sign-on": when enabled, the app starts locked and the lock
     // screen immediately prompts for the device biometric (fingerprint / face).
     // The Supabase session persists underneath — this gates the UI on-device.
@@ -9733,7 +9836,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }, [authLoading, session]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
-    const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
+    const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }]);
     const [activeYear, setActiveYear] = useLS("cf_activeYear", 2026);
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
@@ -10423,18 +10526,18 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           setMenuOpen(false);
           setTab("settings");
         } },
-        { label: "Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
+        ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
           setMenuOpen(false);
           setTab("settings");
           setTimeout(() => {
             const el = document.getElementById("sec-security");
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 150);
-        } },
-        { label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
+        } }] : [],
+        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
           setMenuOpen(false);
           setShowHelp(true);
-        } },
+        } }],
         ...showInstall ? [{ label: "Install App", icon: "\u2B07", action: () => {
           setMenuOpen(false);
           doInstall();
@@ -10707,7 +10810,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 3e3,
-      background: "var(--navy)",
+      background: "var(--primary)",
       color: "#fff",
       borderRadius: 20,
       padding: "6px 16px 6px 12px",

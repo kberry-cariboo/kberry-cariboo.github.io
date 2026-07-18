@@ -302,7 +302,11 @@
     shadowLg: "0 12px 32px rgba(28,43,58,0.12), 0 4px 8px rgba(28,43,58,0.06)",
     shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
     accent: "#2F6FED",
-    accentLt: "#EAF1FE"
+    accentLt: "#EAF1FE",
+    // Interactive fills (active pills, primary buttons, FAB). Same as the brand
+    // navy in light mode; dark mode needs its own value because there the navy
+    // doubles as a surface color and active states would vanish into it.
+    primary: "#1C2B3A"
   };
   const DARK = {
     navy: "#0F1923",
@@ -331,7 +335,8 @@
     shadowLg: "0 12px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)",
     shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
     accent: "#5B8DEF",
-    accentLt: "#1A2942"
+    accentLt: "#1A2942",
+    primary: "#4E729C"
   };
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const GLOBAL_STYLES = `
@@ -362,7 +367,7 @@
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:16px;}
         .skip-link{position:absolute;left:-9999px;top:0;z-index:3000;
-          background:var(--navy);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
+          background:var(--primary);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
           font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-decoration:none;}
         .skip-link:focus{left:0;}
         /* Typography */
@@ -375,7 +380,7 @@
         /* Buttons */
         .cf-btn{font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 18px;
           border-radius:8px;border:none;cursor:pointer;transition:filter 0.15s;}
-        .cf-btn--primary{background:var(--navy);color:#fff;}
+        .cf-btn--primary{background:var(--primary);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
         .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
@@ -450,9 +455,16 @@
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
         }
+        /* QuickAdd FAB is a thumb-reach control: hide it on fine-pointer desktops,
+           where the header and per-view buttons already cover add/import. */
+        @media (hover:hover) and (pointer:fine){
+          .cf-quickfab{display:none!important;}
+          .cf-quickfab-panel{display:none!important;}
+          .cf-quickfab-menu{display:none!important;}
+        }
         /* FAB: touch devices only, thumb-reach primary action */
         .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
-          width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;
+          width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;
           font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
           box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;}
         @media (pointer:coarse){.cf-fab{display:flex;align-items:center;justify-content:center;}}
@@ -772,22 +784,25 @@
     "Gifts / Events",
     "Other"
   ];
+  // Validated categorical palette (OKLab lightness band, chroma floor, adjacent
+  // CVD separation, 3:1 contrast on white — all pass). The old set had three
+  // near-identical greens and two colors that read as gray. Hue families kept.
   const DEFAULT_CATEGORY_COLORS = {
-    "Income": "#29AE29",
-    "Housing": "#3985D0",
-    "Insurance": "#5A626E",
-    "Transportation": "#D08539",
-    "Food": "#85D039",
-    "Utilities": "#39D085",
-    "Subscriptions": "#8539D0",
-    "Debt / Credit": "#AE2929",
-    "Savings / RRSP": "#29AEAE",
-    "Medical": "#AE29AE",
-    "Education": "#2929AE",
-    "Personal": "#D03985",
-    "Farm / Animals": "#785032",
-    "Gifts / Events": "#963C6E",
-    "Other": "#AEAE29"
+    "Income": "#217F4C",
+    "Housing": "#2F6FB8",
+    "Insurance": "#5E70C4",
+    "Transportation": "#C06722",
+    "Food": "#6B8E23",
+    "Utilities": "#0E9483",
+    "Subscriptions": "#7E3FBF",
+    "Debt / Credit": "#B03A30",
+    "Savings / RRSP": "#1189B5",
+    "Medical": "#A8309F",
+    "Education": "#4348B8",
+    "Personal": "#C22F6E",
+    "Farm / Animals": "#96551C",
+    "Gifts / Events": "#8E4585",
+    "Other": "#8F8A26"
   };
   const DEFAULT_REG_COLS = ["desc", "type", "amount", "startDate", "schedule", "until", "category", "notes"];
   const DEFAULT_BUDGET_COLS = ["desc", "category", "income", "expense", "balance"];
@@ -804,10 +819,12 @@
     actions: ""
   };
   const roundMoney = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+  // One negative-number convention app-wide: a minus sign, never parentheses
+  // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
     const abs = Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (n < 0) return `($${abs})`;
+    if (n < 0) return `-$${abs}`;
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
@@ -1106,20 +1123,22 @@
     }
     return null;
   }
+  // Fallback palette for custom categories — same validated set, in an order
+  // whose neighbours stay separable under CVD simulation.
   const CAT_PALETTE = [
-    "#2F5496",
-    "#E85D4A",
-    "#27AE73",
-    "#F5A623",
-    "#8E44AD",
-    "#16A085",
-    "#D35400",
-    "#2980B9",
-    "#C0392B",
-    "#27AE60",
-    "#7F8C8D",
-    "#F39C12",
-    "#1ABC9C",
-    "#9B59B6",
-    "#34495E"
+    "#217F4C",
+    "#2F6FB8",
+    "#C06722",
+    "#4348B8",
+    "#0E9483",
+    "#B03A30",
+    "#1189B5",
+    "#7E3FBF",
+    "#6B8E23",
+    "#C22F6E",
+    "#5E70C4",
+    "#96551C",
+    "#A8309F",
+    "#8F8A26",
+    "#8E4585"
   ];
