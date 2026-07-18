@@ -177,7 +177,7 @@
             borderRadius: 6,
             cursor: isLock ? "default" : "pointer",
             border: isAnch ? `2px solid var(--amber)` : "none",
-            background: isSel ? isAnch ? "var(--navy)" : "var(--navyLt)" : "var(--border)",
+            background: isSel ? isAnch ? "var(--primary)" : "var(--navyLt)" : "var(--border)",
             color: isSel ? "#fff" : "var(--textMid)",
             opacity: !isSel && isLock ? 0.4 : 1
           }
@@ -593,10 +593,10 @@
         style: {
           fontSize: 12,
           padding: "6px 14px",
-          border: "1.5px solid " + (allSel ? "var(--border)" : "var(--navy)"),
+          border: "1.5px solid " + (allSel ? "var(--border)" : "var(--primary)"),
           borderRadius: 20,
           background: allSel ? "var(--bgCard)" : "rgba(28,43,58,0.07)",
-          color: allSel ? "var(--text)" : "var(--navy)",
+          color: allSel ? "var(--text)" : "var(--primary)",
           outline: "none",
           cursor: "pointer",
           display: "flex",
@@ -639,7 +639,7 @@
         onClick: () => onChange([])
       },
       /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => {
-      }, style: { cursor: "pointer", accentColor: "var(--navy)" } }),
+      }, style: { cursor: "pointer", accentColor: "var(--primary)" } }),
       "All ",
       label,
       "s"
@@ -662,7 +662,7 @@
           onClick: () => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value])
         },
         /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: sel, onChange: () => {
-        }, style: { cursor: "pointer", accentColor: "var(--navy)" } }),
+        }, style: { cursor: "pointer", accentColor: "var(--primary)" } }),
         o.label
       );
     })));

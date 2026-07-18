@@ -201,7 +201,7 @@
           },
           style: {
             background: selIds.has(ev.id) ? "var(--stripe)" : isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
-            borderBottom: isDropTarget ? "2px solid var(--navy)" : "1px solid var(--border)",
+            borderBottom: isDropTarget ? "2px solid var(--primary)" : "1px solid var(--border)",
             cursor: "pointer",
             opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
           }
@@ -235,7 +235,7 @@
               alignItems: "center",
               justifyContent: "center",
               border: isDone || selIds.has(ev.id) ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : selIds.has(ev.id) ? "var(--navy)" : "transparent",
+              background: isDone ? "var(--greenDk)" : selIds.has(ev.id) ? "var(--primary)" : "transparent",
               color: "#fff",
               fontSize: 12,
               lineHeight: 1
@@ -287,7 +287,7 @@
           if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13", style: {
             padding: "8px 14px",
             textAlign: "right",
-            color: isDone ? "var(--textLt)" : "var(--red)",
+            color: isDone ? "var(--textLt)" : "var(--text)",
             fontWeight: 600,
             textDecoration: isDone ? "line-through" : "none"
           } }, ev.type === "expense" ? fmt(ev.amount) : "");
@@ -296,7 +296,7 @@
             textAlign: "right",
             fontWeight: 700,
             textDecoration: isDone ? "line-through" : "none",
-            color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+            color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
           } }, fmt(ev.balance));
           return null;
         })
@@ -387,7 +387,7 @@
               alignItems: "center",
               justifyContent: "center",
               border: isDone || isSel ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : isSel ? "var(--navy)" : "transparent",
+              background: isDone ? "var(--greenDk)" : isSel ? "var(--primary)" : "transparent",
               color: "#fff",
               fontSize: 13,
               lineHeight: 1
@@ -411,13 +411,13 @@
         }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 600,
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--red)"
+          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 700,
           minWidth: 74,
           textAlign: "right",
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
         } }, fmt(ev.balance)))))
       );
     };
@@ -430,7 +430,7 @@
       borderBottom: "1px solid var(--border)"
     } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
       fontWeight: 700,
-      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "28px 14px", textAlign: "center", fontSize: 13, color: "var(--textLt)" } }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), period1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), period2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       alignItems: "center",
@@ -491,7 +491,7 @@
         transform: "translateX(-50%)",
         bottom: "calc(18px + env(safe-area-inset-bottom))",
         zIndex: 1450,
-        background: "var(--navy)",
+        background: "var(--primary)",
         borderRadius: 26,
         padding: "8px 10px 8px 18px",
         boxShadow: "var(--shadowXl)",
@@ -572,7 +572,9 @@
             border: "none",
             cursor: "pointer",
             background: "transparent",
-            color: "var(--navy)"
+            color: "var(--primary)",
+            whiteSpace: "nowrap",
+            flexShrink: 0
           }
         },
         "Got it"
@@ -586,7 +588,7 @@
         borderRadius: 6,
         border: "1px solid var(--amber)"
       } }, '\u{1F50D} Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
-      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--greenDk)" })),
+      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
       budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
@@ -679,7 +681,7 @@
         padding: 0,
         boxShadow: "inset 3px 0 0 0 transparent"
       } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day", style: { width: 40, background: "var(--amberLt)", padding: 0 } }), bCols.map((col) => {
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13", style: { fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(s.open));
+        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13", style: { fontWeight: 700, padding: "8px 14px", textAlign: "right", color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)" } }, fmt(s.open));
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc", style: { fontSize: 12, fontWeight: 700, padding: "8px 14px", color: "var(--textMid)", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" } }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
         return /* @__PURE__ */ React.createElement("td", { key: col, className: cls, style: { padding: "8px 14px" } });
@@ -791,7 +793,7 @@
         justifyContent: "center",
         padding: "12px 8px",
         borderRight: "1px solid var(--border)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--navy)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 20, fontWeight: 700, color: "var(--primary)", lineHeight: 1 } }, dayObj.day), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)" } }, "\u2713")), /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 16px" } }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement(
         "button",
         {
           type: "button",
@@ -992,7 +994,7 @@
               flexShrink: 1,
               overflow: "hidden",
               textOverflow: "ellipsis"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, "\u25B2", fmt(diff)), /* @__PURE__ */ React.createElement(
+            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, fmt(diff) + " over"), /* @__PURE__ */ React.createElement(
               "button",
               {
                 onClick: (e) => {
@@ -1048,7 +1050,7 @@
           } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             fontWeight: 700,
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: tColor } }, "\u25B2", fmt(tDiff))));
+          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: tColor } }, fmt(tDiff) + " over")));
         })()));
       })()
     );

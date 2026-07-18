@@ -20,11 +20,25 @@ window.Recharts = (function() {
     if (yHi === yLo) return innerH / 2;
     return innerH - ((val - yLo) / (yHi - yLo)) * innerH;
   }
-  function niceY(dataMin, dataMax) {
-    const lo = Math.min(dataMin, 0);
-    const hi = Math.max(dataMax, 0);
-    const pad = (hi - lo) * 0.12 || 1;
-    return [lo - pad, hi + pad];
+  // "Nice" axis scale: pick a 1/2/2.5/5×10^n step, snap the domain outward to
+  // step multiples, so gridlines land on round values ($5k, $10k) instead of
+  // arbitrary equal divisions of the padded extent.
+  function niceScale(dataMin, dataMax, maxTicks = 6) {
+    let lo = Math.min(dataMin, 0);
+    let hi = Math.max(dataMax, 0);
+    if (lo === hi) { hi = lo + 1; }
+    const rawStep = (hi - lo) / Math.max(maxTicks - 1, 1);
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const norm = rawStep / mag;
+    // steps limited to 1/2/5×10^n — the $k axis formatter rounds to whole
+    // thousands, so a 2.5k step would label as misleading "$3k, $5k, $8k"
+    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    const niceLo = Math.floor(lo / step) * step;
+    const niceHi = Math.ceil(hi / step) * step;
+    const ticks = [];
+    // epsilon guards float drift so the last tick is included
+    for (let t = niceLo; t <= niceHi + step * 1e-6; t += step) ticks.push(Math.abs(t) < step * 1e-9 ? 0 : t);
+    return { lo: niceLo, hi: niceHi, ticks };
   }
   function getExtent(data, keys) {
     let lo = Infinity, hi = -Infinity;
@@ -84,16 +98,19 @@ window.Recharts = (function() {
     const yAxisLabel = yDesc?.props?.label;
     const xLabelText = xAxisLabel ? (typeof xAxisLabel==='string'?xAxisLabel:xAxisLabel.value) : null;
     const yLabelText = yAxisLabel ? (typeof yAxisLabel==='string'?yAxisLabel:yAxisLabel.value) : null;
-    // Equal left/right margins — Y-axis labels render INSIDE the chart area
-    // so no extra left margin is needed. Data area is perfectly centered.
+    // Y-axis labels get a real left gutter (YAxis `width` prop, default 40) so
+    // they never collide with the first data column.
+    const yGutter = yDesc ? (yDesc.props?.width || 40) : 0;
     const M  = { top:14, right:16,
                  bottom: xLabelText ? 54 : 34,
                  left:   16, ...mg };
+    M.left += yGutter;
     // Read CSS variables for dark mode support
     const root=typeof document!=='undefined'?document.documentElement:null;
     const cs=root?getComputedStyle(root):null;
     const cssGrid  = cs?.getPropertyValue('--border')?.trim() || '#e5e7eb';
     const cssTick  = cs?.getPropertyValue('--textMid')?.trim() || '#888';
+    const cssSurface = cs?.getPropertyValue('--bgCard')?.trim() || '#fff';
     const iW = Math.max(width  - M.left - M.right, 10);
     const iH = Math.max(height - M.top  - M.bottom, 10);
     const [tip, setTip] = useState(null);
@@ -114,8 +131,9 @@ window.Recharts = (function() {
     ].filter(Boolean);
 
     const [rawLo, rawHi] = getExtent(data, allKeys);
-    const [yLo, yHi]    = niceY(rawLo, rawHi);
-    const ytValues       = mkTicks(yLo, yHi, 5);
+    const scale          = niceScale(rawLo, rawHi);
+    const yLo = scale.lo, yHi = scale.hi;
+    const ytValues       = scale.ticks;
     const yFmt           = yDesc?.props?.tickFormatter || defaultFmt;
 
     const bw   = data.length > 0 ? iW / data.length : iW;
@@ -151,17 +169,17 @@ window.Recharts = (function() {
             fill: cf, rx: r, ry: r,
             onMouseMove: e => {
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-              setTip({ x: e.clientX-svg.left+M.left, y: e.clientY-svg.top, idx: i, d });
+              setTip({ x: e.clientX-svg.left, y: e.clientY-svg.top, idx: i, d });
             },
             onTouchStart: e => {
               const t=e.touches&&e.touches[0]; if(!t) return;
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-              setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d });
+              setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
             },
             onTouchMove: e => {
               const t=e.touches&&e.touches[0]; if(!t) return;
               const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-              setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d });
+              setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
             },
             onMouseLeave: () => setTip(null)
           }),
@@ -169,7 +187,7 @@ window.Recharts = (function() {
             x: x + bwi/2,
             y: v >= 0 ? barY - 4 : barY + barH + 11,
             textAnchor:'middle', fontSize:9, fontFamily:'Inter,sans-serif',
-            fill:'var(--textMid)', pointerEvents:'none'
+            fill:cssTick, pointerEvents:'none'
           }, lblFmt(v))
         );
       });
@@ -178,7 +196,7 @@ window.Recharts = (function() {
     // ── Lines / Areas ────────────────────────────────────────────────────────
     function renderLine(desc, filled) {
       const { dataKey, stroke='#8884d8', fill='rgba(136,132,216,0.15)', fillOpacity=1,
-              strokeWidth=2, dot, label } = desc.props;
+              strokeWidth=2, dot, label, strokeDasharray, endLabel, name } = desc.props;
       const pts = data.map((d, i) => [xMid(i), yv(Number(d[dataKey]) || 0)]);
       if (pts.length < 1) return null;
       const lblFmt = label ? (typeof label==='function' ? label : (label.formatter || (v=>v))) : null;
@@ -191,30 +209,39 @@ window.Recharts = (function() {
         + ' L' + pts[pts.length-1][0].toFixed(1) + ',' + y0.toFixed(1)
         + ' L' + pts[0][0].toFixed(1) + ',' + y0.toFixed(1) + ' Z';
       const dr = (typeof dot === 'object' && dot?.r) ? dot.r : 3;
+      const last = pts[pts.length - 1];
       return h(React.Fragment, { key: dataKey },
         filled && h('path', { d: areaPath, fill, fillOpacity, stroke:'none' }),
-        h('path', { d: linePath, fill:'none', stroke, strokeWidth }),
+        h('path', { d: linePath, fill:'none', stroke, strokeWidth, strokeDasharray }),
+        // Direct series label at the line's end — identity survives without the
+        // legend (colorblind/print case). Halo keeps it readable over the grid.
+        endLabel && h('text', {
+          x: last[0], y: last[1] - 9, textAnchor: 'end',
+          fontSize: 11, fontWeight: 600, fontFamily: 'Inter,sans-serif',
+          fill: stroke, stroke: cssSurface, strokeWidth: 3,
+          style: { paintOrder: 'stroke', pointerEvents: 'none' }
+        }, name || dataKey),
         pts.map(([cx,cy], i) => h('circle', {
           key: i, cx, cy, r: dr, fill: stroke, stroke:'none',
           onMouseMove: e => {
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-            setTip({ x: e.clientX-svg.left+M.left, y: e.clientY-svg.top, idx: i, d: data[i] });
+            setTip({ x: e.clientX-svg.left, y: e.clientY-svg.top, idx: i, d: data[i] });
           },
           onTouchStart: e => {
             const t=e.touches&&e.touches[0]; if(!t) return;
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-            setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d: data[i] });
+            setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d: data[i] });
           },
           onTouchMove: e => {
             const t=e.touches&&e.touches[0]; if(!t) return;
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
-            setTip({ x: t.clientX-svg.left+M.left, y: t.clientY-svg.top, idx: i, d: data[i] });
+            setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d: data[i] });
           },
           onMouseLeave: () => setTip(null)
         })),
         lblFmt && pts.map(([cx,cy], i) => h('text', {
           key: 'lbl'+i, x:cx, y:cy-8, textAnchor:'middle', fontSize:9,
-          fontFamily:'Inter,sans-serif', fill:'var(--textMid)', pointerEvents:'none'
+          fontFamily:'Inter,sans-serif', fill:cssTick, pointerEvents:'none'
         }, lblFmt(Number(data[i][dataKey]) || 0)))
       );
     }
@@ -260,7 +287,7 @@ window.Recharts = (function() {
           const v = tip.d[k];
           if (v === undefined) return null;
           const fv = fmt2 ? fmt2(v) : (typeof v==='number' ? v.toFixed(2) : v);
-          return h('div', { key:k, style:{ color:'#555' } }, k + ': ' + fv);
+          return h('div', { key:k, style:{ color:'var(--textMid)' } }, k + ': ' + fv);
         })
       );
     }
@@ -291,6 +318,28 @@ window.Recharts = (function() {
           stacked.map((d, gi)   => renderBar(d, 0,  1)),
           // Lines
           lineDescs.map(d => renderLine(d, false)),
+          // Full-height invisible hover columns: line/area dots are tiny targets,
+          // so each x-index gets a plot-height hit area instead (bars keep their own).
+          barDescs.length === 0 && (lineDescs.length > 0 || areaDescs.length > 0) && tipDesc &&
+            data.map((d, i) => h('rect', {
+              key: 'hz' + i, x: i * bw, y: 0, width: bw, height: iH,
+              fill: 'transparent',
+              onMouseMove: e => {
+                const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                setTip({ x: e.clientX-svg.left, y: e.clientY-svg.top, idx: i, d });
+              },
+              onTouchStart: e => {
+                const t=e.touches&&e.touches[0]; if(!t) return;
+                const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
+              },
+              onTouchMove: e => {
+                const t=e.touches&&e.touches[0]; if(!t) return;
+                const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                setTip({ x: t.clientX-svg.left, y: t.clientY-svg.top, idx: i, d });
+              },
+              onMouseLeave: () => setTip(null)
+            })),
           // X axis line + labels
           h('line', { x1:0, y1:iH, x2:iW, y2:iH, stroke:cssGrid, strokeWidth:1 }),
           data.map((d, i) => {
@@ -302,19 +351,19 @@ window.Recharts = (function() {
               fill: t.fill || cssTick
             }, d[xKey]);
           }),
-          // Y axis labels — rendered INSIDE chart area at left edge, overlaid on grid
+          // Y axis labels — right-aligned in the reserved left gutter
           ytValues.map((t, i) =>
-            h('text', { key:i, x:4, y:yv(t)-3, textAnchor:'start',
+            h('text', { key:i, x:-8, y:yv(t)+3, textAnchor:'end',
               fontSize: yDesc?.props?.tick?.fontSize || 10,
               fontFamily: yDesc?.props?.tick?.fontFamily || 'IBM Plex Mono,monospace',
-              fill: yDesc?.props?.tick?.fill || '#aaa',
+              fill: yDesc?.props?.tick?.fill || cssTick,
               style:{ pointerEvents:'none' }
             }, yFmt(t))
           ),
           // X axis title
           xLabelText && h('text', {
             key:'xlabel', x:iW/2, y:iH+40, textAnchor:'middle',
-            fontSize:11, fontWeight:600, fontFamily:'Inter,sans-serif', fill:'#6b7280'
+            fontSize:11, fontWeight:600, fontFamily:'Inter,sans-serif', fill:cssTick
           }, xLabelText)
         )
       ),
@@ -342,6 +391,10 @@ window.Recharts = (function() {
   // ── PieChart ──────────────────────────────────────────────────────────────
   function PieChart({ width=300, height=250, children }) {
     const [tip, setTip] = useState(null);
+    // SVG presentation attributes can't resolve var(); read computed theme colors
+    const pcs = typeof document!=='undefined' ? getComputedStyle(document.documentElement) : null;
+    const pieSurface = pcs?.getPropertyValue('--bgCard')?.trim() || '#fff';
+    const pieText    = pcs?.getPropertyValue('--textMid')?.trim() || '#555';
     const arr      = Children.toArray(children);
     const pieDescs = arr.filter(c=>c.type===Pie);
     const tipDesc  = arr.find(c=>c.type===Tooltip);
@@ -390,7 +443,7 @@ window.Recharts = (function() {
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'
       }, cStyle) },
         h('div', { style:{ fontWeight:600, marginBottom:2 } }, tip.name),
-        h('div', { style:{ color:'#555' } }, fv)
+        h('div', { style:{ color:'var(--textMid)' } }, fv)
       );
     }
 
@@ -401,7 +454,7 @@ window.Recharts = (function() {
         style:{ display:'block' }
       },
         slices.map((s, i) => h(React.Fragment, { key:i },
-          h('path', { d:s.path, fill:s.fill, stroke:'#fff', strokeWidth:1.5,
+          h('path', { d:s.path, fill:s.fill, stroke:pieSurface, strokeWidth:1.5,
             onMouseMove: e => {
               const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
               setTip({ x:e.clientX-r.left, y:e.clientY-r.top, name:s.name, value:s.value });
@@ -421,7 +474,7 @@ window.Recharts = (function() {
           s.labelText && h('text', {
             x:s.lx, y:s.ly,
             textAnchor: s.lx > width/2 ? 'start' : 'end',
-            fontSize:9, fontFamily:'Inter,sans-serif', fill:'#555',
+            fontSize:11, fontFamily:'Inter,sans-serif', fill:pieText,
             dominantBaseline:'middle', pointerEvents:'none'
           }, s.labelText)
         ))

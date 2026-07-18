@@ -117,7 +117,7 @@
           bottom: "calc(84px + env(safe-area-inset-bottom))",
           zIndex: 3e3,
           cursor: "pointer",
-          background: t.kind === "error" ? "var(--red)" : "var(--navy)",
+          background: t.kind === "error" ? "var(--red)" : "var(--primary)",
           color: "#fff",
           fontSize: 13,
           fontWeight: 600,
@@ -153,7 +153,7 @@
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 2500,
-      background: "var(--navy)",
+      background: "var(--primary)",
       color: "#fff",
       borderRadius: 12,
       padding: "12px 20px",
@@ -418,7 +418,7 @@
         id: "remember-chk",
         checked: remember,
         onChange: (e) => setRemember(e.target.checked),
-        style: { width: 15, height: 15, cursor: "pointer", accentColor: "var(--navy)" }
+        style: { width: 15, height: 15, cursor: "pointer", accentColor: "var(--primary)" }
       }
     ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", style: {
       fontFamily: "Inter,sans-serif",
@@ -457,7 +457,7 @@
           borderRadius: 8,
           border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
           transition: "opacity 0.15s"
@@ -559,7 +559,7 @@
           borderRadius: 8,
           border: "none",
           cursor: checking ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: checking ? 0.7 : 1,
           marginBottom: 10
@@ -660,7 +660,7 @@
           borderRadius: 8,
           border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff",
           opacity: loading ? 0.7 : 1,
           marginBottom: hasBiometric ? 10 : 0
@@ -846,7 +846,7 @@
       return out;
     }, []);
     const passed = results.filter((r) => r.ok).length;
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, margin: "40px auto", padding: "0 20px" } }, /* @__PURE__ */ React.createElement("h2", { style: { color: "var(--text)", fontSize: 18, marginBottom: 6 } }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: passed === results.length ? "var(--greenDk)" : "var(--red)", marginBottom: 18, fontWeight: 700 } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 } }, /* @__PURE__ */ React.createElement("span", { style: { color: r.ok ? "var(--greenDk)" : "var(--red)", fontWeight: 700, width: 18 } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)", flex: 1 } }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 11 } }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, style: { display: "inline-block", marginTop: 20, fontSize: 13, color: "var(--navy)" } }, "\u2190 Back to app"));
+    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, margin: "40px auto", padding: "0 20px" } }, /* @__PURE__ */ React.createElement("h2", { style: { color: "var(--text)", fontSize: 18, marginBottom: 6 } }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: passed === results.length ? "var(--greenDk)" : "var(--red)", marginBottom: 18, fontWeight: 700 } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 } }, /* @__PURE__ */ React.createElement("span", { style: { color: r.ok ? "var(--greenDk)" : "var(--red)", fontWeight: 700, width: 18 } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)", flex: 1 } }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 11 } }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, style: { display: "inline-block", marginTop: 20, fontSize: 13, color: "var(--primary)" } }, "\u2190 Back to app"));
   }
   function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
@@ -892,7 +892,7 @@
           cursor: "pointer",
           whiteSpace: "nowrap",
           flexShrink: 0,
-          background: value === s.id ? "var(--navy)" : "var(--stripe)",
+          background: value === s.id ? "var(--primary)" : "var(--stripe)",
           color: value === s.id ? "#fff" : "var(--textMid)"
         }
       },

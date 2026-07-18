@@ -23,7 +23,10 @@
       whiteSpace: "nowrap"
     }, style) }, category);
   };
-  const Sparkline = ({ data, color = "var(--navy)", height = 32, width = 80 }) => {
+  // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
+  // trend coloring was misleading (a red line beside a green income KPI, green
+  // for rising expenses), so it's gone — pass `color` explicitly if needed.
+  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80 }) => {
     if (!data || data.length < 2) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -34,9 +37,7 @@
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
     const lastPt = pts[pts.length - 1];
-    const trend = data[data.length - 1] >= data[0];
-    const lineColor = trend ? "var(--greenDk)" : "var(--red)";
-    return /* @__PURE__ */ React.createElement("svg", { width, height, style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: lineColor, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: lineColor }));
+    return /* @__PURE__ */ React.createElement("svg", { width, height, style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
   function QuickAddFAB({ categories, templates = [], setTemplates, onSave, open = false, setOpen = () => {
   }, onImportCSV = null }) {
@@ -183,7 +184,7 @@
           borderRadius: "50%",
           border: "none",
           cursor: "pointer",
-          background: fabActive ? "var(--red)" : "var(--navy)",
+          background: fabActive ? "var(--red)" : "var(--primary)",
           color: "#fff",
           fontSize: 24,
           fontWeight: 300,
@@ -326,11 +327,11 @@
             fontWeight: 700,
             padding: "6px 12px",
             borderRadius: 20,
-            border: "1.5px dashed var(--navy)",
+            border: "1.5px dashed var(--primary)",
             cursor: "pointer",
             flexShrink: 0,
             background: "transparent",
-            color: "var(--navy)"
+            color: "var(--primary)"
           }
         },
         "\u25CF ",
@@ -354,7 +355,7 @@
             cursor: "pointer",
             position: "relative",
             flexShrink: 0,
-            background: isActive ? "var(--navy)" : hasMatch ? "var(--amberLt)" : "var(--border)",
+            background: isActive ? "var(--primary)" : hasMatch ? "var(--amberLt)" : "var(--border)",
             color: isActive ? "#fff" : hasMatch ? "var(--amber)" : "var(--textMid)",
             outline: hasMatch && !isActive ? "2px solid var(--amber)" : "none"
           }
@@ -394,7 +395,7 @@
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        background: value === o.id ? "var(--navy)" : "var(--border)",
+        background: value === o.id ? "var(--primary)" : "var(--border)",
         color: value === o.id ? "#fff" : "var(--textMid)"
       }
     },
@@ -412,7 +413,7 @@
         borderRadius,
         border: "none",
         cursor: "pointer",
-        background: value === o.id ? "var(--navy)" : "var(--border)",
+        background: value === o.id ? "var(--primary)" : "var(--border)",
         color: value === o.id ? "#fff" : "var(--textMid)"
       }
     },
@@ -422,7 +423,7 @@
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
     return /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--navy)",
+      background: "var(--primary)",
       borderRadius: 12,
       padding: "11px 15px",
       boxShadow: "var(--shadowLg)",
@@ -466,7 +467,7 @@
       border: "none",
       padding: 0,
       cursor: "pointer",
-      background: value ? "var(--navy)" : "var(--border)",
+      background: value ? "var(--primary)" : "var(--border)",
       transition: "background 0.2s",
       flexShrink: 0
     }

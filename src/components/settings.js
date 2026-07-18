@@ -373,7 +373,7 @@
         href: "https://console.anthropic.com",
         target: "_blank",
         rel: "noopener noreferrer",
-        style: { color: "var(--navy)" }
+        style: { color: "var(--primary)" }
       },
       "console.anthropic.com"
     ), "."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
@@ -443,7 +443,7 @@
         borderRadius: 8,
         marginBottom: 6,
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
-        border: `1px solid ${activeYear === yc.year ? "var(--navy)" : "var(--border)"}`
+        border: `1px solid ${activeYear === yc.year ? "var(--primary)" : "var(--border)"}`
       } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)", minWidth: 52 } }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal", style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)", whiteSpace: "nowrap" } }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
         "input",
         {
@@ -472,7 +472,7 @@
         borderRadius: 6,
         border: "1px solid var(--border)",
         cursor: "pointer",
-        background: activeYear === yc.year ? "var(--navy)" : "transparent",
+        background: activeYear === yc.year ? "var(--primary)" : "transparent",
         color: activeYear === yc.year ? "#fff" : "var(--textMid)"
       } }, activeYear === yc.year ? "Active" : "Switch"), (() => {
         const nextY = yc.year + 1;
@@ -500,9 +500,9 @@
             title: `Copy ${yc.year} budget targets to ${nextY}`,
             style: {
               fontSize: 11,
-              color: "var(--navy)",
+              color: "var(--primary)",
               background: "none",
-              border: "1px solid var(--navy)",
+              border: "1px solid var(--primary)",
               cursor: "pointer",
               padding: "4px 10px",
               borderRadius: 6,
@@ -759,9 +759,9 @@
           fontWeight: 600,
           padding: "9px 20px",
           borderRadius: 8,
-          border: "1px solid var(--navy)",
+          border: "1px solid var(--primary)",
           cursor: "pointer",
-          background: "var(--navy)",
+          background: "var(--primary)",
           color: "#fff"
         }
       },

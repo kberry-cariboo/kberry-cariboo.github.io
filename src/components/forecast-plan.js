@@ -46,11 +46,11 @@
       textTransform: "uppercase"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--red)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--red)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", whiteSpace: "nowrap" } }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { fontSize: 13, padding: "8px 14px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--greenDk)", fontWeight: 600 } }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: "var(--text)", fontWeight: 600 } }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "8px 14px", textAlign: "right", color: ev.type === "income" ? "var(--greenDk)" : "var(--text)", fontWeight: 600 } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
         padding: "8px 14px",
         textAlign: "right",
         fontWeight: 700,
-        color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+        color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), !isMobile && (() => {
         const m = ev.month;
@@ -58,12 +58,13 @@
         const yr = ev.year;
         const target = (budgetTargets[`${yr}:${m}`] || {})[cat] || 0;
         const isIncome = ev.type === "income";
-        if (isIncome) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)" } }, "\u2713"));
+        if (isIncome) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" }, title: "Scheduled income" }, "\u2713"));
         if (!target) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center", color: "var(--textLt)" } }, "\u2014");
         const pct = Math.round(ev.amount / target * 100);
         const conf = pct <= 100 ? 100 : pct <= 120 ? 75 : pct <= 150 ? 50 : 25;
-        const color = conf >= 75 ? "var(--greenDk)" : conf >= 50 ? "var(--amber)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color, fontWeight: 600 } }, conf, "%"));
+        if (conf === 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)" }, title: "Within budget target" }, "\u2713"));
+        const color = conf >= 50 ? "var(--amber)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col", style: { fontSize: 13, padding: "8px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { color, fontWeight: 600 }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
     })))))));
   }
@@ -239,11 +240,11 @@
         color: "#fff"
       } }, expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish")))
     ];
-    return /* @__PURE__ */ React.createElement(Card, { style: { maxWidth: 480, margin: "0 auto 24px", border: "2px solid var(--navy)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
+    return /* @__PURE__ */ React.createElement(Card, { style: { maxWidth: 480, margin: "0 auto 24px", border: "2px solid var(--primary)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
       width: 10,
       height: 10,
       borderRadius: "50%",
-      background: i <= step ? "var(--navy)" : "var(--border)",
+      background: i <= step ? "var(--primary)" : "var(--border)",
       transition: "background 0.2s"
     } }))), steps[step]);
   }
@@ -506,12 +507,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "Priority Action Items": "\u2705"
     };
     const sectionColor = {
-      "Executive Summary": "var(--navy)",
+      "Executive Summary": "var(--primary)",
       "Income Analysis": "var(--greenDk)",
       "Spending Analysis": "var(--amber)",
       "Debt Management": "var(--red)",
       "Savings Goals": "var(--greenDk)",
-      "Budget Performance": "var(--navy)",
+      "Budget Performance": "var(--primary)",
       "Cash Flow & Risk": "var(--amber)",
       "Priority Action Items": "var(--greenDk)"
     };
@@ -587,7 +588,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         style: {
           fontSize: 13,
           fontWeight: 700,
-          color: "var(--navy)",
+          color: "var(--primary)",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -608,7 +609,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           borderRadius: 10,
           border: "none",
           cursor: loading || !apiKey.trim() ? "not-allowed" : "pointer",
-          background: loading || !apiKey.trim() ? "var(--border)" : "var(--navy)",
+          background: loading || !apiKey.trim() ? "var(--border)" : "var(--primary)",
           color: loading || !apiKey.trim() ? "var(--textMid)" : "#fff",
           transition: "all 0.15s",
           display: "flex",
@@ -683,7 +684,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, sectionIcon[section.title] || "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 15,
       fontWeight: 700,
-      color: sectionColor[section.title] || "var(--navy)"
+      color: sectionColor[section.title] || "var(--primary)"
     } }, section.title)), sectionViz(section.title), section.items.map((line, li) => {
       const raw = line.trim();
       if (!raw) return null;
@@ -713,7 +714,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         minWidth: 22,
         height: 22,
         borderRadius: "50%",
-        background: "var(--navy)",
+        background: "var(--primary)",
         color: "#fff",
         fontSize: 11,
         fontWeight: 700,

@@ -97,7 +97,7 @@
         setGoalErrors({});
         setShowGoalForm(true);
       };
-      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "Savings Goals"), /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => openGoalForm(null),
@@ -105,7 +105,7 @@
         },
         "+ Add"
       )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "18px 10px", fontSize: 13, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-        icon: "\u{1F3AF}",
+        icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, style: { color: "var(--textLt)" } }),
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
@@ -261,7 +261,7 @@
                 type: "checkbox",
                 checked: goalForm.linkEntry,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { linkEntry: e.target.checked })),
-                style: { width: 16, height: 16, accentColor: "var(--navy)" }
+                style: { width: 16, height: 16, accentColor: "var(--primary)" }
               }
             ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--textMid)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement(
               "input",
@@ -269,7 +269,7 @@
                 type: "checkbox",
                 checked: goalForm.payoutEntry,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { payoutEntry: e.target.checked })),
-                style: { width: 16, height: 16, accentColor: "var(--navy)" }
+                style: { width: 16, height: 16, accentColor: "var(--primary)" }
               }
             ), "Add the payout as a one-time expense on the target date (models the spending in your forecast)")));
           })(),
@@ -745,10 +745,13 @@
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [effectiveFlow]);
+    // Income groups by entry description, not category — most income shares one
+    // "Income" category, which collapsed this widget into a single useless bar.
     const incTotals = useMemo(() => {
       const map = {};
       effectiveFlow.filter((e) => e.type === "income").forEach((e) => {
-        map[e.category] = (map[e.category] || 0) + e.amount;
+        const key = e.desc || e.category || "Income";
+        map[key] = (map[key] || 0) + e.amount;
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [effectiveFlow]);
@@ -847,8 +850,8 @@
         fontSize: 16,
         fontWeight: 700,
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
-      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6 } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
+      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6, display: "inline-block", whiteSpace: "nowrap" } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
+      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6, display: "inline-block", whiteSpace: "nowrap" } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u2014")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
         today.setHours(0, 0, 0, 0);
@@ -892,14 +895,9 @@
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const isInc = ev.type === "income";
-          const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)";
-          const amtColor = isInc ? "var(--greenDk)" : "var(--red)";
-          const barDiv = /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "var(--border)", borderRadius: 2 } }, /* @__PURE__ */ React.createElement("div", { style: {
-            height: "100%",
-            borderRadius: 2,
-            background: balColor,
-            width: `${Math.min(100, Math.abs(ev.amount) / (Math.abs(ev.amount) + Math.abs(ev.balance)) * 100)}%`
-          } }));
+          const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)";
+          const amtColor = isInc ? "var(--greenDk)" : "var(--text)";
+          const barDiv = null;
           if (isMobile) {
             return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 } }, /* @__PURE__ */ React.createElement("span", { style: {
               fontSize: 13,
@@ -935,7 +933,7 @@
         {
           value: balView,
           onChange: setBalView,
-          options: [{ id: "area", icon: "\u25FF", label: "Area" }, { id: "line", icon: "\u2571", label: "Line" }, { id: "bar", icon: "\u25AE", label: "Bar" }]
+          options: [{ id: "area", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-area", size: 15 }), label: "Area" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }, { id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }]
         }
       ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
       surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
@@ -943,7 +941,7 @@
         {
           value: surplusView,
           onChange: setSurplusView,
-          options: [{ id: "bar", icon: "\u25AE", label: "Bar" }, { id: "line", icon: "\u2571", label: "Line" }]
+          options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
       ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
         Line,
@@ -962,9 +960,9 @@
         {
           value: incExpView,
           onChange: setIncExpView,
-          options: [{ id: "grouped", icon: "\u25AE\u25AE", label: "Grouped" }, { id: "stacked", icon: "\u25B0", label: "Stacked" }, { id: "line", icon: "\u2571", label: "Line" }]
+          options: [{ id: "grouped", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 15 }), label: "Grouped" }, { id: "stacked", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-stacked", size: 15 }), label: "Stacked" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
-      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 } })) : /* @__PURE__ */ React.createElement(
+      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
         BarChart,
         {
           data: summaries,
@@ -979,7 +977,7 @@
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
       ))))),
-      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "bar", label: "\u25AC" }, { id: "pie", label: "\u25D1" }], value: catView, onChange: setCatView, gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 6 }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
+      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
         return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
           height: "100%",
@@ -1014,11 +1012,11 @@
         {
           value: incView,
           onChange: setIncView,
-          options: [{ id: "bar", icon: "\u25AC", label: "Bars" }, { id: "pie", icon: "\u25D1", label: "Pie" }]
+          options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }]
         }
       ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", textAlign: "center", padding: "20px 0" } }, "No income entries"), incTotals.map(([cat, total], i) => {
         const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: "var(--greenDk)", opacity: 0.7 + 0.3 * (1 - i / incTotals.length) } })));
+        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)" } }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] } })));
       })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
@@ -1031,12 +1029,12 @@
           label: ({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : "",
           labelLine: true
         },
-        incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: ["#27AE73", "#2ECC8A", "#16A085", "#1ABC9C", "#2980B9", "#3498DB"][i % 6] }))
+        incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: CAT_PALETTE[i % CAT_PALETTE.length] }))
       ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))))),
       bvaYear: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
         const _now = /* @__PURE__ */ new Date();
         const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
-        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date") : null;
+        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono", style: { fontSize: 10 } }, "spent / budget")) : null;
       })(), (() => {
         const now = /* @__PURE__ */ new Date();
         const isCurrentYear = now.getFullYear() === activeYear;
@@ -1066,7 +1064,7 @@
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center"
-          } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 28, marginBottom: 8 } }, "\u{1F3AF}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
+          } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 8, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
         }
         const rows = cats.map((c) => {
           const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
@@ -1084,7 +1082,7 @@
         const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, style: { fontSize: 9 } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           color: r.over ? r.color : "var(--text)"
-        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: r.color } }, "\u25B2", fmt(r.diff)))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
+        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
           height: "100%",
           width: `${r.pct}%`,
           borderRadius: 3,
@@ -1106,7 +1104,7 @@
         } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           fontWeight: 700,
           color: tOver ? tColor : "var(--text)"
-        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: tColor } }, "\u25B2", fmt(tDiff)))));
+        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: tColor } }, fmt(tDiff) + " over"))));
       })())),
       debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         let dData = {};
@@ -1203,7 +1201,7 @@
           {
             value: summaryView,
             onChange: setSummaryView,
-            options: [{ id: "table", icon: "\u2261", label: "Table" }, { id: "heat", icon: "\u25FC", label: "Heatmap" }]
+            options: [{ id: "table", icon: /* @__PURE__ */ React.createElement(Icon, { name: "file-list", size: 15 }), label: "Table" }, { id: "heat", icon: /* @__PURE__ */ React.createElement(Icon, { name: "grid", size: 15 }), label: "Heatmap" }]
           }
         )), /* @__PURE__ */ React.createElement(
           ExportBar,
@@ -1240,7 +1238,7 @@
           const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
           const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
-          return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)", position: "sticky", right: 0, boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }, fmt(m.close)));
+          return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)", position: "sticky", right: 0, boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }, fmt(m.close)));
         }))))),
         summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
           fontSize: 11,
@@ -1257,7 +1255,7 @@
           right: i === 4 ? 0 : "auto",
           background: i === 4 ? "var(--navy)" : "transparent",
           boxShadow: i === 4 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
-        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
+        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--text)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--text)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
           fontWeight: 700,
           padding: "9px 16px",
           textAlign: "right",
@@ -1267,12 +1265,12 @@
           fontWeight: 700,
           padding: "9px 16px",
           textAlign: "right",
-          color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--greenDk)",
+          color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
           position: "sticky",
           right: 0,
           boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.18)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "var(--green)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#FF8A7A" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px", position: "sticky", right: 0, background: "var(--navy)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }))))))
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px", position: "sticky", right: 0, background: "var(--navy)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }))))))
       ))),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 16 }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
@@ -1362,7 +1360,7 @@
               type: "checkbox",
               checked: !dashHidden[id],
               onChange: (e) => setDashHidden((prev) => __spreadProps(__spreadValues({}, prev), { [id]: !e.target.checked })),
-              style: { width: 16, height: 16, accentColor: "var(--navy)", flexShrink: 0 }
+              style: { width: 16, height: 16, accentColor: "var(--primary)", flexShrink: 0 }
             }
           ), /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 0, opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === 0 ? 0.3 : 1 }), disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }), disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
         })),

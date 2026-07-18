@@ -79,7 +79,7 @@
     }, [authLoading, session]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
-    const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: 2026, openingBalance: 19005.69 }]);
+    const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }]);
     const [activeYear, setActiveYear] = useLS("cf_activeYear", 2026);
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
@@ -1053,7 +1053,7 @@
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 3e3,
-      background: "var(--navy)",
+      background: "var(--primary)",
       color: "#fff",
       borderRadius: 20,
       padding: "6px 16px 6px 12px",

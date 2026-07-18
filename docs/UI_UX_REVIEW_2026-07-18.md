@@ -1,5 +1,18 @@
 # CashFlow Budget — UI/UX & Data-Visualization Review
 
+> **Implementation status (Jul 18, later the same day):** every recommendation below has been
+> implemented except two intentionally deferred items — U6 (broader typography pass:
+> caps-label rationing) and the dark-mode contrast WARNs on the deepest new category hues
+> (chips carry their own text label, which is the validator's accepted relief; a per-theme
+> palette split would be the full fix). Highlights of what shipped:
+> C1 `--primary` token (dark active states/FAB/buttons now visible) · C2 y-axis gutter ·
+> C3 signed amounts + direct line labels + dashed expenses line · CH1 nice 1-2-5 ticks ·
+> CH2 neutral sparklines · CH3 income-by-source grouping · CH4 validated category palette
+> (all six checks pass in light mode) · CH5 theme-token chart colors · CH6 SVG chart-toggle
+> icons · CH7 full-height hover columns, upcoming micro-bar removed, confidence column
+> unified · §4 neutral expense/balance ink + single minus-sign convention · U1–U5, U7.
+> All verified on 16 live re-renders (both themes, both form factors), zero JS errors.
+
 **Date:** July 18, 2026 · **Build reviewed:** v176 (source in `src/`, built via `build.js`) ·
 **Method:** full code review of `src/` plus live rendering in Chromium (Playwright) at 1440×900 and 393×852 (touch), light and dark themes, all tabs — using a stubbed Supabase client and fictional demo data. Chart palettes were checked with a runnable colorblind-safety validator (OKLab ΔE), not by eye.
 
