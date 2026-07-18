@@ -286,7 +286,7 @@
     ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--textMid)", cursor: "pointer", whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), style: { cursor: "pointer" } }), "All years"), /* @__PURE__ */ React.createElement(
       "input",
       {
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026",
+        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026 try >100",
         value: search,
         onChange: (e) => setSearch(e.target.value),
         style: {

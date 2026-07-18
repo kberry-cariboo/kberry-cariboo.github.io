@@ -1362,6 +1362,10 @@ document.addEventListener('DOMContentLoaded',function(){
     shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
     accent: "#2F6FED",
     accentLt: "#EAF1FE",
+    // Chip text = category hue mixed toward white by (100% - chipKeep).
+    // Light surfaces keep the full hue; dark surfaces lighten it so deep
+    // hues (indigo, dark red) stay readable on dark cards.
+    chipKeep: "100%",
     // Interactive fills (active pills, primary buttons, FAB). Same as the brand
     // navy in light mode; dark mode needs its own value because there the navy
     // doubles as a surface color and active states would vanish into it.
@@ -1395,7 +1399,8 @@ document.addEventListener('DOMContentLoaded',function(){
     shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
     accent: "#5B8DEF",
     accentLt: "#1A2942",
-    primary: "#4E729C"
+    primary: "#4E729C",
+    chipKeep: "60%"
   };
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const GLOBAL_STYLES = `
@@ -1408,8 +1413,8 @@ document.addEventListener('DOMContentLoaded',function(){
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/plexmono-700.woff2') format('woff2');}
         *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
         /* \u2500\u2500 Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) \u2500\u2500 */
-        .field-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
-          text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;}
+        .field-label{font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--textMid);
+          display:block;margin-bottom:6px;}
         .field-input{font-family:Inter,sans-serif;font-size:13px;padding:9px 12px;
           border:1.5px solid var(--border);border-radius:8px;
           background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
@@ -1488,6 +1493,9 @@ document.addEventListener('DOMContentLoaded',function(){
           .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
+        }
+        @media (pointer:coarse){
+          .chart-toggle-btn{min-width:44px!important;min-height:44px!important;}
         }
         /* Accessible focus ring \u2014 keyboard only, consistent everywhere */
         :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
@@ -2221,7 +2229,7 @@ document.addEventListener('DOMContentLoaded',function(){
       padding: "2px 7px",
       borderRadius: 10,
       background: color + "22",
-      color,
+      color: `color-mix(in srgb, ${color} var(--chipKeep, 100%), #fff)`,
       border: `1px solid ${color}44`,
       whiteSpace: "nowrap"
     }, style) }, category);
@@ -2582,6 +2590,7 @@ document.addEventListener('DOMContentLoaded',function(){
     {
       key: o.id,
       onClick: () => onChange(o.id),
+      className: "chart-toggle-btn",
       title: o.label,
       "aria-label": o.label,
       "aria-pressed": value === o.id,
@@ -3642,7 +3651,7 @@ document.addEventListener('DOMContentLoaded',function(){
     ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--textMid)", cursor: "pointer", whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), style: { cursor: "pointer" } }), "All years"), /* @__PURE__ */ React.createElement(
       "input",
       {
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026",
+        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026 try >100",
         value: search,
         onChange: (e) => setSearch(e.target.value),
         style: {
@@ -6136,8 +6145,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             "anthropic-dangerous-direct-browser-access": "true"
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-6",
+            model: "claude-sonnet-5",
             max_tokens: 1200,
+            // This report is a short, structured dashboard blurb on a tight
+            // token budget — thinking would spend from max_tokens, so keep it off.
+            thinking: { type: "disabled" },
             system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Be blunt and brief: short, numbers-first bullets, no filler. Format responses in clean Markdown.",
             messages: [{ role: "user", content: prompt }]
           })
@@ -6147,7 +6159,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           throw new Error(((_b = e == null ? void 0 : e.error) == null ? void 0 : _b.message) || `API error ${res.status}`);
         }
         const data = await res.json();
-        const text = ((_c = data.content) == null ? void 0 : _c.map((b) => b.text || "").join("")) || "";
+        if (data.stop_reason === "refusal") {
+          throw new Error("The model declined to analyse this data. Try again, or adjust your entries.");
+        }
+        const text = ((_c = data.content) == null ? void 0 : _c.filter((b) => b.type === "text").map((b) => b.text || "").join("")) || "";
+        if (data.stop_reason === "max_tokens") {
+          console.warn("AI report truncated at max_tokens");
+        }
         setRawText(text);
         setReport(parseReport(text));
         setLastRun(/* @__PURE__ */ new Date());

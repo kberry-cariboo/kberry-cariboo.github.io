@@ -18,7 +18,7 @@
       padding: "2px 7px",
       borderRadius: 10,
       background: color + "22",
-      color,
+      color: `color-mix(in srgb, ${color} var(--chipKeep, 100%), #fff)`,
       border: `1px solid ${color}44`,
       whiteSpace: "nowrap"
     }, style) }, category);
@@ -379,6 +379,7 @@
     {
       key: o.id,
       onClick: () => onChange(o.id),
+      className: "chart-toggle-btn",
       title: o.label,
       "aria-label": o.label,
       "aria-pressed": value === o.id,
