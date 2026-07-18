@@ -30,6 +30,19 @@
       signOut();
     };
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
+    // Biometric setup is only offered on touch devices; the menu shortcut also
+    // disappears once a credential is registered (managed from Settings after that).
+    const isCoarsePointer = useIsCoarsePointer();
+    const [bioAvailable, setBioAvailable] = useState(false);
+    useEffect(() => {
+      let live = true;
+      isBiometricAvailable().then((v) => {
+        if (live) setBioAvailable(v);
+      });
+      return () => {
+        live = false;
+      };
+    }, []);
     // "Fingerprint sign-on": when enabled, the app starts locked and the lock
     // screen immediately prompts for the device biometric (fingerprint / face).
     // The Supabase session persists underneath — this gates the UI on-device.
@@ -756,18 +769,18 @@
           setMenuOpen(false);
           setTab("settings");
         } },
-        { label: "Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
+        ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
           setMenuOpen(false);
           setTab("settings");
           setTimeout(() => {
             const el = document.getElementById("sec-security");
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 150);
-        } },
-        { label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
+        } }] : [],
+        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
           setMenuOpen(false);
           setShowHelp(true);
-        } },
+        } }],
         ...showInstall ? [{ label: "Install App", icon: "\u2B07", action: () => {
           setMenuOpen(false);
           doInstall();

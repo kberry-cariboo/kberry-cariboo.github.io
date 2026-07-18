@@ -119,4 +119,34 @@ Pie slice labels and default tooltips use `fill:'#555'` / `color:'#555'`, Y tick
 
 ---
 
-*Verification notes: all findings were confirmed on live renders (16 screenshots: 7 desktop-light views, 2 desktop-dark, 4 mobile-light, 1 mobile-dark, 2 login) with fictional seeded data; no JS errors were observed in any render. Palette findings come from an OKLab-based CVD validator run against both themes' card surfaces.*
+## 7. Round 2 — platform-appropriate features *(implemented Jul 18)*
+
+Principle: a feature that can't work — or has already done its job — on the current device should not render. Applied to the biometric unlock flow and audited across the app:
+
+| Surface | Before | After |
+|---|---|---|
+| Settings → Security biometric toggle | Shown whenever WebAuthn reported a platform authenticator — including desktops (Windows Hello / Touch ID) | Offered only on coarse-pointer (touch) devices; still shown if a credential is already registered so it can be disabled anywhere |
+| User-menu "Fingerprint / Face Unlock" shortcut | Always present, on every device, forever | Now "Set Up Fingerprint / Face Unlock"; appears only on touch devices that support it **and haven't set it up yet** — once registered it disappears (managed from Settings) |
+| Auto-lock hint copy | Always said "unlock with your fingerprint / face or your password" | Mentions fingerprint/face only when biometric unlock is actually enabled |
+| User-menu "Keyboard Shortcuts" | Shown on phones, where there is no keyboard | Hidden on coarse-pointer devices |
+
+Verified in four live scenarios (desktop/mobile × credential registered/not) with a forced-available WebAuthn stub. Already correct and left alone: `LockScreen` only offers biometric once registered; camera-capture button and swipe coach-mark are already touch-only; "Install App" is gated on `beforeinstallprompt`.
+
+**Remaining item in this class:** the QuickAdd FAB still renders on desktop (see U3) — same principle, recommended same fix.
+
+## 8. Feature suggestions (open list, not yet implemented)
+
+Ordered by value-to-effort for a cash-flow app:
+
+1. **First-run experience.** A fresh household lands on an empty dashboard. Offer a 3-step start (opening balance → first income → first bills) and/or a "Load sample data" button that seeds clearly-fictional entries and can be undone in one tap.
+2. **Mark-as-paid from the dashboard.** The Upcoming list is the most-viewed widget but is read-only; the ledger's occurrence checkboxes are a tab away. A tap/long-press on an Upcoming row to mark it paid (or edit that occurrence) would close the most common daily loop.
+3. **Insight strip.** One sentence above the charts computed from data you already have: "July spending is 12% above your 6-month average — driven by Personal (+$1,800)." This is what the AI tab does, but free, instant, and offline.
+4. **Budget rollover (envelope carry).** Optional per-category: unspent target rolls into next month. Standard in envelope-style budget apps and cheap given `budgetTargets` is already per-month.
+5. **Search operator discoverability.** The register search supports `>100` / `<20` / exact-amount queries, but nothing reveals this. Put it in the placeholder ("Search… try >100") or a one-line hint under the box.
+6. **Bank-import profiles.** CSV import exists; remember the column mapping per source ("RBC chequing") so repeat imports are one tap.
+7. **Low-balance heads-up.** When the forecast's next low point crosses the alert threshold, surface it on app open (banner exists?) and — as a PWA — consider a local notification the day before a big scheduled debit.
+8. **December nudge.** When viewing Nov/Dec of the latest configured year, offer "Add {year+1}" inline instead of requiring the trip to Settings → Budget Years.
+
+---
+
+*Verification notes: all findings were confirmed on live renders (16 screenshots: 7 desktop-light views, 2 desktop-dark, 4 mobile-light, 1 mobile-dark, 2 login) with fictional seeded data; no JS errors were observed in any render. Palette findings come from an OKLab-based CVD validator run against both themes' card surfaces. §7 changes verified live in 4 device/credential scenarios.*
