@@ -19,6 +19,9 @@
   #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;}
   .bbar{width:180px;height:3px;background:#243447;border-radius:2px;overflow:hidden;}
   .bfill{height:100%;background:#fff;border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
+  .bicon{font-size:36px;margin-bottom:4px;}
+  .bname{font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;font-size:16px;letter-spacing:0.04em;}
+  .bmsg{font-size:11px;color:rgba(255,255,255,0.4);}
   @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
   svg{max-width:100%;}
 </style>
@@ -26,10 +29,10 @@
 <body>
 <div id="root">
   <div id="boot">
-    <div style="font-size:36px;margin-bottom:4px">💰</div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;font-size:16px;letter-spacing:0.04em">CashFlow</div>
+    <div class="bicon">💰</div>
+    <div class="bname">CashFlow</div>
     <div class="bbar"><div class="bfill"></div></div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.4)">Loading…</div>
+    <div class="bmsg">Loading…</div>
   </div>
 </div>
 <script>(()=>{var Om=Object.create;var Hi=Object.defineProperty;var _m=Object.getOwnPropertyDescriptor;var Mm=Object.getOwnPropertyNames;var Dm=Object.getPrototypeOf,Um=Object.prototype.hasOwnProperty;var At=(l,t)=>()=>(t||l((t={exports:{}}).exports,t),t.exports);var Hm=(l,t,u,a)=>{if(t&&typeof t=="object"||typeof t=="function")for(let n of Mm(t))!Um.call(l,n)&&n!==u&&Hi(l,n,{get:()=>t[n],enumerable:!(a=_m(t,n))||a.enumerable});return l};var Ni=(l,t,u)=>(u=l!=null?Om(Dm(l)):{},Hm(t||!l||!l.__esModule?Hi(u,"default",{value:l,enumerable:!0}):u,l));var ji=At(_=>{"use strict";var Ke=Symbol.for("react.transitional.element"),Nm=Symbol.for("react.portal"),pm=Symbol.for("react.fragment"),qm=Symbol.for("react.strict_mode"),Bm=Symbol.for("react.profiler"),Ym=Symbol.for("react.consumer"),Rm=Symbol.for("react.context"),Cm=Symbol.for("react.forward_ref"),Gm=Symbol.for("react.suspense"),Xm=Symbol.for("react.memo"),Ri=Symbol.for("react.lazy"),Qm=Symbol.for("react.activity"),pi=Symbol.iterator;function Zm(l){return l===null||typeof l!="object"?null:(l=pi&&l[pi]||l["@@iterator"],typeof l=="function"?l:null)}var Ci={isMounted:function(){return!1},enqueueForceUpdate:function(){},enqueueReplaceState:function(){},enqueueSetState:function(){}},Gi=Object.assign,Xi={};function bu(l,t,u){this.props=l,this.context=t,this.refs=Xi,this.updater=u||Ci}bu.prototype.isReactComponent={};bu.prototype.setState=function(l,t){if(typeof l!="object"&&typeof l!="function"&&l!=null)throw Error("takes an object of state variables to update or a function which returns an object of state variables.");this.updater.enqueueSetState(this,l,t,"setState")};bu.prototype.forceUpdate=function(l){this.updater.enqueueForceUpdate(this,l,"forceUpdate")};function Qi(){}Qi.prototype=bu.prototype;function Je(l,t,u){this.props=l,this.context=t,this.refs=Xi,this.updater=u||Ci}var re=Je.prototype=new Qi;re.constructor=Je;Gi(re,bu.prototype);re.isPureReactComponent=!0;var qi=Array.isArray;function Le(){}var L={H:null,A:null,T:null,S:null},Zi=Object.prototype.hasOwnProperty;function we(l,t,u){var a=u.ref;return{$$typeof:Ke,type:l,key:t,ref:a!==void 0?a:null,props:u}}function jm(l,t){return we(l.type,t,l.props)}function We(l){return typeof l=="object"&&l!==null&&l.$$typeof===Ke}function Vm(l){var t={"=":"=0",":":"=2"};return"$"+l.replace(/[=:]/g,function(u){return t[u]})}var Bi=/\/+/g;function xe(l,t){return typeof l=="object"&&l!==null&&l.key!=null?Vm(""+l.key):t.toString(36)}function xm(l){switch(l.status){case"fulfilled":return l.value;case"rejected":throw l.reason;default:switch(typeof l.status=="string"?l.then(Le,Le):(l.status="pending",l.then(function(t){l.status==="pending"&&(l.status="fulfilled",l.value=t)},function(t){l.status==="pending"&&(l.status="rejected",l.reason=t)})),l.status){case"fulfilled":return l.value;case"rejected":throw l.reason}}throw l}function su(l,t,u,a,n){var e=typeof l;(e==="undefined"||e==="boolean")&&(l=null);var f=!1;if(l===null)f=!0;else switch(e){case"bigint":case"string":case"number":f=!0;break;case"object":switch(l.$$typeof){case Ke:case Nm:f=!0;break;case Ri:return f=l._init,su(f(l._payload),t,u,a,n)}}if(f)return n=n(l),f=a===""?"."+xe(l,0):a,qi(n)?(u="",f!=null&&(u=f.replace(Bi,"$&/")+"/"),su(n,t,u,"",function(m){return m})):n!=null&&(We(n)&&(n=jm(n,u+(n.key==null||l&&l.key===n.key?"":(""+n.key).replace(Bi,"$&/")+"/")+f)),t.push(n)),1;f=0;var c=a===""?".":a+":";if(qi(l))for(var i=0;i<l.length;i++)a=l[i],e=c+xe(a,i),f+=su(a,t,u,e,n);else if(i=Zm(l),typeof i=="function")for(l=i.call(l),i=0;!(a=l.next()).done;)a=a.value,e=c+xe(a,i++),f+=su(a,t,u,e,n);else if(e==="object"){if(typeof l.then=="function")return su(xm(l),t,u,a,n);throw t=String(l),Error("Objects are not valid as a React child (found: "+(t==="[object Object]"?"object with keys {"+Object.keys(l).join(", ")+"}":t)+"). If you meant to render a collection of children, use an array instead.")}return f}function mn(l,t,u){if(l==null)return l;var a=[],n=0;return su(l,a,"","",function(e){return t.call(u,e,n++)}),a}function Lm(l){if(l._status===-1){var t=l._result;t=t(),t.then(function(u){(l._status===0||l._status===-1)&&(l._status=1,l._result=u)},function(u){(l._status===0||l._status===-1)&&(l._status=2,l._result=u)}),l._status===-1&&(l._status=0,l._result=t)}if(l._status===1)return l._result.default;throw l._result}var Yi=typeof reportError=="function"?reportError:function(l){if(typeof window=="object"&&typeof window.ErrorEvent=="function"){var t=new window.ErrorEvent("error",{bubbles:!0,cancelable:!0,message:typeof l=="object"&&l!==null&&typeof l.message=="string"?String(l.message):String(l),error:l});if(!window.dispatchEvent(t))return}else if(typeof process=="object"&&typeof process.emit=="function"){process.emit("uncaughtException",l);return}console.error(l)},Km={map:mn,forEach:function(l,t,u){mn(l,function(){t.apply(this,arguments)},u)},count:function(l){var t=0;return mn(l,function(){t++}),t},toArray:function(l){return mn(l,function(t){return t})||[]},only:function(l){if(!We(l))throw Error("React.Children.only expected to receive a single React element child.");return l}};_.Activity=Qm;_.Children=Km;_.Component=bu;_.Fragment=pm;_.Profiler=Bm;_.PureComponent=Je;_.StrictMode=qm;_.Suspense=Gm;_.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE=L;_.__COMPILER_RUNTIME={__proto__:null,c:function(l){return L.H.useMemoCache(l)}};_.cache=function(l){return function(){return l.apply(null,arguments)}};_.cacheSignal=function(){return null};_.cloneElement=function(l,t,u){if(l==null)throw Error("The argument must be a React element, but you passed "+l+".");var a=Gi({},l.props),n=l.key;if(t!=null)for(e in t.key!==void 0&&(n=""+t.key),t)!Zi.call(t,e)||e==="key"||e==="__self"||e==="__source"||e==="ref"&&t.ref===void 0||(a[e]=t[e]);var e=arguments.length-2;if(e===1)a.children=u;else if(1<e){for(var f=Array(e),c=0;c<e;c++)f[c]=arguments[c+2];a.children=f}return we(l.type,n,a)};_.createContext=function(l){return l={$$typeof:Rm,_currentValue:l,_currentValue2:l,_threadCount:0,Provider:null,Consumer:null},l.Provider=l,l.Consumer={$$typeof:Ym,_context:l},l};_.createElement=function(l,t,u){var a,n={},e=null;if(t!=null)for(a in t.key!==void 0&&(e=""+t.key),t)Zi.call(t,a)&&a!=="key"&&a!=="__self"&&a!=="__source"&&(n[a]=t[a]);var f=arguments.length-2;if(f===1)n.children=u;else if(1<f){for(var c=Array(f),i=0;i<f;i++)c[i]=arguments[i+2];n.children=c}if(l&&l.defaultProps)for(a in f=l.defaultProps,f)n[a]===void 0&&(n[a]=f[a]);return we(l,e,n)};_.createRef=function(){return{current:null}};_.forwardRef=function(l){return{$$typeof:Cm,render:l}};_.isValidElement=We;_.lazy=function(l){return{$$typeof:Ri,_payload:{_status:-1,_result:l},_init:Lm}};_.memo=function(l,t){return{$$typeof:Xm,type:l,compare:t===void 0?null:t}};_.startTransition=function(l){var t=L.T,u={};L.T=u;try{var a=l(),n=L.S;n!==null&&n(u,a),typeof a=="object"&&a!==null&&typeof a.then=="function"&&a.then(Le,Yi)}catch(e){Yi(e)}finally{t!==null&&u.types!==null&&(t.types=u.types),L.T=t}};_.unstable_useCacheRefresh=function(){return L.H.useCacheRefresh()};_.use=function(l){return L.H.use(l)};_.useActionState=function(l,t,u){return L.H.useActionState(l,t,u)};_.useCallback=function(l,t){return L.H.useCallback(l,t)};_.useContext=function(l){return L.H.useContext(l)};_.useDebugValue=function(){};_.useDeferredValue=function(l,t){return L.H.useDeferredValue(l,t)};_.useEffect=function(l,t){return L.H.useEffect(l,t)};_.useEffectEvent=function(l){return L.H.useEffectEvent(l)};_.useId=function(){return L.H.useId()};_.useImperativeHandle=function(l,t,u){return L.H.useImperativeHandle(l,t,u)};_.useInsertionEffect=function(l,t){return L.H.useInsertionEffect(l,t)};_.useLayoutEffect=function(l,t){return L.H.useLayoutEffect(l,t)};_.useMemo=function(l,t){return L.H.useMemo(l,t)};_.useOptimistic=function(l,t){return L.H.useOptimistic(l,t)};_.useReducer=function(l,t,u){return L.H.useReducer(l,t,u)};_.useRef=function(l){return L.H.useRef(l)};_.useState=function(l){return L.H.useState(l)};_.useSyncExternalStore=function(l,t,u){return L.H.useSyncExternalStore(l,t,u)};_.useTransition=function(){return L.H.useTransition()};_.version="19.2.5"});var dn=At((A2,Vi)=>{"use strict";Vi.exports=ji()});var ki=At(w=>{"use strict";function Ie(l,t){var u=l.length;l.push(t);l:for(;0<u;){var a=u-1>>>1,n=l[a];if(0<hn(n,t))l[a]=t,l[u]=n,u=a;else break l}}function Wl(l){return l.length===0?null:l[0]}function gn(l){if(l.length===0)return null;var t=l[0],u=l.pop();if(u!==t){l[0]=u;l:for(var a=0,n=l.length,e=n>>>1;a<e;){var f=2*(a+1)-1,c=l[f],i=f+1,m=l[i];if(0>hn(c,u))i<n&&0>hn(m,c)?(l[a]=m,l[i]=u,a=i):(l[a]=c,l[f]=u,a=f);else if(i<n&&0>hn(m,u))l[a]=m,l[i]=u,a=i;else break l}}return t}function hn(l,t){var u=l.sortIndex-t.sortIndex;return u!==0?u:l.id-t.id}w.unstable_now=void 0;typeof performance=="object"&&typeof performance.now=="function"?(xi=performance,w.unstable_now=function(){return xi.now()}):($e=Date,Li=$e.now(),w.unstable_now=function(){return $e.now()-Li});var xi,$e,Li,tt=[],Ot=[],Jm=1,Rl=null,hl=3,Pe=!1,ya=!1,va=!1,lf=!1,ri=typeof setTimeout=="function"?setTimeout:null,wi=typeof clearTimeout=="function"?clearTimeout:null,Ki=typeof setImmediate!="undefined"?setImmediate:null;function Sn(l){for(var t=Wl(Ot);t!==null;){if(t.callback===null)gn(Ot);else if(t.startTime<=l)gn(Ot),t.sortIndex=t.expirationTime,Ie(tt,t);else break;t=Wl(Ot)}}function tf(l){if(va=!1,Sn(l),!ya)if(Wl(tt)!==null)ya=!0,Eu||(Eu=!0,zu());else{var t=Wl(Ot);t!==null&&uf(tf,t.startTime-l)}}var Eu=!1,ma=-1,Wi=5,$i=-1;function Fi(){return lf?!0:!(w.unstable_now()-$i<Wi)}function Fe(){if(lf=!1,Eu){var l=w.unstable_now();$i=l;var t=!0;try{l:{ya=!1,va&&(va=!1,wi(ma),ma=-1),Pe=!0;var u=hl;try{t:{for(Sn(l),Rl=Wl(tt);Rl!==null&&!(Rl.expirationTime>l&&Fi());){var a=Rl.callback;if(typeof a=="function"){Rl.callback=null,hl=Rl.priorityLevel;var n=a(Rl.expirationTime<=l);if(l=w.unstable_now(),typeof n=="function"){Rl.callback=n,Sn(l),t=!0;break t}Rl===Wl(tt)&&gn(tt),Sn(l)}else gn(tt);Rl=Wl(tt)}if(Rl!==null)t=!0;else{var e=Wl(Ot);e!==null&&uf(tf,e.startTime-l),t=!1}}break l}finally{Rl=null,hl=u,Pe=!1}t=void 0}}finally{t?zu():Eu=!1}}}var zu;typeof Ki=="function"?zu=function(){Ki(Fe)}:typeof MessageChannel!="undefined"?(ke=new MessageChannel,Ji=ke.port2,ke.port1.onmessage=Fe,zu=function(){Ji.postMessage(null)}):zu=function(){ri(Fe,0)};var ke,Ji;function uf(l,t){ma=ri(function(){l(w.unstable_now())},t)}w.unstable_IdlePriority=5;w.unstable_ImmediatePriority=1;w.unstable_LowPriority=4;w.unstable_NormalPriority=3;w.unstable_Profiling=null;w.unstable_UserBlockingPriority=2;w.unstable_cancelCallback=function(l){l.callback=null};w.unstable_forceFrameRate=function(l){0>l||125<l?console.error("forceFrameRate takes a positive int between 0 and 125, forcing frame rates higher than 125 fps is not supported"):Wi=0<l?Math.floor(1e3/l):5};w.unstable_getCurrentPriorityLevel=function(){return hl};w.unstable_next=function(l){switch(hl){case 1:case 2:case 3:var t=3;break;default:t=hl}var u=hl;hl=t;try{return l()}finally{hl=u}};w.unstable_requestPaint=function(){lf=!0};w.unstable_runWithPriority=function(l,t){switch(l){case 1:case 2:case 3:case 4:case 5:break;default:l=3}var u=hl;hl=l;try{return t()}finally{hl=u}};w.unstable_scheduleCallback=function(l,t,u){var a=w.unstable_now();switch(typeof u=="object"&&u!==null?(u=u.delay,u=typeof u=="number"&&0<u?a+u:a):u=a,l){case 1:var n=-1;break;case 2:n=250;break;case 5:n=1073741823;break;case 4:n=1e4;break;default:n=5e3}return n=u+n,l={id:Jm++,callback:t,priorityLevel:l,startTime:u,expirationTime:n,sortIndex:-1},u>a?(l.sortIndex=u,Ie(Ot,l),Wl(tt)===null&&l===Wl(Ot)&&(va?(wi(ma),ma=-1):va=!0,uf(tf,u-a))):(l.sortIndex=n,Ie(tt,l),ya||Pe||(ya=!0,Eu||(Eu=!0,zu()))),l};w.unstable_shouldYield=Fi;w.unstable_wrapCallback=function(l){var t=hl;return function(){var u=hl;hl=t;try{return l.apply(this,arguments)}finally{hl=u}}}});var Pi=At((_2,Ii)=>{"use strict";Ii.exports=ki()});var t0=At(gl=>{"use strict";var rm=dn();function l0(l){var t="https://react.dev/errors/"+l;if(1<arguments.length){t+="?args[]="+encodeURIComponent(arguments[1]);for(var u=2;u<arguments.length;u++)t+="&args[]="+encodeURIComponent(arguments[u])}return"Minified React error #"+l+"; visit "+t+" for the full message or use the non-minified dev environment for full errors and additional helpful warnings."}function _t(){}var Sl={d:{f:_t,r:function(){throw Error(l0(522))},D:_t,C:_t,L:_t,m:_t,X:_t,S:_t,M:_t},p:0,findDOMNode:null},wm=Symbol.for("react.portal");function Wm(l,t,u){var a=3<arguments.length&&arguments[3]!==void 0?arguments[3]:null;return{$$typeof:wm,key:a==null?null:""+a,children:l,containerInfo:t,implementation:u}}var da=rm.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;function on(l,t){if(l==="font")return"";if(typeof t=="string")return t==="use-credentials"?t:""}gl.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE=Sl;gl.createPortal=function(l,t){var u=2<arguments.length&&arguments[2]!==void 0?arguments[2]:null;if(!t||t.nodeType!==1&&t.nodeType!==9&&t.nodeType!==11)throw Error(l0(299));return Wm(l,t,null,u)};gl.flushSync=function(l){var t=da.T,u=Sl.p;try{if(da.T=null,Sl.p=2,l)return l()}finally{da.T=t,Sl.p=u,Sl.d.f()}};gl.preconnect=function(l,t){typeof l=="string"&&(t?(t=t.crossOrigin,t=typeof t=="string"?t==="use-credentials"?t:"":void 0):t=null,Sl.d.C(l,t))};gl.prefetchDNS=function(l){typeof l=="string"&&Sl.d.D(l)};gl.preinit=function(l,t){if(typeof l=="string"&&t&&typeof t.as=="string"){var u=t.as,a=on(u,t.crossOrigin),n=typeof t.integrity=="string"?t.integrity:void 0,e=typeof t.fetchPriority=="string"?t.fetchPriority:void 0;u==="style"?Sl.d.S(l,typeof t.precedence=="string"?t.precedence:void 0,{crossOrigin:a,integrity:n,fetchPriority:e}):u==="script"&&Sl.d.X(l,{crossOrigin:a,integrity:n,fetchPriority:e,nonce:typeof t.nonce=="string"?t.nonce:void 0})}};gl.preinitModule=function(l,t){if(typeof l=="string")if(typeof t=="object"&&t!==null){if(t.as==null||t.as==="script"){var u=on(t.as,t.crossOrigin);Sl.d.M(l,{crossOrigin:u,integrity:typeof t.integrity=="string"?t.integrity:void 0,nonce:typeof t.nonce=="string"?t.nonce:void 0})}}else t==null&&Sl.d.M(l)};gl.preload=function(l,t){if(typeof l=="string"&&typeof t=="object"&&t!==null&&typeof t.as=="string"){var u=t.as,a=on(u,t.crossOrigin);Sl.d.L(l,u,{crossOrigin:a,integrity:typeof t.integrity=="string"?t.integrity:void 0,nonce:typeof t.nonce=="string"?t.nonce:void 0,type:typeof t.type=="string"?t.type:void 0,fetchPriority:typeof t.fetchPriority=="string"?t.fetchPriority:void 0,referrerPolicy:typeof t.referrerPolicy=="string"?t.referrerPolicy:void 0,imageSrcSet:typeof t.imageSrcSet=="string"?t.imageSrcSet:void 0,imageSizes:typeof t.imageSizes=="string"?t.imageSizes:void 0,media:typeof t.media=="string"?t.media:void 0})}};gl.preloadModule=function(l,t){if(typeof l=="string")if(t){var u=on(t.as,t.crossOrigin);Sl.d.m(l,{as:typeof t.as=="string"&&t.as!=="script"?t.as:void 0,crossOrigin:u,integrity:typeof t.integrity=="string"?t.integrity:void 0})}else Sl.d.m(l)};gl.requestFormReset=function(l){Sl.d.r(l)};gl.unstable_batchedUpdates=function(l,t){return l(t)};gl.useFormState=function(l,t,u){return da.H.useFormState(l,t,u)};gl.useFormStatus=function(){return da.H.useHostTransitionStatus()};gl.version="19.2.5"});var n0=At((D2,a0)=>{"use strict";function u0(){if(!(typeof __REACT_DEVTOOLS_GLOBAL_HOOK__=="undefined"||typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE!="function"))try{__REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(u0)}catch(l){console.error(l)}}u0(),a0.exports=t0()});var om=At(Ve=>{"use strict";var nl=Pi(),p1=dn(),$m=n0();function b(l){var t="https://react.dev/errors/"+l;if(1<arguments.length){t+="?args[]="+encodeURIComponent(arguments[1]);for(var u=2;u<arguments.length;u++)t+="&args[]="+encodeURIComponent(arguments[u])}return"Minified React error #"+l+"; visit "+t+" for the full message or use the non-minified dev environment for full errors and additional helpful warnings."}function q1(l){return!(!l||l.nodeType!==1&&l.nodeType!==9&&l.nodeType!==11)}function Ia(l){var t=l,u=l;if(l.alternate)for(;t.return;)t=t.return;else{l=t;do t=l,(t.flags&4098)!==0&&(u=t.return),l=t.return;while(l)}return t.tag===3?u:null}function B1(l){if(l.tag===13){var t=l.memoizedState;if(t===null&&(l=l.alternate,l!==null&&(t=l.memoizedState)),t!==null)return t.dehydrated}return null}function Y1(l){if(l.tag===31){var t=l.memoizedState;if(t===null&&(l=l.alternate,l!==null&&(t=l.memoizedState)),t!==null)return t.dehydrated}return null}function e0(l){if(Ia(l)!==l)throw Error(b(188))}function Fm(l){var t=l.alternate;if(!t){if(t=Ia(l),t===null)throw Error(b(188));return t!==l?null:l}for(var u=l,a=t;;){var n=u.return;if(n===null)break;var e=n.alternate;if(e===null){if(a=n.return,a!==null){u=a;continue}break}if(n.child===e.child){for(e=n.child;e;){if(e===u)return e0(n),l;if(e===a)return e0(n),t;e=e.sibling}throw Error(b(188))}if(u.return!==a.return)u=n,a=e;else{for(var f=!1,c=n.child;c;){if(c===u){f=!0,u=n,a=e;break}if(c===a){f=!0,a=n,u=e;break}c=c.sibling}if(!f){for(c=e.child;c;){if(c===u){f=!0,u=e,a=n;break}if(c===a){f=!0,a=e,u=n;break}c=c.sibling}if(!f)throw Error(b(189))}}if(u.alternate!==a)throw Error(b(190))}if(u.tag!==3)throw Error(b(188));return u.stateNode.current===u?l:t}function R1(l){var t=l.tag;if(t===5||t===26||t===27||t===6)return l;for(l=l.child;l!==null;){if(t=R1(l),t!==null)return t;l=l.sibling}return null}var r=Object.assign,km=Symbol.for("react.element"),sn=Symbol.for("react.transitional.element"),Ea=Symbol.for("react.portal"),Du=Symbol.for("react.fragment"),C1=Symbol.for("react.strict_mode"),Xf=Symbol.for("react.profiler"),G1=Symbol.for("react.consumer"),yt=Symbol.for("react.context"),Bc=Symbol.for("react.forward_ref"),Qf=Symbol.for("react.suspense"),Zf=Symbol.for("react.suspense_list"),Yc=Symbol.for("react.memo"),Mt=Symbol.for("react.lazy"),jf=Symbol.for("react.activity"),Im=Symbol.for("react.memo_cache_sentinel"),f0=Symbol.iterator;function ha(l){return l===null||typeof l!="object"?null:(l=f0&&l[f0]||l["@@iterator"],typeof l=="function"?l:null)}var Pm=Symbol.for("react.client.reference");function Vf(l){if(l==null)return null;if(typeof l=="function")return l.$$typeof===Pm?null:l.displayName||l.name||null;if(typeof l=="string")return l;switch(l){case Du:return"Fragment";case Xf:return"Profiler";case C1:return"StrictMode";case Qf:return"Suspense";case Zf:return"SuspenseList";case jf:return"Activity"}if(typeof l=="object")switch(l.$$typeof){case Ea:return"Portal";case yt:return l.displayName||"Context";case G1:return(l._context.displayName||"Context")+".Consumer";case Bc:var t=l.render;return l=l.displayName,l||(l=t.displayName||t.name||"",l=l!==""?"ForwardRef("+l+")":"ForwardRef"),l;case Yc:return t=l.displayName||null,t!==null?t:Vf(l.type)||"Memo";case Mt:t=l._payload,l=l._init;try{return Vf(l(t))}catch(u){}}return null}var Ta=Array.isArray,O=p1.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,C=$m.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,uu={pending:!1,data:null,method:null,action:null},xf=[],Uu=-1;function Pl(l){return{current:l}}function cl(l){0>Uu||(l.current=xf[Uu],xf[Uu]=null,Uu--)}function x(l,t){Uu++,xf[Uu]=l.current,l.current=t}var Il=Pl(null),Qa=Pl(null),Gt=Pl(null),Fn=Pl(null);function kn(l,t){switch(x(Gt,t),x(Qa,l),x(Il,null),t.nodeType){case 9:case 11:l=(l=t.documentElement)&&(l=l.namespaceURI)?h1(l):0;break;default:if(l=t.tagName,t=t.namespaceURI)t=h1(t),l=um(t,l);else switch(l){case"svg":l=1;break;case"math":l=2;break;default:l=0}}cl(Il),x(Il,l)}function Ju(){cl(Il),cl(Qa),cl(Gt)}function Lf(l){l.memoizedState!==null&&x(Fn,l);var t=Il.current,u=um(t,l.type);t!==u&&(x(Qa,l),x(Il,u))}function In(l){Qa.current===l&&(cl(Il),cl(Qa)),Fn.current===l&&(cl(Fn),$a._currentValue=uu)}var af,c0;function It(l){if(af===void 0)try{throw Error()}catch(u){var t=u.stack.trim().match(/\n( *(at )?)/);af=t&&t[1]||"",c0=-1<u.stack.indexOf(`
@@ -654,6 +657,29 @@ document.addEventListener('DOMContentLoaded',function(){
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod3JmbHlxY3Vidnlib2xiaWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzQ5NzUsImV4cCI6MjA5OTgxMDk3NX0.PKKtR6c6mcXV-Sfou3awEDI0HL_1MePaumoOMUZcAug";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  // ── Centralized Supabase auth calls ────────────────────────────────
+  // Every supabase.auth touchpoint lives in this file (these helpers plus
+  // useHousehold below); components never call supabaseClient directly.
+  async function sbSignIn(email, password) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+  async function sbSignUp(email, password) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) throw error;
+  }
+  // Verify the current password by re-authenticating, then set the new one.
+  async function sbChangePassword(email, currentPassword, nextPassword) {
+    try {
+      await sbSignIn(email, currentPassword);
+    } catch (e) {
+      throw new Error("Current password is incorrect.");
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
+    if (error) throw error;
+  }
   function useHousehold() {
     const [session, setSession] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
@@ -1447,6 +1473,7 @@ document.addEventListener('DOMContentLoaded',function(){
         .cf-btn--primary{background:var(--primary);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
+        .cf-btn--danger-solid{background:var(--red);color:#fff;font-weight:700;padding:8px 18px;}
         .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
         .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
         .cf-btn--sm{font-size:11px;padding:6px 12px;}
@@ -1456,6 +1483,62 @@ document.addEventListener('DOMContentLoaded',function(){
         .cf-col{display:flex;flex-direction:column;}
         .cf-gap-8{gap:8px;}
         .cf-gap-12{gap:12px;}
+        .cf-page{max-width:1160px;width:100%;margin:0 auto;}
+        /* Inline error/info banner (auth screens, forms) */
+        .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
+          padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
+        .cf-info-banner{background:var(--greenLt);border:1px solid var(--green);border-radius:8px;
+          padding:10px 14px;font-size:13px;color:var(--greenDk);font-weight:500;}
+        /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
+        .cf-menu-item{width:100%;text-align:left;padding:12px 16px;font-size:13px;color:var(--text);
+          background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;}
+        .cf-menu-item:hover{background:var(--stripe);}
+        .cf-menu-item--danger{color:var(--red);font-weight:600;}
+        .cf-menu-item--danger:hover{background:var(--redLt);}
+        .cf-modal-title{font-size:16px;font-weight:700;color:var(--text);}
+        .cf-close-x{background:transparent;border:none;cursor:pointer;font-size:18px;
+          color:var(--textLt);line-height:1;padding:0 0 0 8px;}
+        /* Larger auth-screen variant of the shared input */
+        .field-input--lg{font-size:15px;padding:10px 14px;}
+        /* Footer legal links */
+        .cf-footer-link{color:rgba(255,255,255,0.4);text-decoration:none;
+          border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:1px;transition:color 0.15s;}
+        .cf-footer-link:hover{color:rgba(255,255,255,0.7);}
+        /* KPI stat card */
+        .kpi-card{background:var(--bgCard);border:1px solid var(--border);border-radius:12px;
+          padding:16px 20px;min-width:0;}
+        .kpi-card .kpi-label{font-size:11px;color:var(--textMid);text-transform:uppercase;
+          letter-spacing:0.1em;margin-bottom:6px;}
+        .kpi-card .kpi-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;
+          font-size:20px;font-weight:700;color:var(--text);line-height:1;}
+        .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
+        /* Toggle switch */
+        .cf-switch{position:relative;width:44px;height:24px;border-radius:12px;border:none;
+          padding:0;cursor:pointer;background:var(--border);transition:background 0.2s;flex-shrink:0;}
+        .cf-switch[aria-checked="true"]{background:var(--primary);}
+        .cf-switch .cf-switch-knob{position:absolute;top:3px;left:3px;width:18px;height:18px;
+          border-radius:9px;background:#fff;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+        .cf-switch[aria-checked="true"] .cf-switch-knob{left:23px;}
+        /* Pill segmented controls (month picker, view toggles) */
+        .cf-pill{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:none;
+          cursor:pointer;flex-shrink:0;background:var(--border);color:var(--textMid);}
+        .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"]{background:var(--primary);color:#fff;}
+        .cf-pill--dashed{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;
+          border:1.5px dashed var(--primary);cursor:pointer;flex-shrink:0;background:transparent;color:var(--primary);}
+        /* Floating dropdown panel (template picker, similar popovers) */
+        .cf-popover{position:absolute;top:100%;left:0;z-index:100;background:var(--bgCard);
+          border:1px solid var(--border);border-radius:10px;padding:6px;min-width:200px;
+          box-shadow:var(--shadowMd);margin-top:4px;}
+        .cf-menu-item--compact{padding:8px 10px;border-radius:6px;}
+        /* Month picker */
+        .month-nav-arrow{font-size:14px;padding:2px 9px;border-radius:6px;border:1px solid var(--border);
+          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
+        .month-nav-arrow:disabled{cursor:default;color:var(--border);}
+        .month-pill{position:relative;}
+        .month-pill[data-match="true"]:not([data-active="true"]){background:var(--amberLt);
+          color:var(--amber);outline:2px solid var(--amber);}
+        .month-pill-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;
+          border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
         body{margin:0;background:var(--bg);scrollbar-gutter:stable;
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
@@ -1494,6 +1577,11 @@ document.addEventListener('DOMContentLoaded',function(){
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
         }
+        .chart-toggle-btn{font-size:10px;font-weight:700;min-width:34px;min-height:34px;
+          padding:2px 8px;border-radius:5px;border:none;cursor:pointer;letter-spacing:0.04em;
+          display:inline-flex;align-items:center;justify-content:center;
+          background:var(--border);color:var(--textMid);}
+        .chart-toggle-btn[aria-pressed="true"]{background:var(--primary);color:#fff;}
         @media (pointer:coarse){
           .chart-toggle-btn{min-width:44px!important;min-height:44px!important;}
         }
@@ -1522,6 +1610,24 @@ document.addEventListener('DOMContentLoaded',function(){
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
         }
+        /* QuickAdd FAB + its panel/menu (base look; placement tweaks live in the
+           pointer-specific blocks below) */
+        .cf-quickfab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
+          z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;
+          box-shadow:var(--shadowXl);border:1px solid var(--border);
+          width:min(680px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
+        .cf-quickfab-menu{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
+          z-index:1500;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+        .cf-fab-menu-btn{font-size:12px;font-weight:600;padding:10px 18px;border-radius:20px;
+          border:1px solid var(--border);cursor:pointer;background:var(--bgCard);color:var(--text);
+          box-shadow:var(--shadowMd);white-space:nowrap;display:flex;align-items:center;gap:8px;}
+        .cf-quickfab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));right:16px;
+          z-index:1499;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+          background:var(--primary);color:#fff;font-size:24px;font-weight:300;line-height:1;
+          box-shadow:var(--shadowLg);display:flex;align-items:center;justify-content:center;
+          transition:background 0.2s,transform 0.2s,opacity 0.2s;}
+        .cf-quickfab[data-active="true"]{background:var(--red);transform:rotate(45deg);}
+        .cf-quickfab[data-scrolling="true"]:not([data-active="true"]){opacity:0.4;}
         /* QuickAdd FAB is a thumb-reach control: hide it on fine-pointer desktops,
            where the header and per-view buttons already cover add/import. */
         @media (hover:hover) and (pointer:fine){
@@ -1908,7 +2014,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!d || isNaN(d)) return str;
     return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
   }
-  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings"];
+  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
   const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
   function parseTabHash() {
     let raw = "";
@@ -2284,20 +2390,7 @@ document.addEventListener('DOMContentLoaded',function(){
       setForm(true);
     };
     const fabActive = menu || form;
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", style: {
-      position: "fixed",
-      bottom: "calc(80px + env(safe-area-inset-bottom))",
-      right: 16,
-      zIndex: 1500,
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 20,
-      boxShadow: "var(--shadowXl)",
-      border: "1px solid var(--border)",
-      width: "min(680px, calc(100vw - 32px))",
-      maxHeight: "80vh",
-      overflowY: "auto"
-    } }, /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry" }, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 14,
       fontWeight: 700,
       color: "var(--text)",
@@ -2315,37 +2408,15 @@ document.addEventListener('DOMContentLoaded',function(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", style: {
-      position: "fixed",
-      bottom: "calc(80px + env(safe-area-inset-bottom))",
-      right: 16,
-      zIndex: 1500,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-end",
-      gap: 10
-    } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), style: { position: "fixed", inset: 0, zIndex: -1 } }), /* @__PURE__ */ React.createElement(
+    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu" }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), style: { position: "fixed", inset: 0, zIndex: -1 } }), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
           setMenu(false);
           onImportCSV();
         },
-        style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "10px 18px",
-          borderRadius: 20,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          boxShadow: "var(--shadowMd)",
-          whiteSpace: "nowrap",
-          display: "flex",
-          alignItems: "center",
-          gap: 8
-        }
+        className: "cf-fab-menu-btn",
+        role: "menuitem"
       },
       /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
       " Import CSV"
@@ -2353,21 +2424,8 @@ document.addEventListener('DOMContentLoaded',function(){
       "button",
       {
         onClick: openAdd,
-        style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "10px 18px",
-          borderRadius: 20,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          boxShadow: "var(--shadowMd)",
-          whiteSpace: "nowrap",
-          display: "flex",
-          alignItems: "center",
-          gap: 8
-        }
+        className: "cf-fab-menu-btn",
+        role: "menuitem"
       },
       /* @__PURE__ */ React.createElement("span", null, "+"),
       " Add Entry"
@@ -2385,30 +2443,10 @@ document.addEventListener('DOMContentLoaded',function(){
           } else setForm(true);
         },
         "aria-label": fabActive ? "Close" : "Add entry",
+        "aria-expanded": fabActive,
         title: fabActive ? "Close (Esc)" : onImportCSV ? "Entry actions" : "Add Entry (N)",
-        style: {
-          position: "fixed",
-          bottom: "calc(20px + env(safe-area-inset-bottom))",
-          right: 16,
-          zIndex: 1499,
-          width: 52,
-          height: 52,
-          borderRadius: "50%",
-          border: "none",
-          cursor: "pointer",
-          background: fabActive ? "var(--red)" : "var(--primary)",
-          color: "#fff",
-          fontSize: 24,
-          fontWeight: 300,
-          lineHeight: 1,
-          boxShadow: "var(--shadowLg)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "background 0.2s,transform 0.2s,opacity 0.2s",
-          transform: fabActive ? "rotate(45deg)" : "rotate(0deg)",
-          opacity: scrolling && !fabActive ? 0.4 : 1
-        }
+        "data-active": fabActive ? "true" : "false",
+        "data-scrolling": scrolling ? "true" : "false"
       },
       "+"
     ));
@@ -2420,23 +2458,13 @@ document.addEventListener('DOMContentLoaded',function(){
       "button",
       {
         onClick: () => setOpen((v) => !v),
+        "aria-expanded": open,
+        "aria-haspopup": "menu",
         className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }
       },
       "\u{1F4CB} Templates ",
       open ? "\u25B2" : "\u25BC"
-    ), open && /* @__PURE__ */ React.createElement("div", { style: {
-      position: "absolute",
-      top: "100%",
-      left: 0,
-      zIndex: 100,
-      background: "var(--bgCard)",
-      border: "1px solid var(--border)",
-      borderRadius: 10,
-      padding: 6,
-      minWidth: 200,
-      boxShadow: "var(--shadowMd)",
-      marginTop: 4
-    } }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
+    ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: i,
@@ -2444,20 +2472,8 @@ document.addEventListener('DOMContentLoaded',function(){
           onSelect(t);
           setOpen(false);
         },
-        style: {
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          fontSize: 12,
-          padding: "8px 10px",
-          border: "none",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--text)",
-          borderRadius: 6
-        },
-        onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
-        onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+        className: "cf-menu-item cf-menu-item--compact",
+        style: { display: "block", fontSize: 12 }
       },
       /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 600 } }, t.desc),
       /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", marginLeft: 8 } }, t.type === "income" ? "+" : "-", fmt(t.amount))
@@ -2474,7 +2490,7 @@ document.addEventListener('DOMContentLoaded',function(){
     },
     actionLabel
   ));
-  const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 20, fontWeight: 700, color: color || "var(--text)", lineHeight: 1 } }, value), sub && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, sub));
+  const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     useEffect(() => {
@@ -2483,25 +2499,14 @@ document.addEventListener('DOMContentLoaded',function(){
       const btn = el.querySelector('[data-active="true"]');
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }, [value]);
-    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "month-nav-arrow",
         onClick: () => onChange(Math.max(0, value - 1)),
         disabled: value === 0,
         title: "Previous month (\u2190 key)",
-        "aria-label": "Previous month",
-        style: {
-          fontSize: 14,
-          padding: "2px 9px",
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          cursor: value === 0 ? "default" : "pointer",
-          background: "transparent",
-          color: value === 0 ? "var(--border)" : "var(--textMid)",
-          lineHeight: 1.2,
-          flexShrink: 0
-        }
+        "aria-label": "Previous month"
       },
       "\u2039"
     ), /* @__PURE__ */ React.createElement(
@@ -2511,18 +2516,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onClick: () => onChange(Math.min(11, value + 1)),
         disabled: value === 11,
         title: "Next month (\u2192 key)",
-        "aria-label": "Next month",
-        style: {
-          fontSize: 14,
-          padding: "2px 9px",
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          cursor: value === 11 ? "default" : "pointer",
-          background: "transparent",
-          color: value === 11 ? "var(--border)" : "var(--textMid)",
-          lineHeight: 1.2,
-          flexShrink: 0
-        }
+        "aria-label": "Next month"
       },
       "\u203A"
     ), (() => {
@@ -2530,21 +2524,10 @@ document.addEventListener('DOMContentLoaded',function(){
       return value !== cur && /* @__PURE__ */ React.createElement(
         "button",
         {
-          className: "month-today-pill",
+          className: "month-today-pill cf-pill--dashed",
           onClick: () => onChange(cur),
           title: "Jump to current month",
-          "aria-label": "Jump to current month",
-          style: {
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "6px 12px",
-            borderRadius: 20,
-            border: "1.5px dashed var(--primary)",
-            cursor: "pointer",
-            flexShrink: 0,
-            background: "transparent",
-            color: "var(--primary)"
-          }
+          "aria-label": "Jump to current month"
         },
         "\u25CF ",
         MONTHS[cur]
@@ -2557,56 +2540,26 @@ document.addEventListener('DOMContentLoaded',function(){
         {
           key: m,
           onClick: () => onChange(i),
+          className: "cf-pill month-pill",
+          "aria-pressed": isActive,
           "data-active": isActive ? "true" : "false",
-          style: {
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "6px 14px",
-            borderRadius: 20,
-            border: "none",
-            cursor: "pointer",
-            position: "relative",
-            flexShrink: 0,
-            background: isActive ? "var(--primary)" : hasMatch ? "var(--amberLt)" : "var(--border)",
-            color: isActive ? "#fff" : hasMatch ? "var(--amber)" : "var(--textMid)",
-            outline: hasMatch && !isActive ? "2px solid var(--amber)" : "none"
-          }
+          "data-match": hasMatch ? "true" : "false"
         },
         m,
-        hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { style: {
-          position: "absolute",
-          top: -3,
-          right: -3,
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: "var(--amber)",
-          border: "2px solid var(--bgCard)"
-        } })
+        hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { className: "month-pill-dot" })
       );
     }), onAddNextYear && nextYear != null && value >= 10 && /* @__PURE__ */ React.createElement(
       "button",
       {
-        className: "month-nextyear-pill",
+        className: "month-nextyear-pill cf-pill--dashed",
         onClick: onAddNextYear,
-        title: `Add budget year ${nextYear} — recurring entries carry forward automatically`,
-        style: {
-          fontSize: 11,
-          fontWeight: 700,
-          padding: "6px 12px",
-          borderRadius: 20,
-          border: "1.5px dashed var(--primary)",
-          cursor: "pointer",
-          flexShrink: 0,
-          background: "transparent",
-          color: "var(--primary)"
-        }
+        title: `Add budget year ${nextYear} — recurring entries carry forward automatically`
       },
       "+ Add ",
       nextYear
     ));
   };
-  const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
+  const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
     {
       key: o.id,
@@ -2614,44 +2567,31 @@ document.addEventListener('DOMContentLoaded',function(){
       className: "chart-toggle-btn",
       title: o.label,
       "aria-label": o.label,
-      "aria-pressed": value === o.id,
-      style: {
-        fontSize: 10,
-        fontWeight: 700,
-        minWidth: 34,
-        minHeight: 34,
-        padding: "2px 8px",
-        borderRadius: 5,
-        border: "none",
-        cursor: "pointer",
-        letterSpacing: "0.04em",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: value === o.id ? "var(--primary)" : "var(--border)",
-        color: value === o.id ? "#fff" : "var(--textMid)"
-      }
+      "aria-pressed": value === o.id
     },
     o.icon || o.label
   )));
-  const PillToggle = ({ options, value, onChange, gap = 6, fontSize = 12, fontWeight = 600, padding = "6px 14px", borderRadius = 20 }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      key: o.id,
-      onClick: () => onChange(o.id),
-      style: {
-        fontSize,
-        fontWeight,
-        padding,
-        borderRadius,
-        border: "none",
-        cursor: "pointer",
-        background: value === o.id ? "var(--primary)" : "var(--border)",
-        color: value === o.id ? "#fff" : "var(--textMid)"
-      }
-    },
-    o.label
-  )));
+  // Base look lives in .cf-pill; explicitly-passed size props remain inline
+  // overrides for the compact dashboard variants.
+  const PillToggle = ({ options, value, onChange, gap = 6, fontSize, fontWeight, padding, borderRadius }) => {
+    const override = {};
+    if (fontSize !== void 0) override.fontSize = fontSize;
+    if (fontWeight !== void 0) override.fontWeight = fontWeight;
+    if (padding !== void 0) override.padding = padding;
+    if (borderRadius !== void 0) override.borderRadius = borderRadius;
+    const hasOverride = Object.keys(override).length > 0;
+    return /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: o.id,
+        onClick: () => onChange(o.id),
+        className: "cf-pill",
+        "aria-pressed": value === o.id,
+        style: hasOverride ? override : void 0
+      },
+      o.label
+    )));
+  };
   const ChartTip = ({ active, payload, label }) => {
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
@@ -2679,12 +2619,19 @@ document.addEventListener('DOMContentLoaded',function(){
       } }, fmt(val), pct && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 400, color: "rgba(255,255,255,0.45)" } }, " ", pct, "%")));
     }));
   };
-  const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
+  const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
   function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "8px 18px" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === "Escape") onCancel();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [onCancel]);
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "8px 18px" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
-    }, style: { fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
+    }, className: "cf-btn cf-btn--danger-solid", autoFocus: true }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, userSelect: "none" } }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
@@ -2692,29 +2639,8 @@ document.addEventListener('DOMContentLoaded',function(){
     "aria-checked": value,
     "aria-label": label || void 0,
     onClick: () => onChange(!value),
-    style: {
-      position: "relative",
-      width: 44,
-      height: 24,
-      borderRadius: 12,
-      border: "none",
-      padding: 0,
-      cursor: "pointer",
-      background: value ? "var(--primary)" : "var(--border)",
-      transition: "background 0.2s",
-      flexShrink: 0
-    }
-  }, /* @__PURE__ */ React.createElement("div", { style: {
-    position: "absolute",
-    top: 3,
-    left: value ? 23 : 3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    background: "#fff",
-    transition: "left 0.2s",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.2)"
-  } })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), style: { fontSize: 13, color: "var(--text)", fontWeight: 600, cursor: "pointer" } }, label));
+    className: "cf-switch"
+  }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), style: { fontSize: 13, color: "var(--text)", fontWeight: 600, cursor: "pointer" } }, label));
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
     var _a, _b, _c, _d, _e;
     const today = todayStr();
@@ -3709,7 +3635,7 @@ document.addEventListener('DOMContentLoaded',function(){
       },
       "✕"
     )));
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowMobileFilters(true),
@@ -3780,6 +3706,9 @@ document.addEventListener('DOMContentLoaded',function(){
       "div",
       {
         className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Filters",
         onClick: (e) => {
           if (e.target === e.currentTarget) setShowMobileFilters(false);
         }
@@ -4243,6 +4172,8 @@ document.addEventListener('DOMContentLoaded',function(){
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }), [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => /* @__PURE__ */ React.createElement("line", { key: deg, x1: 12, y1: 3.3, x2: 12, y2: 6, transform: `rotate(${deg} 12 12)` })));
       case "search":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 11, cy: 11, r: 7 }), /* @__PURE__ */ React.createElement("line", { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }));
+      case "bell":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" }), /* @__PURE__ */ React.createElement("path", { d: "M10.3 19.5a2 2 0 0 0 3.4 0" }));
       case "grid":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 3, y: 3, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 3, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 3, y: 14, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 14, width: 7, height: 7, rx: 1 }));
       case "day":
@@ -4425,6 +4356,9 @@ document.addEventListener('DOMContentLoaded',function(){
       "div",
       {
         className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Edit occurrence",
         onClick: (e) => {
           e.stopPropagation();
           if (e.target === e.currentTarget) onCancel();
@@ -4437,15 +4371,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onClick: (e) => e.stopPropagation(),
           style: { padding: "24px 24px 20px", width: "min(460px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto" }
         },
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 18,
-          color: "var(--textLt)",
-          lineHeight: 1,
-          padding: "0 0 0 8px"
-        } }, "\u2715")),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", marginBottom: 18 } }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-desc" }, "Description"), /* @__PURE__ */ React.createElement(
           "input",
@@ -4476,7 +4402,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -4507,7 +4433,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
+        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-notes",
@@ -4569,18 +4495,6 @@ document.addEventListener('DOMContentLoaded',function(){
     const [code, setCode] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const iStyle = {
-      width: "100%",
-      fontFamily: "Inter,sans-serif",
-      fontSize: 15,
-      padding: "10px 14px",
-      border: "1.5px solid var(--border)",
-      borderRadius: 8,
-      background: "var(--inputBg)",
-      color: "var(--text)",
-      outline: "none",
-      boxSizing: "border-box"
-    };
     const submit = async () => {
       if (!fullName.trim()) {
         setError("Please enter your name.");
@@ -4654,51 +4568,28 @@ document.addEventListener('DOMContentLoaded',function(){
         }
       },
       "Join with invite code"
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Your name"), /* @__PURE__ */ React.createElement("input", {
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-name" }, "Your name"), /* @__PURE__ */ React.createElement("input", {
+      id: "hh-name",
       type: "text",
+      className: "field-input field-input--lg",
       value: fullName,
       onChange: (e) => {
         setFullName(e.target.value);
         setError("");
       },
-      placeholder: "e.g. Ken",
-      style: iStyle
-    })), mode === "join" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
+      placeholder: "e.g. Ken"
+    })), mode === "join" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-code" }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
+      id: "hh-code",
       type: "text",
+      className: "field-input field-input--lg field-input--mono",
       value: code,
       onChange: (e) => {
         setCode(e.target.value.toUpperCase());
         setError("");
       },
       placeholder: "e.g. 4F9B2C1D",
-      style: __spreadProps(__spreadValues({}, iStyle), { fontFamily: "'IBM Plex Mono',monospace", letterSpacing: "0.05em" })
-    })), error && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginTop: 8,
-      marginBottom: 8,
-      fontSize: 13,
-      color: "var(--red)",
-      fontWeight: 500
-    } }, error), /* @__PURE__ */ React.createElement(
+      style: { letterSpacing: "0.05em" }
+    })), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginTop: 8, marginBottom: 8 } }, error), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: submit,
@@ -5225,7 +5116,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return /* @__PURE__ */ React.createElement(
       "div",
       {
-        style: { maxWidth: 1160, width: "100%", margin: "0 auto" },
+        className: "cf-page",
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
@@ -5452,6 +5343,9 @@ document.addEventListener('DOMContentLoaded',function(){
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Entry form",
           onClick: (e) => {
             e.stopPropagation();
             if (e.target === e.currentTarget) {
@@ -5637,6 +5531,9 @@ document.addEventListener('DOMContentLoaded',function(){
           "div",
           {
             className: "modal-overlay",
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-label": "Budget target",
             onClick: (e) => {
               e.stopPropagation();
               if (e.target === e.currentTarget) setShowBvaModal(false);
@@ -5861,7 +5758,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [yearFlows, yearConfigs, horizon, today]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: {
       fontSize: 11,
       fontWeight: 700,
       letterSpacing: "0.12em",
@@ -6424,7 +6321,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
       return null;
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.5 } }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", marginTop: 4 } }, "Last run: ", lastRun.toLocaleTimeString())), !apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.5 } }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", marginTop: 4 } }, "Last run: ", lastRun.toLocaleTimeString())), !apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: {
       marginTop: 16,
       padding: "12px 16px",
       background: "rgba(232,93,74,0.07)",
@@ -6721,7 +6618,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       setShowFundForm(false);
       setFundForm(null);
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, (() => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
       const openGoalForm = (g) => {
         setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(g.target), saved: String(g.saved), monthly: String(g.monthly) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
@@ -6826,6 +6723,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Goal form",
           onClick: (e) => {
             if (e.target === e.currentTarget) setShowGoalForm(false);
           }
@@ -6924,6 +6824,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Add funds",
           onClick: (e) => {
             if (e.target === e.currentTarget) setShowFundForm(false);
           }
@@ -7147,7 +7050,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const base = simulateDebtStrategy(simDebts, 0, "avalanche");
         if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 14 } }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
         const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 220px", background: "var(--stripe)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 } }, icon, " ", title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginBottom: 10 } }, sub), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Total interest"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", lineHeight: 1.7 } }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
-        return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             value: debtExtra,
@@ -7185,6 +7088,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Debt form",
           onClick: (e) => {
             if (e.target === e.currentTarget) setShowDebtForm(false);
           }
@@ -7252,7 +7158,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: debtExpanded ? 16 : 0
-      } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreHidden,
@@ -7918,7 +7824,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           id: "summary",
           summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
-          title: /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary")
+          title: /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Monthly Summary")
         },
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
           ChartToggle,
@@ -8045,7 +7951,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px" }, disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 14px" }, onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 14px" }, onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { style: { borderTop: "1px solid var(--border)", marginTop: 18, paddingTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)", flex: "1 1 220px" } }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px" }, onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", style: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 180 } }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, width: "100%", margin: "0 auto", overflowX: "hidden" } }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap", style: { overflowX: "hidden" } }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowCustomize(true),
@@ -8056,6 +7962,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "div",
       {
         className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Customize dashboard",
         onClick: (e) => {
           if (e.target === e.currentTarget) setShowCustomize(false);
         }
@@ -8201,7 +8110,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "\u2192 Forecast")
     );
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F514}"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F514}"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       fontWeight: 700,
       color: "var(--red)",
@@ -8453,7 +8362,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       display: "block",
       marginBottom: 8
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       gap: 4,
       padding: "4px",
@@ -9424,12 +9333,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       setInfo("");
       try {
         if (mode === "signin") {
-          const { error: err } = await supabaseClient.auth.signInWithPassword({ email: e, password });
-          if (err) throw err;
+          await sbSignIn(e, password);
           rememberEmail(e);
         } else {
-          const { error: err } = await supabaseClient.auth.signUp({ email: e, password, options: { emailRedirectTo: location.origin + location.pathname } });
-          if (err) throw err;
+          await sbSignUp(e, password);
           rememberEmail(e);
           setInfo("Account created! If your project requires email confirmation, check your inbox, then sign in below.");
           setMode("signin");
@@ -9612,25 +9519,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       fontSize: 13,
       color: "var(--textMid)",
       cursor: "pointer"
-    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 16,
-      fontSize: 13,
-      color: "var(--red)",
-      fontWeight: 500
-    } }, error), info && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--greenLt)",
-      border: "1px solid var(--green)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 16,
-      fontSize: 13,
-      color: "var(--greenDk)",
-      fontWeight: 500
-    } }, info), /* @__PURE__ */ React.createElement(
+    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 16 } }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner", role: "status", style: { marginBottom: 16 } }, info), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -9689,8 +9578,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       setLoading(true);
       setPwError("");
       try {
-        const { error: err } = await supabaseClient.auth.signInWithPassword({ email: sessionUser.email, password });
-        if (err) throw err;
+        await sbSignIn(sessionUser.email, password);
         onUnlock();
       } catch (e) {
         setPwError(e.message || "That password didn't work.");
@@ -9725,15 +9613,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       justifyContent: "center",
       fontSize: 28,
       margin: "0 auto 16px"
-    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 14,
-      fontSize: 13,
-      color: "var(--red)"
-    } }, bioError), /* @__PURE__ */ React.createElement(
+    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -9826,15 +9706,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       showPw ? "🙈" : "👁"
-    )), pwError && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 14,
-      fontSize: 13,
-      color: "var(--red)"
-    } }, pwError), /* @__PURE__ */ React.createElement(
+    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: unlockWithPassword,
@@ -10349,6 +10221,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
+    useEffect(() => {
+      if (!profileForm) return;
+      const h = (e) => {
+        if (e.key === "Escape") setProfileForm(null);
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [profileForm]);
     const [pf, setPf] = useState({ fullName: "", email: "" });
     const [pwf, setPwf] = useState({ current: "", next: "", confirm: "" });
     const [pfErr, setPfErr] = useState("");
@@ -10809,7 +10689,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             transition: "all 0.15s"
           }
         },
-        "\u{1F514}",
+        /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 17 }),
         /* @__PURE__ */ React.createElement("span", { style: {
           position: "absolute",
           top: -5,
@@ -10834,6 +10714,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           onClick: () => setMenuOpen((v) => !v),
           "aria-label": "User menu",
+          "aria-haspopup": "menu",
+          "aria-expanded": menuOpen,
           title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
           style: {
             width: 34,
@@ -10915,22 +10797,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         {
           key: item.label,
           onClick: item.action,
-          style: {
-            width: "100%",
-            textAlign: "left",
-            padding: "12px 16px",
-            fontSize: 13,
-            color: "var(--text)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            borderBottom: "1px solid var(--border)"
-          },
-          onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
-          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+          className: "cf-menu-item",
+          style: { borderBottom: "1px solid var(--border)" }
         },
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, item.icon),
         item.label
@@ -10942,73 +10810,24 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             logout();
           },
           "aria-label": "Sign out",
-          style: {
-            width: "100%",
-            textAlign: "left",
-            padding: "12px 16px",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--red)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10
-          },
-          onMouseEnter: (e) => e.currentTarget.style.background = "var(--redLt)",
-          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+          className: "cf-menu-item cf-menu-item--danger"
         },
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u{1F6AA}"),
         "Sign out"
-      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { style: {
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        zIndex: 2e3,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        background: "var(--bgCard)",
-        borderRadius: 16,
+      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
         padding: 28,
         maxWidth: 400,
-        width: "100%",
-        boxShadow: "var(--shadowXl)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontSize: 16,
-        fontWeight: 700,
-        color: "var(--text)",
-        marginBottom: 20
-      } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
-        display: "block",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: "var(--textMid)",
-        marginBottom: 5
-      } }, label), /* @__PURE__ */ React.createElement(
+        width: "100%"
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title", style: { marginBottom: 20 } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
+          id: "pf-" + key,
           type,
+          className: "field-input",
           value: pf[key],
-          onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value })),
-          style: {
-            width: "100%",
-            fontSize: 13,
-            padding: "8px 12px",
-            border: "1.5px solid var(--border)",
-            borderRadius: 8,
-            background: "var(--inputBg)",
-            color: "var(--text)",
-            outline: "none",
-            boxSizing: "border-box"
-          }
+          onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))),/* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
@@ -11028,58 +10847,25 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         } catch (err) {
           setPfErr(err.message || "Couldn't update your profile.");
         }
-      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { style: {
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        zIndex: 2e3,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        background: "var(--bgCard)",
-        borderRadius: 16,
+      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Change password" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
         padding: 28,
         maxWidth: 400,
-        width: "100%",
-        boxShadow: "var(--shadowXl)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontSize: 16,
-        fontWeight: 700,
-        color: "var(--text)",
-        marginBottom: 20
-      } }, "Change Password"), [
+        width: "100%"
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title", style: { marginBottom: 20 } }, "Change Password"), [
         { label: "Current password", key: "current", val: pwf.current },
         { label: "New password (min 8 chars)", key: "next", val: pwf.next },
         { label: "Confirm new password", key: "confirm", val: pwf.confirm }
-      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
-        display: "block",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: "var(--textMid)",
-        marginBottom: 5
-      } }, label), /* @__PURE__ */ React.createElement(
+      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pwf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
+          id: "pwf-" + key,
           type: "password",
+          autoComplete: key === "current" ? "current-password" : "new-password",
+          className: "field-input",
           value: val,
-          onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value })),
-          style: {
-            width: "100%",
-            fontSize: 13,
-            padding: "8px 12px",
-            border: "1.5px solid var(--border)",
-            borderRadius: 8,
-            background: "var(--inputBg)",
-            color: "var(--text)",
-            outline: "none",
-            boxSizing: "border-box"
-          }
+          onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))),pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
@@ -11101,20 +10887,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         setPfErr("");
         try {
-          const { error: verifyErr } = await supabaseClient.auth.signInWithPassword({ email: sessionUser.email, password: pwf.current });
-          if (verifyErr) {
-            setPfErr("Current password is incorrect.");
-            return;
-          }
-          const { error: updateErr } = await supabaseClient.auth.updateUser({ password: pwf.next });
-          if (updateErr) throw updateErr;
+          await sbChangePassword(sessionUser.email, pwf.current, pwf.next);
           setPfOk("Password changed successfully.");
           setTimeout(() => setProfileForm(null), 900);
         } catch (err) {
           setPfErr(err.message || "Couldn't change your password.");
         }
       }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("nav", { className: "tab-bar", "aria-label": "Primary", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
+    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", style: { display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, style: {
       fontSize: 13,
       fontWeight: 600,
       padding: "12px 18px",
@@ -11196,7 +10976,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       display: "inline-block",
       animation: pullActive ? "spin 0.8s linear infinite" : "none",
       fontSize: 14
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", marginTop: 0, outline: "none" } }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", style: {
       display: "flex",
       alignItems: "center",
       gap: 10,
@@ -11377,28 +11157,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "a",
       {
         href: "privacy.html",
-        style: {
-          color: "rgba(255,255,255,0.4)",
-          textDecoration: "none",
-          borderBottom: "1px solid rgba(255,255,255,0.15)",
-          paddingBottom: 1
-        },
-        onMouseEnter: (e) => e.target.style.color = "rgba(255,255,255,0.7)",
-        onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
+        className: "cf-footer-link"
       },
       "Privacy"
     ), /* @__PURE__ */ React.createElement("span", { style: { margin: "0 10px" } }, "|"), /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "terms.html",
-        style: {
-          color: "rgba(255,255,255,0.4)",
-          textDecoration: "none",
-          borderBottom: "1px solid rgba(255,255,255,0.15)",
-          paddingBottom: 1
-        },
-        onMouseEnter: (e) => e.target.style.color = "rgba(255,255,255,0.7)",
-        onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
+        className: "cf-footer-link"
       },
       "Terms of Use"
     )), tab === "budget" && !showBackupNudge && /* @__PURE__ */ React.createElement(

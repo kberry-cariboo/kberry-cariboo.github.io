@@ -1,3 +1,26 @@
+  // ── Centralized Supabase auth calls ────────────────────────────────
+  // Every supabase.auth touchpoint lives in this file (these helpers plus
+  // useHousehold below); components never call supabaseClient directly.
+  async function sbSignIn(email, password) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+  async function sbSignUp(email, password) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) throw error;
+  }
+  // Verify the current password by re-authenticating, then set the new one.
+  async function sbChangePassword(email, currentPassword, nextPassword) {
+    try {
+      await sbSignIn(email, currentPassword);
+    } catch (e) {
+      throw new Error("Current password is incorrect.");
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
+    if (error) throw error;
+  }
   function useHousehold() {
     const [session, setSession] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);

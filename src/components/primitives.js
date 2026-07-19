@@ -72,20 +72,7 @@
       setForm(true);
     };
     const fabActive = menu || form;
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", style: {
-      position: "fixed",
-      bottom: "calc(80px + env(safe-area-inset-bottom))",
-      right: 16,
-      zIndex: 1500,
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 20,
-      boxShadow: "var(--shadowXl)",
-      border: "1px solid var(--border)",
-      width: "min(680px, calc(100vw - 32px))",
-      maxHeight: "80vh",
-      overflowY: "auto"
-    } }, /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry" }, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 14,
       fontWeight: 700,
       color: "var(--text)",
@@ -103,37 +90,15 @@
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", style: {
-      position: "fixed",
-      bottom: "calc(80px + env(safe-area-inset-bottom))",
-      right: 16,
-      zIndex: 1500,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-end",
-      gap: 10
-    } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), style: { position: "fixed", inset: 0, zIndex: -1 } }), /* @__PURE__ */ React.createElement(
+    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu" }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), style: { position: "fixed", inset: 0, zIndex: -1 } }), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
           setMenu(false);
           onImportCSV();
         },
-        style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "10px 18px",
-          borderRadius: 20,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          boxShadow: "var(--shadowMd)",
-          whiteSpace: "nowrap",
-          display: "flex",
-          alignItems: "center",
-          gap: 8
-        }
+        className: "cf-fab-menu-btn",
+        role: "menuitem"
       },
       /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
       " Import CSV"
@@ -141,21 +106,8 @@
       "button",
       {
         onClick: openAdd,
-        style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "10px 18px",
-          borderRadius: 20,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "var(--bgCard)",
-          color: "var(--text)",
-          boxShadow: "var(--shadowMd)",
-          whiteSpace: "nowrap",
-          display: "flex",
-          alignItems: "center",
-          gap: 8
-        }
+        className: "cf-fab-menu-btn",
+        role: "menuitem"
       },
       /* @__PURE__ */ React.createElement("span", null, "+"),
       " Add Entry"
@@ -173,30 +125,10 @@
           } else setForm(true);
         },
         "aria-label": fabActive ? "Close" : "Add entry",
+        "aria-expanded": fabActive,
         title: fabActive ? "Close (Esc)" : onImportCSV ? "Entry actions" : "Add Entry (N)",
-        style: {
-          position: "fixed",
-          bottom: "calc(20px + env(safe-area-inset-bottom))",
-          right: 16,
-          zIndex: 1499,
-          width: 52,
-          height: 52,
-          borderRadius: "50%",
-          border: "none",
-          cursor: "pointer",
-          background: fabActive ? "var(--red)" : "var(--primary)",
-          color: "#fff",
-          fontSize: 24,
-          fontWeight: 300,
-          lineHeight: 1,
-          boxShadow: "var(--shadowLg)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "background 0.2s,transform 0.2s,opacity 0.2s",
-          transform: fabActive ? "rotate(45deg)" : "rotate(0deg)",
-          opacity: scrolling && !fabActive ? 0.4 : 1
-        }
+        "data-active": fabActive ? "true" : "false",
+        "data-scrolling": scrolling ? "true" : "false"
       },
       "+"
     ));
@@ -208,23 +140,13 @@
       "button",
       {
         onClick: () => setOpen((v) => !v),
+        "aria-expanded": open,
+        "aria-haspopup": "menu",
         className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }
       },
       "\u{1F4CB} Templates ",
       open ? "\u25B2" : "\u25BC"
-    ), open && /* @__PURE__ */ React.createElement("div", { style: {
-      position: "absolute",
-      top: "100%",
-      left: 0,
-      zIndex: 100,
-      background: "var(--bgCard)",
-      border: "1px solid var(--border)",
-      borderRadius: 10,
-      padding: 6,
-      minWidth: 200,
-      boxShadow: "var(--shadowMd)",
-      marginTop: 4
-    } }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
+    ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: i,
@@ -232,20 +154,8 @@
           onSelect(t);
           setOpen(false);
         },
-        style: {
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          fontSize: 12,
-          padding: "8px 10px",
-          border: "none",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--text)",
-          borderRadius: 6
-        },
-        onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
-        onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+        className: "cf-menu-item cf-menu-item--compact",
+        style: { display: "block", fontSize: 12 }
       },
       /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 600 } }, t.desc),
       /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", marginLeft: 8 } }, t.type === "income" ? "+" : "-", fmt(t.amount))
@@ -262,7 +172,7 @@
     },
     actionLabel
   ));
-  const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 20, fontWeight: 700, color: color || "var(--text)", lineHeight: 1 } }, value), sub && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, sub));
+  const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     useEffect(() => {
@@ -271,25 +181,14 @@
       const btn = el.querySelector('[data-active="true"]');
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }, [value]);
-    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "month-nav-arrow",
         onClick: () => onChange(Math.max(0, value - 1)),
         disabled: value === 0,
         title: "Previous month (\u2190 key)",
-        "aria-label": "Previous month",
-        style: {
-          fontSize: 14,
-          padding: "2px 9px",
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          cursor: value === 0 ? "default" : "pointer",
-          background: "transparent",
-          color: value === 0 ? "var(--border)" : "var(--textMid)",
-          lineHeight: 1.2,
-          flexShrink: 0
-        }
+        "aria-label": "Previous month"
       },
       "\u2039"
     ), /* @__PURE__ */ React.createElement(
@@ -299,18 +198,7 @@
         onClick: () => onChange(Math.min(11, value + 1)),
         disabled: value === 11,
         title: "Next month (\u2192 key)",
-        "aria-label": "Next month",
-        style: {
-          fontSize: 14,
-          padding: "2px 9px",
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          cursor: value === 11 ? "default" : "pointer",
-          background: "transparent",
-          color: value === 11 ? "var(--border)" : "var(--textMid)",
-          lineHeight: 1.2,
-          flexShrink: 0
-        }
+        "aria-label": "Next month"
       },
       "\u203A"
     ), (() => {
@@ -318,21 +206,10 @@
       return value !== cur && /* @__PURE__ */ React.createElement(
         "button",
         {
-          className: "month-today-pill",
+          className: "month-today-pill cf-pill--dashed",
           onClick: () => onChange(cur),
           title: "Jump to current month",
-          "aria-label": "Jump to current month",
-          style: {
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "6px 12px",
-            borderRadius: 20,
-            border: "1.5px dashed var(--primary)",
-            cursor: "pointer",
-            flexShrink: 0,
-            background: "transparent",
-            color: "var(--primary)"
-          }
+          "aria-label": "Jump to current month"
         },
         "\u25CF ",
         MONTHS[cur]
@@ -345,56 +222,26 @@
         {
           key: m,
           onClick: () => onChange(i),
+          className: "cf-pill month-pill",
+          "aria-pressed": isActive,
           "data-active": isActive ? "true" : "false",
-          style: {
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "6px 14px",
-            borderRadius: 20,
-            border: "none",
-            cursor: "pointer",
-            position: "relative",
-            flexShrink: 0,
-            background: isActive ? "var(--primary)" : hasMatch ? "var(--amberLt)" : "var(--border)",
-            color: isActive ? "#fff" : hasMatch ? "var(--amber)" : "var(--textMid)",
-            outline: hasMatch && !isActive ? "2px solid var(--amber)" : "none"
-          }
+          "data-match": hasMatch ? "true" : "false"
         },
         m,
-        hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { style: {
-          position: "absolute",
-          top: -3,
-          right: -3,
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: "var(--amber)",
-          border: "2px solid var(--bgCard)"
-        } })
+        hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { className: "month-pill-dot" })
       );
     }), onAddNextYear && nextYear != null && value >= 10 && /* @__PURE__ */ React.createElement(
       "button",
       {
-        className: "month-nextyear-pill",
+        className: "month-nextyear-pill cf-pill--dashed",
         onClick: onAddNextYear,
-        title: `Add budget year ${nextYear} — recurring entries carry forward automatically`,
-        style: {
-          fontSize: 11,
-          fontWeight: 700,
-          padding: "6px 12px",
-          borderRadius: 20,
-          border: "1.5px dashed var(--primary)",
-          cursor: "pointer",
-          flexShrink: 0,
-          background: "transparent",
-          color: "var(--primary)"
-        }
+        title: `Add budget year ${nextYear} — recurring entries carry forward automatically`
       },
       "+ Add ",
       nextYear
     ));
   };
-  const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
+  const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
     {
       key: o.id,
@@ -402,44 +249,31 @@
       className: "chart-toggle-btn",
       title: o.label,
       "aria-label": o.label,
-      "aria-pressed": value === o.id,
-      style: {
-        fontSize: 10,
-        fontWeight: 700,
-        minWidth: 34,
-        minHeight: 34,
-        padding: "2px 8px",
-        borderRadius: 5,
-        border: "none",
-        cursor: "pointer",
-        letterSpacing: "0.04em",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: value === o.id ? "var(--primary)" : "var(--border)",
-        color: value === o.id ? "#fff" : "var(--textMid)"
-      }
+      "aria-pressed": value === o.id
     },
     o.icon || o.label
   )));
-  const PillToggle = ({ options, value, onChange, gap = 6, fontSize = 12, fontWeight = 600, padding = "6px 14px", borderRadius = 20 }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      key: o.id,
-      onClick: () => onChange(o.id),
-      style: {
-        fontSize,
-        fontWeight,
-        padding,
-        borderRadius,
-        border: "none",
-        cursor: "pointer",
-        background: value === o.id ? "var(--primary)" : "var(--border)",
-        color: value === o.id ? "#fff" : "var(--textMid)"
-      }
-    },
-    o.label
-  )));
+  // Base look lives in .cf-pill; explicitly-passed size props remain inline
+  // overrides for the compact dashboard variants.
+  const PillToggle = ({ options, value, onChange, gap = 6, fontSize, fontWeight, padding, borderRadius }) => {
+    const override = {};
+    if (fontSize !== void 0) override.fontSize = fontSize;
+    if (fontWeight !== void 0) override.fontWeight = fontWeight;
+    if (padding !== void 0) override.padding = padding;
+    if (borderRadius !== void 0) override.borderRadius = borderRadius;
+    const hasOverride = Object.keys(override).length > 0;
+    return /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: o.id,
+        onClick: () => onChange(o.id),
+        className: "cf-pill",
+        "aria-pressed": value === o.id,
+        style: hasOverride ? override : void 0
+      },
+      o.label
+    )));
+  };
   const ChartTip = ({ active, payload, label }) => {
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
@@ -467,12 +301,19 @@
       } }, fmt(val), pct && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 400, color: "rgba(255,255,255,0.45)" } }, " ", pct, "%")));
     }));
   };
-  const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, msg) : null;
+  const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
   function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2e3, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "8px 18px" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === "Escape") onCancel();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [onCancel]);
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 12 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "var(--textMid)", marginBottom: 24, lineHeight: 1.6 } }, message), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "8px 18px" } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
-    }, style: { fontSize: 13, fontWeight: 700, padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer", background: "var(--red)", color: "#fff" } }, confirmLabel))));
+    }, className: "cf-btn cf-btn--danger-solid", autoFocus: true }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, userSelect: "none" } }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
@@ -480,26 +321,5 @@
     "aria-checked": value,
     "aria-label": label || void 0,
     onClick: () => onChange(!value),
-    style: {
-      position: "relative",
-      width: 44,
-      height: 24,
-      borderRadius: 12,
-      border: "none",
-      padding: 0,
-      cursor: "pointer",
-      background: value ? "var(--primary)" : "var(--border)",
-      transition: "background 0.2s",
-      flexShrink: 0
-    }
-  }, /* @__PURE__ */ React.createElement("div", { style: {
-    position: "absolute",
-    top: 3,
-    left: value ? 23 : 3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    background: "#fff",
-    transition: "left 0.2s",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.2)"
-  } })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), style: { fontSize: 13, color: "var(--text)", fontWeight: 600, cursor: "pointer" } }, label));
+    className: "cf-switch"
+  }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), style: { fontSize: 13, color: "var(--text)", fontWeight: 600, cursor: "pointer" } }, label));

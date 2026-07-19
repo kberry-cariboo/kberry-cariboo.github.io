@@ -75,6 +75,8 @@
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }), [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => /* @__PURE__ */ React.createElement("line", { key: deg, x1: 12, y1: 3.3, x2: 12, y2: 6, transform: `rotate(${deg} 12 12)` })));
       case "search":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 11, cy: 11, r: 7 }), /* @__PURE__ */ React.createElement("line", { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }));
+      case "bell":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" }), /* @__PURE__ */ React.createElement("path", { d: "M10.3 19.5a2 2 0 0 0 3.4 0" }));
       case "grid":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 3, y: 3, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 3, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 3, y: 14, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 14, width: 7, height: 7, rx: 1 }));
       case "day":
@@ -257,6 +259,9 @@
       "div",
       {
         className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Edit occurrence",
         onClick: (e) => {
           e.stopPropagation();
           if (e.target === e.currentTarget) onCancel();
@@ -269,15 +274,7 @@
           onClick: (e) => e.stopPropagation(),
           style: { padding: "24px 24px 20px", width: "min(460px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto" }
         },
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: {
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 18,
-          color: "var(--textLt)",
-          lineHeight: 1,
-          padding: "0 0 0 8px"
-        } }, "\u2715")),
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", marginBottom: 18 } }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-desc" }, "Description"), /* @__PURE__ */ React.createElement(
           "input",
@@ -308,7 +305,7 @@
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -339,7 +336,7 @@
               if (e.key === "Enter") save();
             }
           }
-        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
+        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-notes",
@@ -401,18 +398,6 @@
     const [code, setCode] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const iStyle = {
-      width: "100%",
-      fontFamily: "Inter,sans-serif",
-      fontSize: 15,
-      padding: "10px 14px",
-      border: "1.5px solid var(--border)",
-      borderRadius: 8,
-      background: "var(--inputBg)",
-      color: "var(--text)",
-      outline: "none",
-      boxSizing: "border-box"
-    };
     const submit = async () => {
       if (!fullName.trim()) {
         setError("Please enter your name.");
@@ -486,51 +471,28 @@
         }
       },
       "Join with invite code"
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Your name"), /* @__PURE__ */ React.createElement("input", {
+    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-name" }, "Your name"), /* @__PURE__ */ React.createElement("input", {
+      id: "hh-name",
       type: "text",
+      className: "field-input field-input--lg",
       value: fullName,
       onChange: (e) => {
         setFullName(e.target.value);
         setError("");
       },
-      placeholder: "e.g. Ken",
-      style: iStyle
-    })), mode === "join" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
+      placeholder: "e.g. Ken"
+    })), mode === "join" && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-code" }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
+      id: "hh-code",
       type: "text",
+      className: "field-input field-input--lg field-input--mono",
       value: code,
       onChange: (e) => {
         setCode(e.target.value.toUpperCase());
         setError("");
       },
       placeholder: "e.g. 4F9B2C1D",
-      style: __spreadProps(__spreadValues({}, iStyle), { fontFamily: "'IBM Plex Mono',monospace", letterSpacing: "0.05em" })
-    })), error && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginTop: 8,
-      marginBottom: 8,
-      fontSize: 13,
-      color: "var(--red)",
-      fontWeight: 500
-    } }, error), /* @__PURE__ */ React.createElement(
+      style: { letterSpacing: "0.05em" }
+    })), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginTop: 8, marginBottom: 8 } }, error), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: submit,

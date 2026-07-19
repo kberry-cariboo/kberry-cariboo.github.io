@@ -494,7 +494,7 @@
     return /* @__PURE__ */ React.createElement(
       "div",
       {
-        style: { maxWidth: 1160, width: "100%", margin: "0 auto" },
+        className: "cf-page",
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
@@ -721,6 +721,9 @@
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Entry form",
           onClick: (e) => {
             e.stopPropagation();
             if (e.target === e.currentTarget) {
@@ -906,6 +909,9 @@
           "div",
           {
             className: "modal-overlay",
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-label": "Budget target",
             onClick: (e) => {
               e.stopPropagation();
               if (e.target === e.currentTarget) setShowBvaModal(false);

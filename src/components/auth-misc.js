@@ -237,12 +237,10 @@
       setInfo("");
       try {
         if (mode === "signin") {
-          const { error: err } = await supabaseClient.auth.signInWithPassword({ email: e, password });
-          if (err) throw err;
+          await sbSignIn(e, password);
           rememberEmail(e);
         } else {
-          const { error: err } = await supabaseClient.auth.signUp({ email: e, password, options: { emailRedirectTo: location.origin + location.pathname } });
-          if (err) throw err;
+          await sbSignUp(e, password);
           rememberEmail(e);
           setInfo("Account created! If your project requires email confirmation, check your inbox, then sign in below.");
           setMode("signin");
@@ -425,25 +423,7 @@
       fontSize: 13,
       color: "var(--textMid)",
       cursor: "pointer"
-    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 16,
-      fontSize: 13,
-      color: "var(--red)",
-      fontWeight: 500
-    } }, error), info && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--greenLt)",
-      border: "1px solid var(--green)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 16,
-      fontSize: 13,
-      color: "var(--greenDk)",
-      fontWeight: 500
-    } }, info), /* @__PURE__ */ React.createElement(
+    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 16 } }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner", role: "status", style: { marginBottom: 16 } }, info), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -502,8 +482,7 @@
       setLoading(true);
       setPwError("");
       try {
-        const { error: err } = await supabaseClient.auth.signInWithPassword({ email: sessionUser.email, password });
-        if (err) throw err;
+        await sbSignIn(sessionUser.email, password);
         onUnlock();
       } catch (e) {
         setPwError(e.message || "That password didn't work.");
@@ -538,15 +517,7 @@
       justifyContent: "center",
       fontSize: 28,
       margin: "0 auto 16px"
-    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 14,
-      fontSize: 13,
-      color: "var(--red)"
-    } }, bioError), /* @__PURE__ */ React.createElement(
+    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -639,15 +610,7 @@
         }
       },
       showPw ? "🙈" : "👁"
-    )), pwError && /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--redLt)",
-      border: "1px solid var(--red)",
-      borderRadius: 8,
-      padding: "10px 14px",
-      marginBottom: 14,
-      fontSize: 13,
-      color: "var(--red)"
-    } }, pwError), /* @__PURE__ */ React.createElement(
+    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: unlockWithPassword,
