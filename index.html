@@ -1997,8 +1997,9 @@ document.addEventListener('DOMContentLoaded',function(){
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
-        const effD = ov.day !== void 0 ? Math.min(Math.max(1, ov.day), daysInMonth(m, year)) : d;
-        const effDate = effD !== d ? new Date(year, m, effD) : date;
+        const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
+        const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
+        const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
         events.push({
           id: eid,
           entryId: e.id,
@@ -2009,7 +2010,7 @@ document.addEventListener('DOMContentLoaded',function(){
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
-          month: m,
+          month: effM,
           day: effD,
           date: effDate,
           // Recurrence metadata — needed for monthly-equivalent calculations
@@ -4284,11 +4285,14 @@ document.addEventListener('DOMContentLoaded',function(){
       collapsed && summary && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, summary)
     ), !collapsed && children);
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(ev.amount));
     const [day, setDay] = useState(String(ev.day));
-    const maxDay = daysInMonth(ev.month, ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear());
+    const [month, setMonth] = useState(String(ev.month));
+    const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
+    const monthNum = parseInt(month, 10);
+    const maxDay = daysInMonth(isNaN(monthNum) ? ev.month : monthNum, evYear);
     const [notes, setNotes] = useState(ev.notes || (orig.notes || ""));
     const [attachment, setAttachment] = useState(ev.attachment || null);
     const [err, setErr] = useState("");
@@ -4315,7 +4319,7 @@ document.addEventListener('DOMContentLoaded',function(){
       }
       setErr("");
       setDayErr("");
-      onSave({ desc, amount: a, day: dNum, notes, attachment });
+      onSave({ desc, amount: a, month: isNaN(monthNum) ? ev.month : monthNum, day: dNum, notes, attachment });
     };
     useEffect(() => {
       const h = (e) => {
@@ -4379,7 +4383,19 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Date \u2014 ", MONTHS[ev.month], " (day of month)"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+          "select",
+          {
+            id: "oem-month",
+            className: "field-input",
+            value: month,
+            onChange: (e) => {
+              setMonth(e.target.value);
+              setDayErr("");
+            }
+          },
+          MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
+        )), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 45%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-day",
@@ -4398,7 +4414,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, " \xB7 same as dragging this row to a new date")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
+        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-notes",
@@ -4426,7 +4442,15 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           "Remove"
         ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, onDelete && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: onDelete,
+            className: "cf-btn cf-btn--danger",
+            style: { padding: "9px 16px", marginRight: ev.isOverride && onReset ? 0 : "auto" }
+          },
+          "Delete…"
+        ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: onReset,
@@ -4616,6 +4640,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
+  }, onDeleted = () => {
   } }) {
     var _a, _b;
     const isMobile = useIsMobile();
@@ -4645,10 +4670,22 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
+    };
+    const [confirmDelEv, setConfirmDelEv] = useState(null);
+    const requestDeleteEntry = (ev) => setConfirmDelEv(ev);
+    const confirmDeleteEntry = () => {
+      if (!confirmDelEv) return;
+      const orig = entries.find((e) => e.id === confirmDelEv.entryId);
+      setEntries((prev) => prev.filter((e) => e.id !== confirmDelEv.entryId));
+      if (orig) onDeleted(orig);
+      setConfirmDelEv(null);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+      toast(`Deleted "${(orig == null ? void 0 : orig.desc) || confirmDelEv.desc}"`);
     };
     const openEntryEdit = (ev) => {
       const orig = entries.find((e) => e.id === ev.entryId);
@@ -5358,7 +5395,16 @@ document.addEventListener('DOMContentLoaded',function(){
             clearOverride(editingEv.id);
             setShowOccurrenceForm(false);
             setEditingEv(null);
-          } : null
+          } : null,
+          onDelete: () => requestDeleteEntry(editingEv)
+        }
+      ), confirmDelEv && /* @__PURE__ */ React.createElement(
+        ConfirmDialog,
+        {
+          title: "Delete Entry?",
+          message: confirmDelEv.repeats ? `This permanently removes "${confirmDelEv.desc}" and every scheduled occurrence in all months — not just this one.` : `This permanently removes "${confirmDelEv.desc}".`,
+          onConfirm: confirmDeleteEntry,
+          onCancel: () => setConfirmDelEv(null)
         }
       ), budgetCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
@@ -5381,7 +5427,9 @@ document.addEventListener('DOMContentLoaded',function(){
             } },
             ...budgetCtx.ev.repeats ? [{ icon: "\u21BA", label: "Reset entry", action: () => {
               clearOverride && clearOverride(budgetCtx.ev.id);
-            } }] : []
+            } }] : [],
+            "---",
+            { icon: "\u2715", label: "Delete entry", action: () => requestDeleteEntry(budgetCtx.ev), danger: true }
           ]
         }
       )),
@@ -10934,7 +10982,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         markOccurrencesPaid,
         activeYear,
         budgetColOrder,
-        setBudgetColOrder
+        setBudgetColOrder,
+        onDeleted: (e) => pushUndo(e)
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,

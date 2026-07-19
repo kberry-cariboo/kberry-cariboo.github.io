@@ -1134,7 +1134,8 @@
         markOccurrencesPaid,
         activeYear,
         budgetColOrder,
-        setBudgetColOrder
+        setBudgetColOrder,
+        onDeleted: (e) => pushUndo(e)
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,

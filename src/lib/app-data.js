@@ -955,8 +955,9 @@
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
-        const effD = ov.day !== void 0 ? Math.min(Math.max(1, ov.day), daysInMonth(m, year)) : d;
-        const effDate = effD !== d ? new Date(year, m, effD) : date;
+        const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
+        const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
+        const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
         events.push({
           id: eid,
           entryId: e.id,
@@ -967,7 +968,7 @@
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
-          month: m,
+          month: effM,
           day: effD,
           date: effDate,
           // Recurrence metadata — needed for monthly-equivalent calculations

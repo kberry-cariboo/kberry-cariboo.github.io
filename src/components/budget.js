@@ -2,6 +2,7 @@
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
+  }, onDeleted = () => {
   } }) {
     var _a, _b;
     const isMobile = useIsMobile();
@@ -31,10 +32,22 @@
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
+    };
+    const [confirmDelEv, setConfirmDelEv] = useState(null);
+    const requestDeleteEntry = (ev) => setConfirmDelEv(ev);
+    const confirmDeleteEntry = () => {
+      if (!confirmDelEv) return;
+      const orig = entries.find((e) => e.id === confirmDelEv.entryId);
+      setEntries((prev) => prev.filter((e) => e.id !== confirmDelEv.entryId));
+      if (orig) onDeleted(orig);
+      setConfirmDelEv(null);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+      toast(`Deleted "${(orig == null ? void 0 : orig.desc) || confirmDelEv.desc}"`);
     };
     const openEntryEdit = (ev) => {
       const orig = entries.find((e) => e.id === ev.entryId);
@@ -744,7 +757,16 @@
             clearOverride(editingEv.id);
             setShowOccurrenceForm(false);
             setEditingEv(null);
-          } : null
+          } : null,
+          onDelete: () => requestDeleteEntry(editingEv)
+        }
+      ), confirmDelEv && /* @__PURE__ */ React.createElement(
+        ConfirmDialog,
+        {
+          title: "Delete Entry?",
+          message: confirmDelEv.repeats ? `This permanently removes "${confirmDelEv.desc}" and every scheduled occurrence in all months — not just this one.` : `This permanently removes "${confirmDelEv.desc}".`,
+          onConfirm: confirmDeleteEntry,
+          onCancel: () => setConfirmDelEv(null)
         }
       ), budgetCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
@@ -767,7 +789,9 @@
             } },
             ...budgetCtx.ev.repeats ? [{ icon: "\u21BA", label: "Reset entry", action: () => {
               clearOverride && clearOverride(budgetCtx.ev.id);
-            } }] : []
+            } }] : [],
+            "---",
+            { icon: "\u2715", label: "Delete entry", action: () => requestDeleteEntry(budgetCtx.ev), danger: true }
           ]
         }
       )),
