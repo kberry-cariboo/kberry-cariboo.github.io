@@ -531,25 +531,32 @@
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
     }, [tab]);
-    const navLowAlert = useMemo(() => {
+    const navLowInfo = useMemo(() => {
       try {
         const now = /* @__PURE__ */ new Date();
-        if (now.getFullYear() !== activeYear || !activeFlow.length) return false;
+        if (now.getFullYear() !== activeYear || !activeFlow.length) return null;
         const tm = now.getMonth(), td = now.getDate();
         const end = new Date(activeYear, tm, td);
         end.setDate(end.getDate() + 60);
-        let min = null;
+        let min = null, minEv = null;
         activeFlow.forEach((ev) => {
           if (ev.month < tm || ev.month === tm && ev.day < td) return;
           const d = new Date(activeYear, ev.month, ev.day);
           if (d > end) return;
-          if (min === null || ev.balance < min) min = ev.balance;
+          if (min === null || ev.balance < min) {
+            min = ev.balance;
+            minEv = ev;
+          }
         });
-        return min !== null && min < alertThresh;
+        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day } : null;
       } catch (err) {
-        return false;
+        return null;
       }
     }, [activeFlow, activeYear, alertThresh]);
+    const navLowAlert = !!navLowInfo;
+    const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
+    const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -585,6 +592,24 @@
       });
     };
     const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
+    const latestYear = yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : activeYear;
+    const addNextYearInline = () => {
+      const y = latestYear + 1;
+      if (yearConfigs.find((yc) => yc.year === y)) return;
+      setBudgetTargets((prev) => {
+        const next = __spreadValues({}, prev);
+        for (let m = 0; m < 12; m++) {
+          const prevKey = `${latestYear}:${m}`;
+          const newKey = `${y}:${m}`;
+          if (prev[prevKey] && !prev[newKey]) next[newKey] = __spreadValues({}, prev[prevKey]);
+        }
+        return next;
+      });
+      setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
+      setActiveYear(y);
+      setBudgetMonth(0);
+      toast(`Year ${y} added — recurring entries carry forward automatically.`);
+    };
     const tabs = [
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
@@ -1082,7 +1107,19 @@
       display: "inline-block",
       animation: pullActive ? "spin 0.8s linear infinite" : "none",
       fontSize: 14
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" && /* @__PURE__ */ React.createElement(
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      flexWrap: "wrap",
+      background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
+      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`,
+      borderRadius: 10,
+      padding: "10px 14px",
+      marginBottom: 18,
+      fontSize: 13,
+      color: "var(--text)"
+    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 200 } }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${alertThresh} alert threshold.`), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 8, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
@@ -1102,6 +1139,7 @@
         setTab,
         setEntries,
         completed,
+        toggleComplete,
         dashHidden,
         setDashHidden,
         dashOrder,
@@ -1135,7 +1173,8 @@
         activeYear,
         budgetColOrder,
         setBudgetColOrder,
-        onDeleted: (e) => pushUndo(e)
+        onDeleted: (e) => pushUndo(e),
+        onAddNextYear: activeYear === latestYear ? addNextYearInline : null
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,

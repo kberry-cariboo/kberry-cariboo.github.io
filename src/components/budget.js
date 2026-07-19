@@ -3,7 +3,7 @@
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
-  } }) {
+  }, onAddNextYear = null }) {
     var _a, _b;
     const isMobile = useIsMobile();
     const [editingId, setEditingId] = useState(null);
@@ -558,7 +558,9 @@
             setEditingId(null);
           },
           noMargin: false,
-          matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null
+          matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null,
+          onAddNextYear,
+          nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
       budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { style: {

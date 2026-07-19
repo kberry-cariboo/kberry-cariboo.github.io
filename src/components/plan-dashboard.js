@@ -693,7 +693,8 @@
       })))));
     })());
   }
-  function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], setYearConfigs = () => {
+  function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
+  }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {
   }, setEntries = () => {
@@ -816,6 +817,7 @@
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "upcoming", label: "Upcoming this week", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
+      { id: "insight", label: "Spending insight", size: "full" },
       { id: "balanceChart", label: "Balance chart", size: "half" },
       { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
@@ -836,6 +838,46 @@
       return merged;
     }, [dashOrder]);
     const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--textLt)", marginBottom: 3 } }, title), children);
+    const insight = useMemo(() => {
+      try {
+        const now = /* @__PURE__ */ new Date();
+        if (now.getFullYear() !== activeYear) return null;
+        const cm = now.getMonth();
+        if (cm === 0) return null;
+        const lookback = [];
+        for (let i = Math.max(0, cm - 6); i < cm; i++) lookback.push(i);
+        const monthExp = (mi) => flow.filter((ev) => ev.month === mi && ev.type === "expense").reduce((s, ev) => s + ev.amount, 0);
+        const avg = lookback.reduce((s, mi) => s + monthExp(mi), 0) / lookback.length;
+        if (!avg) return null;
+        const curr = monthExp(cm);
+        const pct = Math.round((curr - avg) / avg * 100);
+        const catMonth = (mi) => {
+          const o = {};
+          flow.forEach((ev) => {
+            if (ev.month === mi && ev.type === "expense") o[ev.category] = (o[ev.category] || 0) + ev.amount;
+          });
+          return o;
+        };
+        const currCats = catMonth(cm);
+        const avgCats = {};
+        lookback.forEach((mi) => {
+          const o = catMonth(mi);
+          Object.keys(o).forEach((c) => avgCats[c] = (avgCats[c] || 0) + o[c]);
+        });
+        Object.keys(avgCats).forEach((c) => avgCats[c] /= lookback.length);
+        let driver = null, driverDelta = 0;
+        (/* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
+          const d = (currCats[c] || 0) - (avgCats[c] || 0);
+          if (Math.abs(d) > Math.abs(driverDelta)) {
+            driver = c;
+            driverDelta = d;
+          }
+        });
+        return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
+      } catch (e) {
+        return null;
+      }
+    }, [flow, activeYear]);
     const WIDGET_RENDER = {
       balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { style: {
         fontFamily: "Inter,sans-serif",
@@ -895,11 +937,40 @@
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const isInc = ev.type === "income";
+          const isPaid = !!completed[ev.id];
           const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)";
-          const amtColor = isInc ? "var(--greenDk)" : "var(--text)";
+          const amtColor = isPaid ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)";
           const barDiv = null;
+          const paidBtn = /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              type: "button",
+              onClick: () => toggleComplete(ev.id),
+              title: isPaid ? "Mark as not paid" : "Mark as paid",
+              "aria-label": (isPaid ? "Mark as not paid: " : "Mark as paid: ") + ev.desc,
+              "aria-pressed": isPaid,
+              style: {
+                width: 22,
+                height: 22,
+                minWidth: 22,
+                borderRadius: "50%",
+                border: isPaid ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
+                background: isPaid ? "var(--greenLt)" : "transparent",
+                color: "var(--greenDk)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                lineHeight: 1,
+                padding: 0,
+                flexShrink: 0
+              }
+            },
+            isPaid ? "\u2713" : ""
+          );
           if (isMobile) {
-            return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 } }, /* @__PURE__ */ React.createElement("span", { style: {
+            return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { marginBottom: 4, opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 } }, paidBtn, /* @__PURE__ */ React.createElement("span", { style: {
               fontSize: 13,
               fontWeight: 600,
               color: "var(--text)",
@@ -907,10 +978,11 @@
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               flex: 1,
-              minWidth: 0
-            } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textMid)", flexShrink: 0 } }, label), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+              minWidth: 0,
+              textDecoration: isPaid ? "line-through" : "none"
+            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textMid)", flexShrink: 0 } }, label), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
           }
-          return /* @__PURE__ */ React.createElement("div", { key: ev.id }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {
+          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, paidBtn, /* @__PURE__ */ React.createElement("span", { style: {
             fontSize: 13,
             color: "var(--textMid)",
             whiteSpace: "nowrap"
@@ -919,14 +991,35 @@
             color: "var(--text)",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            whiteSpace: "nowrap"
-          } }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+            whiteSpace: "nowrap",
+            textDecoration: isPaid ? "line-through" : "none"
+          } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, style: { fontSize: 9 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: amtColor
           } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: balColor
           } }, fmt(ev.balance)))), barDiv);
         })));
       })()),
+      insight: () => {
+        if (!insight) return null;
+        const above = insight.pct > 0;
+        const inline = Math.abs(insight.pct) < 2;
+        const showDriver = !inline && insight.driver && (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
+        return /* @__PURE__ */ React.createElement("div", { "data-widget": "insight", style: {
+          display: "flex",
+          alignItems: "baseline",
+          gap: 8,
+          fontSize: 13,
+          color: "var(--textMid)",
+          background: "var(--stripe)",
+          border: "1px solid var(--border)",
+          borderLeft: "3px solid " + (inline ? "var(--border)" : above ? "var(--amber)" : "var(--greenDk)"),
+          borderRadius: 8,
+          padding: "9px 14px",
+          marginBottom: 20,
+          lineHeight: 1.5
+        } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, insight.month, " spending"), inline ? ` is in line with your ${insight.n}-month average.` : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average`, !inline && showDriver ? ` — ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).` : inline ? "" : "."));
+      },
       kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "lbl", style: { marginBottom: 5 } }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "lbl", style: { marginBottom: 5 } }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "lbl", style: { marginBottom: 5 } }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { style: { padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "lbl", style: { marginBottom: 5 } }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, "In ", lowestMon)))),
       balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
