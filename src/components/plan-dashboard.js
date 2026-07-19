@@ -91,7 +91,7 @@
       setShowFundForm(false);
       setFundForm(null);
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, (() => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
       const openGoalForm = (g) => {
         setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(g.target), saved: String(g.saved), monthly: String(g.monthly) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
@@ -196,6 +196,9 @@
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Goal form",
           onClick: (e) => {
             if (e.target === e.currentTarget) setShowGoalForm(false);
           }
@@ -294,6 +297,9 @@
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Add funds",
           onClick: (e) => {
             if (e.target === e.currentTarget) setShowFundForm(false);
           }
@@ -517,7 +523,7 @@
         const base = simulateDebtStrategy(simDebts, 0, "avalanche");
         if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 14 } }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
         const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 220px", background: "var(--stripe)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 } }, icon, " ", title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginBottom: 10 } }, sub), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Total interest"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", lineHeight: 1.7 } }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
-        return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             value: debtExtra,
@@ -555,6 +561,9 @@
         "div",
         {
           className: "modal-overlay",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Debt form",
           onClick: (e) => {
             if (e.target === e.currentTarget) setShowDebtForm(false);
           }
@@ -622,7 +631,7 @@
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: debtExpanded ? 16 : 0
-      } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreHidden,
@@ -1288,7 +1297,7 @@
         {
           id: "summary",
           summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
-          title: /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--textLt)" } }, "Monthly Summary")
+          title: /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Monthly Summary")
         },
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
           ChartToggle,
@@ -1415,7 +1424,7 @@
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px" }, disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 14px" }, onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 14px" }, onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { style: { borderTop: "1px solid var(--border)", marginTop: 18, paddingTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)", flex: "1 1 220px" } }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px" }, onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", style: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 180 } }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "dash-wrap", style: { maxWidth: 1160, width: "100%", margin: "0 auto", overflowX: "hidden" } }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap", style: { overflowX: "hidden" } }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowCustomize(true),
@@ -1426,6 +1435,9 @@
       "div",
       {
         className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Customize dashboard",
         onClick: (e) => {
           if (e.target === e.currentTarget) setShowCustomize(false);
         }

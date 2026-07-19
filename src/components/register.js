@@ -250,7 +250,7 @@
       },
       "✕"
     )));
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 1160, width: "100%", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row", style: { display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 12, gap: 6, flexWrap: "wrap", rowGap: 8 } }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowMobileFilters(true),
@@ -321,6 +321,9 @@
       "div",
       {
         className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Filters",
         onClick: (e) => {
           if (e.target === e.currentTarget) setShowMobileFilters(false);
         }

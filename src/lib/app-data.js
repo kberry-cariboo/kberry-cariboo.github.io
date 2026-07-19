@@ -405,6 +405,7 @@
         .cf-btn--primary{background:var(--primary);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
+        .cf-btn--danger-solid{background:var(--red);color:#fff;font-weight:700;padding:8px 18px;}
         .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
         .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
         .cf-btn--sm{font-size:11px;padding:6px 12px;}
@@ -414,6 +415,62 @@
         .cf-col{display:flex;flex-direction:column;}
         .cf-gap-8{gap:8px;}
         .cf-gap-12{gap:12px;}
+        .cf-page{max-width:1160px;width:100%;margin:0 auto;}
+        /* Inline error/info banner (auth screens, forms) */
+        .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
+          padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
+        .cf-info-banner{background:var(--greenLt);border:1px solid var(--green);border-radius:8px;
+          padding:10px 14px;font-size:13px;color:var(--greenDk);font-weight:500;}
+        /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
+        .cf-menu-item{width:100%;text-align:left;padding:12px 16px;font-size:13px;color:var(--text);
+          background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;}
+        .cf-menu-item:hover{background:var(--stripe);}
+        .cf-menu-item--danger{color:var(--red);font-weight:600;}
+        .cf-menu-item--danger:hover{background:var(--redLt);}
+        .cf-modal-title{font-size:16px;font-weight:700;color:var(--text);}
+        .cf-close-x{background:transparent;border:none;cursor:pointer;font-size:18px;
+          color:var(--textLt);line-height:1;padding:0 0 0 8px;}
+        /* Larger auth-screen variant of the shared input */
+        .field-input--lg{font-size:15px;padding:10px 14px;}
+        /* Footer legal links */
+        .cf-footer-link{color:rgba(255,255,255,0.4);text-decoration:none;
+          border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:1px;transition:color 0.15s;}
+        .cf-footer-link:hover{color:rgba(255,255,255,0.7);}
+        /* KPI stat card */
+        .kpi-card{background:var(--bgCard);border:1px solid var(--border);border-radius:12px;
+          padding:16px 20px;min-width:0;}
+        .kpi-card .kpi-label{font-size:11px;color:var(--textMid);text-transform:uppercase;
+          letter-spacing:0.1em;margin-bottom:6px;}
+        .kpi-card .kpi-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;
+          font-size:20px;font-weight:700;color:var(--text);line-height:1;}
+        .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
+        /* Toggle switch */
+        .cf-switch{position:relative;width:44px;height:24px;border-radius:12px;border:none;
+          padding:0;cursor:pointer;background:var(--border);transition:background 0.2s;flex-shrink:0;}
+        .cf-switch[aria-checked="true"]{background:var(--primary);}
+        .cf-switch .cf-switch-knob{position:absolute;top:3px;left:3px;width:18px;height:18px;
+          border-radius:9px;background:#fff;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+        .cf-switch[aria-checked="true"] .cf-switch-knob{left:23px;}
+        /* Pill segmented controls (month picker, view toggles) */
+        .cf-pill{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:none;
+          cursor:pointer;flex-shrink:0;background:var(--border);color:var(--textMid);}
+        .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"]{background:var(--primary);color:#fff;}
+        .cf-pill--dashed{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;
+          border:1.5px dashed var(--primary);cursor:pointer;flex-shrink:0;background:transparent;color:var(--primary);}
+        /* Floating dropdown panel (template picker, similar popovers) */
+        .cf-popover{position:absolute;top:100%;left:0;z-index:100;background:var(--bgCard);
+          border:1px solid var(--border);border-radius:10px;padding:6px;min-width:200px;
+          box-shadow:var(--shadowMd);margin-top:4px;}
+        .cf-menu-item--compact{padding:8px 10px;border-radius:6px;}
+        /* Month picker */
+        .month-nav-arrow{font-size:14px;padding:2px 9px;border-radius:6px;border:1px solid var(--border);
+          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
+        .month-nav-arrow:disabled{cursor:default;color:var(--border);}
+        .month-pill{position:relative;}
+        .month-pill[data-match="true"]:not([data-active="true"]){background:var(--amberLt);
+          color:var(--amber);outline:2px solid var(--amber);}
+        .month-pill-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;
+          border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
         body{margin:0;background:var(--bg);scrollbar-gutter:stable;
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
@@ -452,6 +509,11 @@
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
         }
+        .chart-toggle-btn{font-size:10px;font-weight:700;min-width:34px;min-height:34px;
+          padding:2px 8px;border-radius:5px;border:none;cursor:pointer;letter-spacing:0.04em;
+          display:inline-flex;align-items:center;justify-content:center;
+          background:var(--border);color:var(--textMid);}
+        .chart-toggle-btn[aria-pressed="true"]{background:var(--primary);color:#fff;}
         @media (pointer:coarse){
           .chart-toggle-btn{min-width:44px!important;min-height:44px!important;}
         }
@@ -480,6 +542,24 @@
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
           .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
         }
+        /* QuickAdd FAB + its panel/menu (base look; placement tweaks live in the
+           pointer-specific blocks below) */
+        .cf-quickfab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
+          z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;
+          box-shadow:var(--shadowXl);border:1px solid var(--border);
+          width:min(680px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
+        .cf-quickfab-menu{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
+          z-index:1500;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+        .cf-fab-menu-btn{font-size:12px;font-weight:600;padding:10px 18px;border-radius:20px;
+          border:1px solid var(--border);cursor:pointer;background:var(--bgCard);color:var(--text);
+          box-shadow:var(--shadowMd);white-space:nowrap;display:flex;align-items:center;gap:8px;}
+        .cf-quickfab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));right:16px;
+          z-index:1499;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+          background:var(--primary);color:#fff;font-size:24px;font-weight:300;line-height:1;
+          box-shadow:var(--shadowLg);display:flex;align-items:center;justify-content:center;
+          transition:background 0.2s,transform 0.2s,opacity 0.2s;}
+        .cf-quickfab[data-active="true"]{background:var(--red);transform:rotate(45deg);}
+        .cf-quickfab[data-scrolling="true"]:not([data-active="true"]){opacity:0.4;}
         /* QuickAdd FAB is a thumb-reach control: hide it on fine-pointer desktops,
            where the header and per-view buttons already cover add/import. */
         @media (hover:hover) and (pointer:fine){
@@ -866,7 +946,7 @@
     if (!d || isNaN(d)) return str;
     return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
   }
-  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings"];
+  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
   const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
   function parseTabHash() {
     let raw = "";

@@ -260,6 +260,14 @@
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
+    useEffect(() => {
+      if (!profileForm) return;
+      const h = (e) => {
+        if (e.key === "Escape") setProfileForm(null);
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [profileForm]);
     const [pf, setPf] = useState({ fullName: "", email: "" });
     const [pwf, setPwf] = useState({ current: "", next: "", confirm: "" });
     const [pfErr, setPfErr] = useState("");
@@ -720,7 +728,7 @@
             transition: "all 0.15s"
           }
         },
-        "\u{1F514}",
+        /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 17 }),
         /* @__PURE__ */ React.createElement("span", { style: {
           position: "absolute",
           top: -5,
@@ -745,6 +753,8 @@
         {
           onClick: () => setMenuOpen((v) => !v),
           "aria-label": "User menu",
+          "aria-haspopup": "menu",
+          "aria-expanded": menuOpen,
           title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
           style: {
             width: 34,
@@ -826,22 +836,8 @@
         {
           key: item.label,
           onClick: item.action,
-          style: {
-            width: "100%",
-            textAlign: "left",
-            padding: "12px 16px",
-            fontSize: 13,
-            color: "var(--text)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            borderBottom: "1px solid var(--border)"
-          },
-          onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
-          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+          className: "cf-menu-item",
+          style: { borderBottom: "1px solid var(--border)" }
         },
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, item.icon),
         item.label
@@ -853,73 +849,24 @@
             logout();
           },
           "aria-label": "Sign out",
-          style: {
-            width: "100%",
-            textAlign: "left",
-            padding: "12px 16px",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--red)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10
-          },
-          onMouseEnter: (e) => e.currentTarget.style.background = "var(--redLt)",
-          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+          className: "cf-menu-item cf-menu-item--danger"
         },
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u{1F6AA}"),
         "Sign out"
-      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { style: {
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        zIndex: 2e3,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        background: "var(--bgCard)",
-        borderRadius: 16,
+      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
         padding: 28,
         maxWidth: 400,
-        width: "100%",
-        boxShadow: "var(--shadowXl)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontSize: 16,
-        fontWeight: 700,
-        color: "var(--text)",
-        marginBottom: 20
-      } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
-        display: "block",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: "var(--textMid)",
-        marginBottom: 5
-      } }, label), /* @__PURE__ */ React.createElement(
+        width: "100%"
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title", style: { marginBottom: 20 } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
+          id: "pf-" + key,
           type,
+          className: "field-input",
           value: pf[key],
-          onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value })),
-          style: {
-            width: "100%",
-            fontSize: 13,
-            padding: "8px 12px",
-            border: "1.5px solid var(--border)",
-            borderRadius: 8,
-            background: "var(--inputBg)",
-            color: "var(--text)",
-            outline: "none",
-            boxSizing: "border-box"
-          }
+          onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))),/* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
@@ -939,58 +886,25 @@
         } catch (err) {
           setPfErr(err.message || "Couldn't update your profile.");
         }
-      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { style: {
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        zIndex: 2e3,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        background: "var(--bgCard)",
-        borderRadius: 16,
+      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Change password" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
         padding: 28,
         maxWidth: 400,
-        width: "100%",
-        boxShadow: "var(--shadowXl)"
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontSize: 16,
-        fontWeight: 700,
-        color: "var(--text)",
-        marginBottom: 20
-      } }, "Change Password"), [
+        width: "100%"
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title", style: { marginBottom: 20 } }, "Change Password"), [
         { label: "Current password", key: "current", val: pwf.current },
         { label: "New password (min 8 chars)", key: "next", val: pwf.next },
         { label: "Confirm new password", key: "confirm", val: pwf.confirm }
-      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: {
-        display: "block",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: "var(--textMid)",
-        marginBottom: 5
-      } }, label), /* @__PURE__ */ React.createElement(
+      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pwf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
+          id: "pwf-" + key,
           type: "password",
+          autoComplete: key === "current" ? "current-password" : "new-password",
+          className: "field-input",
           value: val,
-          onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value })),
-          style: {
-            width: "100%",
-            fontSize: 13,
-            padding: "8px 12px",
-            border: "1.5px solid var(--border)",
-            borderRadius: 8,
-            background: "var(--inputBg)",
-            color: "var(--text)",
-            outline: "none",
-            boxSizing: "border-box"
-          }
+          onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))),pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
@@ -1012,20 +926,14 @@
         }
         setPfErr("");
         try {
-          const { error: verifyErr } = await supabaseClient.auth.signInWithPassword({ email: sessionUser.email, password: pwf.current });
-          if (verifyErr) {
-            setPfErr("Current password is incorrect.");
-            return;
-          }
-          const { error: updateErr } = await supabaseClient.auth.updateUser({ password: pwf.next });
-          if (updateErr) throw updateErr;
+          await sbChangePassword(sessionUser.email, pwf.current, pwf.next);
           setPfOk("Password changed successfully.");
           setTimeout(() => setProfileForm(null), 900);
         } catch (err) {
           setPfErr(err.message || "Couldn't change your password.");
         }
       }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("nav", { className: "tab-bar", "aria-label": "Primary", style: { maxWidth: 1160, margin: "0 auto", display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), style: {
+    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", style: { display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, style: {
       fontSize: 13,
       fontWeight: 600,
       padding: "12px 18px",
@@ -1107,7 +1015,7 @@
       display: "inline-block",
       animation: pullActive ? "spin 0.8s linear infinite" : "none",
       fontSize: 14
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", maxWidth: 1160, width: "100%", margin: "0 auto", marginTop: 0, outline: "none" } }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", marginTop: 0, outline: "none" } }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", style: {
       display: "flex",
       alignItems: "center",
       gap: 10,
@@ -1288,28 +1196,14 @@
       "a",
       {
         href: "privacy.html",
-        style: {
-          color: "rgba(255,255,255,0.4)",
-          textDecoration: "none",
-          borderBottom: "1px solid rgba(255,255,255,0.15)",
-          paddingBottom: 1
-        },
-        onMouseEnter: (e) => e.target.style.color = "rgba(255,255,255,0.7)",
-        onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
+        className: "cf-footer-link"
       },
       "Privacy"
     ), /* @__PURE__ */ React.createElement("span", { style: { margin: "0 10px" } }, "|"), /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "terms.html",
-        style: {
-          color: "rgba(255,255,255,0.4)",
-          textDecoration: "none",
-          borderBottom: "1px solid rgba(255,255,255,0.15)",
-          paddingBottom: 1
-        },
-        onMouseEnter: (e) => e.target.style.color = "rgba(255,255,255,0.7)",
-        onMouseLeave: (e) => e.target.style.color = "rgba(255,255,255,0.4)"
+        className: "cf-footer-link"
       },
       "Terms of Use"
     )), tab === "budget" && !showBackupNudge && /* @__PURE__ */ React.createElement(
