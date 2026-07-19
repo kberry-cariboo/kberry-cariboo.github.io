@@ -1,17 +1,25 @@
 # CashFlow Budget — UI/UX & Data-Visualization Review
 
-> **Implementation status (Jul 18, later the same day):** every recommendation below has been
-> implemented except two intentionally deferred items — U6 (broader typography pass:
-> caps-label rationing) and the dark-mode contrast WARNs on the deepest new category hues
-> (chips carry their own text label, which is the validator's accepted relief; a per-theme
-> palette split would be the full fix). Highlights of what shipped:
+> **Implementation status (Jul 18, final pass):** every recommendation below is now
+> implemented, including the two items previously deferred:
+> **U6 (typography)** — field labels moved from 11px all-caps to 12px sentence-case
+> (`.field-label`), thinning the caps treatment to genuine section headers only.
+> **CH4 dark-mode residual** — chips now lighten their text per theme via
+> `color-mix(in srgb, <cat-color> var(--chipKeep), #fff)` (`--chipKeep`: 100% light /
+> 60% dark), so the deepest hues stay legible on dark surfaces without a second palette.
+> Also closed in this pass: 44×44px chart-toggle touch targets on coarse pointers (CH6
+> residual), a search-operator hint in the Entries search placeholder (§8 idea 5), and the
+> AI Insights call migrated from the aging pinned Sonnet 4.6 build to `claude-sonnet-5`
+> with refusal/truncation handling (old-audit C3 follow-through).
+> Highlights of the main pass:
 > C1 `--primary` token (dark active states/FAB/buttons now visible) · C2 y-axis gutter ·
 > C3 signed amounts + direct line labels + dashed expenses line · CH1 nice 1-2-5 ticks ·
 > CH2 neutral sparklines · CH3 income-by-source grouping · CH4 validated category palette
 > (all six checks pass in light mode) · CH5 theme-token chart colors · CH6 SVG chart-toggle
 > icons · CH7 full-height hover columns, upcoming micro-bar removed, confidence column
 > unified · §4 neutral expense/balance ink + single minus-sign convention · U1–U5, U7.
-> All verified on 16 live re-renders (both themes, both form factors), zero JS errors.
+> All verified on 16+ live re-renders (both themes, both form factors), zero JS errors,
+> and a 29-test Playwright regression suite (`tests/regression.mjs`) passing end to end.
 
 **Date:** July 18, 2026 · **Build reviewed:** v176 (source in `src/`, built via `build.js`) ·
 **Method:** full code review of `src/` plus live rendering in Chromium (Playwright) at 1440×900 and 393×852 (touch), light and dark themes, all tabs — using a stubbed Supabase client and fictional demo data. Chart palettes were checked with a runnable colorblind-safety validator (OKLab ΔE), not by eye.
@@ -147,18 +155,31 @@ Verified in four live scenarios (desktop/mobile × credential registered/not) wi
 
 **Remaining item in this class:** the QuickAdd FAB still renders on desktop (see U3) — same principle, recommended same fix.
 
-## 8. Feature suggestions (open list, not yet implemented)
+## 7b. Full regression test *(added Jul 18, evening)*
+
+A 29-test Playwright suite now lives at **`tests/regression.mjs`** (`node tests/regression.mjs`; needs Playwright + Chromium; run `node build.js` first). It serves the repo's `index.html` itself, stubs Supabase with fictional demo data, and click-drives: the built-in `?selftest` unit/render suite, every dashboard chart + toggle + tooltip, month navigation, occurrence editing, mark-paid, BvA, forecast horizons, an add-entry flow end-to-end, search, goals, settings (categories, live dark-mode flip), the AI tab, mobile bottom-nav/FAB/cards, dark-mode active-state visibility (computed-style assertions), biometric gating, and both auth screens. **Current status: 29/29 pass, zero JS errors.**
+
+Regression testing found and fixed four real defects:
+
+1. **Fresh installs got zero categories** *(critical, pre-existing — the old audit's C2 bug class, still live)*: `migrateData()` ran its steps on brand-new profiles and persisted `cf_categories: []`, permanently shadowing the `DEFAULT_CATEGORIES` fallback — a new user could not fill the entry form's required Category field. Fixed with a fresh-install guard (stamp schema version and return) plus the `<2` step no longer writes an empty list it didn't read.
+2. **Desktop lost its add-entry path** *(regression from U3's FAB hiding — caught same day)*: the hidden quick-add panel was also the target of the `N` shortcut. The register toolbar now has visible desktop "+ Add Entry" / "Import CSV" buttons, and `N` routes to the register's own form on fine-pointer devices.
+3. **Backup nudge covered modal action buttons**: it rendered at z-index 3000, above open form panels (1500) and modals (2000) — hiding "Save Entry". Now 1450, below anything interactive.
+4. **Dark-mode bottom-nav active tab was dimmer than inactive tabs** (the `--primary` fill is darker than `--textLt` in dark): active items now use `--text` (identical in light mode, bright in dark). Also fixed a stale built-in self-test that skipped `computeFlow`, so `?selftest` is 34/34 again.
+
+## 8. Feature suggestions *(all implemented Jul 19)*
 
 Ordered by value-to-effort for a cash-flow app:
 
-1. **First-run experience.** A fresh household lands on an empty dashboard. Offer a 3-step start (opening balance → first income → first bills) and/or a "Load sample data" button that seeds clearly-fictional entries and can be undone in one tap.
-2. **Mark-as-paid from the dashboard.** The Upcoming list is the most-viewed widget but is read-only; the ledger's occurrence checkboxes are a tab away. A tap/long-press on an Upcoming row to mark it paid (or edit that occurrence) would close the most common daily loop.
-3. **Insight strip.** One sentence above the charts computed from data you already have: "July spending is 12% above your 6-month average — driven by Personal (+$1,800)." This is what the AI tab does, but free, instant, and offline.
-4. **Budget rollover (envelope carry).** Optional per-category: unspent target rolls into next month. Standard in envelope-style budget apps and cheap given `budgetTargets` is already per-month.
-5. **Search operator discoverability.** The register search supports `>100` / `<20` / exact-amount queries, but nothing reveals this. Put it in the placeholder ("Search… try >100") or a one-line hint under the box.
-6. **Bank-import profiles.** CSV import exists; remember the column mapping per source ("RBC chequing") so repeat imports are one tap.
-7. **Low-balance heads-up.** When the forecast's next low point crosses the alert threshold, surface it on app open (banner exists?) and — as a PWA — consider a local notification the day before a big scheduled debit.
-8. **December nudge.** When viewing Nov/Dec of the latest configured year, offer "Add {year+1}" inline instead of requiring the trip to Settings → Budget Years.
+1. **First-run experience.** ✅ Empty households now get a 3-step welcome panel on the dashboard (set opening balance inline → add income → add bills, the latter two routing into the entry form), plus a "Load sample data" button that seeds clearly-marked "(Sample)" fictional entries. A banner offers one-tap "Remove sample data" while any are present.
+2. **Mark-as-paid from the dashboard.** ✅ Every Upcoming row has a tap-to-toggle paid checkbox feeding the same occurrence-paid state as the ledger; paid rows dim with a strikethrough.
+3. **Insight strip.** ✅ A one-line, offline-computed sentence above the charts ("July spending is 12% above your 6-month average — driven by Personal (+$1,800)"), with calm phrasing when spending is in line. Hideable/reorderable like any dashboard widget.
+4. **Budget rollover (envelope carry).** ✅ Per-category "Roll over unspent budget" checkbox in the BvA target modal; unspent target from earlier months in the year adds to the current month's effective target (floored at zero, YNAB-style), shown as "incl. $X carried". Flags sync as a reserved `_rollover` key inside `budgetTargets`.
+5. **Search operator discoverability.** ✅ Placeholder now reads "Search… try >100".
+6. **Bank-import profiles.** ✅ The CSV importer can save the column mapping under a name ("RBC chequing"); repeat imports auto-apply the matching profile by header signature, with a picker and a "forget" control. Stored per device in `cf_csvProfiles`.
+7. **Low-balance heads-up.** ✅ When the 60-day forecast dips under the alert threshold, a dismissible banner appears on app open with the projected low and date, deep-linking to Alerts; dismissing snoozes it for the day. (Local push notifications remain a possible future addition.)
+8. **December nudge.** ✅ Viewing Nov/Dec of the latest configured year shows an inline "+ Add {year+1}" pill in the month picker with the same safe semantics as Settings → Budget Years.
+
+Also landed the same day (user-requested): the monthly-view occurrence editor gained a **Month selector** (move an income/expense occurrence to another month, not just another day) and **entry deletion** (from the editor and the row context menu, confirm-guarded, with one-tap undo).
 
 ---
 

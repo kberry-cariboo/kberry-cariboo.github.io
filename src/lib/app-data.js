@@ -11,6 +11,22 @@
     } catch (e) {
     }
     if (storedVersion >= SCHEMA_VERSION) return;
+    // Fresh install: nothing to migrate — just stamp the schema version.
+    // Running the steps anyway persists empty arrays (cf_categories = []),
+    // which shadows the useLS defaults forever: a new user would get an empty
+    // category list and couldn't fill the entry form's required Category field.
+    let isFresh = false;
+    try {
+      isFresh = storedVersion === 0 && localStorage.getItem("cf_entries") == null && localStorage.getItem("cf_categories") == null;
+    } catch (e) {
+    }
+    if (isFresh) {
+      try {
+        localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
+      } catch (e) {
+      }
+      return;
+    }
     const readJSON = (key, fallback) => {
       try {
         const s = localStorage.getItem(key);
@@ -49,11 +65,12 @@
     }
     if (storedVersion < 2) {
       const entries = readJSON("cf_entries", []);
-      const cats = readJSON("cf_categories", []);
-      if (Array.isArray(cats) && Array.isArray(entries)) {
+      const cats = readJSON("cf_categories", null);
+      if (Array.isArray(entries) && (Array.isArray(cats) || entries.length > 0)) {
         const used = entries.map((e) => e.category).filter(Boolean);
-        const merged = [.../* @__PURE__ */ new Set([...cats, ...used])].sort((a, b) => a.localeCompare(b));
-        write("cf_categories", merged);
+        const merged = [.../* @__PURE__ */ new Set([...cats || [], ...used])].sort((a, b) => a.localeCompare(b));
+        // never persist an empty list over the useLS default
+        if (merged.length > 0) write("cf_categories", merged);
       }
     }
     if (storedVersion < 3) {
@@ -303,6 +320,10 @@
     shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
     accent: "#2F6FED",
     accentLt: "#EAF1FE",
+    // Chip text = category hue mixed toward white by (100% - chipKeep).
+    // Light surfaces keep the full hue; dark surfaces lighten it so deep
+    // hues (indigo, dark red) stay readable on dark cards.
+    chipKeep: "100%",
     // Interactive fills (active pills, primary buttons, FAB). Same as the brand
     // navy in light mode; dark mode needs its own value because there the navy
     // doubles as a surface color and active states would vanish into it.
@@ -336,7 +357,8 @@
     shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
     accent: "#5B8DEF",
     accentLt: "#1A2942",
-    primary: "#4E729C"
+    primary: "#4E729C",
+    chipKeep: "60%"
   };
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const GLOBAL_STYLES = `
@@ -349,8 +371,8 @@
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/plexmono-700.woff2') format('woff2');}
         *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
         /* \u2500\u2500 Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) \u2500\u2500 */
-        .field-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
-          text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;}
+        .field-label{font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--textMid);
+          display:block;margin-bottom:6px;}
         .field-input{font-family:Inter,sans-serif;font-size:13px;padding:9px 12px;
           border:1.5px solid var(--border);border-radius:8px;
           background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
@@ -429,6 +451,9 @@
           .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
+        }
+        @media (pointer:coarse){
+          .chart-toggle-btn{min-width:44px!important;min-height:44px!important;}
         }
         /* Accessible focus ring \u2014 keyboard only, consistent everywhere */
         :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
@@ -930,8 +955,9 @@
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
-        const effD = ov.day !== void 0 ? Math.min(Math.max(1, ov.day), daysInMonth(m, year)) : d;
-        const effDate = effD !== d ? new Date(year, m, effD) : date;
+        const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
+        const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
+        const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
         events.push({
           id: eid,
           entryId: e.id,
@@ -942,7 +968,7 @@
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
-          month: m,
+          month: effM,
           day: effD,
           date: effDate,
           // Recurrence metadata — needed for monthly-equivalent calculations

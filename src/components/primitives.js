@@ -18,7 +18,7 @@
       padding: "2px 7px",
       borderRadius: 10,
       background: color + "22",
-      color,
+      color: `color-mix(in srgb, ${color} var(--chipKeep, 100%), #fff)`,
       border: `1px solid ${color}44`,
       whiteSpace: "nowrap"
     }, style) }, category);
@@ -263,7 +263,7 @@
     actionLabel
   ));
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textMid)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 20, fontWeight: 700, color: color || "var(--text)", lineHeight: 1 } }, value), sub && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, sub));
-  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null }) => {
+  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     useEffect(() => {
       const el = stripRef.current;
@@ -372,13 +372,34 @@
           border: "2px solid var(--bgCard)"
         } })
       );
-    }));
+    }), onAddNextYear && nextYear != null && value >= 10 && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "month-nextyear-pill",
+        onClick: onAddNextYear,
+        title: `Add budget year ${nextYear} — recurring entries carry forward automatically`,
+        style: {
+          fontSize: 11,
+          fontWeight: 700,
+          padding: "6px 12px",
+          borderRadius: 20,
+          border: "1.5px dashed var(--primary)",
+          cursor: "pointer",
+          flexShrink: 0,
+          background: "transparent",
+          color: "var(--primary)"
+        }
+      },
+      "+ Add ",
+      nextYear
+    ));
   };
   const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
     {
       key: o.id,
       onClick: () => onChange(o.id),
+      className: "chart-toggle-btn",
       title: o.label,
       "aria-label": o.label,
       "aria-pressed": value === o.id,

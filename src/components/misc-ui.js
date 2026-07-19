@@ -129,7 +129,7 @@
           border: "none",
           cursor: "pointer",
           background: "transparent",
-          color: tab === it.id ? "var(--primary)" : "var(--textLt)",
+          color: tab === it.id ? "var(--text)" : "var(--textLt)",
           fontSize: 9,
           fontWeight: tab === it.id ? 700 : 500
         }
@@ -210,11 +210,14 @@
       collapsed && summary && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, summary)
     ), !collapsed && children);
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(ev.amount));
     const [day, setDay] = useState(String(ev.day));
-    const maxDay = daysInMonth(ev.month, ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear());
+    const [month, setMonth] = useState(String(ev.month));
+    const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
+    const monthNum = parseInt(month, 10);
+    const maxDay = daysInMonth(isNaN(monthNum) ? ev.month : monthNum, evYear);
     const [notes, setNotes] = useState(ev.notes || (orig.notes || ""));
     const [attachment, setAttachment] = useState(ev.attachment || null);
     const [err, setErr] = useState("");
@@ -241,7 +244,7 @@
       }
       setErr("");
       setDayErr("");
-      onSave({ desc, amount: a, day: dNum, notes, attachment });
+      onSave({ desc, amount: a, month: isNaN(monthNum) ? ev.month : monthNum, day: dNum, notes, attachment });
     };
     useEffect(() => {
       const h = (e) => {
@@ -305,7 +308,19 @@
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Date \u2014 ", MONTHS[ev.month], " (day of month)"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+          "select",
+          {
+            id: "oem-month",
+            className: "field-input",
+            value: month,
+            onChange: (e) => {
+              setMonth(e.target.value);
+              setDayErr("");
+            }
+          },
+          MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
+        )), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 45%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-day",
@@ -324,7 +339,7 @@
               if (e.key === "Enter") save();
             }
           }
-        ), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, " \xB7 same as dragging this row to a new date")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
+        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, dayErr) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 4 } }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-notes",
@@ -352,7 +367,15 @@
           },
           "Remove"
         ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, onDelete && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: onDelete,
+            className: "cf-btn cf-btn--danger",
+            style: { padding: "9px 16px", marginRight: ev.isOverride && onReset ? 0 : "auto" }
+          },
+          "Delete…"
+        ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: onReset,

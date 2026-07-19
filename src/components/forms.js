@@ -267,6 +267,49 @@
     const [err, setErr] = useState("");
     const [done, setDone] = useState(false);
     const todayS = todayStr();
+    const PROFILES_KEY = "cf_csvProfiles";
+    const loadProfiles = () => {
+      try {
+        return JSON.parse(localStorage.getItem(PROFILES_KEY)) || {};
+      } catch (e) {
+        return {};
+      }
+    };
+    const [profiles, setProfiles] = useState(loadProfiles);
+    const [profName, setProfName] = useState("");
+    const [appliedProf, setAppliedProf] = useState("");
+    const persistProfiles = (next) => {
+      setProfiles(next);
+      try {
+        localStorage.setItem(PROFILES_KEY, JSON.stringify(next));
+      } catch (e) {
+      }
+    };
+    const profileFits = (p, h) => {
+      const cols = Object.values(p.map || {}).filter(Boolean);
+      return cols.length > 0 && cols.every((col) => h.includes(col));
+    };
+    const applyProfile = (name, h) => {
+      const p = profiles[name];
+      if (!p || !profileFits(p, h || headers)) return false;
+      setMap({ desc: "", amount: "", date: "", type: "", category: "", ...p.map });
+      setAppliedProf(name);
+      setPreview([]);
+      return true;
+    };
+    const saveProfile = () => {
+      const name = profName.trim();
+      if (!name) return;
+      persistProfiles({ ...profiles, [name]: { map: { ...map }, sig: headers } });
+      setAppliedProf(name);
+      setProfName("");
+    };
+    const deleteProfile = (name) => {
+      const next = { ...profiles };
+      delete next[name];
+      persistProfiles(next);
+      if (appliedProf === name) setAppliedProf("");
+    };
     const parseCSV = (text) => {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return { headers: [], rows: [] };
@@ -309,6 +352,15 @@
           type: guess("type") || guess("debit") || "",
           category: guess("categ") || guess("tag") || ""
         });
+        const saved = Object.entries(loadProfiles());
+        const exact = saved.find(([, p]) => (p.sig || []).join("\x1F") === h.join("\x1F") && profileFits(p, h));
+        const fit = exact || saved.find(([, p]) => profileFits(p, h));
+        if (fit) {
+          setMap({ desc: "", amount: "", date: "", type: "", category: "", ...fit[1].map });
+          setAppliedProf(fit[0]);
+        } else {
+          setAppliedProf("");
+        }
       };
       reader.readAsText(file);
       e.target.value = "";
@@ -403,7 +455,28 @@
       cursor: "pointer",
       fontSize: 18,
       color: "var(--textLt)"
-    } }, "\u2715")), !rows.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Upload a CSV file from your bank or spreadsheet. The file must have a header row. Required columns: ", /* @__PURE__ */ React.createElement("strong", null, "Description"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Amount"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Date"), "."), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--primary", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px" } }, "Choose CSV File", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", style: { display: "none" }, onChange: handleFile }))), rows.length > 0 && !done && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--greenDk)", marginBottom: 14 } }, "\u2713 Loaded ", rows.length, " rows. Map your columns:"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" } }, sel("desc", "Description *"), sel("amount", "Amount *"), sel("date", "Date *"), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginBottom: 8 } }, err), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8 } }, /* @__PURE__ */ React.createElement(
+    } }, "\u2715")), !rows.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Upload a CSV file from your bank or spreadsheet. The file must have a header row. Required columns: ", /* @__PURE__ */ React.createElement("strong", null, "Description"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Amount"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Date"), "."), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--primary", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px" } }, "Choose CSV File", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", style: { display: "none" }, onChange: handleFile }))), rows.length > 0 && !done && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--greenDk)", marginBottom: 8 } }, "\u2713 Loaded ", rows.length, " rows. Map your columns:"), appliedProf && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textMid)", marginBottom: 8 } }, "Applied saved mapping ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, appliedProf), " ", /* @__PURE__ */ React.createElement("button", { onClick: () => deleteProfile(appliedProf), title: "Forget this saved mapping", style: { fontSize: 11, background: "transparent", border: "none", color: "var(--red)", cursor: "pointer", padding: "0 4px" } }, "forget")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 } }, Object.keys(profiles).length > 0 && /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        "aria-label": "Apply saved mapping",
+        value: "",
+        onChange: (e) => {
+          if (e.target.value) applyProfile(e.target.value);
+        },
+        style: { fontSize: 12, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--inputBg)", color: "var(--text)", outline: "none" }
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "Apply saved mapping\u2026"),
+      Object.keys(profiles).sort().map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n, disabled: !profileFits(profiles[n], headers) }, n, profileFits(profiles[n], headers) ? "" : " (columns don't match)"))
+    ), /* @__PURE__ */ React.createElement("input", {
+      value: profName,
+      onChange: (e) => setProfName(e.target.value),
+      onKeyDown: (e) => {
+        if (e.key === "Enter") saveProfile();
+      },
+      placeholder: 'Name this mapping (e.g. "RBC chequing")',
+      "aria-label": "Mapping name",
+      style: { fontSize: 12, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--inputBg)", color: "var(--text)", outline: "none", flex: "1 1 180px", minWidth: 140 }
+    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "6px 12px" } }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" } }, sel("desc", "Description *"), sel("amount", "Amount *"), sel("date", "Date *"), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginBottom: 8 } }, err), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8 } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: buildPreview,

@@ -286,7 +286,7 @@
     ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--textMid)", cursor: "pointer", whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), style: { cursor: "pointer" } }), "All years"), /* @__PURE__ */ React.createElement(
       "input",
       {
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026",
+        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026 try >100",
         value: search,
         onChange: (e) => setSearch(e.target.value),
         style: {
@@ -300,6 +300,14 @@
           width: 200
         }
       }
+    ), !isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      { onClick: openNew, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", whiteSpace: "nowrap" } },
+      "+ Add Entry"
+    ), !isMobile && /* @__PURE__ */ React.createElement(
+      "button",
+      { onClick: () => setShowCSV((v) => !v), className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", whiteSpace: "nowrap" } },
+      "Import CSV"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       color: "var(--amber)",

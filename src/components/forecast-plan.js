@@ -474,8 +474,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             "anthropic-dangerous-direct-browser-access": "true"
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-6",
+            model: "claude-sonnet-5",
             max_tokens: 1200,
+            // This report is a short, structured dashboard blurb on a tight
+            // token budget — thinking would spend from max_tokens, so keep it off.
+            thinking: { type: "disabled" },
             system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Be blunt and brief: short, numbers-first bullets, no filler. Format responses in clean Markdown.",
             messages: [{ role: "user", content: prompt }]
           })
@@ -485,7 +488,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           throw new Error(((_b = e == null ? void 0 : e.error) == null ? void 0 : _b.message) || `API error ${res.status}`);
         }
         const data = await res.json();
-        const text = ((_c = data.content) == null ? void 0 : _c.map((b) => b.text || "").join("")) || "";
+        if (data.stop_reason === "refusal") {
+          throw new Error("The model declined to analyse this data. Try again, or adjust your entries.");
+        }
+        const text = ((_c = data.content) == null ? void 0 : _c.filter((b) => b.type === "text").map((b) => b.text || "").join("")) || "";
+        if (data.stop_reason === "max_tokens") {
+          console.warn("AI report truncated at max_tokens");
+        }
         setRawText(text);
         setReport(parseReport(text));
         setLastRun(/* @__PURE__ */ new Date());
