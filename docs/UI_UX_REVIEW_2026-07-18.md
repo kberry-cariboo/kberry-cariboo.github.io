@@ -166,18 +166,20 @@ Regression testing found and fixed four real defects:
 3. **Backup nudge covered modal action buttons**: it rendered at z-index 3000, above open form panels (1500) and modals (2000) — hiding "Save Entry". Now 1450, below anything interactive.
 4. **Dark-mode bottom-nav active tab was dimmer than inactive tabs** (the `--primary` fill is darker than `--textLt` in dark): active items now use `--text` (identical in light mode, bright in dark). Also fixed a stale built-in self-test that skipped `computeFlow`, so `?selftest` is 34/34 again.
 
-## 8. Feature suggestions (open list, not yet implemented)
+## 8. Feature suggestions *(all implemented Jul 19)*
 
 Ordered by value-to-effort for a cash-flow app:
 
-1. **First-run experience.** A fresh household lands on an empty dashboard. Offer a 3-step start (opening balance → first income → first bills) and/or a "Load sample data" button that seeds clearly-fictional entries and can be undone in one tap.
-2. **Mark-as-paid from the dashboard.** The Upcoming list is the most-viewed widget but is read-only; the ledger's occurrence checkboxes are a tab away. A tap/long-press on an Upcoming row to mark it paid (or edit that occurrence) would close the most common daily loop.
-3. **Insight strip.** One sentence above the charts computed from data you already have: "July spending is 12% above your 6-month average — driven by Personal (+$1,800)." This is what the AI tab does, but free, instant, and offline.
-4. **Budget rollover (envelope carry).** Optional per-category: unspent target rolls into next month. Standard in envelope-style budget apps and cheap given `budgetTargets` is already per-month.
-5. **Search operator discoverability.** The register search supports `>100` / `<20` / exact-amount queries, but nothing reveals this. Put it in the placeholder ("Search… try >100") or a one-line hint under the box.
-6. **Bank-import profiles.** CSV import exists; remember the column mapping per source ("RBC chequing") so repeat imports are one tap.
-7. **Low-balance heads-up.** When the forecast's next low point crosses the alert threshold, surface it on app open (banner exists?) and — as a PWA — consider a local notification the day before a big scheduled debit.
-8. **December nudge.** When viewing Nov/Dec of the latest configured year, offer "Add {year+1}" inline instead of requiring the trip to Settings → Budget Years.
+1. **First-run experience.** ✅ Empty households now get a 3-step welcome panel on the dashboard (set opening balance inline → add income → add bills, the latter two routing into the entry form), plus a "Load sample data" button that seeds clearly-marked "(Sample)" fictional entries. A banner offers one-tap "Remove sample data" while any are present.
+2. **Mark-as-paid from the dashboard.** ✅ Every Upcoming row has a tap-to-toggle paid checkbox feeding the same occurrence-paid state as the ledger; paid rows dim with a strikethrough.
+3. **Insight strip.** ✅ A one-line, offline-computed sentence above the charts ("July spending is 12% above your 6-month average — driven by Personal (+$1,800)"), with calm phrasing when spending is in line. Hideable/reorderable like any dashboard widget.
+4. **Budget rollover (envelope carry).** ✅ Per-category "Roll over unspent budget" checkbox in the BvA target modal; unspent target from earlier months in the year adds to the current month's effective target (floored at zero, YNAB-style), shown as "incl. $X carried". Flags sync as a reserved `_rollover` key inside `budgetTargets`.
+5. **Search operator discoverability.** ✅ Placeholder now reads "Search… try >100".
+6. **Bank-import profiles.** ✅ The CSV importer can save the column mapping under a name ("RBC chequing"); repeat imports auto-apply the matching profile by header signature, with a picker and a "forget" control. Stored per device in `cf_csvProfiles`.
+7. **Low-balance heads-up.** ✅ When the 60-day forecast dips under the alert threshold, a dismissible banner appears on app open with the projected low and date, deep-linking to Alerts; dismissing snoozes it for the day. (Local push notifications remain a possible future addition.)
+8. **December nudge.** ✅ Viewing Nov/Dec of the latest configured year shows an inline "+ Add {year+1}" pill in the month picker with the same safe semantics as Settings → Budget Years.
+
+Also landed the same day (user-requested): the monthly-view occurrence editor gained a **Month selector** (move an income/expense occurrence to another month, not just another day) and **entry deletion** (from the editor and the row context menu, confirm-guarded, with one-tap undo).
 
 ---
 

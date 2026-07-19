@@ -869,7 +869,7 @@
           onClose: () => setBvaCtxMenu(null),
           items: [
             { icon: "\u270E", label: "Edit target", action: () => {
-              setBvaModalData({ cat: bvaCtxMenu.cat, target: String(bvaCtxMenu.target || ""), editCat: bvaCtxMenu.cat });
+              setBvaModalData({ cat: bvaCtxMenu.cat, target: String(bvaCtxMenu.target || ""), editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
             } },
             { icon: "\u2715", label: "Remove target", action: () => {
@@ -892,7 +892,14 @@
         const saveBva = () => {
           const t = parseFloat(bvaModalData.target);
           if (!bvaModalData.cat || isNaN(t) || t < 0) return;
-          setBudgetTargets((prev) => __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: Math.round(t * 100) / 100 }) }));
+          setBudgetTargets((prev) => {
+            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: Math.round(t * 100) / 100 }) });
+            const ro = __spreadValues({}, prev._rollover || {});
+            if (bvaModalData.rollover) ro[bvaModalData.cat] = true;
+            else delete ro[bvaModalData.cat];
+            next._rollover = ro;
+            return next;
+          });
           setShowBvaModal(false);
         };
         return /* @__PURE__ */ React.createElement(
@@ -929,7 +936,12 @@
                 if (e.key === "Enter") saveBva();
               }
             }
-          ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false), className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "9px 20px" } }, "Cancel"), /* @__PURE__ */ React.createElement(
+          )), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "var(--text)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", {
+            type: "checkbox",
+            checked: !!bvaModalData.rollover,
+            onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
+            style: { marginTop: 2 }
+          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget", /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, "Unused amounts from earlier months this year add to this month's target (envelope style).")))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary", style: { fontSize: 13, padding: "9px 20px" } }, "Cancel"), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: saveBva,
@@ -942,12 +954,27 @@
         );
       })(),
       budgetSub === "bva" && (() => {
-        const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+        const yr = activeYear || (/* @__PURE__ */ new Date()).getFullYear();
+        const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
+        const rollover = budgetTargets._rollover || {};
         const catExpenses = {};
         flow.filter((ev) => ev.month === monthIdx && ev.type === "expense").forEach((ev) => {
           catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
         });
+        // Envelope carry: for opted-in categories, unspent target from earlier
+        // months this year rolls forward (floored at zero, YNAB-style).
+        const carryFor = (cat) => {
+          if (!rollover[cat]) return 0;
+          let carry = 0;
+          for (let mi = 0; mi < monthIdx; mi++) {
+            const t = (budgetTargets[`${yr}:${mi}`] || {})[cat] || 0;
+            if (t <= 0 && carry <= 0) continue;
+            const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
+            carry = Math.max(0, carry + t - spent);
+          }
+          return Math.round(carry * 100) / 100;
+        };
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
         return /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 20, marginBottom: 12, padding: 0, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
           padding: "20px 24px",
@@ -970,7 +997,7 @@
           "button",
           {
             onClick: () => {
-              setBvaModalData({ cat: "", target: "", editCat: null });
+              setBvaModalData({ cat: "", target: "", editCat: null, rollover: false });
               setShowBvaModal(true);
             },
             className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }
@@ -993,12 +1020,14 @@
           message: "No budget lines yet. Track a category against a monthly target.",
           actionLabel: "+ Add Budget Line",
           onAction: () => {
-            setBvaModalData({ cat: "", target: "", editCat: null });
+            setBvaModalData({ cat: "", target: "", editCat: null, rollover: false });
             setShowBvaModal(true);
           }
         })), cats.map((cat) => {
           const actual = Math.round((catExpenses[cat] || 0) * 100) / 100;
-          const target = Math.round((targets[cat] || 0) * 100) / 100;
+          const baseTarget = Math.round((targets[cat] || 0) * 100) / 100;
+          const carry = carryFor(cat);
+          const target = Math.round((baseTarget + carry) * 100) / 100;
           const diff = Math.round((actual - target) * 100) / 100;
           const over = target > 0 && diff > 0;
           const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
@@ -1009,7 +1038,7 @@
               key: cat,
               onContextMenu: (e) => {
                 e.preventDefault();
-                setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target });
+                setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target: baseTarget });
               },
               style: { cursor: "context-menu" }
             },
@@ -1020,12 +1049,12 @@
               flexShrink: 1,
               overflow: "hidden",
               textOverflow: "ellipsis"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, fmt(diff) + " over"), /* @__PURE__ */ React.createElement(
+            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13", style: { color: "var(--textMid)", whiteSpace: "nowrap", flexShrink: 0 } }, "/ ", fmt(target)), carry > 0 && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "var(--textLt)", whiteSpace: "nowrap", flexShrink: 0 } }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color, whiteSpace: "nowrap", flexShrink: 0 } }, fmt(diff) + " over"), /* @__PURE__ */ React.createElement(
               "button",
               {
                 onClick: (e) => {
                   e.stopPropagation();
-                  setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target });
+                  setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target: baseTarget });
                 },
                 "aria-label": `Edit ${cat} budget target`,
                 style: {
