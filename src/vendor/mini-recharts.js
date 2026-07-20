@@ -59,6 +59,33 @@ window.Recharts = (function() {
     if (a >= 1000) return '$' + (v/1000).toFixed(0) + 'k';
     return v.toFixed(0);
   }
+  // ── TipBox ────────────────────────────────────────────────────────────────
+  // Positions a tooltip beside the pointer, measuring its real rendered width
+  // so it never clips at the chart edge (the old fixed-width clamp cut off
+  // wide tooltips near the right side, especially on phones). Prefers the
+  // right of the pointer; flips to the left when that would overflow, then
+  // clamps inside [2, chartW-2] as a last resort. useLayoutEffect runs before
+  // paint, so the correction is never visible.
+  function TipBox({ x, y, chartW, style, children }) {
+    const ref = useRef(null);
+    useLayoutEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const w = el.offsetWidth;
+      let left = x + 8;
+      if (left + w > chartW - 2) left = x - 8 - w;
+      left = Math.max(2, Math.min(left, chartW - w - 2));
+      el.style.left = left + 'px';
+      el.style.visibility = 'visible';
+    });
+    return h('div', {
+      ref,
+      style: Object.assign({
+        position:'absolute', pointerEvents:'none', zIndex:20,
+        left: x + 8, top: Math.max(2, y - 40), visibility:'hidden'
+      }, style)
+    }, children);
+  }
 
   // ── ResponsiveContainer ───────────────────────────────────────────────────
   // Measures actual container width synchronously (useLayoutEffect) so the
@@ -262,8 +289,6 @@ window.Recharts = (function() {
       const fmt2   = tipDesc.props.formatter;
       const cStyle = tipDesc.props.contentStyle || {};
       const base   = {
-        position:'absolute', pointerEvents:'none', zIndex:20,
-        left: Math.min(tip.x + 8, width - 130), top: Math.max(2, tip.y - 40),
         background:'var(--bgCard, #fff)', border:'1px solid var(--border, #ddd)', color:'var(--text, #222)', borderRadius:6,
         padding:'8px 12px', fontSize:12, fontFamily:'Inter,sans-serif',
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'
@@ -278,10 +303,9 @@ window.Recharts = (function() {
         const el = typeof custom === 'function'
           ? h(custom, { active:true, payload, label:tip.d[xKey] })
           : React.cloneElement(custom, { active:true, payload, label:tip.d[xKey] });
-        return h('div', { style:{ position:'absolute', left:Math.min(tip.x+8,width-130),
-          top:Math.max(2,tip.y-40), pointerEvents:'none', zIndex:20 } }, el);
+        return h(TipBox, { x: tip.x, y: tip.y, chartW: width }, el);
       }
-      return h('div', { style: Object.assign(base, cStyle) },
+      return h(TipBox, { x: tip.x, y: tip.y, chartW: width, style: Object.assign(base, cStyle) },
         h('div', { style:{ fontWeight:600, marginBottom:4 } }, tip.d[xKey]),
         allKeys.map(k => {
           const v = tip.d[k];
@@ -435,9 +459,7 @@ window.Recharts = (function() {
       const fmt2   = tipDesc.props.formatter;
       const cStyle = tipDesc.props.contentStyle || {};
       const fv = fmt2 ? fmt2(tip.value) : (typeof tip.value==='number' ? tip.value.toFixed(2) : tip.value);
-      return h('div', { style: Object.assign({
-        position:'absolute', pointerEvents:'none', zIndex:20,
-        left: Math.min(tip.x+8, width-110), top: Math.max(0, tip.y-36),
+      return h(TipBox, { x: tip.x, y: tip.y, chartW: width, style: Object.assign({
         background:'var(--bgCard, #fff)', border:'1px solid var(--border, #ddd)', color:'var(--text, #222)', borderRadius:6,
         padding:'8px 12px', fontSize:12, fontFamily:'Inter,sans-serif',
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'

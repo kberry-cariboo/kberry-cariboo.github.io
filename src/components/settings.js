@@ -10,51 +10,26 @@
       {
         type: "button",
         onClick: () => {
-          window.__cfGoBudgetSub ? window.__cfGoBudgetSub("forecast") : setTab("budget");
+          window.dispatchEvent(new CustomEvent("cf:goto-budget-sub", { detail: { sub: "forecast" } }));
         },
+        className: "alert-row",
         style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "12px 16px",
-          borderRadius: 8,
-          marginBottom: 6,
-          cursor: "pointer",
-          width: "100%",
-          font: "inherit",
-          textAlign: "left",
           background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`,
-          transition: "opacity 0.15s"
-        },
-        onMouseEnter: (e) => e.currentTarget.style.opacity = "0.8",
-        onMouseLeave: (e) => e.currentTarget.style.opacity = "1"
+          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`
+        }
       },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, ev.balance < 0 ? "\u{1F6A8}" : "\u26A0\uFE0F"),
-      /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, ev.desc), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
-      /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontFamily: "'IBM Plex Mono',monospace",
-        fontSize: 14,
-        fontWeight: 700,
+      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amber)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
+      /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, ev.desc), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
+      /* @__PURE__ */ React.createElement("div", { className: "text-right" }, /* @__PURE__ */ React.createElement("div", { className: "alert-row-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : "var(--amber)"
-      } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, "projected balance")),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "\u2192 Forecast")
+      } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
+      /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
     );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F514}"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 12,
-      fontWeight: 700,
-      color: "var(--red)",
-      textTransform: "uppercase",
-      letterSpacing: "0.1em",
-      marginBottom: 10
-    } }, "\u{1F6A8} Critical \u2014 Balance goes negative"), critical.map((ev, i) => renderAlertRow(ev, i))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 12,
-      fontWeight: 700,
-      color: "var(--amber)",
-      textTransform: "uppercase",
-      letterSpacing: "0.1em",
-      marginBottom: 10
-    } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
+      color: "var(--red)"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev, i) => renderAlertRow(ev, i))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
+      color: "var(--amber)"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
@@ -274,67 +249,28 @@
       setDragIdx(null);
       setDragOverIdx(null);
     };
-    const inp = {
-      fontSize: 13,
-      padding: "8px 12px",
-      border: "1px solid var(--border)",
-      borderRadius: 6,
-      background: "var(--inputBg)",
-      color: "var(--text)",
-      outline: "none"
-    };
-    const lbl = {
-      fontSize: 11,
-      fontWeight: 700,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.1em",
-      display: "block",
-      marginBottom: 8
-    };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex",
-      gap: 4,
-      padding: "4px",
-      background: "var(--border)",
-      borderRadius: 12,
-      width: "fit-content",
-      maxWidth: "100%",
-      overflowX: "auto"
-    }, className: "settings-page-pills" }, [
-      { id: "general", label: "\u2699  General" },
-      { id: "household", label: "\u{1F46A} Household" },
-      { id: "templates", label: "\u{1F4CB} Templates" },
-      { id: "audit", label: "\u{1F550} Audit" }
-    ].map(({ id, label }) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
+      className: "settings-page-pills"
+    }, [
+      { id: "general", icon: "settings", label: "General" },
+      { id: "household", icon: "users", label: "Household" },
+      { id: "templates", icon: "clipboard", label: "Templates" },
+      { id: "audit", icon: "clock", label: "Audit" }
+    ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: id,
         onClick: () => setSettingsPage(id),
+        className: "settings-pill-btn",
         style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "8px 20px",
-          borderRadius: 9,
-          border: "none",
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-          transition: "all 0.15s",
           background: settingsPage === id ? "var(--bgCard)" : "transparent",
           color: settingsPage === id ? "var(--text)" : "var(--textMid)",
           boxShadow: settingsPage === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none"
         }
       },
+      /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex",
-      gap: 6,
-      overflowX: "auto",
-      WebkitOverflowScrolling: "touch",
-      paddingBottom: 14,
-      marginBottom: 6
-    } }, [
+    ))), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
@@ -353,30 +289,19 @@
           const el = document.getElementById(anchorId);
           if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
         },
-        style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "6px 12px",
-          borderRadius: 20,
-          border: "1px solid var(--border)",
-          background: "var(--bgCard)",
-          color: "var(--textMid)",
-          textDecoration: "none",
-          whiteSpace: "nowrap",
-          flexShrink: 0
-        }
+        className: "quicklink-pill"
       },
       label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 12, lineHeight: 1.5 } }, "Required for the AI Insights tab. Your key is saved with your household's data in Supabase (so it's shared across your own devices and household members) and sent directly to Anthropic from your browser when you run a report \u2014 never to any third party. Anyone able to run script in this page could read it, same as any other browser-side API key. Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Required for the AI Insights tab. Your key is saved with your household's data in Supabase (so it's shared across your own devices and household members) and sent directly to Anthropic from your browser when you run a report \u2014 never to any third party. Anyone able to run script in this page could read it, same as any other browser-side API key. Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
         target: "_blank",
         rel: "noopener noreferrer",
-        style: { color: "var(--primary)" }
+        className: "link-primary"
       },
       "console.anthropic.com"
-    ), "."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    ), "."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: showAiKey ? "text" : "password",
@@ -384,42 +309,23 @@
         value: aiApiKey,
         onChange: (e) => setAiApiKey(e.target.value),
         placeholder: "sk-ant-api03-...",
-        className: "cf-text-mono-13",
-        style: {
-          flex: 1,
-          minWidth: 220,
-          padding: "8px 12px",
-          border: "1.5px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none"
-        }
+        className: "cf-text-mono-13 ai-key-input"
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowAiKey((v) => !v),
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "8px 14px", whiteSpace: "nowrap" }
+        className: "cf-btn cf-btn--secondary cf-btn--showhide"
       },
       showAiKey ? "Hide" : "Show"
     ), aiApiKey.trim() && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setAiApiKey(""),
-        style: {
-          fontSize: 12,
-          padding: "8px 14px",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          cursor: "pointer",
-          background: "transparent",
-          color: "var(--red)",
-          whiteSpace: "nowrap"
-        }
+        className: "clear-key-btn"
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", null, "🔑"), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -427,51 +333,26 @@
         inputMode: "decimal",
         step: "100",
         min: "0",
-        style: __spreadProps(__spreadValues({}, inp), { width: 120 }),
+        className: "settings-input w-120",
         value: alertThreshold,
         onChange: (e) => setAlertThreshold(roundMoney(Math.max(0, parseFloat(e.target.value) || 0)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginTop: 8 } }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        flexWrap: "wrap",
-        rowGap: 8,
-        borderRadius: 8,
-        marginBottom: 6,
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
         border: `1px solid ${activeYear === yc.year ? "var(--primary)" : "var(--border)"}`
-      } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)", minWidth: 52 } }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal", style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)", whiteSpace: "nowrap" } }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("span", { className: "year-number" }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal" }, /* @__PURE__ */ React.createElement("span", { className: "openbal-label" }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { className: "txm" }, "$"), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
           inputMode: "decimal",
           step: "0.01",
-          className: "cf-text-mono-13",
-          style: {
-            padding: "4px 8px",
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            background: "var(--inputBg)",
-            color: "var(--text)",
-            outline: "none",
-            width: 120,
-            maxWidth: "100%",
-            minWidth: 0,
-            flex: "0 1 120px"
-          },
+          className: "cf-text-mono-13 openbal-input",
           value: yc.openingBalance,
           onChange: (e) => updateOpenBal(yc.year, roundMoney(parseFloat(e.target.value) || 0))
         }
-      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
-        fontSize: 11,
-        padding: "4px 10px",
-        borderRadius: 6,
-        border: "1px solid var(--border)",
-        cursor: "pointer",
+      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { className: "txl flex-1" }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-checkbtn year-active-btn", style: {
         background: activeYear === yc.year ? "var(--primary)" : "transparent",
         color: activeYear === yc.year ? "#fff" : "var(--textMid)"
       } }, activeYear === yc.year ? "Active" : "Switch"), (() => {
@@ -498,42 +379,24 @@
               setYearMsg(`\u2705 Copied monthly targets from ${yc.year} \u2192 ${nextY}.`);
             },
             title: `Copy ${yc.year} budget targets to ${nextY}`,
-            style: {
-              fontSize: 11,
-              color: "var(--primary)",
-              background: "none",
-              border: "1px solid var(--primary)",
-              cursor: "pointer",
-              padding: "4px 10px",
-              borderRadius: 6,
-              whiteSpace: "nowrap"
-            }
+            className: "copy-year-btn"
           },
           "Copy \u2192",
           nextY
         );
-      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), className: "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "4px 10px", borderRadius: 6 } }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React.createElement(
+      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "number",
         inputMode: "decimal",
         placeholder: "e.g. 2027",
         value: newYear,
-        className: "cf-text-mono-13",
+        className: "cf-text-mono-13 newyear-input",
         onChange: (e) => setNewYear(e.target.value),
-        onKeyDown: (e) => e.key === "Enter" && addYear(),
-        style: {
-          padding: "7px 10px",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none",
-          width: 120
-        }
+        onKeyDown: (e) => e.key === "Enter" && addYear()
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary", style: { fontSize: 12, padding: "7px 16px", borderRadius: 6 } }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 8 } }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 16 } }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -541,7 +404,7 @@
       a.download = `CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
-    }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, "\u2B07 Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, "\u2B06 Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", style: { display: "none" }, onChange: (e) => {
+    }, className: "cf-btn cf-btn--primary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -571,35 +434,30 @@
       };
       reader.readAsText(file);
       e.target.value = "";
-    } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 12,
-      marginTop: 10,
+    } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      padding: "10px 14px",
-      borderRadius: 8,
+    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20 } }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => houseSave(false),
         disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
       },
-      "\u2b06 Save Now"
+      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 12 }),
+      "Save Now"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => houseLoad(),
         disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
       },
-      "\u2b07 Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+      "Reload from Cloud"
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -607,43 +465,26 @@
         onDragStart: () => onDragStart(i),
         onDragOver: (e) => onDragOver(e, i),
         onDrop: () => onDrop(i),
+        className: "cat-row",
         style: {
-          display: "flex",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 10,
-          padding: "8px 12px",
-          borderRadius: 8,
-          marginBottom: 6,
-          cursor: "grab",
-          background: dragOverIdx === i ? "var(--stripe)" : "var(--bg)",
-          border: "1px solid var(--border)",
-          transition: "background 0.1s"
+          background: dragOverIdx === i ? "var(--stripe)" : "var(--bg)"
         }
       },
-      /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 14, cursor: "grab" } }, "\u283F"),
-      editIdx === i ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Category color", style: {
-        position: "relative",
-        width: 22,
-        height: 22,
-        borderRadius: "50%",
-        flexShrink: 0,
-        cursor: "pointer",
-        background: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
-        border: "2px solid var(--bgCard)",
-        boxShadow: "0 0 0 1px var(--border)"
+      /* @__PURE__ */ React.createElement("span", { className: "drag-handle" }, "\u283F"),
+      editIdx === i ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Category color", className: "color-swatch", style: {
+        background: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors)
       } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "color",
           value: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
           onChange: (e) => setEditColor(e.target.value),
-          style: { position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", padding: 0, border: "none" }
+          className: "color-swatch-input"
         }
       )), /* @__PURE__ */ React.createElement(
         "input",
         {
-          style: __spreadProps(__spreadValues({}, inp), { flex: 1 }),
+          className: "settings-input flex-1",
           value: editVal,
           onChange: (e) => setEditVal(e.target.value),
           onKeyDown: (e) => e.key === "Enter" && saveEdit(),
@@ -652,25 +493,17 @@
       ), /* @__PURE__ */ React.createElement("button", { onClick: saveEdit, className: "cf-btn cf-btn--compact cf-btn--primary" }, "Save"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
         setEditIdx(null);
         setEditColor(null);
-      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Cancel")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Change color", style: {
-        position: "relative",
-        width: 22,
-        height: 22,
-        borderRadius: "50%",
-        flexShrink: 0,
-        cursor: "pointer",
-        background: getCatColor(cat, categories, categoryColors),
-        border: "2px solid var(--bgCard)",
-        boxShadow: "0 0 0 1px var(--border)"
+      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Cancel")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Change color", className: "color-swatch", style: {
+        background: getCatColor(cat, categories, categoryColors)
       } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "color",
           value: getCatColor(cat, categories, categoryColors),
           onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
-          style: { position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", padding: 0, border: "none" }
+          className: "color-swatch-input"
         }
-      )), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: 1 } }, cat), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", marginLeft: "auto", flexShrink: 0 } }, categoryColors[cat] && /* @__PURE__ */ React.createElement(
+      )), /* @__PURE__ */ React.createElement("span", { className: "tx flex-1" }, cat), /* @__PURE__ */ React.createElement("div", { className: "cat-actions-row" }, categoryColors[cat] && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setCategoryColors((p) => {
@@ -679,15 +512,7 @@
             return n;
           }),
           title: "Reset to automatic color",
-          style: {
-            fontSize: 10,
-            padding: "3px 8px",
-            borderRadius: 5,
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-            background: "transparent",
-            color: "var(--textLt)"
-          }
+          className: "cf-checkbtn reset-color-btn"
         },
         "Reset"
       ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
@@ -695,28 +520,20 @@
         setEditVal(cat);
         setEditColor(null);
       }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Edit"), /* @__PURE__ */ React.createElement("button", { onClick: () => delCat(i), className: "cf-btn cf-btn--compact cf-btn--danger" }, "Remove")))
-    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { title: "Pick a color (optional \u2014 auto-assigned if left default)", style: {
-      position: "relative",
-      width: 22,
-      height: 22,
-      borderRadius: "50%",
-      flexShrink: 0,
-      cursor: "pointer",
-      background: newCatColor || "var(--border)",
-      border: "2px solid var(--bgCard)",
-      boxShadow: "0 0 0 1px var(--border)"
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("label", { title: "Pick a color (optional \u2014 auto-assigned if left default)", className: "color-swatch", style: {
+      background: newCatColor || "var(--border)"
     } }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "color",
         value: newCatColor || "#888888",
         onChange: (e) => setNewCatColor(e.target.value),
-        style: { position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", padding: 0, border: "none" }
+        className: "color-swatch-input"
       }
     )), /* @__PURE__ */ React.createElement(
       "input",
       {
-        style: __spreadProps(__spreadValues({}, inp), { flex: 1 }),
+        className: "settings-input flex-1",
         value: newCat,
         "aria-label": "New category name",
         placeholder: "New category name\u2026",
@@ -726,47 +543,26 @@
         },
         onKeyDown: (e) => e.key === "Enter" && addCat()
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary", style: {
-      fontSize: 13,
-      fontWeight: 600,
-      padding: "8px 18px"
-    } }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 8 } }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", style: { fontSize: 13, color: "var(--text)" } }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: "auto-lock-select",
         value: lockTimeout,
         onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
-        style: {
-          fontSize: 13,
-          padding: "7px 10px",
-          borderRadius: 8,
-          border: "1.5px solid var(--border)",
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none"
-        }
+        className: "autolock-select"
       },
       /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, bioEnabled ? "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password." : "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your password."), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 8 } }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 6 } }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 6 } }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" }, bioEnabled ? "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password." : "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your password."), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { className: "error-text-mt6" }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
-        style: {
-          fontSize: 13,
-          fontWeight: 600,
-          padding: "9px 20px",
-          borderRadius: 8,
-          border: "1px solid var(--primary)",
-          cursor: "pointer",
-          background: "var(--primary)",
-          color: "#fff"
-        }
+        className: "reset-targets-btn"
       },
       "\u21BA Reset Targets to Actuals"
-    ), tgtResetMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--greenDk)", marginTop: 10 } }, tgtResetMsg), confirmTgtReset && /* @__PURE__ */ React.createElement(
+    ), tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg), confirmTgtReset && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Reset all ${activeYear} targets?`,
@@ -799,13 +595,14 @@
         },
         onCancel: () => setConfirmTgtReset(false)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-danger", style: { marginBottom: 20, border: "1px solid var(--redLt)" } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Clear this device's local cache \u2014 entries, overrides, categories, templates, budget targets, years, and local preferences. ", household ? "Your data in Supabase is not affected \u2014 the app will reload it from the cloud right after." : "Export a backup first if you might need this data again.", " This cannot be undone locally."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-danger", className: "danger-card" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Clear this device's local cache \u2014 entries, overrides, categories, templates, budget targets, years, and local preferences. ", household ? "Your data in Supabase is not affected \u2014 the app will reload it from the cloud right after." : "Export a backup first if you might need this data again.", " This cannot be undone locally."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger", style: { padding: "9px 20px", border: "1px solid var(--red)" }
+        className: "cf-btn cf-btn--danger cf-btn--dangerwide"
       },
-      "\u{1F5D1} Reset Local Cache"
+      /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
+      "Reset Local Cache"
     ), confirmWipe && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
@@ -821,22 +618,14 @@
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => {
+    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => {
       const isEditing = editMemberId === m.user_id;
-      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "10px 0",
-        borderBottom: "1px solid var(--border)",
-        flexWrap: "wrap"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, isEditing ? /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, className: "member-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, isEditing ? /* @__PURE__ */ React.createElement(
         "input",
         {
           autoFocus: true,
           "aria-label": "Member name",
-          className: "field-input",
-          style: { maxWidth: 260 },
+          className: "field-input member-edit-input",
           value: editMemberVal,
           onChange: (e) => setEditMemberVal(e.target.value),
           onKeyDown: (e) => {
@@ -844,12 +633,12 @@
             if (e.key === "Escape") setEditMemberId(null);
           }
         }
-      ) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontWeight: 400 } }, "(You)")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \xB7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      ) : /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { className: "you-tag" }, "(You)")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \u00b7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => saveMemberName(m.user_id),
           disabled: memberBusy,
-          className: "cf-btn cf-btn--primary", style: { fontSize: 11, padding: "5px 14px", borderRadius: 6 }
+          className: "cf-btn cf-btn--primary cf-btn--xs"
         },
         memberBusy ? "Saving\u2026" : "Save"
       ), /* @__PURE__ */ React.createElement(
@@ -857,7 +646,7 @@
         {
           onClick: () => setEditMemberId(null),
           disabled: memberBusy,
-          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+          className: "cf-btn cf-btn--secondary cf-btn--xs"
         },
         "Cancel"
       )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
@@ -868,7 +657,7 @@
             setEditMemberId(m.user_id);
             setEditMemberVal(m.full_name || "");
           },
-          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+          className: "cf-btn cf-btn--secondary cf-btn--xs"
         },
         "\u270E Edit"
       ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
@@ -882,11 +671,11 @@
               setMemberMsg(e.message || "Only the household owner can do this.");
             }
           },
-          className: m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "5px 12px", borderRadius: 6 }
+          className: (m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger") + " cf-btn--xs"
         },
         m.disabled ? "Enable" : "Disable"
       )));
-    }), memberMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 10 } }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14, lineHeight: 1.5 } }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
+    }), memberMsg && /* @__PURE__ */ React.createElement("div", { className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: async () => {
@@ -900,43 +689,21 @@
           setInviteBusy(false);
         },
         disabled: inviteBusy,
-        className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px" }
+        className: "cf-btn cf-btn--primary"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
-    ), inviteCode && /* @__PURE__ */ React.createElement("div", { style: {
-      marginTop: 14,
-      fontFamily: "'IBM Plex Mono',monospace",
-      fontSize: 20,
-      fontWeight: 700,
-      letterSpacing: "0.1em",
-      textAlign: "center",
-      padding: "14px",
-      borderRadius: 8,
-      background: "var(--stripe)",
-      border: "1px solid var(--border)",
-      color: "var(--text)"
-    } }, inviteCode))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 13,
-      color: "var(--textLt)",
-      fontStyle: "italic"
-    } }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "8px 0",
-      borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, t.desc), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, t.type === "income" ? "+" : "-", fmt(t.amount), " \xB7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \xB7 Recurring"))), /* @__PURE__ */ React.createElement(
+    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, t.type === "income" ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
-        className: "cf-btn cf-btn--danger", style: { fontSize: 11, padding: "4px 10px", borderRadius: 6 }
+        className: "cf-btn cf-btn--danger cf-btn--yearremove"
       },
       "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
       const ovrs = overridesByYr[activeYear] || {};
       const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
       if (rows.length === 0) {
-        return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", fontStyle: "italic" } }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
+        return /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
       }
       return rows.map(([eventId, ov]) => {
         const parts = eventId.split("-");
@@ -946,11 +713,11 @@
         const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
         const hist = ov._history || [];
         const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, style: { padding: "10px 0", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 160 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 2 } }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
-            className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 10px", borderRadius: 6 }
+            className: "cf-btn cf-btn--secondary cf-btn--micro"
           },
           isOpen ? "Hide" : "History",
           " (",
@@ -964,19 +731,11 @@
               delete yOvs[eventId];
               return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
             }),
-            style: {
-              fontSize: 11,
-              padding: "4px 10px",
-              borderRadius: 6,
-              border: "1px solid var(--amberLt)",
-              cursor: "pointer",
-              background: "var(--amberLt)",
-              color: "var(--amber)"
-            },
+            className: "revert-btn",
             title: "Restore the originally scheduled values for this date"
           },
           "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, paddingLeft: 12, borderLeft: "2px solid var(--border)" } }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontSize: 11, color: "var(--textLt)", marginBottom: 4 } }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
     })())));
   }
@@ -993,30 +752,11 @@
     }
     render() {
       if (this.state.err) {
-        return /* @__PURE__ */ React.createElement("div", { style: { padding: "40px 32px", maxWidth: 560, margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#E85D4A", fontSize: 18, fontWeight: 700, marginBottom: 12 } }, "\u26A0 Something went wrong"), /* @__PURE__ */ React.createElement("pre", { style: {
-          background: "#f8f8f8",
-          border: "1px solid #eee",
-          borderRadius: 6,
-          padding: 14,
-          fontSize: 11,
-          overflow: "auto",
-          color: "#555",
-          whiteSpace: "pre-wrap"
-        } }, this.state.err.message, "\n\n", this.state.err.stack), /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: "errorboundary-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "errorboundary-title" }, "\u26A0 Something went wrong"), /* @__PURE__ */ React.createElement("pre", { className: "errorboundary-pre" }, this.state.err.message, "\n\n", this.state.err.stack), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => this.setState({ err: null }),
-            style: {
-              marginTop: 16,
-              fontSize: 13,
-              fontWeight: 600,
-              padding: "8px 20px",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              background: "#1C2B3A",
-              color: "#fff"
-            }
+            className: "errorboundary-retry-btn"
           },
           "Try Again"
         ));

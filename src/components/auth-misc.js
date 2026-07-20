@@ -9,47 +9,7 @@
       ["Esc", "Clear search / close"],
       ["?", "Show this help"]
     ];
-    return /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: {
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.5)",
-      zIndex: 2e3,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20
-    } }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: {
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 24,
-      maxWidth: 380,
-      width: "100%",
-      boxShadow: "var(--shadowXl)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)" } }, "Keyboard Shortcuts"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", style: {
-      background: "transparent",
-      border: "none",
-      cursor: "pointer",
-      fontSize: 20,
-      color: "var(--textLt)"
-    } }, "\u2715")), shortcuts.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "7px 0",
-      borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textMid)" } }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13", style: {
-      fontWeight: 600,
-      padding: "3px 10px",
-      borderRadius: 6,
-      background: "var(--stripe)",
-      border: "1px solid var(--border)",
-      color: "var(--text)"
-    } }, key))), /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: 11,
-      color: "var(--textLt)",
-      marginTop: 14,
-      textAlign: "center"
-    } }, "Shortcuts work when not typing in a field")));
+    return /* @__PURE__ */ React.createElement("div", { onClick: onClose, className: "shortcuts-backdrop" }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), className: "shortcuts-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "shortcuts-title" }, "Keyboard Shortcuts"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", className: "shortcuts-close" }, "\u2715")), shortcuts.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, className: "shortcut-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13 shortcut-kbd" }, key))), /* @__PURE__ */ React.createElement("div", { className: "shortcuts-footer" }, "Shortcuts work when not typing in a field")));
   }
   function MoneyInput(_a) {
     var _b = _a, { value, onChange, style, inputRef } = _b, rest = __objRest(_b, ["value", "onChange", "style", "inputRef"]);
@@ -89,49 +49,59 @@
     } catch (err) {
     }
   }
+  // Small FIFO queue (max 3) so a save-error toast can't be silently
+  // overwritten by a routine success toast landing a moment later — each
+  // queued message gets its own dwell time before the next one shows.
+  // Errors dwell longer and are never dropped to make room; if the queue is
+  // full, the oldest non-error message is bumped first.
   function FeedbackToast() {
-    const [t, setT] = useState(null);
+    const [queue, setQueue] = useState([]);
     const timer = useRef(null);
     useEffect(() => {
       const h = (e) => {
-        setT(e.detail);
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => setT(null), 3200);
+        setQueue((prev) => {
+          const next = [...prev, e.detail];
+          if (next.length > 3) {
+            const idx = next.findIndex((x) => x.kind !== "error");
+            next.splice(idx >= 0 ? idx : 0, 1);
+          }
+          return next;
+        });
       };
       window.addEventListener("cf:toast", h);
-      return () => {
-        window.removeEventListener("cf:toast", h);
-        if (timer.current) clearTimeout(timer.current);
-      };
+      return () => window.removeEventListener("cf:toast", h);
     }, []);
+    useEffect(() => {
+      if (!queue.length || timer.current) return;
+      const dur = queue[0].kind === "error" ? 4500 : 3200;
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        setQueue((prev) => prev.slice(1));
+      }, dur);
+    }, [queue]);
+    useEffect(() => () => {
+      if (timer.current) clearTimeout(timer.current);
+    }, []);
+    const t = queue[0];
     if (!t) return null;
+    const dismiss = () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      setQueue((prev) => prev.slice(1));
+    };
     return /* @__PURE__ */ React.createElement(
       "div",
       {
         role: "status",
-        onClick: () => setT(null),
-        style: {
-          position: "fixed",
-          left: "50%",
-          transform: "translateX(-50%)",
-          bottom: "calc(84px + env(safe-area-inset-bottom))",
-          zIndex: 3e3,
-          cursor: "pointer",
-          background: t.kind === "error" ? "var(--red)" : "var(--primary)",
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 600,
-          padding: "10px 20px",
-          borderRadius: 24,
-          boxShadow: "var(--shadowLg)",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          maxWidth: "calc(100vw - 40px)"
-        }
+        onClick: dismiss,
+        className: "feedback-toast",
+        style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
       },
       /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message
+      t.message,
+      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -147,45 +117,14 @@
       }), 1e3);
       return () => clearInterval(iv);
     }, []);
-    return /* @__PURE__ */ React.createElement("div", { style: {
-      position: "fixed",
-      bottom: "calc(80px + env(safe-area-inset-bottom))",
-      left: "50%",
-      transform: "translateX(-50%)",
-      zIndex: 2500,
-      background: "var(--primary)",
-      color: "#fff",
-      borderRadius: 12,
-      padding: "12px 20px",
-      display: "flex",
-      alignItems: "center",
-      gap: 14,
-      boxShadow: "var(--shadowLg)",
-      fontSize: 13,
-      whiteSpace: "nowrap",
-      animation: "slideUp 0.25s ease-out"
-    } }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast" }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onUndo,
-        style: {
-          fontSize: 12,
-          fontWeight: 700,
-          padding: "5px 14px",
-          borderRadius: 8,
-          border: "2px solid rgba(255,255,255,0.4)",
-          cursor: "pointer",
-          background: "transparent",
-          color: "#fff"
-        }
+        className: "undo-btn"
       },
       "\u21A9 Undo"
-    ), /* @__PURE__ */ React.createElement("span", { style: {
-      fontFamily: "IBM Plex Mono,monospace",
-      fontSize: 11,
-      color: "rgba(255,255,255,0.5)",
-      minWidth: 12
-    } }, secs, "s"));
+    ), /* @__PURE__ */ React.createElement("span", { className: "undo-countdown" }, secs, "s"));
   }
   function LoginView() {
     const configured = isSupabaseConfigured();
@@ -253,34 +192,9 @@
       }
     };
     if (!configured) {
-      return /* @__PURE__ */ React.createElement("div", { style: {
-        minHeight: "100vh",
-        background: "var(--headerBg)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        fontFamily: "Inter,sans-serif",
-        textAlign: "center"
-      } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 48, marginBottom: 20 } }), /* @__PURE__ */ React.createElement("div", { style: { color: "#fff", fontSize: 15, fontWeight: 600, marginBottom: 8 } }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { style: { color: "rgba(255,255,255,0.55)", fontSize: 13, maxWidth: 360, lineHeight: 1.6 } }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
+      return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap text-center" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "login-notconfigured-logo" }), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-title" }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-desc" }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
     }
-    return /* @__PURE__ */ React.createElement("div", { style: {
-      minHeight: "100vh",
-      background: "var(--headerBg)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 24,
-      fontFamily: "Inter,sans-serif"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { width: "100%", maxWidth: 420 } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 36 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 48, marginBottom: 10 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 } }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 32,
-      boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
-      border: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8, textAlign: "center" } }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -288,13 +202,8 @@
           setError("");
           setInfo("");
         },
+        className: "household-mode-btn",
         style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "4px 10px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
           background: mode === "signin" ? "var(--stripe)" : "transparent",
           color: mode === "signin" ? "var(--text)" : "var(--textLt)"
         }
@@ -308,27 +217,14 @@
           setError("");
           setInfo("");
         },
+        className: "household-mode-btn",
         style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "4px 10px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
           background: mode === "signup" ? "var(--stripe)" : "transparent",
           color: mode === "signup" ? "var(--text)" : "var(--textLt)"
         }
       },
       "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Email address"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "email",
@@ -343,28 +239,9 @@
           return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
         },
         placeholder: "your@email.com",
-        style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 15,
-          padding: "10px 14px",
-          border: "1.5px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none",
-          boxSizing: "border-box"
-        }
+        className: "auth-input"
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Password"), /* @__PURE__ */ React.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "pw-input",
@@ -377,74 +254,38 @@
         },
         onKeyDown: (e) => e.key === "Enter" && attemptLogin(),
         placeholder: mode === "signin" ? "Enter your password" : "At least 8 characters",
-        style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 15,
-          padding: "10px 44px 10px 14px",
-          border: "1.5px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none",
-          boxSizing: "border-box"
-        }
+        className: "auth-input auth-input--pw"
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowPw((v) => !v),
         "aria-label": showPw ? "Hide password" : "Show password",
-        style: {
-          position: "absolute",
-          right: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--textLt)",
-          fontSize: 16,
-          padding: 4
-        }
+        className: "auth-pw-toggle"
       },
-      showPw ? "\u{1F648}" : "\u{1F441}"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "checkbox",
         id: "remember-chk",
         checked: remember,
         onChange: (e) => setRemember(e.target.checked),
-        style: { width: 15, height: 15, cursor: "pointer", accentColor: "var(--primary)" }
+        className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 13,
-      color: "var(--textMid)",
-      cursor: "pointer"
-    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 16 } }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner", role: "status", style: { marginBottom: 16 } }, info), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16", role: "status" }, info), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
         disabled: loading,
+        className: "auth-submit-btn",
         style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 15,
-          fontWeight: 700,
-          padding: "12px",
-          borderRadius: 8,
-          border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--primary)",
-          color: "#fff",
-          opacity: loading ? 0.7 : 1,
-          transition: "opacity 0.15s"
+          opacity: loading ? 0.7 : 1
         }
       },
       loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
+    )), /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
   function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
@@ -490,48 +331,14 @@
         setLoading(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { style: {
-      position: "fixed",
-      inset: 0,
-      zIndex: 5e3,
-      background: "var(--headerBg)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 24,
-      fontFamily: "Inter,sans-serif"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { width: "100%", maxWidth: 380 } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 28 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 44, marginBottom: 16 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "#fff" } }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 } }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 28,
-      boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
-      border: "1px solid var(--border)"
-    } }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: {
-      width: 64,
-      height: 64,
-      borderRadius: "50%",
-      background: "var(--accentLt)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 28,
-      margin: "0 auto 16px"
-    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "lockscreen-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "lockscreen-logo" }), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-welcome" }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-card" }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-bio-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-14", role: "alert" }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
         disabled: checking,
+        className: "lockscreen-primary-btn",
         style: {
-          width: "100%",
-          fontSize: 15,
-          fontWeight: 700,
-          padding: "12px",
-          borderRadius: 8,
-          border: "none",
           cursor: checking ? "wait" : "pointer",
-          background: "var(--primary)",
-          color: "#fff",
           opacity: checking ? 0.7 : 1,
           marginBottom: 10
         }
@@ -544,28 +351,10 @@
           setMode("password");
           setBioError("");
         },
-        style: {
-          width: "100%",
-          fontSize: 13,
-          fontWeight: 600,
-          padding: "10px",
-          borderRadius: 8,
-          border: "none",
-          background: "transparent",
-          color: "var(--textMid)",
-          cursor: "pointer"
-        }
+        className: "lockscreen-secondary-btn"
       },
       "Use password instead"
-    )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { style: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 600,
-      color: "var(--textMid)",
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
-      marginBottom: 6
-    } }, "Password"), /* @__PURE__ */ React.createElement("div", { style: { position: "relative", marginBottom: 14 } }, /* @__PURE__ */ React.createElement(
+    )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative mb-14" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: showPw ? "text" : "password",
@@ -578,53 +367,24 @@
         },
         onKeyDown: (e) => e.key === "Enter" && unlockWithPassword(),
         placeholder: "Enter your password",
-        style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 15,
-          padding: "10px 44px 10px 14px",
-          border: "1.5px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--inputBg)",
-          color: "var(--text)",
-          outline: "none",
-          boxSizing: "border-box"
-        }
+        className: "auth-input auth-input--pw"
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowPw((v) => !v),
         "aria-label": showPw ? "Hide password" : "Show password",
-        style: {
-          position: "absolute",
-          right: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--textLt)",
-          fontSize: 16,
-          padding: 4
-        }
+        className: "auth-pw-toggle"
       },
-      showPw ? "🙈" : "👁"
-    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, pwError), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
+    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-14", role: "alert" }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: unlockWithPassword,
         disabled: loading,
+        className: "lockscreen-primary-btn",
         style: {
-          width: "100%",
-          fontSize: 15,
-          fontWeight: 700,
-          padding: "12px",
-          borderRadius: 8,
-          border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--primary)",
-          color: "#fff",
           opacity: loading ? 0.7 : 1,
           marginBottom: hasBiometric ? 10 : 0
         }
@@ -637,31 +397,14 @@
           setMode("biometric");
           setPwError("");
         },
-        style: {
-          width: "100%",
-          fontSize: 13,
-          fontWeight: 600,
-          padding: "10px",
-          borderRadius: 8,
-          border: "none",
-          background: "transparent",
-          color: "var(--textMid)",
-          cursor: "pointer"
-        }
+        className: "lockscreen-secondary-btn"
       },
       "Use fingerprint / face instead"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement("div", { className: "household-signout-wrap" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onSignOut,
-        style: {
-          fontSize: 12,
-          color: "rgba(255,255,255,0.4)",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          textDecoration: "underline"
-        }
+        className: "household-signout-btn"
       },
       "Not you? Sign out"
     ))));
@@ -809,7 +552,7 @@
       return out;
     }, []);
     const passed = results.filter((r) => r.ok).length;
-    return /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 640, margin: "40px auto", padding: "0 20px" } }, /* @__PURE__ */ React.createElement("h2", { style: { color: "var(--text)", fontSize: 18, marginBottom: 6 } }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: passed === results.length ? "var(--greenDk)" : "var(--red)", marginBottom: 18, fontWeight: 700 } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 } }, /* @__PURE__ */ React.createElement("span", { style: { color: r.ok ? "var(--greenDk)" : "var(--red)", fontWeight: 700, width: 18 } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)", flex: 1 } }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--textLt)", fontSize: 11 } }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, style: { display: "inline-block", marginTop: 20, fontSize: 13, color: "var(--primary)" } }, "\u2190 Back to app"));
+    return /* @__PURE__ */ React.createElement("div", { className: "selftest-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "selftest-h2" }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { className: "selftest-count", style: { color: passed === results.length ? "var(--greenDk)" : "var(--red)" } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "selftest-row" }, /* @__PURE__ */ React.createElement("span", { className: "selftest-mark", style: { color: r.ok ? "var(--greenDk)" : "var(--red)" } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { className: "c-text flex-1" }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { className: "selftest-detail" }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, className: "selftest-back-link" }, "\u2190 Back to app"));
   }
   function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
@@ -826,20 +569,12 @@
       { id: "forecast", label: "Forecast", icon: "trending-up" },
       { id: "entries", label: "Entries", icon: "file-list" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll", style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 16,
-      maxWidth: 1160,
-      margin: "0 auto 16px",
-      flexWrap: "nowrap",
-      WebkitOverflowScrolling: "touch"
-    } }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
         "data-active": value === s.id,
-        className: "budget-subtab-pill" + (s.cls ? " " + s.cls : ""),
+        className: "budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : ""),
         onClick: () => {
           haptic();
           onChange(s.id);
@@ -847,14 +582,6 @@
         "aria-label": s.label,
         title: s.label,
         style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "7px 14px",
-          borderRadius: 20,
-          border: "none",
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
           background: value === s.id ? "var(--primary)" : "var(--stripe)",
           color: value === s.id ? "#fff" : "var(--textMid)"
         }
