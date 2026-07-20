@@ -974,6 +974,92 @@
         .settings-page-pills{display:flex;gap:4px;padding:4px;background:var(--border);border-radius:12px;width:fit-content;max-width:100%;overflow-x:auto;}
         .settings-quicklinks{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;margin-bottom:6px;}
         .year-openbal{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
+        /* ── budget.js ── */
+        .mt-20{margin-top:20px;}
+        .budget-event-tr{cursor:pointer;}
+        .budget-col-checkbox--cell{padding:8px 4px 8px 9px;width:30px;white-space:nowrap;text-align:center;}
+        .budget-row-checkbtn{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;line-height:1;}
+        .budget-card-checkbtn{flex-shrink:0;margin-top:2px;width:22px;height:22px;border-radius:6px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;line-height:1;}
+        .budget-day-cell{padding:8px 6px 8px 8px;white-space:nowrap;cursor:grab;touch-action:none;user-select:none;vertical-align:middle;}
+        .drag-dots{opacity:0.3;font-size:9px;margin-left:2px;}
+        .budget-desc-td{font-size:13px;padding:8px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .attach-indicator{margin-left:6px;display:inline-flex;}
+        .override-mark{margin-left:6px;font-size:10px;color:var(--amber);font-weight:700;}
+        .budget-amount-td{padding:8px 14px;text-align:right;font-weight:600;}
+        .budget-balance-td{padding:8px 14px;text-align:right;font-weight:700;}
+        .budget-spacer-td{width:30px;padding:0;box-shadow:inset 3px 0 0 0 transparent;}
+        .period-hdr-td{background:var(--navyMid);padding:8px 14px;font-size:11px;font-weight:700;color:#fff;letter-spacing:0.1em;text-transform:uppercase;}
+        .today-line-td{padding:0;background:transparent;box-shadow:inset 3px 0 0 0 transparent;}
+        .today-line-wrap{display:flex;align-items:center;gap:8px;padding:4px 8px;}
+        .today-label{font-size:10px;font-weight:700;color:var(--amber);white-space:nowrap;letter-spacing:0.1em;}
+        .today-line-card-wrap{display:flex;align-items:center;gap:8px;padding:6px 14px;}
+        .card-top-row{display:flex;align-items:center;gap:8px;justify-content:space-between;}
+        .card-desc-span{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+        .card-bottom-row{display:flex;align-items:baseline;margin-top:4px;}
+        .amounts-row-baseline{display:flex;gap:10px;align-items:baseline;}
+        .card-signed-amt{font-weight:600;}
+        .card-balance-amt{font-weight:700;min-width:74px;text-align:right;}
+        .openbal-card-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--amberLt);border-bottom:1px solid var(--border);}
+        .mno-700{font-weight:700;}
+        .mno-700-green{font-weight:700;color:var(--green);}
+        .mno-700-coral{font-weight:700;color:#FF8A7A;}
+        .budget-empty-msg{padding:28px 14px;text-align:center;font-size:13px;color:var(--textLt);}
+        .monthly-totals-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--navy);}
+        .totals-label{font-size:12px;font-weight:700;color:#fff;letter-spacing:0.06em;text-transform:uppercase;}
+        .totals-amounts-row{display:flex;gap:12px;align-items:baseline;}
+        .swipe-coach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;}
+        .gotit-btn{font-size:12px;font-weight:700;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--primary);white-space:nowrap;flex-shrink:0;}
+        .budget-search-banner{font-size:12px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);}
+        .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
+        .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
+        .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
+        .openbal-row{background:var(--amberLt);}
+        .budget-day-spacer-td{width:40px;padding:0;}
+        .budget-label-cell{font-size:12px;font-weight:700;padding:8px 14px;color:var(--textMid);letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
+        .budget-totals-label{font-size:12px;font-weight:700;padding:10px 14px;color:#fff;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
+        .pad-10-14{padding:10px 14px;}
+        .pad-8-14{padding:8px 14px;}
+        .budget-totals-amt{font-weight:700;padding:10px 14px;text-align:right;}
+        .entryform-modal-card{padding:24px 24px 20px;width:min(680px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
+        .daily-today-wrap{display:flex;align-items:center;gap:8px;margin:4px 16px;}
+        .daily-day-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
+        .daily-day-number{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--primary);line-height:1;}
+        .caption-10-nomargin{font-size:10px;color:var(--textLt);}
+        .daily-events-pad{padding:10px 16px;}
+        .daily-row-desc{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .daily-row-amt{font-weight:700;min-width:90px;text-align:right;}
+        .daily-balance-caption{font-size:11px;color:var(--textLt);text-align:right;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.08em;}
+        .daily-balance-amt{font-weight:700;text-align:right;}
+        .no-activity-msg{text-align:center;color:var(--textLt);padding:32px 24px;}
+        .rollover-label{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);cursor:pointer;}
+        .rollover-hint{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
+        .btn-pad-24{padding:9px 24px;}
+        .bva-card{margin-top:20px;margin-bottom:12px;padding:0;overflow:hidden;}
+        .bva-header-row{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;}
+        .bva-header-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+        .bva-add-btn{font-size:11px;font-weight:700;padding:6px 12px;border-radius:7px;white-space:nowrap;}
+        .bva-collapse-btn{font-size:11px;padding:6px 12px;border-radius:7px;flex-shrink:0;}
+        .bva-body{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px;}
+        .bva-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:8px 0;}
+        .context-menu-cursor{cursor:context-menu;}
+        .bva-actual-amt{font-weight:600;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;}
+        .carry-note{font-size:10px;color:var(--textLt);white-space:nowrap;flex-shrink:0;}
+        .over-note{font-size:11px;white-space:nowrap;flex-shrink:0;}
+        .bva-edit-btn{width:22px;height:22px;flex-shrink:0;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--textLt);font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
+        .bva-progress-track{height:6px;background:var(--border);border-radius:3px;}
+        .bva-progress-fill{height:100%;border-radius:3px;transition:width 0.4s ease;}
+        .bva-totals-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:10px;border-top:2px solid var(--border);}
+        .bva-total-label{font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--textMid);}
+        .total-over-note{font-size:10px;}
+        .budget-col-cat{padding:8px 14px;}
+        .budget-card-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
+        .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+        .daily-card{display:grid;grid-template-columns:60px 1fr 180px;border-bottom:1px solid var(--border);align-items:stretch;}
+        .daily-row-btn{display:flex;align-items:center;gap:10px;margin-bottom:4px;cursor:pointer;border-radius:6px;padding:4px 6px;width:100%;border:none;background:transparent;font:inherit;text-align:left;}
+        .daily-balance{display:flex;align-items:center;justify-content:flex-end;padding:12px 20px;border-left:1px solid var(--border);}
+        .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;flex-wrap:nowrap;}
+        .bva-amounts{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;flex:1;justify-content:flex-end;min-width:0;}
+        .bva-target{color:var(--textMid);white-space:nowrap;flex-shrink:0;}
         /* Inline error/info banner (auth screens, forms) */
         .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
           padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
@@ -1420,7 +1506,7 @@
         /* Register desc: fill available space, truncate */
         .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;padding:10px 12px;width:40%;min-width:120px;}
         /* Budget totals row sticky */
-        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);}
+        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
 
         /* \u2500\u2500 44px minimum tap targets \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
         .reg-actions button{min-height:36px;min-width:36px;}
