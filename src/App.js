@@ -331,6 +331,12 @@
       return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
     }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
     const activeFlow = yearFlows[activeYear] || [];
+    const prevYearFlow = useMemo(() => {
+      const py = activeYear - 1;
+      if (yearFlows[py]) return yearFlows[py];
+      const ovs = overridesByYr[py] || {};
+      return computeFlow(expandEntries(entries, py, ovs), 0);
+    }, [yearFlows, activeYear, entries, overridesByYr]);
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
@@ -909,6 +915,7 @@
       BudgetView,
       {
         flow: activeFlow,
+        prevYearFlow,
         openBal: activeOpenBal,
         entries,
         setOverride,

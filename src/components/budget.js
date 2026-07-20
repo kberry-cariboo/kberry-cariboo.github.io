@@ -1,4 +1,4 @@
-  function BudgetView({ flow, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ flow, prevYearFlow = [], openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -113,6 +113,39 @@
     };
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
+    const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
+    const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
+    const yoyActive = budgetSub === "monthly" && compareYoy;
+    const prevSummaries = useMemo(() => getMonthSummaries(prevYearFlow, 0), [prevYearFlow]);
+    const ps = prevSummaries[monthIdx] || { income: 0, expense: 0, surplus: 0 };
+    const prevHasData = prevYearFlow.length > 0;
+    const yoyDeltaSub = (cur, prev) => {
+      if (!yoyActive || !prevHasData) return null;
+      const d = Math.round((cur - prev) * 100) / 100;
+      const sign = d > 0 ? "▲ " : d < 0 ? "▼ " : "";
+      return `${sign}${fmt(Math.abs(d))} vs ${prevYear}`;
+    };
+    const yoyRows = useMemo(() => {
+      if (!yoyActive) return [];
+      const norm = (str) => (str || "").toLowerCase().trim();
+      const r2 = (n) => Math.round(n * 100) / 100;
+      const map = /* @__PURE__ */ new Map();
+      const add = (ev, key) => {
+        const k = ev.type + "|" + norm(ev.desc);
+        const signed = ev.type === "income" ? ev.amount : -ev.amount;
+        let row = map.get(k);
+        if (!row) {
+          row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0 };
+          map.set(k, row);
+        }
+        row[key] += signed;
+      };
+      flow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "cur"));
+      prevYearFlow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "prev"));
+      const rows = [...map.values()].map((row) => __spreadProps(__spreadValues({}, row), { cur: r2(row.cur), prev: r2(row.prev), delta: r2(row.cur - row.prev) }));
+      rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || (a.desc || "").localeCompare(b.desc || ""));
+      return rows;
+    }, [yoyActive, flow, prevYearFlow, monthIdx]);
     const todayDate = /* @__PURE__ */ new Date();
     const gq = (globalSearch || "").toLowerCase();
     const matchingMonths = useMemo(() => {
@@ -362,6 +395,37 @@
       }).filter((d) => d.events.length > 0);
     }, [monthEvents, s, monthIdx]);
     const renderDailyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : days.map((dayObj) => /* @__PURE__ */ React.createElement(React.Fragment, { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderPeriodCardHdr(`${MONTHS[monthIdx]} ${dayObj.day}`), dayObj.events.map((ev) => renderEventCard(ev, { hideDayLabel: true })))));
+    const renderYoyCompare = () => {
+      const deltaCls = (d) => d > 0 ? "yoy-delta-pos" : d < 0 ? "yoy-delta-neg" : "";
+      const amtCell = (v) => v === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(v, true);
+      const totCur = yoyRows.reduce((a, r) => a + r.cur, 0);
+      const totPrev = yoyRows.reduce((a, r) => a + r.prev, 0);
+      const totDelta = Math.round((totCur - totPrev) * 100) / 100;
+      return /* @__PURE__ */ React.createElement(
+        Card,
+        { className: "cf-card--flush yoy-card" },
+        /* @__PURE__ */ React.createElement("div", { className: "yoy-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "yoy-title" }, `${MONTHS[monthIdx]} ${activeYear} vs ${MONTHS[monthIdx]} ${prevYear}`)),
+        !prevHasData ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, `No ${prevYear} entries to compare against.`) : yoyRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, `No entries in ${MONTHS[monthIdx]} for either year.`) : /* @__PURE__ */ React.createElement(
+          "div",
+          { className: "hscroll" },
+          /* @__PURE__ */ React.createElement(
+            "table",
+            { className: "forecast-table yoy-table" },
+            /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "yoy-th-desc" }, "Description"), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-cat" }, "Category"), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, prevYear), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, activeYear), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, "Δ"))),
+            /* @__PURE__ */ React.createElement("tbody", null, yoyRows.map((r, i) => /* @__PURE__ */ React.createElement(
+              "tr",
+              { key: r.type + "|" + r.desc + "|" + i, className: "yoy-tr" },
+              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", title: r.desc }, r.desc, r.prev === 0 && r.cur !== 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"), r.cur === 0 && r.prev !== 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Dropped")),
+              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.category, categories, categoryColors, className: "text-9" })),
+              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, amtCell(r.prev)),
+              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, amtCell(r.cur)),
+              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + deltaCls(r.delta) }, r.delta === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(r.delta, true))
+            ))),
+            /* @__PURE__ */ React.createElement("tfoot", null, /* @__PURE__ */ React.createElement("tr", { className: "yoy-foot" }, /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc" }, "Net"), /* @__PURE__ */ React.createElement("td", null), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, fmt(totPrev, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, fmt(totCur, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + deltaCls(totDelta) }, fmt(totDelta, true))))
+          )
+        )
+      );
+    };
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
       const t = e.target;
@@ -442,8 +506,21 @@
         "Got it"
       )),
       gq && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
-      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
-      budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
+      budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            haptic();
+            setCompareYoy((v) => !v);
+          },
+          "aria-pressed": compareYoy,
+          title: `Compare ${MONTHS[monthIdx]} ${activeYear} with ${prevYear}`,
+          className: "cf-btn cf-btn--secondary cf-btn--sm cf-btn--iconrow-sm" + (compareYoy ? " yoy-toggle-active" : "")
+        },
+        /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 12 }),
+        `Compare ${prevYear}`
+      ), /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => {
@@ -452,7 +529,7 @@
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
-      )), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
+      )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
         const allDone = allIds.length > 0 && allIds.every((id) => completed[id]);
         const someDone = allIds.some((id) => completed[id]);
@@ -590,10 +667,19 @@
               }
             },
             "---",
-            { icon: "\u270E", label: "Edit this entry", action: () => {
-              openEntryEdit(budgetCtx.ev);
-            } },
-            ...budgetCtx.ev.repeats ? [{ icon: "\u21BA", label: "Reset entry", action: () => {
+            ...budgetCtx.ev.repeats ? [
+              { icon: "\u270E", label: "Edit this occurrence", action: () => {
+                openOccurrenceEdit(budgetCtx.ev);
+              } },
+              { icon: "\u21BB", label: "Edit recurring entry", action: () => {
+                openEntryEdit(budgetCtx.ev);
+              } }
+            ] : [
+              { icon: "\u270E", label: "Edit entry", action: () => {
+                openEntryEdit(budgetCtx.ev);
+              } }
+            ],
+            ...budgetCtx.ev.isOverride ? [{ icon: "\u21BA", label: "Reset occurrence", action: () => {
               clearOverride && clearOverride(budgetCtx.ev.id);
             } }] : [],
             "---",
