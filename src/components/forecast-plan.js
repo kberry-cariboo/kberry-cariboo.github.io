@@ -24,7 +24,7 @@
       letterSpacing: "0.12em",
       textTransform: "uppercase",
       color: "var(--textLt)"
-    } }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, '\u{1F50D} Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
+    } }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onCSV: () => {
@@ -77,7 +77,7 @@
     if (done) return null;
     const steps = [
       // Step 0: Opening balance
-      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B0}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 20 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12, color: "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 20 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -104,7 +104,7 @@
         setStep(1);
       }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 700, padding: "10px 28px" } }, "Next \u2192"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDone(true), className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "10px 18px" } }, "Skip"))),
       // Step 1: First income
-      /* @__PURE__ */ React.createElement("div", { key: "s1" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B5}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first income"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's your main source of income? (e.g. "Payroll")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s1" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12, color: "var(--greenDk)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first income"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's your main source of income? (e.g. "Payroll")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           placeholder: "Description e.g. Payroll",
@@ -159,7 +159,7 @@
         setStep(2);
       }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 700, padding: "10px 28px" } }, income.desc.trim() && income.amount ? "Next \u2192" : "Skip \u2192"))),
       // Step 2: First expense
-      /* @__PURE__ */ React.createElement("div", { key: "s2" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B3}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first expense"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's a recurring expense? (e.g. "Mortgage", "Rent")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s2" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12, color: "var(--red)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 34 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first expense"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's a recurring expense? (e.g. "Mortgage", "Rent")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           placeholder: "Description e.g. Mortgage",
@@ -255,7 +255,7 @@
     const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
     if (!alerts.length) return null;
     const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--redLt)", border: "1px solid var(--red)", borderRadius: 10, padding: "12px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F6A8}"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--red)" } }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: "var(--red)" } }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
+    return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--redLt)", border: "1px solid var(--red)", borderRadius: 10, padding: "12px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--red)" } }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: "var(--red)" } }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -506,14 +506,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     };
     const sectionIcon = {
-      "Executive Summary": "\u{1F4CA}",
-      "Income Analysis": "\u{1F4B0}",
-      "Spending Analysis": "\u{1F4C9}",
-      "Debt Management": "\u{1F4B3}",
-      "Savings Goals": "\u{1F3AF}",
-      "Budget Performance": "\u{1F3AF}",
-      "Cash Flow & Risk": "\u26A0\uFE0F",
-      "Priority Action Items": "\u2705"
+      "Executive Summary": "chart-bar",
+      "Income Analysis": "banknote",
+      "Spending Analysis": "chart-down",
+      "Debt Management": "credit-card",
+      "Savings Goals": "target",
+      "Budget Performance": "target",
+      "Cash Flow & Risk": "alert-triangle",
+      "Priority Action Items": "check-circle"
     };
     const sectionColor = {
       "Executive Summary": "var(--primary)",
@@ -590,10 +590,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       display: "flex",
       alignItems: "center",
       gap: 12
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => window.__cfSetTab && window.__cfSetTab("settings"),
+        onClick: () => window.dispatchEvent(new CustomEvent("cf:goto-tab", { detail: { tab: "settings" } })),
         style: {
           fontSize: 13,
           fontWeight: 700,
@@ -606,7 +606,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       "Settings \u2192 General"
-    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 12, display: "flex", alignItems: "flex-start", gap: 6 } }, /* @__PURE__ */ React.createElement("span", null, "🔑"), /* @__PURE__ */ React.createElement("span", null, "Running this sends your budget data and API key straight to Anthropic from your browser.")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 12, display: "flex", alignItems: "flex-start", gap: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { flexShrink: 0, marginTop: 1 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Running this sends your budget data and API key straight to Anthropic from your browser.")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: runAssessment,
@@ -690,7 +690,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       marginBottom: 14,
       paddingBottom: 12,
       borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, sectionIcon[section.title] || "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: {
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 15,
       fontWeight: 700,
       color: sectionColor[section.title] || "var(--primary)"
@@ -770,18 +770,18 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       textAlign: "center",
       padding: "12px 0 4px",
       lineHeight: 1.5
-    } }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")), !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "40px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 48, marginBottom: 16 } }, "\u2726"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 8 } }, "Ready to analyse your finances"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto", marginBottom: 24 } }, "Enter your Anthropic API key above and click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 600, margin: "0 auto" } }, [
-      { icon: "\u{1F4CA}", label: "Executive Summary" },
-      { icon: "\u{1F4B0}", label: "Income Analysis" },
-      { icon: "\u{1F4C9}", label: "Spending Analysis" },
-      { icon: "\u{1F4B3}", label: "Debt Management" },
-      { icon: "\u{1F3AF}", label: "Budget vs Actual" },
-      { icon: "\u2705", label: "Priority Actions" }
+    } }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")), !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "40px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 16, color: "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 8 } }, "Ready to analyse your finances"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto", marginBottom: 24 } }, "Enter your Anthropic API key above and click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 600, margin: "0 auto" } }, [
+      { icon: "chart-bar", label: "Executive Summary" },
+      { icon: "banknote", label: "Income Analysis" },
+      { icon: "chart-down", label: "Spending Analysis" },
+      { icon: "credit-card", label: "Debt Management" },
+      { icon: "target", label: "Budget vs Actual" },
+      { icon: "check-circle", label: "Priority Actions" }
     ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, style: {
       padding: "14px 12px",
       background: "var(--bg)",
       borderRadius: 10,
       border: "1px solid var(--border)",
       textAlign: "center"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, marginBottom: 6 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--textMid)" } }, label)))))));
+    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 6, color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--textMid)" } }, label)))))));
   }

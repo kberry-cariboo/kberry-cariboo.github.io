@@ -102,8 +102,8 @@
         className: "cf-fab-menu-btn",
         role: "menuitem"
       },
-      /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
-      " Import CSV"
+      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }),
+      "Import CSV"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -146,7 +146,8 @@
         "aria-haspopup": "menu",
         className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }
       },
-      "\u{1F4CB} Templates ",
+      /* @__PURE__ */ React.createElement(Icon, { name: "clipboard", size: 13 }),
+      "Templates ",
       open ? "\u25B2" : "\u25BC"
     ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
@@ -177,13 +178,37 @@
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
+    // Edge-scroll fade: on mobile the strip scrolls horizontally with no
+    // visible scrollbar, so nothing hints that more months sit off-screen.
+    // Recomputed on scroll and on resize/value change (month pills reflow at
+    // some widths).
+    const [fade, setFade] = useState({ left: false, right: false });
+    const updateFade = () => {
+      const el = stripRef.current;
+      if (!el) return;
+      setFade({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+      });
+    };
     useEffect(() => {
       const el = stripRef.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }, [value]);
-    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
+    useEffect(() => {
+      const el = stripRef.current;
+      if (!el) return;
+      updateFade();
+      el.addEventListener("scroll", updateFade, { passive: true });
+      window.addEventListener("resize", updateFade);
+      return () => {
+        el.removeEventListener("scroll", updateFade);
+        window.removeEventListener("resize", updateFade);
+      };
+    }, [value, matchingMonths]);
+    return /* @__PURE__ */ React.createElement("div", { style: { position: "relative", marginBottom: noMargin ? 0 : 20 } }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "month-nav-arrow",
@@ -241,7 +266,7 @@
       },
       "+ Add ",
       nextYear
-    ));
+    )));
   };
   const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
@@ -257,21 +282,17 @@
   )));
   // Base look lives in .cf-pill; explicitly-passed size props remain inline
   // overrides for the compact dashboard variants.
-  const PillToggle = ({ options, value, onChange, gap = 6, fontSize, fontWeight, padding, borderRadius }) => {
-    const override = {};
-    if (fontSize !== void 0) override.fontSize = fontSize;
-    if (fontWeight !== void 0) override.fontWeight = fontWeight;
-    if (padding !== void 0) override.padding = padding;
-    if (borderRadius !== void 0) override.borderRadius = borderRadius;
-    const hasOverride = Object.keys(override).length > 0;
+  // size="sm" applies the .cf-pill--sm modifier — used where the toggle docks
+  // into a tight card header (YoY metric, shared-view) instead of one-off
+  // fontSize/padding/borderRadius overrides per call site.
+  const PillToggle = ({ options, value, onChange, gap = 6, size }) => {
     return /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: o.id,
         onClick: () => onChange(o.id),
-        className: "cf-pill",
-        "aria-pressed": value === o.id,
-        style: hasOverride ? override : void 0
+        className: "cf-pill" + (size === "sm" ? " cf-pill--sm" : ""),
+        "aria-pressed": value === o.id
       },
       o.label
     )));

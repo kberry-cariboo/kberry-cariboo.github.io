@@ -289,7 +289,7 @@
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap"
-          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E"));
+          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, display: "inline-flex" }, title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E"));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9 } }));
           if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13", style: {
             padding: "8px 14px",
@@ -423,7 +423,7 @@
             whiteSpace: "nowrap",
             minWidth: 0
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, display: "inline-flex" }, title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 600,
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
@@ -577,7 +577,7 @@
         borderRadius: 8,
         padding: "8px 12px",
         marginBottom: 12
-      }, className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F449} Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
+      }, className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: dismissSwipeCoach,
@@ -604,7 +604,7 @@
         background: "var(--amberLt)",
         borderRadius: 6,
         border: "1px solid var(--amber)"
-      } }, '\u{1F50D} Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
+      } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
       /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
       budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
@@ -833,9 +833,8 @@
             e.preventDefault();
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
           },
-          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4, cursor: "pointer", borderRadius: 6, padding: "4px 6px", width: "100%", border: "none", background: "transparent", font: "inherit", textAlign: "left" },
-          onMouseEnter: (e) => e.currentTarget.style.background = "rgba(47,84,150,0.06)",
-          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+          className: "daily-row-btn",
+          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4, cursor: "pointer", borderRadius: 6, padding: "4px 6px", width: "100%", border: "none", background: "transparent", font: "inherit", textAlign: "left" }
         },
         /* @__PURE__ */ React.createElement("span", { style: {
           fontSize: 13,
@@ -1024,7 +1023,7 @@
           textAlign: "center",
           padding: "8px 0"
         } }, /* @__PURE__ */ React.createElement(EmptyState, {
-          icon: "\u{1F3AF}",
+          icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, style: { color: "var(--textLt)" } }),
           message: "No budget lines yet. Track a category against a monthly target.",
           actionLabel: "+ Add Budget Line",
           onAction: () => {

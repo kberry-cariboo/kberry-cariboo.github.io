@@ -89,27 +89,53 @@
     } catch (err) {
     }
   }
+  // Small FIFO queue (max 3) so a save-error toast can't be silently
+  // overwritten by a routine success toast landing a moment later — each
+  // queued message gets its own dwell time before the next one shows.
+  // Errors dwell longer and are never dropped to make room; if the queue is
+  // full, the oldest non-error message is bumped first.
   function FeedbackToast() {
-    const [t, setT] = useState(null);
+    const [queue, setQueue] = useState([]);
     const timer = useRef(null);
     useEffect(() => {
       const h = (e) => {
-        setT(e.detail);
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => setT(null), 3200);
+        setQueue((prev) => {
+          const next = [...prev, e.detail];
+          if (next.length > 3) {
+            const idx = next.findIndex((x) => x.kind !== "error");
+            next.splice(idx >= 0 ? idx : 0, 1);
+          }
+          return next;
+        });
       };
       window.addEventListener("cf:toast", h);
-      return () => {
-        window.removeEventListener("cf:toast", h);
-        if (timer.current) clearTimeout(timer.current);
-      };
+      return () => window.removeEventListener("cf:toast", h);
     }, []);
+    useEffect(() => {
+      if (!queue.length || timer.current) return;
+      const dur = queue[0].kind === "error" ? 4500 : 3200;
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        setQueue((prev) => prev.slice(1));
+      }, dur);
+    }, [queue]);
+    useEffect(() => () => {
+      if (timer.current) clearTimeout(timer.current);
+    }, []);
+    const t = queue[0];
     if (!t) return null;
+    const dismiss = () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      setQueue((prev) => prev.slice(1));
+    };
     return /* @__PURE__ */ React.createElement(
       "div",
       {
         role: "status",
-        onClick: () => setT(null),
+        onClick: dismiss,
         style: {
           position: "fixed",
           left: "50%",
@@ -131,7 +157,8 @@
         }
       },
       /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message
+      t.message,
+      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.7, fontWeight: 400, flexShrink: 0 } }, "+", queue.length - 1)
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -404,11 +431,11 @@
           border: "none",
           cursor: "pointer",
           color: "var(--textLt)",
-          fontSize: 16,
-          padding: 4
+          padding: 4,
+          display: "inline-flex"
         }
       },
-      showPw ? "\u{1F648}" : "\u{1F441}"
+      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
     ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -515,9 +542,9 @@
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      fontSize: 28,
+      color: "var(--accent)",
       margin: "0 auto 16px"
-    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -605,11 +632,11 @@
           border: "none",
           cursor: "pointer",
           color: "var(--textLt)",
-          fontSize: 16,
-          padding: 4
+          padding: 4,
+          display: "inline-flex"
         }
       },
-      showPw ? "🙈" : "👁"
+      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
     )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {

@@ -1551,6 +1551,9 @@ document.addEventListener('DOMContentLoaded',function(){
         .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"]{background:var(--primary);color:#fff;}
         .cf-pill--dashed{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;
           border:1.5px dashed var(--primary);cursor:pointer;flex-shrink:0;background:transparent;color:var(--primary);}
+        /* Compact variant for pill toggles docked in a card header (YoY metric,
+           shared-view) — was two near-duplicate inline-style overrides */
+        .cf-pill--sm{font-size:11px;font-weight:600;padding:5px 13px;border-radius:18px;}
         /* Floating dropdown panel (template picker, similar popovers) */
         .cf-popover{position:absolute;top:100%;left:0;z-index:100;background:var(--bgCard);
           border:1px solid var(--border);border-radius:10px;padding:6px;min-width:200px;
@@ -1565,6 +1568,11 @@ document.addEventListener('DOMContentLoaded',function(){
           color:var(--amber);outline:2px solid var(--amber);}
         .month-pill-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;
           border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
+        /* Edge-scroll fade: hints that more months sit off-screen on the
+           horizontally-scrolling mobile month strip. */
+        .month-picker-fade{position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:1;}
+        .month-picker-fade--left{left:0;background:linear-gradient(to right,var(--bg),transparent);}
+        .month-picker-fade--right{right:0;background:linear-gradient(to left,var(--bg),transparent);}
         body{margin:0;background:var(--bg);scrollbar-gutter:stable;
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
@@ -1602,6 +1610,12 @@ document.addEventListener('DOMContentLoaded',function(){
           .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
+          .alert-row{transition:opacity 0.15s;}
+          .alert-row:hover{opacity:0.8;}
+          .daily-row-btn{transition:background 0.1s;}
+          .daily-row-btn:hover{background:rgba(47,84,150,0.06);}
+          .ctx-menu-item{transition:background 0.1s;}
+          .ctx-menu-item:hover{background:var(--stripe);}
         }
         .chart-toggle-btn{font-size:10px;font-weight:700;min-width:34px;min-height:34px;
           padding:2px 8px;border-radius:5px;border:none;cursor:pointer;letter-spacing:0.04em;
@@ -1674,6 +1688,22 @@ document.addEventListener('DOMContentLoaded',function(){
           .cf-quickfab{display:none!important;}
           .cf-quickfab-panel{display:none!important;}
           .cf-quickfab-menu{display:none!important;}
+        }
+        /* Landscape phones: width-based breakpoints (≤768px) don't fire on a
+           landscape phone (~740-900px wide), so KPI grids etc. keep their
+           wide-layout column count — correctly, they fit. But the FAB is
+           anchored to the viewport bottom by fixed pixels, and a ~390px-tall
+           viewport is short enough that unscrolled content already reaches
+           down to where it sits, permanently covering whatever's there (e.g.
+           the last KPI card). Shrink + dim it so covered content stays
+           legible; full opacity returns the moment it's opened. */
+        @media (max-height:480px) and (pointer:coarse){
+          /* Size/opacity only — leave the bottom-nav-clearance offset (set in
+             the pointer:coarse block above) alone, or the FAB collides with
+             the nav bar instead of just page content. */
+          .cf-quickfab{width:44px!important;height:44px!important;font-size:20px!important;
+            opacity:0.55;}
+          .cf-quickfab[data-active="true"]{opacity:1;}
         }
         /* FAB: touch devices only, thumb-reach primary action */
         .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
@@ -2117,17 +2147,19 @@ document.addEventListener('DOMContentLoaded',function(){
     {
       onClick: onCSV,
       title: "Export to CSV",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6 }
+      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
     },
-    "\u2B07 CSV"
+    /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+    "CSV"
   ), onPrint && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onPrint,
       title: "Print / Save as PDF",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6 }
+      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
     },
-    "\u{1F5A8} PDF"
+    /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
+    "PDF"
   ));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
@@ -2467,8 +2499,8 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "cf-fab-menu-btn",
         role: "menuitem"
       },
-      /* @__PURE__ */ React.createElement("span", null, "\u2B06"),
-      " Import CSV"
+      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }),
+      "Import CSV"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -2511,7 +2543,8 @@ document.addEventListener('DOMContentLoaded',function(){
         "aria-haspopup": "menu",
         className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }
       },
-      "\u{1F4CB} Templates ",
+      /* @__PURE__ */ React.createElement(Icon, { name: "clipboard", size: 13 }),
+      "Templates ",
       open ? "\u25B2" : "\u25BC"
     ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
@@ -2542,13 +2575,37 @@ document.addEventListener('DOMContentLoaded',function(){
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
+    // Edge-scroll fade: on mobile the strip scrolls horizontally with no
+    // visible scrollbar, so nothing hints that more months sit off-screen.
+    // Recomputed on scroll and on resize/value change (month pills reflow at
+    // some widths).
+    const [fade, setFade] = useState({ left: false, right: false });
+    const updateFade = () => {
+      const el = stripRef.current;
+      if (!el) return;
+      setFade({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+      });
+    };
     useEffect(() => {
       const el = stripRef.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }, [value]);
-    return /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", style: { display: "flex", gap: 6, marginBottom: noMargin ? 0 : 20, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
+    useEffect(() => {
+      const el = stripRef.current;
+      if (!el) return;
+      updateFade();
+      el.addEventListener("scroll", updateFade, { passive: true });
+      window.addEventListener("resize", updateFade);
+      return () => {
+        el.removeEventListener("scroll", updateFade);
+        window.removeEventListener("resize", updateFade);
+      };
+    }, [value, matchingMonths]);
+    return /* @__PURE__ */ React.createElement("div", { style: { position: "relative", marginBottom: noMargin ? 0 : 20 } }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "month-nav-arrow",
@@ -2606,7 +2663,7 @@ document.addEventListener('DOMContentLoaded',function(){
       },
       "+ Add ",
       nextYear
-    ));
+    )));
   };
   const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap: 2 } }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
@@ -2622,21 +2679,17 @@ document.addEventListener('DOMContentLoaded',function(){
   )));
   // Base look lives in .cf-pill; explicitly-passed size props remain inline
   // overrides for the compact dashboard variants.
-  const PillToggle = ({ options, value, onChange, gap = 6, fontSize, fontWeight, padding, borderRadius }) => {
-    const override = {};
-    if (fontSize !== void 0) override.fontSize = fontSize;
-    if (fontWeight !== void 0) override.fontWeight = fontWeight;
-    if (padding !== void 0) override.padding = padding;
-    if (borderRadius !== void 0) override.borderRadius = borderRadius;
-    const hasOverride = Object.keys(override).length > 0;
+  // size="sm" applies the .cf-pill--sm modifier — used where the toggle docks
+  // into a tight card header (YoY metric, shared-view) instead of one-off
+  // fontSize/padding/borderRadius overrides per call site.
+  const PillToggle = ({ options, value, onChange, gap = 6, size }) => {
     return /* @__PURE__ */ React.createElement("div", { role: "group", style: { display: "flex", gap, flexWrap: "wrap", alignItems: "center" } }, options.map((o) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: o.id,
         onClick: () => onChange(o.id),
-        className: "cf-pill",
-        "aria-pressed": value === o.id,
-        style: hasOverride ? override : void 0
+        className: "cf-pill" + (size === "sm" ? " cf-pill--sm" : ""),
+        "aria-pressed": value === o.id
       },
       o.label
     )));
@@ -2948,8 +3001,11 @@ document.addEventListener('DOMContentLoaded',function(){
       cursor: "pointer",
       marginLeft: "auto",
       background: "transparent",
-      color: "var(--textMid)"
-    } }, "\u{1F4BE} Save as Template")));
+      color: "var(--textMid)",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template")));
   }
   function CSVImporter({ categories, onImport, onClose }) {
     const [rows, setRows] = useState([]);
@@ -3316,6 +3372,7 @@ document.addEventListener('DOMContentLoaded',function(){
               item.action();
               onClose();
             },
+            className: "ctx-menu-item",
             style: {
               fontSize: 13,
               padding: "9px 16px",
@@ -3327,11 +3384,8 @@ document.addEventListener('DOMContentLoaded',function(){
               color: item.danger ? "var(--red)" : "var(--text)",
               display: "flex",
               alignItems: "center",
-              gap: 10,
-              transition: "background 0.1s"
-            },
-            onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
-            onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+              gap: 10
+            }
           },
           /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, width: 18, textAlign: "center" } }, item.icon),
           item.label
@@ -3508,11 +3562,13 @@ document.addEventListener('DOMContentLoaded',function(){
       setEditing(null);
     };
     useEffect(() => {
-      window.__regOpenNew = openNew;
-      window.__regOpenCSV = () => setShowCSV((v) => !v);
+      const onNew = () => openNew();
+      const onCSV = () => setShowCSV((v) => !v);
+      window.addEventListener("cf:reg-open-new", onNew);
+      window.addEventListener("cf:reg-open-csv", onCSV);
       return () => {
-        delete window.__regOpenNew;
-        delete window.__regOpenCSV;
+        window.removeEventListener("cf:reg-open-new", onNew);
+        window.removeEventListener("cf:reg-open-csv", onCSV);
       };
     }, []);
     const doCopy = (e) => {
@@ -3751,7 +3807,7 @@ document.addEventListener('DOMContentLoaded',function(){
       border: "1px solid var(--amber)",
       width: "100%",
       marginTop: 6
-    } }, '\u{1F50D} Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -4012,7 +4068,7 @@ document.addEventListener('DOMContentLoaded',function(){
       },
       selIds.has(e.id) ? "\u2713" : ""
     )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}",
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, style: { color: "var(--textLt)" } }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
@@ -4118,7 +4174,7 @@ document.addEventListener('DOMContentLoaded',function(){
         } }, e.notes))
       );
     }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}",
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, style: { color: "var(--textLt)" } }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
@@ -4248,6 +4304,58 @@ document.addEventListener('DOMContentLoaded',function(){
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 19V13l5-5 5 3 6-6v14z", fill: "currentColor", fillOpacity: 0.25 }), /* @__PURE__ */ React.createElement("polyline", { points: "4,13 9,8 14,11 20,5" }));
       case "chart-pie":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 8 }), /* @__PURE__ */ React.createElement("path", { d: "M12 4v8l6 5" }));
+      case "chart-down":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "3,7 9,13 13,9 21,17" }), /* @__PURE__ */ React.createElement("polyline", { points: "15,17 21,17 21,11" }));
+      case "user":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 8, r: 4 }), /* @__PURE__ */ React.createElement("path", { d: "M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" }));
+      case "users":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 9, cy: 8, r: 3.2 }), /* @__PURE__ */ React.createElement("path", { d: "M2.5 21c0-3.9 2.9-6 6.5-6s6.5 2.1 6.5 6" }), /* @__PURE__ */ React.createElement("path", { d: "M16 8.5a2.7 2.7 0 1 0 0-5.4" }), /* @__PURE__ */ React.createElement("path", { d: "M17.5 15c2.6.4 4 2 4 6" }));
+      case "key":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 7, cy: 17, r: 4 }), /* @__PURE__ */ React.createElement("path", { d: "M9.5 14.5 20 4" }), /* @__PURE__ */ React.createElement("path", { d: "M17 7l3 3" }), /* @__PURE__ */ React.createElement("path", { d: "M14 10l2 2" }));
+      case "lock":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 5, y: 11, width: 14, height: 10, rx: 2 }), /* @__PURE__ */ React.createElement("path", { d: "M8 11V7a4 4 0 0 1 8 0v4" }));
+      case "keyboard":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 6, width: 20, height: 13, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 10, x2: 6.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 10, y1: 10, x2: 10.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 14, y1: 10, x2: 14.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 10, x2: 18.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 7, y1: 15, x2: 17, y2: 15 }));
+      case "download":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3v12" }), /* @__PURE__ */ React.createElement("polyline", { points: "7,10 12,15 17,10" }), /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 21, x2: 19, y2: 21 }));
+      case "upload":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 15V3" }), /* @__PURE__ */ React.createElement("polyline", { points: "7,8 12,3 17,8" }), /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 21, x2: 19, y2: 21 }));
+      case "log-out":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" }), /* @__PURE__ */ React.createElement("polyline", { points: "16,17 21,12 16,7" }), /* @__PURE__ */ React.createElement("line", { x1: 21, y1: 12, x2: 9, y2: 12 }));
+      case "clipboard":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 6, y: 4, width: 12, height: 16, rx: 2 }), /* @__PURE__ */ React.createElement("rect", { x: 9, y: 2, width: 6, height: 4, rx: 1 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 11, x2: 15, y2: 11 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 15, x2: 15, y2: 15 }));
+      case "clock":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "12,7 12,12 15.5,14" }));
+      case "trash":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 7h16" }), /* @__PURE__ */ React.createElement("path", { d: "M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" }), /* @__PURE__ */ React.createElement("path", { d: "M19 7l-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" }), /* @__PURE__ */ React.createElement("line", { x1: 10, y1: 11, x2: 10, y2: 17 }), /* @__PURE__ */ React.createElement("line", { x1: 14, y1: 11, x2: 14, y2: 17 }));
+      case "camera":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 14, r: 3.5 }));
+      case "paperclip":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M20.5 12.5 12.9 20a4.2 4.2 0 0 1-6-6l7.6-7.5a2.8 2.8 0 0 1 4 4L11 18a1.4 1.4 0 0 1-2-2l6.5-6.4" }));
+      case "eye":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }));
+      case "eye-off":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" }), /* @__PURE__ */ React.createElement("path", { d: "M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" }), /* @__PURE__ */ React.createElement("path", { d: "M14.12 14.12a3 3 0 1 1-4.24-4.24" }), /* @__PURE__ */ React.createElement("line", { x1: 1, y1: 1, x2: 23, y2: 23 }));
+      case "alert-triangle":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3 22 20H2z" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 9, x2: 12, y2: 13.5 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 16.5, r: 0.6, fill: "currentColor", stroke: "none" }));
+      case "check-circle":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "8,12.5 11,15.5 16,9" }));
+      case "printer":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9V3h12v6" }), /* @__PURE__ */ React.createElement("rect", { x: 4, y: 9, width: 16, height: 8, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 8, y: 13, width: 8, height: 6 }));
+      case "save":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("path", { d: "M8 3v6h8V3" }), /* @__PURE__ */ React.createElement("path", { d: "M8 21v-7h8v7" }));
+      case "arrow-right":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 4, y1: 12, x2: 20, y2: 12 }), /* @__PURE__ */ React.createElement("polyline", { points: "13,5 20,12 13,19" }));
+      case "party":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 21 14 9" }), /* @__PURE__ */ React.createElement("path", { d: "M15 3l1.5 2.3L19 4l-.7 2.6L21 8l-2.4.8L18 11l-2.1-1.5L14 11l.3-2.6L12 7l2.5-.8L15 3z" }), /* @__PURE__ */ React.createElement("circle", { cx: 5.5, cy: 15, r: 1, fill: "currentColor", stroke: "none" }), /* @__PURE__ */ React.createElement("circle", { cx: 9, cy: 19.5, r: 1, fill: "currentColor", stroke: "none" }));
+      case "mountain":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M3 20 9.5 7l4 6.5L16 10l5 10z" }));
+      case "snowflake":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 2, x2: 12, y2: 22 }), /* @__PURE__ */ React.createElement("line", { x1: 4.5, y1: 6.5, x2: 19.5, y2: 17.5 }), /* @__PURE__ */ React.createElement("line", { x1: 4.5, y1: 17.5, x2: 19.5, y2: 6.5 }));
+      case "banknote":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 6, width: 20, height: 12, rx: 2 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 9, x2: 6.01, y2: 9 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 15, x2: 18.01, y2: 15 }));
+      case "credit-card":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 5, width: 20, height: 14, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 2, y1: 10, x2: 22, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 15, x2: 10, y2: 15 }));
       default:
         return null;
     }
@@ -4513,7 +4621,7 @@ document.addEventListener('DOMContentLoaded',function(){
             style: { fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
           },
           "Remove"
-        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
+        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, onDelete && /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -4964,7 +5072,7 @@ document.addEventListener('DOMContentLoaded',function(){
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap"
-          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E"));
+          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, display: "inline-flex" }, title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E"));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9 } }));
           if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13", style: {
             padding: "8px 14px",
@@ -5098,7 +5206,7 @@ document.addEventListener('DOMContentLoaded',function(){
             whiteSpace: "nowrap",
             minWidth: 0
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10 }, title: "Has receipt" }, "\u{1F4CE}"), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, display: "inline-flex" }, title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: hideDayLabel ? "flex-end" : "space-between", marginTop: 4 } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", style: { fontSize: 12 } }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "mno", style: {
           fontWeight: 600,
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
@@ -5252,7 +5360,7 @@ document.addEventListener('DOMContentLoaded',function(){
         borderRadius: 8,
         padding: "8px 12px",
         marginBottom: 12
-      }, className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F449} Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
+      }, className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: dismissSwipeCoach,
@@ -5279,7 +5387,7 @@ document.addEventListener('DOMContentLoaded',function(){
         background: "var(--amberLt)",
         borderRadius: 6,
         border: "1px solid var(--amber)"
-      } }, '\u{1F50D} Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
+      } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
       /* @__PURE__ */ React.createElement("div", { className: "kpi-grid", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
       budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
         ExportBar,
@@ -5508,9 +5616,8 @@ document.addEventListener('DOMContentLoaded',function(){
             e.preventDefault();
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
           },
-          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4, cursor: "pointer", borderRadius: 6, padding: "4px 6px", width: "100%", border: "none", background: "transparent", font: "inherit", textAlign: "left" },
-          onMouseEnter: (e) => e.currentTarget.style.background = "rgba(47,84,150,0.06)",
-          onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+          className: "daily-row-btn",
+          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4, cursor: "pointer", borderRadius: 6, padding: "4px 6px", width: "100%", border: "none", background: "transparent", font: "inherit", textAlign: "left" }
         },
         /* @__PURE__ */ React.createElement("span", { style: {
           fontSize: 13,
@@ -5699,7 +5806,7 @@ document.addEventListener('DOMContentLoaded',function(){
           textAlign: "center",
           padding: "8px 0"
         } }, /* @__PURE__ */ React.createElement(EmptyState, {
-          icon: "\u{1F3AF}",
+          icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, style: { color: "var(--textLt)" } }),
           message: "No budget lines yet. Track a category against a monthly target.",
           actionLabel: "+ Add Budget Line",
           onAction: () => {
@@ -5819,7 +5926,7 @@ document.addEventListener('DOMContentLoaded',function(){
       letterSpacing: "0.12em",
       textTransform: "uppercase",
       color: "var(--textLt)"
-    } }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, '\u{1F50D} Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
+    } }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", padding: "6px 10px", background: "var(--amberLt)", borderRadius: 6, border: "1px solid var(--amber)", marginTop: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "var(--amberLt)", border: "1px solid var(--amber)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--amber)", marginBottom: 4 } }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { style: { textAlign: "center", color: "var(--textLt)" } }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onCSV: () => {
@@ -5872,7 +5979,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if (done) return null;
     const steps = [
       // Step 0: Opening balance
-      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B0}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 20 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12, color: "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 20 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -5899,7 +6006,7 @@ document.addEventListener('DOMContentLoaded',function(){
         setStep(1);
       }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 700, padding: "10px 28px" } }, "Next \u2192"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDone(true), className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "10px 18px" } }, "Skip"))),
       // Step 1: First income
-      /* @__PURE__ */ React.createElement("div", { key: "s1" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B5}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first income"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's your main source of income? (e.g. "Payroll")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s1" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12, color: "var(--greenDk)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first income"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's your main source of income? (e.g. "Payroll")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           placeholder: "Description e.g. Payroll",
@@ -5954,7 +6061,7 @@ document.addEventListener('DOMContentLoaded',function(){
         setStep(2);
       }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 700, padding: "10px 28px" } }, income.desc.trim() && income.amount ? "Next \u2192" : "Skip \u2192"))),
       // Step 2: First expense
-      /* @__PURE__ */ React.createElement("div", { key: "s2" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 32, textAlign: "center", marginBottom: 12 } }, "\u{1F4B3}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first expense"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's a recurring expense? (e.g. "Mortgage", "Rent")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s2" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12, color: "var(--red)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 34 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: "center", marginBottom: 8 } }, "Add your first expense"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20 } }, `What's a recurring expense? (e.g. "Mortgage", "Rent")`), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxWidth: 280, margin: "0 auto 20px" } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           placeholder: "Description e.g. Mortgage",
@@ -6050,7 +6157,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
     if (!alerts.length) return null;
     const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--redLt)", border: "1px solid var(--red)", borderRadius: 10, padding: "12px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F6A8}"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--red)" } }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: "var(--red)" } }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
+    return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--redLt)", border: "1px solid var(--red)", borderRadius: 10, padding: "12px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--red)" } }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { style: { fontFamily: "'IBM Plex Mono',monospace", color: "var(--red)" } }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -6301,14 +6408,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     };
     const sectionIcon = {
-      "Executive Summary": "\u{1F4CA}",
-      "Income Analysis": "\u{1F4B0}",
-      "Spending Analysis": "\u{1F4C9}",
-      "Debt Management": "\u{1F4B3}",
-      "Savings Goals": "\u{1F3AF}",
-      "Budget Performance": "\u{1F3AF}",
-      "Cash Flow & Risk": "\u26A0\uFE0F",
-      "Priority Action Items": "\u2705"
+      "Executive Summary": "chart-bar",
+      "Income Analysis": "banknote",
+      "Spending Analysis": "chart-down",
+      "Debt Management": "credit-card",
+      "Savings Goals": "target",
+      "Budget Performance": "target",
+      "Cash Flow & Risk": "alert-triangle",
+      "Priority Action Items": "check-circle"
     };
     const sectionColor = {
       "Executive Summary": "var(--primary)",
@@ -6385,10 +6492,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       display: "flex",
       alignItems: "center",
       gap: 12
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => window.__cfSetTab && window.__cfSetTab("settings"),
+        onClick: () => window.dispatchEvent(new CustomEvent("cf:goto-tab", { detail: { tab: "settings" } })),
         style: {
           fontSize: 13,
           fontWeight: 700,
@@ -6401,7 +6508,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       "Settings \u2192 General"
-    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 12, display: "flex", alignItems: "flex-start", gap: 6 } }, /* @__PURE__ */ React.createElement("span", null, "🔑"), /* @__PURE__ */ React.createElement("span", null, "Running this sends your budget data and API key straight to Anthropic from your browser.")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 12, display: "flex", alignItems: "flex-start", gap: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { flexShrink: 0, marginTop: 1 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Running this sends your budget data and API key straight to Anthropic from your browser.")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: runAssessment,
@@ -6485,7 +6592,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       marginBottom: 14,
       paddingBottom: 12,
       borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20 } }, sectionIcon[section.title] || "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: {
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 15,
       fontWeight: 700,
       color: sectionColor[section.title] || "var(--primary)"
@@ -6565,20 +6672,20 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       textAlign: "center",
       padding: "12px 0 4px",
       lineHeight: 1.5
-    } }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")), !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "40px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 48, marginBottom: 16 } }, "\u2726"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 8 } }, "Ready to analyse your finances"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto", marginBottom: 24 } }, "Enter your Anthropic API key above and click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 600, margin: "0 auto" } }, [
-      { icon: "\u{1F4CA}", label: "Executive Summary" },
-      { icon: "\u{1F4B0}", label: "Income Analysis" },
-      { icon: "\u{1F4C9}", label: "Spending Analysis" },
-      { icon: "\u{1F4B3}", label: "Debt Management" },
-      { icon: "\u{1F3AF}", label: "Budget vs Actual" },
-      { icon: "\u2705", label: "Priority Actions" }
+    } }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")), !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "40px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 16, color: "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 8 } }, "Ready to analyse your finances"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto", marginBottom: 24 } }, "Enter your Anthropic API key above and click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 600, margin: "0 auto" } }, [
+      { icon: "chart-bar", label: "Executive Summary" },
+      { icon: "banknote", label: "Income Analysis" },
+      { icon: "chart-down", label: "Spending Analysis" },
+      { icon: "credit-card", label: "Debt Management" },
+      { icon: "target", label: "Budget vs Actual" },
+      { icon: "check-circle", label: "Priority Actions" }
     ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, style: {
       padding: "14px 12px",
       background: "var(--bg)",
       borderRadius: 10,
       border: "1px solid var(--border)",
       textAlign: "center"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, marginBottom: 6 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--textMid)" } }, label)))))));
+    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 6, color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--textMid)" } }, label)))))));
   }
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
@@ -7104,7 +7211,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const sn = simulateDebtStrategy(simDebts, extra, "snowball");
         const base = simulateDebtStrategy(simDebts, 0, "avalanche");
         if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 14 } }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
-        const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 220px", background: "var(--stripe)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 } }, icon, " ", title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginBottom: 10 } }, sub), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Total interest"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", lineHeight: 1.7 } }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
+        const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 220px", background: "var(--stripe)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginBottom: 10 } }, sub), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Total interest"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textMid)" } }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", lineHeight: 1.7 } }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
         return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
@@ -7121,7 +7228,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               outline: "none"
             }
           }
-        ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "\u{1F3D4}", sub: "Highest interest rate first \u2014 mathematically optimal", r: av }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "\u26C4", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 8 } }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
+        ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 8 } }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
       })(), debtCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
@@ -7132,7 +7239,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             { icon: "\u270E", label: "Edit entry", action: () => editDebtRow(debtCtx.key, debtCtx.label) },
             "---",
             {
-              icon: debtCtx.isAuto ? "\u{1F441}" : "\u2715",
+              icon: debtCtx.isAuto ? /* @__PURE__ */ React.createElement(Icon, { name: "eye", size: 15 }) : "\u2715",
               label: debtCtx.isAuto ? "Hide from tracker" : "Remove entry",
               action: () => removeRow(debtCtx.key, debtCtx.isAuto),
               danger: true
@@ -7511,7 +7618,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amber)"}33`,
           borderRadius: 20,
           padding: "7px 14px"
-        } }, /* @__PURE__ */ React.createElement("span", null, e.type === "expense" ? "\u{1F389}" : "\u26A0"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
+        } }, /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", display: "inline-flex" } }, e.type === "expense" ? /* @__PURE__ */ React.createElement(Icon, { name: "party", size: 15 }) : /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 15 })), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--text)" } }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
       })()),
       upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
@@ -7958,7 +8065,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.18)"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px", position: "sticky", right: 0, background: "var(--navy)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }))))))
       ))),
-      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 16 }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 28 } }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
           key: yc.year,
@@ -7982,7 +8089,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const prev = annualRows[i - 1];
         const delta = prev ? row.surplus - prev.surplus : null;
         return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
-      }))))) : /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, "\u{1F4C5} Add a second year to unlock the Year-over-Year comparison.")))
+      }))))) : /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 14, style: { color: "var(--textLt)", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, "Add a second year to unlock the Year-over-Year comparison.")))
     };
     const loadSampleData = () => {
       const y = activeYear;
@@ -8095,7 +8202,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         categories,
         setTab
       }
-    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 20 })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const out = [];
@@ -8136,8 +8243,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       {
         type: "button",
         onClick: () => {
-          window.__cfGoBudgetSub ? window.__cfGoBudgetSub("forecast") : setTab("budget");
+          window.dispatchEvent(new CustomEvent("cf:goto-budget-sub", { detail: { sub: "forecast" } }));
         },
+        className: "alert-row",
         style: {
           display: "flex",
           alignItems: "center",
@@ -8150,13 +8258,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           font: "inherit",
           textAlign: "left",
           background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`,
-          transition: "opacity 0.15s"
-        },
-        onMouseEnter: (e) => e.currentTarget.style.opacity = "0.8",
-        onMouseLeave: (e) => e.currentTarget.style.opacity = "1"
+          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`
+        }
       },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, ev.balance < 0 ? "\u{1F6A8}" : "\u26A0\uFE0F"),
+      /* @__PURE__ */ React.createElement("span", { style: { color: ev.balance < 0 ? "var(--red)" : "var(--amber)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
       /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, ev.desc), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
       /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: {
         fontFamily: "'IBM Plex Mono',monospace",
@@ -8166,21 +8271,27 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "\u2192 Forecast")
     );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F514}"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       fontWeight: 700,
       color: "var(--red)",
       textTransform: "uppercase",
       letterSpacing: "0.1em",
-      marginBottom: 10
-    } }, "\u{1F6A8} Critical \u2014 Balance goes negative"), critical.map((ev, i) => renderAlertRow(ev, i))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: {
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev, i) => renderAlertRow(ev, i))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       fontWeight: 700,
       color: "var(--amber)",
       textTransform: "uppercase",
       letterSpacing: "0.1em",
-      marginBottom: 10
-    } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
@@ -8428,11 +8539,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       maxWidth: "100%",
       overflowX: "auto"
     }, className: "settings-page-pills" }, [
-      { id: "general", label: "\u2699  General" },
-      { id: "household", label: "\u{1F46A} Household" },
-      { id: "templates", label: "\u{1F4CB} Templates" },
-      { id: "audit", label: "\u{1F550} Audit" }
-    ].map(({ id, label }) => /* @__PURE__ */ React.createElement(
+      { id: "general", icon: "settings", label: "General" },
+      { id: "household", icon: "users", label: "Household" },
+      { id: "templates", icon: "clipboard", label: "Templates" },
+      { id: "audit", icon: "clock", label: "Audit" }
+    ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: id,
@@ -8447,11 +8558,15 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           whiteSpace: "nowrap",
           flexShrink: 0,
           transition: "all 0.15s",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 7,
           background: settingsPage === id ? "var(--bgCard)" : "transparent",
           color: settingsPage === id ? "var(--text)" : "var(--textMid)",
           boxShadow: settingsPage === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none"
         }
       },
+      /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
     ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks", style: {
       display: "flex",
@@ -8545,7 +8660,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", null, "🔑"), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", { style: { flexShrink: 0, marginTop: 1 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -8667,7 +8782,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       a.download = `CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
-    }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, "\u2B07 Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, "\u2B06 Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", style: { display: "none" }, onChange: (e) => {
+    }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", style: { display: "none" }, onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -8714,17 +8829,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       {
         onClick: () => houseSave(false),
         disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }
       },
-      "\u2b06 Save Now"
+      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 12 }),
+      "Save Now"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => houseLoad(),
         disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }
       },
-      "\u2b07 Reload from Cloud"
+      /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+      "Reload from Cloud"
     ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -8930,9 +9047,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "button",
       {
         onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger", style: { padding: "9px 20px", border: "1px solid var(--red)" }
+        className: "cf-btn cf-btn--danger", style: { padding: "9px 20px", border: "1px solid var(--red)", display: "inline-flex", alignItems: "center", gap: 6 }
       },
-      "\u{1F5D1} Reset Local Cache"
+      /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
+      "Reset Local Cache"
     ), confirmWipe && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
@@ -9242,27 +9360,53 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     } catch (err) {
     }
   }
+  // Small FIFO queue (max 3) so a save-error toast can't be silently
+  // overwritten by a routine success toast landing a moment later — each
+  // queued message gets its own dwell time before the next one shows.
+  // Errors dwell longer and are never dropped to make room; if the queue is
+  // full, the oldest non-error message is bumped first.
   function FeedbackToast() {
-    const [t, setT] = useState(null);
+    const [queue, setQueue] = useState([]);
     const timer = useRef(null);
     useEffect(() => {
       const h = (e) => {
-        setT(e.detail);
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => setT(null), 3200);
+        setQueue((prev) => {
+          const next = [...prev, e.detail];
+          if (next.length > 3) {
+            const idx = next.findIndex((x) => x.kind !== "error");
+            next.splice(idx >= 0 ? idx : 0, 1);
+          }
+          return next;
+        });
       };
       window.addEventListener("cf:toast", h);
-      return () => {
-        window.removeEventListener("cf:toast", h);
-        if (timer.current) clearTimeout(timer.current);
-      };
+      return () => window.removeEventListener("cf:toast", h);
     }, []);
+    useEffect(() => {
+      if (!queue.length || timer.current) return;
+      const dur = queue[0].kind === "error" ? 4500 : 3200;
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        setQueue((prev) => prev.slice(1));
+      }, dur);
+    }, [queue]);
+    useEffect(() => () => {
+      if (timer.current) clearTimeout(timer.current);
+    }, []);
+    const t = queue[0];
     if (!t) return null;
+    const dismiss = () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      setQueue((prev) => prev.slice(1));
+    };
     return /* @__PURE__ */ React.createElement(
       "div",
       {
         role: "status",
-        onClick: () => setT(null),
+        onClick: dismiss,
         style: {
           position: "fixed",
           left: "50%",
@@ -9284,7 +9428,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message
+      t.message,
+      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.7, fontWeight: 400, flexShrink: 0 } }, "+", queue.length - 1)
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -9557,11 +9702,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           border: "none",
           cursor: "pointer",
           color: "var(--textLt)",
-          fontSize: 16,
-          padding: 4
+          padding: 4,
+          display: "inline-flex"
         }
       },
-      showPw ? "\u{1F648}" : "\u{1F441}"
+      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
     ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -9668,9 +9813,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      fontSize: 28,
+      color: "var(--accent)",
       margin: "0 auto 16px"
-    } }, "🔓"), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -9758,11 +9903,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           border: "none",
           cursor: "pointer",
           color: "var(--textLt)",
-          fontSize: 16,
-          padding: 4
+          padding: 4,
+          display: "inline-flex"
         }
       },
-      showPw ? "🙈" : "👁"
+      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
     )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -10185,13 +10330,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     }, [tab, budgetSub]);
     useEffect(() => {
-      window.__cfGoBudgetSub = (s) => {
+      const h = (e) => {
         setTab("budget");
-        setBudgetSub(s);
+        if (e.detail && e.detail.sub) setBudgetSub(e.detail.sub);
       };
-      return () => {
-        delete window.__cfGoBudgetSub;
+      window.addEventListener("cf:goto-budget-sub", h);
+      return () => window.removeEventListener("cf:goto-budget-sub", h);
+    }, []);
+    useEffect(() => {
+      const h = (e) => {
+        if (e.detail && e.detail.tab) setTab(e.detail.tab);
       };
+      window.addEventListener("cf:goto-tab", h);
+      return () => window.removeEventListener("cf:goto-tab", h);
     }, []);
     useEffect(() => {
       const trap = (e) => {
@@ -10309,12 +10460,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
-    useEffect(() => {
-      window.__cfSetTab = setTab;
-      return () => {
-        delete window.__cfSetTab;
-      };
-    }, [setTab]);
     const [undoStack, setUndoStack] = useState([]);
     const pushUndo = (e) => setUndoStack((prev) => [...prev.slice(-9), e]);
     const [showHelp, setShowHelp] = useState(false);
@@ -10504,7 +10649,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         if (fine) {
           setTab("budget");
           setBudgetSub("entries");
-          setTimeout(() => window.__regOpenNew && window.__regOpenNew(), 50);
+          setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
         } else {
           setFabOpen(true);
         }
@@ -10832,23 +10977,23 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         textOverflow: "ellipsis",
         whiteSpace: "nowrap"
       } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
-        { label: "Edit Profile", icon: "\u{1F464}", action: () => {
+        { label: "Edit Profile", icon: "user", action: () => {
           setPf({ fullName: (sessionUser == null ? void 0 : sessionUser.fullName) || "", email: (sessionUser == null ? void 0 : sessionUser.email) || "" });
           setPfErr("");
           setPfOk("");
           setProfileForm("profile");
         } },
-        { label: "Change Password", icon: "\u{1F511}", action: () => {
+        { label: "Change Password", icon: "key", action: () => {
           setPwf({ current: "", next: "", confirm: "" });
           setPfErr("");
           setPfOk("");
           setProfileForm("password");
         } },
-        { label: "Settings", icon: "\u2699", action: () => {
+        { label: "Settings", icon: "settings", action: () => {
           setMenuOpen(false);
           setTab("settings");
         } },
-        ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
+        ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "lock", action: () => {
           setMenuOpen(false);
           setTab("settings");
           setTimeout(() => {
@@ -10856,11 +11001,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 150);
         } }] : [],
-        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
+        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
           setMenuOpen(false);
           setShowHelp(true);
         } }],
-        ...showInstall ? [{ label: "Install App", icon: "\u2B07", action: () => {
+        ...showInstall ? [{ label: "Install App", icon: "download", action: () => {
           setMenuOpen(false);
           doInstall();
         } }] : []
@@ -10872,7 +11017,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "cf-menu-item",
           style: { borderBottom: "1px solid var(--border)" }
         },
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, item.icon),
+        /* @__PURE__ */ React.createElement(Icon, { name: item.icon, size: 16 }),
         item.label
       )), /* @__PURE__ */ React.createElement(
         "button",
@@ -10884,7 +11029,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           "aria-label": "Sign out",
           className: "cf-menu-item cf-menu-item--danger"
         },
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u{1F6AA}"),
+        /* @__PURE__ */ React.createElement(Icon, { name: "log-out", size: 16 }),
         "Sign out"
       ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
         padding: 28,
@@ -10989,15 +11134,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       padding: "1px 6px",
       fontSize: 10,
       fontWeight: 700
-    } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { style: {
+    } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", style: {
       marginLeft: 5,
-      background: C.amber,
-      color: C.navy,
-      borderRadius: 10,
-      padding: "1px 5px",
-      fontSize: 9,
-      fontWeight: 700
-    } }, "\u{1F50D}"))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { style: {
+      display: "inline-flex",
+      color: C.amber
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { style: {
       position: "fixed",
       bottom: 80,
       left: "50%",
@@ -11012,7 +11153,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       maxWidth: 340,
       width: "calc(100vw - 32px)",
       boxShadow: "var(--shadowLg)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 6 } }, "\u{1F4BE} Time for a backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 14, lineHeight: 1.5 } }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15 }), "Time for a backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 14, lineHeight: 1.5 } }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(false),
@@ -11253,11 +11394,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         },
         onImportCSV: () => {
           if (budgetSub === "entries") {
-            window.__regOpenCSV && window.__regOpenCSV();
+            window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
           } else {
             setBudgetSub("entries");
             setTimeout(() => {
-              window.__regOpenCSV && window.__regOpenCSV();
+              window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
             }, 0);
           }
         }

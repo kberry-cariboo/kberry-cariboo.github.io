@@ -10,8 +10,9 @@
       {
         type: "button",
         onClick: () => {
-          window.__cfGoBudgetSub ? window.__cfGoBudgetSub("forecast") : setTab("budget");
+          window.dispatchEvent(new CustomEvent("cf:goto-budget-sub", { detail: { sub: "forecast" } }));
         },
+        className: "alert-row",
         style: {
           display: "flex",
           alignItems: "center",
@@ -24,13 +25,10 @@
           font: "inherit",
           textAlign: "left",
           background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`,
-          transition: "opacity 0.15s"
-        },
-        onMouseEnter: (e) => e.currentTarget.style.opacity = "0.8",
-        onMouseLeave: (e) => e.currentTarget.style.opacity = "1"
+          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`
+        }
       },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, ev.balance < 0 ? "\u{1F6A8}" : "\u26A0\uFE0F"),
+      /* @__PURE__ */ React.createElement("span", { style: { color: ev.balance < 0 ? "var(--red)" : "var(--amber)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
       /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" } }, ev.desc), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
       /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { style: {
         fontFamily: "'IBM Plex Mono',monospace",
@@ -40,21 +38,27 @@
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)" } }, "\u2192 Forecast")
     );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 24 } }, "\u{1F514}"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u2705"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginTop: 2 } }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold)))), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "32px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 6 } }, "All clear!"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)" } }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       fontWeight: 700,
       color: "var(--red)",
       textTransform: "uppercase",
       letterSpacing: "0.1em",
-      marginBottom: 10
-    } }, "\u{1F6A8} Critical \u2014 Balance goes negative"), critical.map((ev, i) => renderAlertRow(ev, i))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: {
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev, i) => renderAlertRow(ev, i))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 12,
       fontWeight: 700,
       color: "var(--amber)",
       textTransform: "uppercase",
       letterSpacing: "0.1em",
-      marginBottom: 10
-    } }, "\u26A0 Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
@@ -302,11 +306,11 @@
       maxWidth: "100%",
       overflowX: "auto"
     }, className: "settings-page-pills" }, [
-      { id: "general", label: "\u2699  General" },
-      { id: "household", label: "\u{1F46A} Household" },
-      { id: "templates", label: "\u{1F4CB} Templates" },
-      { id: "audit", label: "\u{1F550} Audit" }
-    ].map(({ id, label }) => /* @__PURE__ */ React.createElement(
+      { id: "general", icon: "settings", label: "General" },
+      { id: "household", icon: "users", label: "Household" },
+      { id: "templates", icon: "clipboard", label: "Templates" },
+      { id: "audit", icon: "clock", label: "Audit" }
+    ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: id,
@@ -321,11 +325,15 @@
           whiteSpace: "nowrap",
           flexShrink: 0,
           transition: "all 0.15s",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 7,
           background: settingsPage === id ? "var(--bgCard)" : "transparent",
           color: settingsPage === id ? "var(--text)" : "var(--textMid)",
           boxShadow: settingsPage === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none"
         }
       },
+      /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
     ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks", style: {
       display: "flex",
@@ -419,7 +427,7 @@
         }
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", null, "🔑"), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", { style: { flexShrink: 0, marginTop: 1 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("label", { style: lbl, htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "var(--textMid)" } }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -541,7 +549,7 @@
       a.download = `CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
-    }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, "\u2B07 Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, "\u2B06 Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", style: { display: "none" }, onChange: (e) => {
+    }, className: "cf-btn cf-btn--primary", style: { fontSize: 13, fontWeight: 600, padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary", style: { padding: "9px 20px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", style: { display: "none" }, onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -588,17 +596,19 @@
       {
         onClick: () => houseSave(false),
         disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }
       },
-      "\u2b06 Save Now"
+      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 12 }),
+      "Save Now"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => houseLoad(),
         disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6 }
+        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }
       },
-      "\u2b07 Reload from Cloud"
+      /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+      "Reload from Cloud"
     ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", marginBottom: 14 } }, "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -804,9 +814,10 @@
       "button",
       {
         onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger", style: { padding: "9px 20px", border: "1px solid var(--red)" }
+        className: "cf-btn cf-btn--danger", style: { padding: "9px 20px", border: "1px solid var(--red)", display: "inline-flex", alignItems: "center", gap: 6 }
       },
-      "\u{1F5D1} Reset Local Cache"
+      /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
+      "Reset Local Cache"
     ), confirmWipe && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {

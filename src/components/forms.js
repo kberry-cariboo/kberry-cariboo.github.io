@@ -256,8 +256,11 @@
       cursor: "pointer",
       marginLeft: "auto",
       background: "transparent",
-      color: "var(--textMid)"
-    } }, "\u{1F4BE} Save as Template")));
+      color: "var(--textMid)",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template")));
   }
   function CSVImporter({ categories, onImport, onClose }) {
     const [rows, setRows] = useState([]);
@@ -624,6 +627,7 @@
               item.action();
               onClose();
             },
+            className: "ctx-menu-item",
             style: {
               fontSize: 13,
               padding: "9px 16px",
@@ -635,11 +639,8 @@
               color: item.danger ? "var(--red)" : "var(--text)",
               display: "flex",
               alignItems: "center",
-              gap: 10,
-              transition: "background 0.1s"
-            },
-            onMouseEnter: (e) => e.currentTarget.style.background = "var(--stripe)",
-            onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+              gap: 10
+            }
           },
           /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, width: 18, textAlign: "center" } }, item.icon),
           item.label

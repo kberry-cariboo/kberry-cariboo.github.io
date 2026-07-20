@@ -99,6 +99,58 @@
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 19V13l5-5 5 3 6-6v14z", fill: "currentColor", fillOpacity: 0.25 }), /* @__PURE__ */ React.createElement("polyline", { points: "4,13 9,8 14,11 20,5" }));
       case "chart-pie":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 8 }), /* @__PURE__ */ React.createElement("path", { d: "M12 4v8l6 5" }));
+      case "chart-down":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "3,7 9,13 13,9 21,17" }), /* @__PURE__ */ React.createElement("polyline", { points: "15,17 21,17 21,11" }));
+      case "user":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 8, r: 4 }), /* @__PURE__ */ React.createElement("path", { d: "M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" }));
+      case "users":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 9, cy: 8, r: 3.2 }), /* @__PURE__ */ React.createElement("path", { d: "M2.5 21c0-3.9 2.9-6 6.5-6s6.5 2.1 6.5 6" }), /* @__PURE__ */ React.createElement("path", { d: "M16 8.5a2.7 2.7 0 1 0 0-5.4" }), /* @__PURE__ */ React.createElement("path", { d: "M17.5 15c2.6.4 4 2 4 6" }));
+      case "key":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 7, cy: 17, r: 4 }), /* @__PURE__ */ React.createElement("path", { d: "M9.5 14.5 20 4" }), /* @__PURE__ */ React.createElement("path", { d: "M17 7l3 3" }), /* @__PURE__ */ React.createElement("path", { d: "M14 10l2 2" }));
+      case "lock":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 5, y: 11, width: 14, height: 10, rx: 2 }), /* @__PURE__ */ React.createElement("path", { d: "M8 11V7a4 4 0 0 1 8 0v4" }));
+      case "keyboard":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 6, width: 20, height: 13, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 10, x2: 6.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 10, y1: 10, x2: 10.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 14, y1: 10, x2: 14.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 10, x2: 18.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 7, y1: 15, x2: 17, y2: 15 }));
+      case "download":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3v12" }), /* @__PURE__ */ React.createElement("polyline", { points: "7,10 12,15 17,10" }), /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 21, x2: 19, y2: 21 }));
+      case "upload":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 15V3" }), /* @__PURE__ */ React.createElement("polyline", { points: "7,8 12,3 17,8" }), /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 21, x2: 19, y2: 21 }));
+      case "log-out":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" }), /* @__PURE__ */ React.createElement("polyline", { points: "16,17 21,12 16,7" }), /* @__PURE__ */ React.createElement("line", { x1: 21, y1: 12, x2: 9, y2: 12 }));
+      case "clipboard":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 6, y: 4, width: 12, height: 16, rx: 2 }), /* @__PURE__ */ React.createElement("rect", { x: 9, y: 2, width: 6, height: 4, rx: 1 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 11, x2: 15, y2: 11 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 15, x2: 15, y2: 15 }));
+      case "clock":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "12,7 12,12 15.5,14" }));
+      case "trash":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 7h16" }), /* @__PURE__ */ React.createElement("path", { d: "M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" }), /* @__PURE__ */ React.createElement("path", { d: "M19 7l-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" }), /* @__PURE__ */ React.createElement("line", { x1: 10, y1: 11, x2: 10, y2: 17 }), /* @__PURE__ */ React.createElement("line", { x1: 14, y1: 11, x2: 14, y2: 17 }));
+      case "camera":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 14, r: 3.5 }));
+      case "paperclip":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M20.5 12.5 12.9 20a4.2 4.2 0 0 1-6-6l7.6-7.5a2.8 2.8 0 0 1 4 4L11 18a1.4 1.4 0 0 1-2-2l6.5-6.4" }));
+      case "eye":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }));
+      case "eye-off":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" }), /* @__PURE__ */ React.createElement("path", { d: "M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" }), /* @__PURE__ */ React.createElement("path", { d: "M14.12 14.12a3 3 0 1 1-4.24-4.24" }), /* @__PURE__ */ React.createElement("line", { x1: 1, y1: 1, x2: 23, y2: 23 }));
+      case "alert-triangle":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3 22 20H2z" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 9, x2: 12, y2: 13.5 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 16.5, r: 0.6, fill: "currentColor", stroke: "none" }));
+      case "check-circle":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "8,12.5 11,15.5 16,9" }));
+      case "printer":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9V3h12v6" }), /* @__PURE__ */ React.createElement("rect", { x: 4, y: 9, width: 16, height: 8, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 8, y: 13, width: 8, height: 6 }));
+      case "save":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("path", { d: "M8 3v6h8V3" }), /* @__PURE__ */ React.createElement("path", { d: "M8 21v-7h8v7" }));
+      case "arrow-right":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 4, y1: 12, x2: 20, y2: 12 }), /* @__PURE__ */ React.createElement("polyline", { points: "13,5 20,12 13,19" }));
+      case "party":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 21 14 9" }), /* @__PURE__ */ React.createElement("path", { d: "M15 3l1.5 2.3L19 4l-.7 2.6L21 8l-2.4.8L18 11l-2.1-1.5L14 11l.3-2.6L12 7l2.5-.8L15 3z" }), /* @__PURE__ */ React.createElement("circle", { cx: 5.5, cy: 15, r: 1, fill: "currentColor", stroke: "none" }), /* @__PURE__ */ React.createElement("circle", { cx: 9, cy: 19.5, r: 1, fill: "currentColor", stroke: "none" }));
+      case "mountain":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M3 20 9.5 7l4 6.5L16 10l5 10z" }));
+      case "snowflake":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 2, x2: 12, y2: 22 }), /* @__PURE__ */ React.createElement("line", { x1: 4.5, y1: 6.5, x2: 19.5, y2: 17.5 }), /* @__PURE__ */ React.createElement("line", { x1: 4.5, y1: 17.5, x2: 19.5, y2: 6.5 }));
+      case "banknote":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 6, width: 20, height: 12, rx: 2 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 9, x2: 6.01, y2: 9 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 15, x2: 18.01, y2: 15 }));
+      case "credit-card":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 5, width: 20, height: 14, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 2, y1: 10, x2: 22, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 15, x2: 10, y2: 15 }));
       default:
         return null;
     }
@@ -364,7 +416,7 @@
             style: { fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
           },
           "Remove"
-        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4F7} Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, "\u{1F4CE} From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
+        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, style: { display: "none" } })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, style: { display: "none" } }))))),
         /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, onDelete && /* @__PURE__ */ React.createElement(
           "button",
           {

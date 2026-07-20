@@ -461,6 +461,9 @@
         .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"]{background:var(--primary);color:#fff;}
         .cf-pill--dashed{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;
           border:1.5px dashed var(--primary);cursor:pointer;flex-shrink:0;background:transparent;color:var(--primary);}
+        /* Compact variant for pill toggles docked in a card header (YoY metric,
+           shared-view) — was two near-duplicate inline-style overrides */
+        .cf-pill--sm{font-size:11px;font-weight:600;padding:5px 13px;border-radius:18px;}
         /* Floating dropdown panel (template picker, similar popovers) */
         .cf-popover{position:absolute;top:100%;left:0;z-index:100;background:var(--bgCard);
           border:1px solid var(--border);border-radius:10px;padding:6px;min-width:200px;
@@ -475,6 +478,11 @@
           color:var(--amber);outline:2px solid var(--amber);}
         .month-pill-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;
           border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
+        /* Edge-scroll fade: hints that more months sit off-screen on the
+           horizontally-scrolling mobile month strip. */
+        .month-picker-fade{position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:1;}
+        .month-picker-fade--left{left:0;background:linear-gradient(to right,var(--bg),transparent);}
+        .month-picker-fade--right{right:0;background:linear-gradient(to left,var(--bg),transparent);}
         body{margin:0;background:var(--bg);scrollbar-gutter:stable;
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
@@ -512,6 +520,12 @@
           .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
+          .alert-row{transition:opacity 0.15s;}
+          .alert-row:hover{opacity:0.8;}
+          .daily-row-btn{transition:background 0.1s;}
+          .daily-row-btn:hover{background:rgba(47,84,150,0.06);}
+          .ctx-menu-item{transition:background 0.1s;}
+          .ctx-menu-item:hover{background:var(--stripe);}
         }
         .chart-toggle-btn{font-size:10px;font-weight:700;min-width:34px;min-height:34px;
           padding:2px 8px;border-radius:5px;border:none;cursor:pointer;letter-spacing:0.04em;
@@ -584,6 +598,22 @@
           .cf-quickfab{display:none!important;}
           .cf-quickfab-panel{display:none!important;}
           .cf-quickfab-menu{display:none!important;}
+        }
+        /* Landscape phones: width-based breakpoints (≤768px) don't fire on a
+           landscape phone (~740-900px wide), so KPI grids etc. keep their
+           wide-layout column count — correctly, they fit. But the FAB is
+           anchored to the viewport bottom by fixed pixels, and a ~390px-tall
+           viewport is short enough that unscrolled content already reaches
+           down to where it sits, permanently covering whatever's there (e.g.
+           the last KPI card). Shrink + dim it so covered content stays
+           legible; full opacity returns the moment it's opened. */
+        @media (max-height:480px) and (pointer:coarse){
+          /* Size/opacity only — leave the bottom-nav-clearance offset (set in
+             the pointer:coarse block above) alone, or the FAB collides with
+             the nav bar instead of just page content. */
+          .cf-quickfab{width:44px!important;height:44px!important;font-size:20px!important;
+            opacity:0.55;}
+          .cf-quickfab[data-active="true"]{opacity:1;}
         }
         /* FAB: touch devices only, thumb-reach primary action */
         .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
@@ -1027,17 +1057,19 @@
     {
       onClick: onCSV,
       title: "Export to CSV",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6 }
+      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
     },
-    "\u2B07 CSV"
+    /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+    "CSV"
   ), onPrint && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onPrint,
       title: "Print / Save as PDF",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6 }
+      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
     },
-    "\u{1F5A8} PDF"
+    /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
+    "PDF"
   ));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];

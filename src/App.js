@@ -167,13 +167,19 @@
       }
     }, [tab, budgetSub]);
     useEffect(() => {
-      window.__cfGoBudgetSub = (s) => {
+      const h = (e) => {
         setTab("budget");
-        setBudgetSub(s);
+        if (e.detail && e.detail.sub) setBudgetSub(e.detail.sub);
       };
-      return () => {
-        delete window.__cfGoBudgetSub;
+      window.addEventListener("cf:goto-budget-sub", h);
+      return () => window.removeEventListener("cf:goto-budget-sub", h);
+    }, []);
+    useEffect(() => {
+      const h = (e) => {
+        if (e.detail && e.detail.tab) setTab(e.detail.tab);
       };
+      window.addEventListener("cf:goto-tab", h);
+      return () => window.removeEventListener("cf:goto-tab", h);
     }, []);
     useEffect(() => {
       const trap = (e) => {
@@ -291,12 +297,6 @@
     const [pullActive, setPullActive] = useState(false);
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
-    useEffect(() => {
-      window.__cfSetTab = setTab;
-      return () => {
-        delete window.__cfSetTab;
-      };
-    }, [setTab]);
     const [undoStack, setUndoStack] = useState([]);
     const pushUndo = (e) => setUndoStack((prev) => [...prev.slice(-9), e]);
     const [showHelp, setShowHelp] = useState(false);
@@ -486,7 +486,7 @@
         if (fine) {
           setTab("budget");
           setBudgetSub("entries");
-          setTimeout(() => window.__regOpenNew && window.__regOpenNew(), 50);
+          setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
         } else {
           setFabOpen(true);
         }
@@ -814,23 +814,23 @@
         textOverflow: "ellipsis",
         whiteSpace: "nowrap"
       } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
-        { label: "Edit Profile", icon: "\u{1F464}", action: () => {
+        { label: "Edit Profile", icon: "user", action: () => {
           setPf({ fullName: (sessionUser == null ? void 0 : sessionUser.fullName) || "", email: (sessionUser == null ? void 0 : sessionUser.email) || "" });
           setPfErr("");
           setPfOk("");
           setProfileForm("profile");
         } },
-        { label: "Change Password", icon: "\u{1F511}", action: () => {
+        { label: "Change Password", icon: "key", action: () => {
           setPwf({ current: "", next: "", confirm: "" });
           setPfErr("");
           setPfOk("");
           setProfileForm("password");
         } },
-        { label: "Settings", icon: "\u2699", action: () => {
+        { label: "Settings", icon: "settings", action: () => {
           setMenuOpen(false);
           setTab("settings");
         } },
-        ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "\u{1F512}", action: () => {
+        ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "lock", action: () => {
           setMenuOpen(false);
           setTab("settings");
           setTimeout(() => {
@@ -838,11 +838,11 @@
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 150);
         } }] : [],
-        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "\u2328", action: () => {
+        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
           setMenuOpen(false);
           setShowHelp(true);
         } }],
-        ...showInstall ? [{ label: "Install App", icon: "\u2B07", action: () => {
+        ...showInstall ? [{ label: "Install App", icon: "download", action: () => {
           setMenuOpen(false);
           doInstall();
         } }] : []
@@ -854,7 +854,7 @@
           className: "cf-menu-item",
           style: { borderBottom: "1px solid var(--border)" }
         },
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, item.icon),
+        /* @__PURE__ */ React.createElement(Icon, { name: item.icon, size: 16 }),
         item.label
       )), /* @__PURE__ */ React.createElement(
         "button",
@@ -866,7 +866,7 @@
           "aria-label": "Sign out",
           className: "cf-menu-item cf-menu-item--danger"
         },
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "\u{1F6AA}"),
+        /* @__PURE__ */ React.createElement(Icon, { name: "log-out", size: 16 }),
         "Sign out"
       ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
         padding: 28,
@@ -971,15 +971,11 @@
       padding: "1px 6px",
       fontSize: 10,
       fontWeight: 700
-    } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { style: {
+    } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", style: {
       marginLeft: 5,
-      background: C.amber,
-      color: C.navy,
-      borderRadius: 10,
-      padding: "1px 5px",
-      fontSize: 9,
-      fontWeight: 700
-    } }, "\u{1F50D}"))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { style: {
+      display: "inline-flex",
+      color: C.amber
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { style: {
       position: "fixed",
       bottom: 80,
       left: "50%",
@@ -994,7 +990,7 @@
       maxWidth: 340,
       width: "calc(100vw - 32px)",
       boxShadow: "var(--shadowLg)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 6 } }, "\u{1F4BE} Time for a backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 14, lineHeight: 1.5 } }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15 }), "Time for a backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 14, lineHeight: 1.5 } }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(false),
@@ -1235,11 +1231,11 @@
         },
         onImportCSV: () => {
           if (budgetSub === "entries") {
-            window.__regOpenCSV && window.__regOpenCSV();
+            window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
           } else {
             setBudgetSub("entries");
             setTimeout(() => {
-              window.__regOpenCSV && window.__regOpenCSV();
+              window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
             }, 0);
           }
         }

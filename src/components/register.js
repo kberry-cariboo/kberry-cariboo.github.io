@@ -74,11 +74,13 @@
       setEditing(null);
     };
     useEffect(() => {
-      window.__regOpenNew = openNew;
-      window.__regOpenCSV = () => setShowCSV((v) => !v);
+      const onNew = () => openNew();
+      const onCSV = () => setShowCSV((v) => !v);
+      window.addEventListener("cf:reg-open-new", onNew);
+      window.addEventListener("cf:reg-open-csv", onCSV);
       return () => {
-        delete window.__regOpenNew;
-        delete window.__regOpenCSV;
+        window.removeEventListener("cf:reg-open-new", onNew);
+        window.removeEventListener("cf:reg-open-csv", onCSV);
       };
     }, []);
     const doCopy = (e) => {
@@ -317,7 +319,7 @@
       border: "1px solid var(--amber)",
       width: "100%",
       marginTop: 6
-    } }, '\u{1F50D} Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -578,7 +580,7 @@
       },
       selIds.has(e.id) ? "\u2713" : ""
     )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}",
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, style: { color: "var(--textLt)" } }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
@@ -684,7 +686,7 @@
         } }, e.notes))
       );
     }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: search || globalSearch ? "\u{1F50D}" : "\u{1F4D2}",
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, style: { color: "var(--textLt)" } }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
