@@ -413,6 +413,7 @@
         .cf-row{display:flex;align-items:center;}
         .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
         .cf-col{display:flex;flex-direction:column;}
+        .cf-gap-6{gap:6px;}
         .cf-gap-8{gap:8px;}
         .cf-gap-10{gap:10px;}
         .cf-gap-12{gap:12px;}
@@ -453,6 +454,36 @@
         .cf-btn--xs{font-size:11px;padding:5px 12px;border-radius:6px;}
         .cf-btn--md{font-size:12px;padding:7px 14px;}
         .cf-btn--wide{font-size:12px;padding:10px 18px;}
+        .cf-btn--action{font-size:12px;font-weight:700;padding:8px 18px;}
+        /* Generic one-off utilities (page-by-page inline-style migration) */
+        .fw-600{font-weight:600;}
+        .justify-end{justify-content:flex-end;}
+        .relative{position:relative;}
+        .inline-block{display:inline-block;}
+        /* ── primitives.js ── */
+        .cat-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
+          padding:2px 7px;border-radius:10px;white-space:nowrap;}
+        .sparkline-svg{display:block;overflow:visible;}
+        .fab-panel-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;}
+        .fab-menu-backdrop{position:fixed;inset:0;z-index:-1;}
+        .template-picker-btn{font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px;}
+        .template-item{display:block;font-size:12px;}
+        .template-item-amount{color:var(--textLt);margin-left:8px;}
+        .empty-state-icon{font-size:26px;margin-bottom:8px;}
+        .month-picker{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+        .chart-toggle-group{display:flex;gap:2px;}
+        .chart-tip{background:var(--primary);border-radius:12px;padding:11px 15px;
+          box-shadow:var(--shadowLg);min-width:160px;border:1px solid rgba(255,255,255,0.08);}
+        .chart-tip-label{font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:8px;font-weight:600;}
+        .chart-tip-row{display:flex;justify-content:space-between;gap:16px;margin-bottom:2px;align-items:baseline;}
+        .chart-tip-name{font-size:12px;color:rgba(255,255,255,0.6);}
+        .chart-tip-value{font-weight:600;}
+        .chart-tip-pct{font-size:11px;font-weight:400;color:rgba(255,255,255,0.45);}
+        .confirm-dialog-card{padding:24px;width:min(400px,calc(100vw - 32px));}
+        .confirm-dialog-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;}
+        .confirm-dialog-message{font-size:14px;color:var(--textMid);margin-bottom:24px;line-height:1.6;}
+        .toggle-row{display:flex;align-items:center;gap:10px;user-select:none;}
+        .toggle-label{font-size:13px;color:var(--text);font-weight:600;cursor:pointer;}
         /* Inline error/info banner (auth screens, forms) */
         .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
           padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
