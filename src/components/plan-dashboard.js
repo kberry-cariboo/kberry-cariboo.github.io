@@ -97,14 +97,14 @@
         setGoalErrors({});
         setShowGoalForm(true);
       };
-      return /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: { marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => openGoalForm(null),
-          className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 7, whiteSpace: "nowrap" }
+          className: "cf-btn cf-btn--primary goal-add-btn"
         },
         "+ Add"
-      )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "18px 10px", fontSize: 13, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
+      )), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
         icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, className: "c-textLt" }),
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
@@ -142,12 +142,12 @@
               e.preventDefault();
               setGoalCtx({ x: e.clientX, y: e.clientY, goal: g });
             },
-            style: { cursor: "context-menu" }
+            className: "goal-row-cursor"
           },
-          /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 5, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb" }, g.name, g.targetDate && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 400, color: "var(--textLt)", marginLeft: 8 } }, "by ", (() => {
+          /* @__PURE__ */ React.createElement("div", { className: "goal-title-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb" }, g.name, g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, "by ", (() => {
             const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
             return MONTHS[t.getMonth()] + " " + t.getFullYear();
-          })())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--textMid)" } }, fmt(g.saved), " ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "of"), " ", fmt(g.target), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700, color: barColor, marginLeft: 8 } }, pct, "%")), /* @__PURE__ */ React.createElement(
+          })())), /* @__PURE__ */ React.createElement("div", { className: "goal-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "goal-amounts-text" }, fmt(g.saved), " ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "of"), " ", fmt(g.target), /* @__PURE__ */ React.createElement("span", { className: "goal-pct", style: { color: barColor } }, pct, "%")), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: (e) => {
@@ -155,26 +155,12 @@
                 setGoalCtx({ x: e.clientX, y: e.clientY, goal: g });
               },
               "aria-label": `${g.name} actions`,
-              style: {
-                width: 24,
-                height: 24,
-                flexShrink: 0,
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-                background: "transparent",
-                color: "var(--textLt)",
-                fontSize: 16,
-                lineHeight: 1,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }
+              className: "goal-menu-btn"
             },
             "⋮"
           ))),
-          /* @__PURE__ */ React.createElement("div", { style: { height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", borderRadius: 4, background: barColor, transition: "width 0.3s ease" } })),
-          /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set"), projLabel && /* @__PURE__ */ React.createElement("span", { style: { color: remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amber)" : "var(--textLt)", fontWeight: onTrack === false || remaining <= 0 ? 700 : 400 } }, remaining <= 0 ? "\u2713 Funded" : onTrack === false ? neededMonthly ? `\u26A0 Need ${fmt(neededMonthly)}/mo by target` : "\u26A0 Projected " + projLabel : "On track \u2014 " + projLabel))
+          /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", borderRadius: 4, background: barColor, transition: "width 0.3s ease" } })),
+          /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set"), projLabel && /* @__PURE__ */ React.createElement("span", { style: { color: remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amber)" : "var(--textLt)", fontWeight: onTrack === false || remaining <= 0 ? 700 : 400 } }, remaining <= 0 ? "\u2713 Funded" : onTrack === false ? neededMonthly ? `\u26A0 Need ${fmt(neededMonthly)}/mo by target` : "\u26A0 Projected " + projLabel : "On track \u2014 " + projLabel))
         );
       })), goalCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
@@ -206,9 +192,8 @@
         /* @__PURE__ */ React.createElement(
           "div",
           {
-            className: "modal-card",
-            onClick: (e) => e.stopPropagation(),
-            style: { padding: "24px 24px 20px", width: "min(440px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto" }
+            className: "modal-card goalform-modal-card",
+            onClick: (e) => e.stopPropagation()
           },
           /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, goalForm.id ? "Edit Goal" : "Add Goal"),
           (() => {
@@ -225,7 +210,7 @@
                 placeholder: "e.g. Property Taxes",
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { name: e.target.value }))
               }
-            ), errTxt("name")), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target" }, "Target $"), /* @__PURE__ */ React.createElement(
+            ), errTxt("name")), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2-12" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target" }, "Target $"), /* @__PURE__ */ React.createElement(
               MoneyInput,
               {
                 id: "goal-target",
@@ -241,7 +226,7 @@
                 value: goalForm.saved,
                 onChange: (v) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { saved: v }))
               }
-            ), errTxt("saved"))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-monthly" }, "Monthly funding $"), /* @__PURE__ */ React.createElement(
+            ), errTxt("saved"))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2-12" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-monthly" }, "Monthly funding $"), /* @__PURE__ */ React.createElement(
               MoneyInput,
               {
                 id: "goal-monthly",
@@ -258,25 +243,25 @@
                 value: goalForm.targetDate,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { targetDate: e.target.value }))
               }
-            ), errTxt("targetDate"))), !goalForm.id && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--textMid)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement(
+            ), errTxt("targetDate"))), !goalForm.id && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
               "input",
               {
                 type: "checkbox",
                 checked: goalForm.linkEntry,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { linkEntry: e.target.checked })),
-                style: { width: 16, height: 16, accentColor: "var(--primary)" }
+                className: "checkbox-16"
               }
-            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--textMid)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement(
+            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
               "input",
               {
                 type: "checkbox",
                 checked: goalForm.payoutEntry,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { payoutEntry: e.target.checked })),
-                style: { width: 16, height: 16, accentColor: "var(--primary)" }
+                className: "checkbox-16"
               }
             ), "Add the payout as a one-time expense on the target date (models the spending in your forecast)")));
           })(),
-          /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: () => setShowGoalForm(false),
@@ -287,8 +272,7 @@
             "button",
             {
               onClick: saveGoal,
-              className: "cf-btn cf-btn--primary",
-              style: { fontSize: 13, fontWeight: 700, padding: "9px 24px" }
+              className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
             },
             "Save"
           ))
@@ -307,12 +291,11 @@
         /* @__PURE__ */ React.createElement(
           "div",
           {
-            className: "modal-card",
-            onClick: (e) => e.stopPropagation(),
-            style: { padding: "24px", width: "min(360px,calc(100vw - 32px))" }
+            className: "modal-card modal-card-360",
+            onClick: (e) => e.stopPropagation()
           },
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 } }, "Add funds"),
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 16 } }, fundForm.goal.name),
+          /* @__PURE__ */ React.createElement("div", { className: "fundform-title" }, "Add funds"),
+          /* @__PURE__ */ React.createElement("div", { className: "fundform-subtitle" }, fundForm.goal.name),
           /* @__PURE__ */ React.createElement(
             MoneyInput,
             {
@@ -323,21 +306,10 @@
               onKeyDown: (e) => {
                 if (e.key === "Enter") applyFunds();
               },
-              style: {
-                fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 14,
-                padding: "10px 12px",
-                width: "100%",
-                boxSizing: "border-box",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                background: "var(--inputBg)",
-                color: "var(--text)",
-                outline: "none"
-              }
+              className: "moneyinput-lg"
             }
           ),
-          /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 } }, /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "modal-btn-row-18" }, /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: () => setShowFundForm(false),
@@ -348,8 +320,7 @@
             "button",
             {
               onClick: applyFunds,
-              className: "cf-btn cf-btn--primary",
-              style: { fontSize: 13, fontWeight: 700, padding: "9px 24px" }
+              className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
             },
             "Add"
           ))
@@ -521,25 +492,16 @@
         const av = simulateDebtStrategy(simDebts, extra, "avalanche");
         const sn = simulateDebtStrategy(simDebts, extra, "snowball");
         const base = simulateDebtStrategy(simDebts, 0, "avalanche");
-        if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--red)", marginTop: 14 } }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
-        const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 220px", background: "var(--stripe)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginBottom: 10 } }, sub), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" } }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--greenDk)" } }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", lineHeight: 1.7 } }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
-        return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--textMid)" } }, "Extra $/month", /* @__PURE__ */ React.createElement(
+        if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { className: "strat-error" }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
+        const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
+        return /* @__PURE__ */ React.createElement("div", { className: "strat-section" }, /* @__PURE__ */ React.createElement("div", { className: "strat-section-header" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { className: "strat-extra-label" }, "Extra $/month", /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             value: debtExtra,
-            className: "cf-text-mono-13",
             onChange: (v) => setDebtExtra(v),
-            style: {
-              padding: "5px 10px",
-              width: 90,
-              border: "1.5px solid var(--border)",
-              borderRadius: 8,
-              background: "var(--inputBg)",
-              color: "var(--text)",
-              outline: "none"
-            }
+            className: "strat-extra-input cf-text-mono-13"
           }
-        ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 8 } }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
+        ))), /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn })), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
       })(), debtCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
@@ -568,7 +530,7 @@
             if (e.target === e.currentTarget) setShowDebtForm(false);
           }
         },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "24px 24px 20px", width: "min(460px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description *"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description *"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "debt-desc",
@@ -579,7 +541,7 @@
             onKeyDown: (e) => e.key === "Enter" && saveDebtForm(),
             className: "field-input"
           }
-        )), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-balance" }, "Current Balance $"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { className: "grid-2-12" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-balance" }, "Current Balance $"), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             id: "debt-balance",
@@ -599,7 +561,7 @@
             className: "field-input",
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { rate: e.target.value }))
           }
-        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--textLt)" } }, "(optional)")), /* @__PURE__ */ React.createElement(
+        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             id: "debt-payment",
@@ -608,7 +570,7 @@
             className: "field-input",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: v }))
           }
-        ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 5 } }, "Leave blank for auto-detected debts from your budget entries."))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 } }, /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement("div", { className: "debtform-hint" }, "Leave blank for auto-detected debts from your budget entries."))), /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setShowDebtForm(false),
@@ -620,30 +582,17 @@
           {
             onClick: saveDebtForm,
             disabled: !debtFormData.label.trim(),
-            className: "cf-btn cf-btn--primary",
-            style: { padding: "9px 24px" }
+            className: "cf-btn cf-btn--primary btn-pad-24"
           },
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
-      ), /* @__PURE__ */ React.createElement(Card, { style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("div", { style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+      ), /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
         marginBottom: debtExpanded ? 16 : 0
       } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreHidden,
-          style: {
-            fontSize: 11,
-            padding: "6px 12px",
-            borderRadius: 7,
-            border: "1px solid var(--amber)",
-            cursor: "pointer",
-            background: "transparent",
-            color: "var(--amber)",
-            whiteSpace: "nowrap"
-          }
+          className: "debt-restore-btn"
         },
         "Restore ",
         hiddenCount,
@@ -652,22 +601,17 @@
         "button",
         {
           onClick: addManualRow,
-          className: "cf-btn cf-btn--primary", style: { fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }
+          className: "cf-btn cf-btn--primary goal-add-btn"
         },
         "+ Add"
       ), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setDebtExpanded((v) => !v),
-          className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "6px 12px", borderRadius: 7, flexShrink: 0 }
+          className: "cf-btn cf-btn--secondary debt-expand-btn"
         },
         debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
-      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: {
-        fontSize: 13,
-        color: "var(--textLt)",
-        textAlign: "center",
-        padding: "20px 0"
-      } }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
+      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "debt-empty-wrap" }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
@@ -681,22 +625,10 @@
               e.preventDefault();
               setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
             },
-            style: {
-              padding: "12px 14px",
-              background: "var(--bg)",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              cursor: "context-menu"
-            }
+            className: "debt-row"
           },
-          /* @__PURE__ */ React.createElement("div", { style: {
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 10,
-            flexWrap: "wrap"
-          } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 140 } }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, label), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { color: "var(--greenDk)", fontWeight: 600 } }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right" } }, /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13", style: { fontWeight: 700, color: "var(--red)" } }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)" } }, "+", fmt(totalInterest), " interest"))),
-          (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" } }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 } }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
+          /* @__PURE__ */ React.createElement("div", { className: "debt-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "debt-row-name-col" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, label), /* @__PURE__ */ React.createElement("div", { className: "debt-row-meta" }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-row-paid" }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-row-bal-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { className: "debt-row-interest" }, "+", fmt(totalInterest), " interest"))),
+          (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { className: "debt-stats-row" }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
         );
       })))));
     })());
@@ -846,7 +778,7 @@
       });
       return merged;
     }, [dashOrder]);
-    const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bgCard)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--textLt)", marginBottom: 3 } }, title), children);
+    const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
     const insight = useMemo(() => {
       try {
         const now = /* @__PURE__ */ new Date();
@@ -888,21 +820,13 @@
       }
     }, [flow, activeYear]);
     const WIDGET_RENDER = {
-      balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontVariantNumeric: "tabular-nums",
-        fontSize: 16,
-        fontWeight: 700,
+      balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amber)" : "var(--greenDk)"
       } }, glance ? fmt(glance.balanceNow) : "\u2014")),
-      nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { style: {
-        fontFamily: "Inter,sans-serif",
-        fontVariantNumeric: "tabular-nums",
-        fontSize: 16,
-        fontWeight: 700,
+      nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
-      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6, display: "inline-block", whiteSpace: "nowrap" } }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
-      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 16, fontWeight: 700, color: "var(--text)" } }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 400, color: "var(--textLt)", marginLeft: 6, display: "inline-block", whiteSpace: "nowrap" } }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
+      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
+      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { className: "glance-value c-text" }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
         today.setHours(0, 0, 0, 0);
@@ -919,15 +843,9 @@
           return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
         if (!ending.length) return null;
-        return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 } }, ending.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          fontSize: 12,
+        return /* @__PURE__ */ React.createElement("div", { className: "ending-soon-row" }, ending.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, className: "ending-soon-chip", style: {
           background: e.type === "expense" ? "var(--greenLt)" : "var(--amberLt)",
-          border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amber)"}33`,
-          borderRadius: 20,
-          padding: "7px 14px"
+          border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amber)"}33`
         } }, /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", display: "inline-flex" } }, e.type === "expense" ? /* @__PURE__ */ React.createElement(Icon, { name: "party", size: 15 }) : /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 15 })), /* @__PURE__ */ React.createElement("span", { className: "c-text" }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
       })()),
       upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
@@ -936,13 +854,7 @@
         in7.setDate(today.getDate() + 7);
         const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7).sort((a, b) => a.date - b.date).slice(0, 6);
         if (upcoming.length === 0) return null;
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: {
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: "var(--textLt)"
-        } }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--textLt)" } }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, upcoming.map((ev) => {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-hdr-label" }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { className: "upcoming-count" }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { className: "upcoming-list" }, upcoming.map((ev) => {
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const isInc = ev.type === "income";
@@ -959,51 +871,22 @@
               title: isPaid ? "Mark as not paid" : "Mark as paid",
               "aria-label": (isPaid ? "Mark as not paid: " : "Mark as paid: ") + ev.desc,
               "aria-pressed": isPaid,
+              className: "paid-btn",
               style: {
-                width: 22,
-                height: 22,
-                minWidth: 22,
-                borderRadius: "50%",
                 border: isPaid ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
-                background: isPaid ? "var(--greenLt)" : "transparent",
-                color: "var(--greenDk)",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                lineHeight: 1,
-                padding: 0,
-                flexShrink: 0
+                background: isPaid ? "var(--greenLt)" : "transparent"
               }
             },
             isPaid ? "\u2713" : ""
           );
           if (isMobile) {
-            return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { marginBottom: 4, opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 } }, paidBtn, /* @__PURE__ */ React.createElement("span", { style: {
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--text)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-              minWidth: 0,
+            return /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "upcoming-item-mobile", style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-top" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-desc", style: {
               textDecoration: isPaid ? "line-through" : "none"
-            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textMid)", flexShrink: 0 } }, label), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 10, alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date" }, label), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
           }
-          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 } }, paidBtn, /* @__PURE__ */ React.createElement("span", { style: {
-            fontSize: 13,
-            color: "var(--textMid)",
-            whiteSpace: "nowrap"
-          } }, label), /* @__PURE__ */ React.createElement("span", { style: {
-            fontSize: 13,
-            color: "var(--text)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
             textDecoration: isPaid ? "line-through" : "none"
-          } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, className: "text-9" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+          } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, className: "text-9" })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: amtColor
           } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: balColor
@@ -1015,22 +898,11 @@
         const above = insight.pct > 0;
         const inline = Math.abs(insight.pct) < 2;
         const showDriver = !inline && insight.driver && (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
-        return /* @__PURE__ */ React.createElement("div", { "data-widget": "insight", style: {
-          display: "flex",
-          alignItems: "baseline",
-          gap: 8,
-          fontSize: 13,
-          color: "var(--textMid)",
-          background: "var(--stripe)",
-          border: "1px solid var(--border)",
-          borderLeft: "3px solid " + (inline ? "var(--border)" : above ? "var(--amber)" : "var(--greenDk)"),
-          borderRadius: 8,
-          padding: "9px 14px",
-          marginBottom: 20,
-          lineHeight: 1.5
+        return /* @__PURE__ */ React.createElement("div", { "data-widget": "insight", className: "insight-banner", style: {
+          borderLeft: "3px solid " + (inline ? "var(--border)" : above ? "var(--amber)" : "var(--greenDk)")
         } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, insight.month, " spending"), inline ? ` is in line with your ${insight.n}-month average.` : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average`, !inline && showDriver ? ` — ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).` : inline ? "" : "."));
       },
-      kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4", style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--red)", marginTop: 4 } }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Inter,sans-serif", fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 700, color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: 4 } }, "In ", lowestMon)))),
+      kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amber)" : "var(--greenDk)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
       balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -1080,11 +952,9 @@
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
       ))))),
-      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, catTotals.map(([cat, total], i) => {
+      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "dash-cat-bar-wrap" }, catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: {
-          height: "100%",
-          borderRadius: 3,
+        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: {
           width: `${pct}%`,
           background: getCatColor(cat, categories, categoryColors)
         } })));
@@ -1101,15 +971,9 @@
           labelLine: false
         },
         catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories, categoryColors) }))
-      ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", marginTop: 4 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--stripe)" } }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: "var(--textLt)",
-        padding: "6px 8px",
-        textAlign: i === 0 ? "left" : "right",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: getCatColor(cat, categories, categoryColors), flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 600, padding: "6px 8px", textAlign: "right", color: "var(--textMid)" } }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "6px 8px", textAlign: "right", color: "var(--textLt)" } }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
+      ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { className: "dash-cat-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "dash-cat-table-hdr-row" }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-cat-th", style: {
+        textAlign: i === 0 ? "left" : "right"
+      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, className: "dash-cat-tr" }, /* @__PURE__ */ React.createElement("td", { className: "dash-cat-td" }, /* @__PURE__ */ React.createElement("div", { className: "dash-cat-dot", style: { background: getCatColor(cat, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-amt-td" }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-pct-td" }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
       incomeSources: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -1117,9 +981,9 @@
           onChange: setIncView,
           options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }]
         }
-      ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 } }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", textAlign: "center", padding: "20px 0" } }, "No income entries"), incTotals.map(([cat, total], i) => {
+      ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8 mt-4" }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-empty-wrap" }, "No income entries"), incTotals.map(([cat, total], i) => {
         const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 600, color: "var(--textMid)" } }, fmt(total))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", borderRadius: 3, width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] } })));
+        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: { width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] } })));
       })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
@@ -1137,7 +1001,7 @@
       bvaYear: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
         const _now = /* @__PURE__ */ new Date();
         const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
-        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--textLt)", marginTop: -6, marginBottom: 10 } }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono", style: { fontSize: 10 } }, "spent / budget")) : null;
+        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { className: "bva-subtitle" }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono text-10" }, "spent / budget")) : null;
       })(), (() => {
         const now = /* @__PURE__ */ new Date();
         const isCurrentYear = now.getFullYear() === activeYear;
@@ -1159,15 +1023,7 @@
         });
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
         if (cats.length === 0) {
-          return /* @__PURE__ */ React.createElement("div", { style: {
-            padding: "32px 16px",
-            textAlign: "center",
-            height: DASH_CHART_H,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center"
-          } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 8, color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", fontWeight: 600, marginBottom: 4 } }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textLt)", lineHeight: 1.5 } }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
+          return /* @__PURE__ */ React.createElement("div", { className: "bva-empty-state" }, /* @__PURE__ */ React.createElement("div", { className: "bva-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-title" }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-body" }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
         }
         const rows = cats.map((c) => {
           const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
@@ -1183,31 +1039,14 @@
         const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
         const tOver = totalTarget > 0 && tDiff > 0;
         const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { height: DASH_CHART_H, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 } }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+        return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bva-rows-wrap" }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { className: "dash-bva-row-hdr" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { className: "dash-bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           color: r.over ? r.color : "var(--text)"
-        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "var(--border)", borderRadius: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
-          height: "100%",
+        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
           width: `${r.pct}%`,
-          borderRadius: 3,
-          background: r.color,
-          transition: "width 0.4s ease"
-        } }))))), /* @__PURE__ */ React.createElement("div", { style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: 6,
-          paddingTop: 10,
-          borderTop: "2px solid var(--border)"
-        } }, /* @__PURE__ */ React.createElement("span", { style: {
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "var(--textMid)"
-        } }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
-          fontWeight: 700,
+          background: r.color
+        } }))))), /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
           color: tOver ? tColor : "var(--text)"
-        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: tColor } }, fmt(tDiff) + " over"))));
+        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: tColor } }, fmt(tDiff) + " over"))));
       })())),
       debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         let dData = {};
@@ -1254,7 +1093,7 @@
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
         const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 } }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13", style: { fontWeight: 700, color: "var(--red)" } }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, configuredDebts.map(([key, v]) => {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-header-row" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, configuredDebts.map(([key, v]) => {
           const bal = parseFloat(v.balance) || 0;
           const rate = parseFloat(v.rate) || 0;
           const isManual = key.startsWith("manual_");
@@ -1269,26 +1108,16 @@
             return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
           })() : null;
           const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
-          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, flexWrap: "wrap", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { style: {
-            fontSize: 11,
-            color: "var(--textLt)",
-            background: "var(--bg)",
-            padding: "2px 6px",
-            borderRadius: 4,
-            border: "1px solid var(--border)"
-          } }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { fontWeight: 700, color: "var(--red)" } }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--greenDk)" } }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "var(--textLt)" } }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: {
-            height: "100%",
-            borderRadius: 3,
+          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-apr-badge" }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { className: "debtsnap-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-payoff" }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { className: "text-10 c-textLt" }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { className: "progress-track--clip" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-progress-fill", style: {
             width: `${pct}%`,
-            background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)",
-            transition: "width 0.4s"
+            background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amber)" : "var(--greenDk)"
           } })), pmt > 0 && (() => {
             var _a2;
             const evs = autoAllEvs[key] || [];
             const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
             const timesYr = evs.length;
             const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
-            return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--textLt)", marginTop: 2 } }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
+            return /* @__PURE__ */ React.createElement("div", { className: "debtsnap-freq-note" }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
           })());
         })));
       })()),
@@ -1299,7 +1128,7 @@
           summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
           title: /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Monthly Summary")
         },
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
           ChartToggle,
           {
             value: summaryView,
@@ -1317,17 +1146,8 @@
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
           }
         )),
-        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#fff",
-          padding: "10px 16px",
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
+        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
           position: i === 4 ? "sticky" : "static",
           right: i === 4 ? 0 : "auto",
           background: i === 4 ? "var(--navy)" : "transparent",
@@ -1341,39 +1161,21 @@
           const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
           const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
-          return /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatInc, fontWeight: 600, color: "var(--greenDk)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", background: heatExp, fontWeight: 600, color: "var(--red)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 16px", textAlign: "right", background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)", position: "sticky", right: 0, boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }, fmt(m.close)));
+          return /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-inc-td", style: { background: heatInc } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-exp-td", style: { background: heatExp } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: { background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-heat-bal-td", style: { background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" } }, fmt(m.close)));
         }))))),
-        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { style: { padding: 0, overflow: "hidden", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: 520, whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#fff",
-          padding: "10px 16px",
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
+        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
           position: i === 4 ? "sticky" : "static",
           right: i === 4 ? 0 : "auto",
           background: i === 4 ? "var(--navy)" : "transparent",
           boxShadow: i === 4 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
-        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 13, padding: "9px 16px", color: "var(--text)" } }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--text)" } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 16px", textAlign: "right", color: "var(--text)" } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
-          fontWeight: 700,
-          padding: "9px 16px",
-          textAlign: "right",
+        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: {
           color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)",
           background: m.surplus < 0 ? "var(--redLt)" : "transparent"
-        } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: {
-          fontWeight: 700,
-          padding: "9px 16px",
-          textAlign: "right",
+        } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-table-bal-td", style: {
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)",
-          background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
-          position: "sticky",
-          right: 0,
-          boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.18)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { style: { fontSize: 12, fontWeight: 700, padding: "10px 16px", color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: "#fff" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "10px 16px", textAlign: "right", color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 16px", position: "sticky", right: 0, background: "var(--navy)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.25)" } }))))))
+          background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
       ))),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
@@ -1387,19 +1189,13 @@
           dot: { r: 3 },
           activeDot: { r: 5 }
         }
-      ))))), /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { marginTop: 16 } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, style: {
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#fff",
-        padding: "9px 14px",
-        textAlign: i === 0 ? "left" : "right",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase"
+      ))))), /* @__PURE__ */ React.createElement("div", { className: "hscroll mt-16" }, /* @__PURE__ */ React.createElement("table", { className: "table-collapse" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-14", style: {
+        textAlign: i === 0 ? "left" : "right"
       } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, annualRows.map((row, i) => {
         const prev = annualRows[i - 1];
         const delta = prev ? row.surplus - prev.surplus : null;
-        return /* @__PURE__ */ React.createElement("tr", { key: row.year, style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "9px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 10, borderRadius: 2, background: row.color, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--text)" } }, row.year))), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 14px", textAlign: "right", color: "var(--greenDk)" } }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { padding: "9px 14px", textAlign: "right", color: "var(--red)" } }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 700, padding: "9px 14px", textAlign: "right", color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13", style: { fontWeight: 600, padding: "9px 14px", textAlign: "right", color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
-      }))))) : /* @__PURE__ */ React.createElement("div", { style: { background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "14px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 14, style: { color: "var(--textLt)", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Add a second year to unlock the Year-over-Year comparison.")))
+        return /* @__PURE__ */ React.createElement("tr", { key: row.year, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("div", { className: "dash-year-dot", style: { background: row.color } }), /* @__PURE__ */ React.createElement("span", { className: "dash-year-label" }, row.year))), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-greenDk" }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-red" }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-600", style: { color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
+      }))))) : /* @__PURE__ */ React.createElement("div", { className: "yoy-empty-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 14, style: { color: "var(--textLt)", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Add a second year to unlock the Year-over-Year comparison.")))
     };
     const loadSampleData = () => {
       const y = activeYear;
@@ -1416,15 +1212,15 @@
     };
     const hasSample = entries.some((e) => e.sample);
     const removeSampleData = () => setEntries((prev) => prev.filter((e) => !e.sample));
-    const stepBadge = (n, done) => /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, style: { width: 24, height: 24, minWidth: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, background: done ? "var(--greenLt)" : "var(--stripe)", border: `1.5px solid ${done ? "var(--greenDk)" : "var(--border)"}`, color: done ? "var(--greenDk)" : "var(--textMid)" } }, done ? "✓" : n);
+    const stepBadge = (n, done) => /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "step-badge", style: { background: done ? "var(--greenLt)" : "var(--stripe)", border: `1.5px solid ${done ? "var(--greenDk)" : "var(--border)"}`, color: done ? "var(--greenDk)" : "var(--textMid)" } }, done ? "✓" : n);
     const quickAdd = () => window.dispatchEvent(new CustomEvent("cf:quickadd"));
-    const firstRunPanel = entries.length === 0 && /* @__PURE__ */ React.createElement(Card, { style: { marginBottom: 20, padding: "22px 24px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 4 } }, "Welcome — let's map out your cash flow"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 18 } }, "Three quick steps and this dashboard comes to life."), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(1, openBal !== 0), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Set your opening balance"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "What's in the account today?")), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", placeholder: "e.g. 2500", value: obDraft, onChange: (e) => setObDraft(e.target.value), "aria-label": "Opening balance", className: "field-input field-input--mono", style: { width: 130, padding: "7px 10px", fontSize: 13 }, onKeyDown: (e) => {
+    const firstRunPanel = entries.length === 0 && /* @__PURE__ */ React.createElement(Card, { className: "firstrun-card" }, /* @__PURE__ */ React.createElement("div", { className: "firstrun-title" }, "Welcome — let's map out your cash flow"), /* @__PURE__ */ React.createElement("div", { className: "firstrun-subtitle" }, "Three quick steps and this dashboard comes to life."), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(1, openBal !== 0), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Set your opening balance"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "What's in the account today?")), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", placeholder: "e.g. 2500", value: obDraft, onChange: (e) => setObDraft(e.target.value), "aria-label": "Opening balance", className: "field-input field-input--mono firstrun-ob-input", onKeyDown: (e) => {
       if (e.key === "Enter" && obDraft !== "") {
         setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc));
       }
-    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--text)", flex: "1 1 200px" } }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: "var(--textLt)" } }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { style: { borderTop: "1px solid var(--border)", marginTop: 18, paddingTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--textLt)", flex: "1 1 220px" } }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
-    const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", style: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "var(--stripe)", border: "1px dashed var(--border)", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "var(--textMid)" } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 180 } }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap", style: { overflowX: "hidden" } }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(
+    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
+    const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner" }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowCustomize(true),
@@ -1445,13 +1241,12 @@
       /* @__PURE__ */ React.createElement(
         "div",
         {
-          className: "modal-card",
-          onClick: (e) => e.stopPropagation(),
-          style: { padding: "24px", width: "min(400px,calc(100vw - 32px))", maxHeight: "85vh", overflowY: "auto" }
+          className: "modal-card customize-modal-card",
+          onClick: (e) => e.stopPropagation()
         },
-        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 } }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 16 } }, "Show, hide, and reorder each widget individually. Your layout syncs across devices."),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, dashOrderEff.map((id, idx) => {
+        /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
+        /* @__PURE__ */ React.createElement("div", { className: "customize-subtitle" }, "Show, hide, and reorder each widget individually. Your layout syncs across devices."),
+        /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;
           const move = (dir) => {
@@ -1462,26 +1257,7 @@
             [next[idx], next[j]] = [next[j], next[idx]];
             setDashOrder(next);
           };
-          const btn = {
-            fontSize: 13,
-            width: 34,
-            height: 34,
-            lineHeight: "32px",
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-            background: "transparent",
-            color: "var(--textMid)",
-            padding: 0
-          };
-          return /* @__PURE__ */ React.createElement("div", { key: id, style: {
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "7px 10px",
-            borderRadius: 8,
-            fontSize: 13,
-            color: "var(--text)",
+          return /* @__PURE__ */ React.createElement("div", { key: id, className: "customize-item", style: {
             background: dashHidden[id] ? "transparent" : "var(--stripe)"
           } }, /* @__PURE__ */ React.createElement(
             "input",
@@ -1489,16 +1265,15 @@
               type: "checkbox",
               checked: !dashHidden[id],
               onChange: (e) => setDashHidden((prev) => __spreadProps(__spreadValues({}, prev), { [id]: !e.target.checked })),
-              style: { width: 16, height: 16, accentColor: "var(--primary)", flexShrink: 0 }
+              className: "customize-checkbox"
             }
-          ), /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 0, opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === 0 ? 0.3 : 1 }), disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: __spreadProps(__spreadValues({}, btn), { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }), disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
+          ), /* @__PURE__ */ React.createElement("span", { className: "customize-label", style: { opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: { opacity: idx === 0 ? 0.3 : 1 }, disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }, disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
         })),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginTop: 18 } }, /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setShowCustomize(false),
-            className: "cf-btn cf-btn--primary",
-            style: { fontSize: 13, fontWeight: 700, padding: "9px 24px" }
+            className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
           },
           "Done"
         ))
@@ -1512,7 +1287,7 @@
         categories,
         setTab
       }
-    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 10 } }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row" }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const out = [];
@@ -1523,15 +1298,15 @@
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          out.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { display: "grid", gridTemplateColumns: `repeat(${run.length},1fr)`, gap: 8, marginBottom: 14 } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
+          out.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
           const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
-          out.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { display: "grid", gridTemplateColumns: cols, gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
+          out.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
           i += 2;
         } else if (sz !== "full") {
-          out.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid", style: { display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 16, maxWidth: "100%", overflow: "hidden" } }, WIDGET_RENDER[id]()));
+          out.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()));
           i += 1;
         } else {
           out.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
