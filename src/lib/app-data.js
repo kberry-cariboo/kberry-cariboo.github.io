@@ -414,8 +414,45 @@
         .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
         .cf-col{display:flex;flex-direction:column;}
         .cf-gap-8{gap:8px;}
+        .cf-gap-10{gap:10px;}
         .cf-gap-12{gap:12px;}
+        .cf-gap-14{gap:14px;}
+        .cf-wrap{flex-wrap:wrap;}
+        .flex-1{flex:1;}
+        .min-w-0{min-width:0;}
         .cf-page{max-width:1160px;width:100%;margin:0 auto;}
+        /* Spacing scale — dedupes the most repeated one-off margin/padding
+           values found across components (audit round 6, inline-style pass) */
+        .mb-5{margin-bottom:5px;}
+        .mb-8{margin-bottom:8px;}
+        .mb-12{margin-bottom:12px;}
+        .mb-14{margin-bottom:14px;}
+        .mb-16{margin-bottom:16px;}
+        .mb-20{margin-bottom:20px;}
+        .mt-2{margin-top:2px;}
+        .pb-28{padding-bottom:28px;}
+        .lh-15{line-height:1.5;}
+        /* Bare text-color utilities — no font-size, so they compose safely
+           with whatever type context they're used in */
+        .c-text{color:var(--text);}
+        .c-textMid{color:var(--textMid);}
+        .c-textLt{color:var(--textLt);}
+        /* Compound type styles that recur as a unit (extends the existing
+           .tx/.txm/.txl/.lbl/.hint scale from round 3) */
+        .tx-sb{font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--text);}
+        .txm-11{font-family:Inter,sans-serif;font-size:11px;color:var(--textMid);}
+        .text-9{font-size:9px;}
+        /* Table header row (dark navy bg, used under .th cells) */
+        .thead-row{background:var(--navy);}
+        .kpi-tile{padding:12px 14px;}
+        .today-line-strip{flex:1;height:2px;background:var(--amber);border-radius:1px;}
+        .modal-title-lg{font-size:15px;font-weight:700;color:var(--text);margin-bottom:18px;}
+        .hidden{display:none;}
+        /* .cf-btn size modifiers beyond --sm/--compact, for the sizes that
+           recurred as one-off style overrides */
+        .cf-btn--xs{font-size:11px;padding:5px 12px;border-radius:6px;}
+        .cf-btn--md{font-size:12px;padding:7px 14px;}
+        .cf-btn--wide{font-size:12px;padding:10px 18px;}
         /* Inline error/info banner (auth screens, forms) */
         .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
           padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
@@ -427,7 +464,7 @@
         .cf-menu-item:hover{background:var(--stripe);}
         .cf-menu-item--danger{color:var(--red);font-weight:600;}
         .cf-menu-item--danger:hover{background:var(--redLt);}
-        .cf-modal-title{font-size:16px;font-weight:700;color:var(--text);}
+        .cf-modal-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:20px;}
         .cf-close-x{background:transparent;border:none;cursor:pointer;font-size:18px;
           color:var(--textLt);line-height:1;padding:0 0 0 8px;}
         /* Larger auth-screen variant of the shared input */
@@ -853,7 +890,7 @@
         .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
         /* Register wrap is now just an alias of the shared utility */
         .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
-          scrollbar-width:none;-ms-overflow-style:none;}
+          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
         .reg-table-wrap::-webkit-scrollbar{display:none;}
         .reg-table thead .reg-th{position:sticky;top:0;z-index:5;}
         /* Register desc: fill available space, truncate */

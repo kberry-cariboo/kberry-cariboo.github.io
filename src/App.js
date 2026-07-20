@@ -872,7 +872,7 @@
         padding: 28,
         maxWidth: 400,
         width: "100%"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title", style: { marginBottom: 20 } }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, className: "mb-14" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
           id: "pf-" + key,
@@ -905,11 +905,11 @@
         padding: 28,
         maxWidth: 400,
         width: "100%"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title", style: { marginBottom: 20 } }, "Change Password"), [
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Change Password"), [
         { label: "Current password", key: "current", val: pwf.current },
         { label: "New password (min 8 chars)", key: "next", val: pwf.next },
         { label: "Confirm new password", key: "confirm", val: pwf.confirm }
-      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pwf-" + key }, label), /* @__PURE__ */ React.createElement(
+      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, className: "mb-14" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pwf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
           id: "pwf-" + key,

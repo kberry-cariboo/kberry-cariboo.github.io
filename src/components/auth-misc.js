@@ -25,7 +25,7 @@
       maxWidth: 380,
       width: "100%",
       boxShadow: "var(--shadowXl)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)" } }, "Keyboard Shortcuts"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", style: {
+    } }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)" } }, "Keyboard Shortcuts"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", style: {
       background: "transparent",
       border: "none",
       cursor: "pointer",
@@ -37,7 +37,7 @@
       justifyContent: "space-between",
       padding: "7px 0",
       borderBottom: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textMid)" } }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13", style: {
+    } }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13", style: {
       fontWeight: 600,
       padding: "3px 10px",
       borderRadius: 6,
@@ -347,7 +347,7 @@
         }
       },
       "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("label", { style: {
+    )), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { style: {
       display: "block",
       fontSize: 12,
       fontWeight: 600,
@@ -383,7 +383,7 @@
           boxSizing: "border-box"
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("label", { style: {
+    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { style: {
       display: "block",
       fontSize: 12,
       fontWeight: 600,
@@ -450,7 +450,7 @@
       fontSize: 13,
       color: "var(--textMid)",
       cursor: "pointer"
-    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 16 } }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner", role: "status", style: { marginBottom: 16 } }, info), /* @__PURE__ */ React.createElement(
+    } }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", className: "mb-16" }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner", role: "status", className: "mb-16" }, info), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -544,7 +544,7 @@
       justifyContent: "center",
       color: "var(--accent)",
       margin: "0 auto 16px"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, bioError), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", className: "mb-14" }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -637,7 +637,7 @@
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginBottom: 14 } }, pwError), /* @__PURE__ */ React.createElement(
+    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", className: "mb-14" }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: unlockWithPassword,

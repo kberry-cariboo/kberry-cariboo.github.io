@@ -290,7 +290,7 @@
             textOverflow: "ellipsis",
             whiteSpace: "nowrap"
           } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, display: "inline-flex" }, title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E"));
-          if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9 } }));
+          if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat", style: { padding: "8px 14px" } }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
           if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13", style: {
             padding: "8px 14px",
             textAlign: "right",
@@ -338,8 +338,8 @@
       padding: "0",
       background: "transparent",
       boxShadow: "inset 3px 0 0 0 transparent"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 8px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }))));
-    const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }));
+    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 8px" } }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
+    const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", letterSpacing: "0.1em" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
     const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, style: {
       background: "var(--navyMid)",
       padding: "8px 14px",
@@ -615,7 +615,7 @@
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
-      )), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
+      )), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 360 } }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
         const allDone = allIds.length > 0 && allIds.every((id) => completed[id]);
         const someDone = allIds.some((id) => completed[id]);
@@ -626,7 +626,7 @@
             allIds.forEach((id) => !completed[id] && toggleComplete(id));
           }
         };
-        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { className: "budget-col-checkbox", style: { width: 30, padding: "10px 4px", textAlign: "center" }, "aria-label": "Select all rows" }, (() => {
+        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "budget-col-checkbox", style: { width: 30, padding: "10px 4px", textAlign: "center" }, "aria-label": "Select all rows" }, (() => {
           const allSel = allIds.length > 0 && allIds.every((id) => selIds.has(id));
           const someSel = allIds.some((id) => selIds.has(id));
           return /* @__PURE__ */ React.createElement(
@@ -734,7 +734,7 @@
             }
           }
         },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { padding: "24px 24px 20px", width: "min(680px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { padding: "24px 24px 20px", width: "min(680px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
           {
             initial: editingInitial || editingEntry,
@@ -811,7 +811,7 @@
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
         }
-      )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 2, background: "var(--amber)", borderRadius: 1 } })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
+      )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 16px" } }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--amber)" } }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
         display: "grid",
         gridTemplateColumns: "60px 1fr 180px",
         borderBottom: "1px solid var(--border)",
@@ -845,7 +845,7 @@
           color: isPast(dayObj.day) ? "var(--textLt)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--amber)", fontWeight: 700 } }, "\u270E")),
-        /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9 } })),
+        /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
         /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           fontWeight: 700,
           minWidth: 90,
@@ -918,7 +918,7 @@
               if (e.target === e.currentTarget) setShowBvaModal(false);
             }
           },
-          /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 18 } }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category"), /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation(), style: { padding: "24px", width: "min(400px,calc(100vw - 32px))" } }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category"), /* @__PURE__ */ React.createElement(
             "select",
             {
               autoFocus: true,
@@ -928,7 +928,7 @@
             },
             /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"),
             availCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-          )) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)" } }, "Category: ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--text)" } }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $"), /* @__PURE__ */ React.createElement(
+          )) : /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Category: ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $"), /* @__PURE__ */ React.createElement(
             "input",
             {
               autoFocus: !!bvaModalData.editCat,
@@ -1000,7 +1000,7 @@
           whiteSpace: "nowrap",
           flex: 1,
           minWidth: 0
-        } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, budgetOpen && /* @__PURE__ */ React.createElement(
+        } }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, budgetOpen && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
@@ -1023,7 +1023,7 @@
           textAlign: "center",
           padding: "8px 0"
         } }, /* @__PURE__ */ React.createElement(EmptyState, {
-          icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, style: { color: "var(--textLt)" } }),
+          icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, className: "c-textLt" }),
           message: "No budget lines yet. Track a category against a monthly target.",
           actionLabel: "+ Add Budget Line",
           onAction: () => {
@@ -1109,10 +1109,10 @@
             letterSpacing: "0.06em",
             textTransform: "uppercase",
             color: "var(--textMid)"
-          } }, "Total"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+          } }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             fontWeight: 700,
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: "var(--textMid)" } }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: tColor } }, fmt(tDiff) + " over")));
+          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: tColor } }, fmt(tDiff) + " over")));
         })()));
       })()
     );

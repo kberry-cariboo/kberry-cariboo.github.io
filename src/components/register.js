@@ -209,7 +209,7 @@
         onChange: setFilterStatus,
         options: [{ value: "active", label: "Active" }, { value: "historical", label: "Historical" }]
       }
-    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, "From"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, "From"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "date",
@@ -225,7 +225,7 @@
           outline: "none"
         }
       }
-    ), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)" } }, "To"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "To"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "date",
@@ -330,7 +330,7 @@
           if (e.target === e.currentTarget) setShowMobileFilters(false);
         }
       },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "20px 20px 16px", width: "min(480px,calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", style: { background: "none", border: "none", fontSize: 20, color: "var(--textLt)", cursor: "pointer", lineHeight: 1 } }, "\u2715")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 } }, filterControls), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: { padding: "20px 20px 16px", width: "min(480px,calc(100vw - 32px))", maxHeight: "80vh", overflowY: "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", style: { background: "none", border: "none", fontSize: 20, color: "var(--textLt)", cursor: "pointer", lineHeight: 1 } }, "\u2715")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 } }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setShowMobileFilters(false),
@@ -358,7 +358,7 @@
       width: "min(400px, calc(100vw - 32px))",
       maxHeight: "80vh",
       overflowY: "auto"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" } }, "Import CSV"), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" } }, "Import CSV"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowCSV(false),
@@ -455,7 +455,7 @@
       width: "min(680px, calc(100vw - 32px))",
       maxHeight: "80vh",
       overflowY: "auto"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: close,
@@ -481,7 +481,7 @@
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", style: { WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "var(--navy)" } }, /* @__PURE__ */ React.createElement("th", { className: "reg-th", style: { padding: "10px 6px 10px 12px", width: 34, background: "var(--navy)" } }, (() => {
+    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table", style: { width: "100%", borderCollapse: "collapse", minWidth: 540 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "reg-th", style: { padding: "10px 6px 10px 12px", width: 34, background: "var(--navy)" } }, (() => {
       const allSel = filtered.length > 0 && filtered.every((e) => selIds.has(e.id));
       const someSel = filtered.some((e) => selIds.has(e.id));
       return /* @__PURE__ */ React.createElement(
@@ -580,7 +580,7 @@
       },
       selIds.has(e.id) ? "\u2713" : ""
     )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, style: { color: "var(--textLt)" } }),
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
@@ -686,7 +686,7 @@
         } }, e.notes))
       );
     }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "32px", textAlign: "center", color: "var(--textLt)" } }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, style: { color: "var(--textLt)" } }),
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
