@@ -11,30 +11,14 @@
       "div",
       {
         onClick: onClose,
-        style: {
-          position: "fixed",
-          inset: 0,
-          zIndex: 9500,
-          background: "rgba(0,0,0,0.85)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 20,
-          touchAction: "pinch-zoom",
-          cursor: "zoom-out"
-        }
+        className: "receipt-lightbox"
       },
       /* @__PURE__ */ React.createElement(
         "img",
         {
           src,
           alt: "Receipt",
-          style: {
-            maxWidth: "100%",
-            maxHeight: "100%",
-            borderRadius: 10,
-            boxShadow: "var(--shadowXl)"
-          }
+          className: "receipt-lightbox-img"
         }
       ),
       /* @__PURE__ */ React.createElement(
@@ -42,19 +26,7 @@
         {
           onClick: onClose,
           "aria-label": "Close",
-          style: {
-            position: "fixed",
-            top: "calc(14px + env(safe-area-inset-top))",
-            right: 16,
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            border: "none",
-            cursor: "pointer",
-            background: "rgba(255,255,255,0.15)",
-            color: "#fff",
-            fontSize: 18
-          }
+          className: "receipt-lightbox-close"
         },
         "\u2715"
       )
@@ -173,43 +145,15 @@
         },
         "aria-label": it.label,
         "aria-current": tab === it.id ? "page" : void 0,
+        className: "bottomnav-btn",
         style: {
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-          padding: "7px 0 4px",
-          border: "none",
-          cursor: "pointer",
-          background: "transparent",
           color: tab === it.id ? "var(--text)" : "var(--textLt)",
-          fontSize: 9,
           fontWeight: tab === it.id ? 700 : 500
         }
       },
-      /* @__PURE__ */ React.createElement("span", { style: {
-        fontSize: 17,
-        lineHeight: 1,
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 36,
-        height: 24,
-        borderRadius: 12,
-        background: tab === it.id ? "var(--accentLt)" : "transparent",
-        transition: "background 0.15s"
-      } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { style: {
-        position: "absolute",
-        top: -2,
-        right: -6,
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        background: "var(--amber)",
-        border: "2px solid var(--bgCard)"
-      } })),
+      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-icon-wrap", style: {
+        background: tab === it.id ? "var(--accentLt)" : "transparent"
+      } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { className: "bottomnav-alert-dot" })),
       it.label
     )));
   }
@@ -239,30 +183,12 @@
         onClick: toggle,
         "aria-expanded": !collapsed,
         className: "collapse-header-btn",
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-          width: "100%",
-          border: "none",
-          background: "transparent",
-          padding: 0,
-          font: "inherit",
-          textAlign: "left",
-          cursor: "pointer",
-          userSelect: "none",
-          marginBottom: collapsed ? 0 : 2
-        }
+        style: { marginBottom: collapsed ? 0 : 2 }
       },
-      /* @__PURE__ */ React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: {
-        fontSize: 10,
-        color: "var(--textLt)",
-        transition: "transform 0.15s ease",
-        transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
-        display: "inline-block"
+      /* @__PURE__ */ React.createElement("span", { className: "collapse-header-title-wrap" }, /* @__PURE__ */ React.createElement("span", { className: "collapse-arrow", style: {
+        transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)"
       } }, "\u25BC"), title),
-      collapsed && summary && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, summary)
+      collapsed && summary && /* @__PURE__ */ React.createElement("span", { className: "collapse-summary" }, summary)
     ), !collapsed && children);
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete }) {
@@ -323,12 +249,11 @@
       /* @__PURE__ */ React.createElement(
         "div",
         {
-          className: "modal-card",
-          onClick: (e) => e.stopPropagation(),
-          style: { padding: "24px 24px 20px", width: "min(460px,calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto" }
+          className: "modal-card oem-card",
+          onClick: (e) => e.stopPropagation()
         },
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--text)" } }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
-        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--amber)", marginBottom: 18 } }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
         /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-desc" }, "Description"), /* @__PURE__ */ React.createElement(
           "input",
           {
@@ -358,7 +283,7 @@
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 55%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -370,7 +295,7 @@
             }
           },
           MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
-        )), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 45%" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-day",
@@ -400,12 +325,12 @@
               if (e.key === "Enter") save();
             }
           }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement(
           "img",
           {
             src: attachment,
             alt: "attachment",
-            style: { height: 56, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer" },
+            className: "oem-attach-img",
             onClick: () => setLightbox(true)
           }
         ), /* @__PURE__ */ React.createElement(
@@ -413,35 +338,26 @@
           {
             type: "button",
             onClick: () => setAttachment(null),
-            style: { fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--red)", cursor: "pointer", background: "transparent", color: "var(--red)" }
+            className: "oem-remove-btn"
           },
           "Remove"
-        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--border)", cursor: "pointer", color: "var(--textMid)", background: "var(--inputBg)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, flexWrap: "wrap" } }, onDelete && /* @__PURE__ */ React.createElement(
+        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: onDelete,
             className: "cf-btn cf-btn--danger",
-            style: { padding: "9px 16px", marginRight: ev.isOverride && onReset ? 0 : "auto" }
+            style: { marginRight: ev.isOverride && onReset ? 0 : "auto" }
           },
           "Delete…"
         ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: onReset,
-            style: {
-              fontSize: 13,
-              padding: "9px 16px",
-              borderRadius: 8,
-              border: "1px solid var(--amber)",
-              cursor: "pointer",
-              background: "transparent",
-              color: "var(--amber)",
-              marginRight: "auto"
-            }
+            className: "oem-reset-btn"
           },
           "\u21BA Reset entry"
-        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "9px 24px" } }, "Save"))
+        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"))
       )
     );
   }
@@ -471,35 +387,15 @@
         setLoading(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { style: {
-      minHeight: "100vh",
-      background: "var(--headerBg)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 24,
-      fontFamily: "Inter,sans-serif"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { width: "100%", maxWidth: 420 } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 28 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 48, marginBottom: 10 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 } }, "Signed in as ", email)), /* @__PURE__ */ React.createElement("div", { style: {
-      background: "var(--bgCard)",
-      borderRadius: 16,
-      padding: 32,
-      boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
-      border: "1px solid var(--border)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8, textAlign: "center" } }, "One more step"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", textAlign: "center", marginBottom: 20, lineHeight: 1.5 } }, "Create a new household budget, or join one a family member already set up."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Signed in as ", email)), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, "One more step"), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle" }, "Create a new household budget, or join one a family member already set up."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
           setMode("create");
           setError("");
         },
+        className: "household-mode-btn",
         style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "4px 10px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
           background: mode === "create" ? "var(--stripe)" : "transparent",
           color: mode === "create" ? "var(--text)" : "var(--textLt)"
         }
@@ -512,13 +408,8 @@
           setMode("join");
           setError("");
         },
+        className: "household-mode-btn",
         style: {
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "4px 10px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
           background: mode === "join" ? "var(--stripe)" : "transparent",
           color: mode === "join" ? "var(--text)" : "var(--textLt)"
         }
@@ -537,41 +428,30 @@
     })), mode === "join" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-code" }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
       id: "hh-code",
       type: "text",
-      className: "field-input field-input--lg field-input--mono",
+      className: "field-input field-input--lg field-input--mono field-input--spaced",
       value: code,
       onChange: (e) => {
         setCode(e.target.value.toUpperCase());
         setError("");
       },
-      placeholder: "e.g. 4F9B2C1D",
-      style: { letterSpacing: "0.05em" }
-    })), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner", role: "alert", style: { marginTop: 8, marginBottom: 8 } }, error), /* @__PURE__ */ React.createElement(
+      placeholder: "e.g. 4F9B2C1D"
+    })), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner household-onboard-error", role: "alert" }, error), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: submit,
         disabled: loading,
+        className: "household-submit-btn",
         style: {
-          width: "100%",
-          fontFamily: "Inter,sans-serif",
-          fontSize: 15,
-          fontWeight: 700,
-          padding: "12px",
-          borderRadius: 8,
-          border: "none",
           cursor: loading ? "wait" : "pointer",
-          background: "var(--primary)",
-          color: "#fff",
-          opacity: loading ? 0.7 : 1,
-          transition: "opacity 0.15s",
-          marginTop: 8
+          opacity: loading ? 0.7 : 1
         }
       },
       loading ? "One moment…" : mode === "create" ? "Create household" : "Join household"
-    )), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "household-signout-wrap" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: signOut,
-        style: { fontSize: 12, color: "rgba(255,255,255,0.4)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }
+        className: "household-signout-btn"
       },
       "Sign out"
     ))));
