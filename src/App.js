@@ -654,24 +654,9 @@
     if (locked) {
       return /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout });
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll", style: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", style: { background: "var(--headerBg)", padding: "0 24px", paddingBottom: 0, lineHeight: 0, fontSize: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-inner", style: { maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, fontSize: "initial", lineHeight: "initial" } }, /* @__PURE__ */ React.createElement("div", { className: "logo-area", style: { display: "flex", alignItems: "center", gap: 12, minWidth: 0, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", style: { height: 33, objectFit: "contain", display: "block", imageRendering: "auto", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile", style: { display: "flex", gap: 4, alignItems: "center" } }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13", style: {
-      fontWeight: 700,
-      padding: "4px 12px",
-      borderRadius: "16px",
-      border: "none",
-      cursor: "pointer",
-      background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)",
-      color: "#fff",
-      transition: "all 0.15s"
-    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "header-search", style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      background: "rgba(255,255,255,0.08)",
-      borderRadius: 20,
-      padding: "5px 12px",
-      border: "1px solid rgba(255,255,255,0.12)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, style: { color: "rgba(255,255,255,0.4)", flexShrink: 0 } }), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+      background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
+    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "global-search",
@@ -680,30 +665,14 @@
         autoComplete: "off",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),
-        style: {
-          fontSize: 13,
-          background: "transparent",
-          border: "none",
-          outline: "none",
-          color: "#fff",
-          width: 130,
-          caretColor: "var(--amber)"
-        }
+        className: "header-search-input"
       }
     ), globalSearch && /* @__PURE__ */ React.createElement(
       "button",
       {
         "aria-label": "Clear search",
         onClick: () => setGlobalSearch(""),
-        style: {
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "rgba(255,255,255,0.5)",
-          fontSize: 14,
-          padding: 0,
-          lineHeight: 1
-        }
+        className: "header-search-clear"
       },
       "\u2715"
     )), (() => {
@@ -725,45 +694,19 @@
           "aria-label": label,
           onClick: () => setTab((prev) => prev === "alerts" ? "dashboard" : "alerts"),
           title: label,
+          className: "alert-bell-btn",
           style: {
-            position: "relative",
             background: tab === "alerts" ? "rgba(255,255,255,0.15)" : "transparent",
-            border: "1px solid",
             borderColor: color,
-            borderRadius: 8,
-            width: 36,
-            height: 36,
-            cursor: "pointer",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color,
-            fontSize: 17,
-            transition: "all 0.15s"
+            color
           }
         },
         /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 17 }),
-        /* @__PURE__ */ React.createElement("span", { style: {
-          position: "absolute",
-          top: -5,
-          right: -5,
-          background: color,
-          color: "#fff",
-          borderRadius: "50%",
-          width: 16,
-          height: 16,
-          fontSize: 9,
-          fontWeight: 700,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          lineHeight: 1
-        } }, count > 9 ? "9+" : count)
+        /* @__PURE__ */ React.createElement("span", { className: "alert-bell-badge", style: { background: color } }, count > 9 ? "9+" : count)
       );
     })(), (() => {
       const initials = ((sessionUser == null ? void 0 : sessionUser.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-      return /* @__PURE__ */ React.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setMenuOpen((v) => !v),
@@ -771,49 +714,17 @@
           "aria-haspopup": "menu",
           "aria-expanded": menuOpen,
           title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
-          style: {
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
-            border: "1px solid rgba(255,255,255,0.3)",
-            cursor: "pointer",
-            fontSize: 12,
-            fontWeight: 700,
-            color: "#fff",
-            flexShrink: 0,
-            transition: "background 0.15s"
-          }
+          className: "user-avatar-btn",
+          style: { background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }
         },
         initials
       ), menuOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
         "div",
         {
           onClick: () => setMenuOpen(false),
-          style: { position: "fixed", inset: 0, zIndex: 1400 }
+          className: "user-menu-backdrop"
         }
-      ), /* @__PURE__ */ React.createElement("div", { style: {
-        position: "fixed",
-        top: 58,
-        // just below the 64px header
-        right: 12,
-        // 12px from right edge of viewport
-        zIndex: 1500,
-        background: "var(--bgCard)",
-        borderRadius: 12,
-        boxShadow: "var(--shadowXl)",
-        border: "1px solid var(--border)",
-        width: "min(240px, calc(100vw - 24px))",
-        // never wider than screen
-        overflow: "hidden"
-      } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 10px", borderBottom: "1px solid var(--border)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--text)" } }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { style: {
-        fontSize: 11,
-        color: "var(--textLt)",
-        marginTop: 2,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
-      } }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
+      ), /* @__PURE__ */ React.createElement("div", { className: "user-menu-panel" }, /* @__PURE__ */ React.createElement("div", { className: "user-menu-header" }, /* @__PURE__ */ React.createElement("div", { className: "user-menu-name" }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { className: "user-menu-email" }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
         { label: "Edit Profile", icon: "user", action: () => {
           setPf({ fullName: (sessionUser == null ? void 0 : sessionUser.fullName) || "", email: (sessionUser == null ? void 0 : sessionUser.email) || "" });
           setPfErr("");
@@ -851,8 +762,7 @@
         {
           key: item.label,
           onClick: item.action,
-          className: "cf-menu-item",
-          style: { borderBottom: "1px solid var(--border)" }
+          className: "cf-menu-item cf-menu-item--bordered"
         },
         /* @__PURE__ */ React.createElement(Icon, { name: item.icon, size: 16 }),
         item.label
@@ -868,11 +778,7 @@
         },
         /* @__PURE__ */ React.createElement(Icon, { name: "log-out", size: 16 }),
         "Sign out"
-      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
-        padding: 28,
-        maxWidth: 400,
-        width: "100%"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, className: "mb-14" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
+      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, className: "mb-14" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
         "input",
         {
           id: "pf-" + key,
@@ -881,11 +787,11 @@
           value: pf[key],
           onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))),/* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--textLt)", marginBottom: 14 } }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))),/* @__PURE__ */ React.createElement("div", { className: "form-note-text" }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { className: "form-err-text" }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
-          className: "cf-btn cf-btn--secondary", style: { padding: "8px 18px" }
+          className: "cf-btn cf-btn--secondary"
         },
         "Cancel"
       ), /* @__PURE__ */ React.createElement("button", { onClick: async () => {
@@ -901,11 +807,7 @@
         } catch (err) {
           setPfErr(err.message || "Couldn't update your profile.");
         }
-      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Change password" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card", style: {
-        padding: 28,
-        maxWidth: 400,
-        width: "100%"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Change Password"), [
+      }, className: "cf-btn cf-btn--primary fw-700" }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Change password" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Change Password"), [
         { label: "Current password", key: "current", val: pwf.current },
         { label: "New password (min 8 chars)", key: "next", val: pwf.next },
         { label: "Confirm new password", key: "confirm", val: pwf.confirm }
@@ -919,11 +821,11 @@
           value: val,
           onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))),pfErr && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--red)", fontSize: 12, marginBottom: 10 } }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { style: { color: "var(--greenDk)", fontSize: 12, marginBottom: 10 } }, pfOk), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 } }, /* @__PURE__ */ React.createElement(
+      ))),pfErr && /* @__PURE__ */ React.createElement("div", { className: "form-err-text" }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
-          className: "cf-btn cf-btn--secondary", style: { padding: "8px 18px" }
+          className: "cf-btn cf-btn--secondary"
         },
         "Cancel"
       ), /* @__PURE__ */ React.createElement("button", { onClick: async () => {
@@ -947,98 +849,37 @@
         } catch (err) {
           setPfErr(err.message || "Couldn't change your password.");
         }
-      }, className: "cf-btn cf-btn--primary", style: { fontWeight: 700, padding: "8px 18px" } }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", style: { display: "flex", gap: 2, fontSize: "initial", lineHeight: "initial" } }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, style: {
-      fontSize: 13,
-      fontWeight: 600,
-      padding: "12px 18px",
-      border: "none",
-      cursor: "pointer",
+      }, className: "cf-btn cf-btn--primary fw-700" }, "Change Password")))));
+    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary" }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, className: "tab-bar-btn", style: {
       borderBottom: tab === t.id ? "3px solid var(--amber)" : "3px solid transparent",
-      background: "transparent",
-      color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)",
-      transition: "color 0.15s,border-color 0.15s"
+      color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)"
     } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
       const today = /* @__PURE__ */ new Date();
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
-    }).length > 0 && /* @__PURE__ */ React.createElement("span", { style: {
-      marginLeft: 6,
-      background: C.red,
-      color: "#fff",
-      borderRadius: 10,
-      padding: "1px 6px",
-      fontSize: 10,
-      fontWeight: 700
-    } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", style: {
-      marginLeft: 5,
-      display: "inline-flex",
-      color: C.amber
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { style: {
-      position: "fixed",
-      bottom: 80,
-      left: "50%",
-      transform: "translateX(-50%)",
-      // Below open panels/modals (1500/2000): a passive reminder must never
-      // cover a form's action buttons.
-      zIndex: 1450,
-      background: "var(--bgCard)",
-      border: "1px solid var(--amber)",
-      borderRadius: 14,
-      padding: "16px 20px",
-      maxWidth: 340,
-      width: "calc(100vw - 32px)",
-      boxShadow: "var(--shadowLg)"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15 }), "Time for a backup"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--textMid)", marginBottom: 14, lineHeight: 1.5 } }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement(
+    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { className: "backup-nudge" }, /* @__PURE__ */ React.createElement("div", { className: "backup-nudge-title" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15 }), "Time for a backup"), /* @__PURE__ */ React.createElement("div", { className: "backup-nudge-msg" }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(false),
-        className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "7px 14px", borderRadius: 7 }
+        className: "cf-btn cf-btn--secondary cf-btn--md"
       },
       "Remind me later"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(true),
-        className: "cf-btn cf-btn--primary", style: { fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 7 }
+        className: "cf-btn cf-btn--primary cf-btn--md fw-700"
       },
       "\u2193 Export backup"
-    ))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { style: {
-      position: "fixed",
-      top: 52,
-      left: "50%",
-      transform: "translateX(-50%)",
-      zIndex: 3e3,
-      background: "var(--primary)",
-      color: "#fff",
-      borderRadius: 20,
-      padding: "6px 16px 6px 12px",
-      fontSize: 12,
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      opacity: Math.max(pullProgress, pullActive ? 1 : 0),
-      transition: "opacity 0.2s",
-      pointerEvents: "none",
-      boxShadow: "var(--shadowLg)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: {
-      display: "inline-block",
-      animation: pullActive ? "spin 0.8s linear infinite" : "none",
-      fontSize: 14
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : ""), style: { padding: "28px 24px", marginTop: 0, outline: "none" } }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      flexWrap: "wrap",
+    ))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
+      opacity: Math.max(pullProgress, pullActive ? 1 : 0)
+    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
+      animation: pullActive ? "spin 0.8s linear infinite" : "none"
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "low-balance-banner", style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
-      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`,
-      borderRadius: 10,
-      padding: "10px 14px",
-      marginBottom: 18,
-      fontSize: 13,
-      color: "var(--text)"
-    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 200 } }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${alertThresh} alert threshold.`), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", gap: 8, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", style: { fontSize: 12, padding: "5px 12px" }, onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
+      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`
+    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${alertThresh} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
@@ -1196,21 +1037,14 @@
         },
         onDismiss: () => setUndoStack([])
       }
-    ), /* @__PURE__ */ React.createElement("div", { style: {
-      textAlign: "center",
-      padding: "18px 16px 28px",
-      fontSize: 11,
-      color: "rgba(255,255,255,0.25)",
-      background: "var(--headerBg)",
-      marginTop: "auto"
-    } }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { className: "app-footer" }, /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "privacy.html",
         className: "cf-footer-link"
       },
       "Privacy"
-    ), /* @__PURE__ */ React.createElement("span", { style: { margin: "0 10px" } }, "|"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("span", { className: "footer-sep" }, "|"), /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "terms.html",
