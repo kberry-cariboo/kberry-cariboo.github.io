@@ -818,6 +818,24 @@
         .forecast-lowest-value{font-family:'IBM Plex Mono',monospace;}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
+        .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+        .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
+        .yoy-card{margin-top:14px;}
+        .yoy-header-row{padding:16px 18px 10px;}
+        .yoy-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--textLt);}
+        .yoy-table{width:100%;border-collapse:collapse;min-width:420px;}
+        .yoy-table th{background:var(--navy);color:#fff;font-size:11px;font-weight:600;padding:8px 14px;white-space:nowrap;text-align:left;}
+        .yoy-th-num{text-align:right!important;}
+        .yoy-table td{padding:8px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+        .yoy-td-desc{color:var(--text);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .yoy-td-cat{white-space:nowrap;}
+        .yoy-num{text-align:right;white-space:nowrap;}
+        .yoy-delta-pos{color:var(--greenDk);}
+        .yoy-delta-neg{color:var(--red);}
+        .yoy-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:4px;margin-left:6px;vertical-align:1px;}
+        .yoy-tag--new{background:rgba(46,204,138,0.15);color:var(--greenDk);}
+        .yoy-tag--gone{background:var(--redLt);color:var(--red);}
+        .yoy-foot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none;color:var(--text);}
         .forecast-th{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;}
         .forecast-tr{border-bottom:1px solid var(--border);}
         .forecast-td-date{font-size:13px;padding:8px 14px;color:var(--text);white-space:nowrap;}

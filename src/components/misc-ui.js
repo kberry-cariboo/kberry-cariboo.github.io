@@ -253,7 +253,7 @@
           onClick: (e) => e.stopPropagation()
         },
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, 'Changes apply to this date only. Right-click \u2192 "Edit this entry" to change all occurrences.'),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, 'Changes apply to this date only. Right-click \u2192 "Edit recurring entry" to change all occurrences.'),
         /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-desc" }, "Description"), /* @__PURE__ */ React.createElement(
           "input",
           {
