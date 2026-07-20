@@ -1,6 +1,6 @@
   function App() {
     var _a;
-    if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(SelfTestView, null);
+    if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(SelfTestView, null));
     const {
       configured: sbConfigured,
       session,
@@ -643,16 +643,16 @@
       return null;
     }
     if (!session) {
-      return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(LoginView, null));
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(LoginView, null));
     }
     if (membershipLoading) {
       return null;
     }
     if (!household) {
-      return /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut });
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut }));
     }
     if (locked) {
-      return /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout });
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout }));
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
