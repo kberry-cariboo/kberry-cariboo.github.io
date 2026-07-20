@@ -444,6 +444,10 @@
         .kpi-card .kpi-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;
           font-size:20px;font-weight:700;color:var(--text);line-height:1;}
         .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
+        /* Value + sparkline row inside the annual KPI tiles: wrap instead of
+           squeezing the sparkline against the card edge on narrow phones */
+        .kpi-spark-row{display:flex;align-items:flex-end;justify-content:space-between;
+          gap:8px;flex-wrap:wrap;}
         /* Toggle switch */
         .cf-switch{position:relative;width:44px;height:24px;border-radius:12px;border:none;
           padding:0;cursor:pointer;background:var(--border);transition:background 0.2s;flex-shrink:0;}
@@ -514,8 +518,20 @@
           display:inline-flex;align-items:center;justify-content:center;
           background:var(--border);color:var(--textMid);}
         .chart-toggle-btn[aria-pressed="true"]{background:var(--primary);color:#fff;}
+        /* Small check/menu buttons keep their compact visual but get a padded
+           touch halo — the pseudo-element is part of the button's hit area. */
+        .cf-checkbtn{position:relative;}
+        .cf-checkbtn::after{content:'';position:absolute;inset:-10px;}
         @media (pointer:coarse){
           .chart-toggle-btn{min-width:44px!important;min-height:44px!important;}
+          /* WCAG-ish touch minimums for the shared controls */
+          .cf-btn{min-height:40px;}
+          .cf-pill,.cf-pill--dashed{min-height:36px;}
+          .cf-footer-link{display:inline-block;padding:10px 4px;}
+          .settings-page-pills button{min-height:40px;}
+          .settings-quicklinks a{min-height:40px;display:inline-flex;align-items:center;}
+          .collapse-header-btn{min-height:36px;}
+          .cf-switch::after{content:'';position:absolute;inset:-10px;}
         }
         /* Accessible focus ring \u2014 keyboard only, consistent everywhere */
         :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
@@ -553,8 +569,10 @@
         .cf-fab-menu-btn{font-size:12px;font-weight:600;padding:10px 18px;border-radius:20px;
           border:1px solid var(--border);cursor:pointer;background:var(--bgCard);color:var(--text);
           box-shadow:var(--shadowMd);white-space:nowrap;display:flex;align-items:center;gap:8px;}
+        /* z-index above the panel/menu (1500) so the close "✕" stays tappable
+           while they're open — the menu's backdrop otherwise swallows the tap. */
         .cf-quickfab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));right:16px;
-          z-index:1499;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+          z-index:1501;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
           background:var(--primary);color:#fff;font-size:24px;font-weight:300;line-height:1;
           box-shadow:var(--shadowLg);display:flex;align-items:center;justify-content:center;
           transition:background 0.2s,transform 0.2s,opacity 0.2s;}
@@ -640,8 +658,10 @@
              (monthly-amounts grid, budget targets) keep their compact size. */
           .fab-panel input:not([type=checkbox]), .fab-panel select,
           .search-box input, .header-search input { font-size: 16px !important; }
-          /* Bottom-sheet modals \u2014 slide up from bottom edge */
-          .modal-overlay{align-items:flex-end!important;}
+          /* Bottom-sheet modals \u2014 slide up from bottom edge, flush with it
+             (the desktop overlay padding left a floating 16px gap under the
+             sheet's straight bottom corners) */
+          .modal-overlay{align-items:flex-end!important;padding:0!important;}
           .modal-card{
             border-radius:20px 20px 0 0!important;
             width:100%!important;max-width:100%!important;
@@ -694,7 +714,9 @@
           .year-openbal{flex-basis:100%!important;order:5;}
           .year-openbal input{flex:1 1 auto!important;width:auto!important;}
           .glance-grid [style*="IBM Plex Mono"]{font-size:14px!important;}
-          .month-picker button{padding:4px 6px!important;font-size:10px!important;}
+          /* Month pills: the strip scrolls horizontally, so pills can afford a
+             real touch height (the old 4×6px padding made ~17px-tall targets) */
+          .month-picker button{padding:9px 10px!important;font-size:11px!important;}
           .month-nav-arrow{display:none!important;}
           .month-today-pill{display:none!important;}
           /* Budget monthly table: hide category */
@@ -715,9 +737,12 @@
           .reg-actions button{padding:6px 8px!important;font-size:12px!important;}
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          /* FAB quick-add panel: near full-width, centered above FAB */
-          .fab-panel{left:12px!important;right:12px!important;bottom:84px!important;
-            width:auto!important;padding:16px!important;maxHeight:78vh!important;}
+          /* FAB quick-add panel: near full-width, clear of the FAB close button
+             (84px used to half-cover the 52px FAB above the bottom nav; the old
+             rule also misspelled max-height so 78vh never applied) */
+          .fab-panel{left:12px!important;right:12px!important;
+            bottom:calc(128px + env(safe-area-inset-bottom))!important;
+            width:auto!important;padding:16px!important;max-height:70vh!important;}
           /* Budget: hide daily toggle, add button; show mobile-only label */
           /* Register: hide add/import buttons \u2014 FAB handles these on mobile */
         }
@@ -726,7 +751,7 @@
           .kpi-grid{grid-template-columns:1fr 1fr!important;gap:6px!important;}
           .kpi-grid-4{grid-template-columns:1fr 1fr!important;gap:6px!important;}
           .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
-          .month-picker button{padding:3px 5px!important;font-size:9px!important;}
+          .month-picker button{padding:9px 10px!important;font-size:11px!important;}
           /* Hide \u2039 \u203A arrows on mobile \u2014 month buttons are tappable directly */
           .month-nav-arrow{display:none!important;}
           .month-today-pill{display:none!important;}

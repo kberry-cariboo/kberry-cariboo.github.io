@@ -559,6 +559,7 @@
         role: "checkbox",
         "aria-checked": selIds.has(e.id),
         "aria-label": selIds.has(e.id) ? "Deselect row" : "Select row",
+        className: "cf-checkbtn",
         style: {
           width: 20,
           height: 20,
@@ -569,7 +570,7 @@
           alignItems: "center",
           justifyContent: "center",
           border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
-          background: selIds.has(e.id) ? "var(--navy)" : "transparent",
+          background: selIds.has(e.id) ? "var(--primary)" : "transparent",
           color: "#fff",
           fontSize: 12,
           lineHeight: 1
@@ -611,6 +612,7 @@
             role: "checkbox",
             "aria-checked": selIds.has(e.id),
             "aria-label": selIds.has(e.id) ? "Deselect entry" : "Select entry",
+            className: "cf-checkbtn",
             style: {
               width: 22,
               height: 22,
@@ -649,6 +651,7 @@
               openCtx(ev, e);
             },
             "aria-label": "Entry actions",
+            className: "cf-checkbtn",
             style: {
               width: 26,
               height: 26,

@@ -327,7 +327,7 @@
         }
       },
       label
-    ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: {
+    ))), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--textLt)" } }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks", style: {
       display: "flex",
       gap: 6,
       overflowX: "auto",
@@ -466,7 +466,7 @@
           value: yc.openingBalance,
           onChange: (e) => updateOpenBal(yc.year, roundMoney(parseFloat(e.target.value) || 0))
         }
-      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), style: {
+      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--textLt)", flex: 1 } }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-checkbtn", style: {
         fontSize: 11,
         padding: "4px 10px",
         borderRadius: 6,
@@ -679,6 +679,7 @@
             return n;
           }),
           title: "Reset to automatic color",
+          className: "cf-checkbtn",
           style: {
             fontSize: 10,
             padding: "3px 8px",

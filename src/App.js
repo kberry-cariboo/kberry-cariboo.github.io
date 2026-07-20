@@ -151,6 +151,21 @@
         setBudgetSub("forecast");
       }
     }, []);
+    // Switching views keeps the old scroll offset (the app root is one shared
+    // scroller), so a scrolled dashboard dumped users mid-list on the next tab.
+    const scrollResetReady = useRef(false);
+    useEffect(() => {
+      if (!scrollResetReady.current) {
+        scrollResetReady.current = true;
+        return;
+      }
+      try {
+        const sc = document.querySelector(".app-scroll");
+        if (sc) sc.scrollTop = 0;
+        window.scrollTo(0, 0);
+      } catch (e) {
+      }
+    }, [tab, budgetSub]);
     useEffect(() => {
       window.__cfGoBudgetSub = (s) => {
         setTab("budget");

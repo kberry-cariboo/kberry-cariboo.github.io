@@ -186,6 +186,7 @@
         type: "button",
         onClick: toggle,
         "aria-expanded": !collapsed,
+        className: "collapse-header-btn",
         style: {
           display: "flex",
           justifyContent: "space-between",

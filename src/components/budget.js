@@ -238,6 +238,7 @@
             "aria-checked": selIds.has(ev.id),
             "aria-label": selIds.has(ev.id) ? "Deselect row" : "Select row",
             title: isDone ? "Paid \u2014 select to change" : "Select to mark paid",
+            className: "cf-checkbtn",
             style: {
               width: 20,
               height: 20,
@@ -388,6 +389,7 @@
             "aria-checked": isSel,
             "aria-label": isSel ? "Deselect row" : "Select row",
             title: isDone ? "Paid — select to change" : "Select to mark paid",
+            className: "cf-checkbtn",
             style: {
               flexShrink: 0,
               marginTop: 2,
@@ -582,7 +584,7 @@
           style: {
             fontSize: 12,
             fontWeight: 700,
-            padding: "4px 10px",
+            padding: "10px 14px",
             borderRadius: 6,
             border: "none",
             cursor: "pointer",

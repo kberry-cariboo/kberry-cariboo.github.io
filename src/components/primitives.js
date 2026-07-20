@@ -31,8 +31,10 @@
     const min = Math.min(...data);
     const max = Math.max(...data);
     const range = max - min || 1;
+    // 3px horizontal inset keeps the end dot (r=2.5) inside the svg box —
+    // it used to bleed past the card edge on narrow phone tiles.
     const pts = data.map((v, i) => [
-      i / (data.length - 1) * width,
+      3 + i / (data.length - 1) * (width - 6),
       height - (v - min) / range * (height - 4) - 2
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
