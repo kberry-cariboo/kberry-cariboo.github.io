@@ -5198,15 +5198,16 @@ document.addEventListener('DOMContentLoaded',function(){
         const signed = ev.type === "income" ? ev.amount : -ev.amount;
         let row = map.get(k);
         if (!row) {
-          row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0 };
+          row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0, day: ev.day };
           map.set(k, row);
         }
         row[key] += signed;
+        if (key === "cur" || row.day == null) row.day = ev.day;
       };
       flow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "cur"));
       prevYearFlow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "prev"));
       const rows = [...map.values()].map((row) => __spreadProps(__spreadValues({}, row), { cur: r2(row.cur), prev: r2(row.prev), delta: r2(row.cur - row.prev) }));
-      rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || (a.desc || "").localeCompare(b.desc || ""));
+      rows.sort((a, b) => a.day - b.day || (a.desc || "").localeCompare(b.desc || ""));
       return rows;
     }, [yoyActive, flow, prevYearFlow, monthIdx]);
     const todayDate = /* @__PURE__ */ new Date();
