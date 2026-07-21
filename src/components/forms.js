@@ -382,7 +382,7 @@
       onImport(imported);
       setDone(true);
     };
-    const sel = (field, label) => /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, className: "csv-sel-label" }, label), /* @__PURE__ */ React.createElement(
+    const sel = (field, label, required = false) => /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, className: "csv-sel-label" }, label, required && /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: `csv-map-${field}`,
@@ -414,7 +414,7 @@
       placeholder: 'Name this mapping (e.g. "RBC chequing")',
       "aria-label": "Mapping name",
       className: "csv-select-input csv-name-input"
-    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary cf-btn--csvsave" }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { className: "csv-field-grid" }, sel("desc", "Description *"), sel("amount", "Amount *"), sel("date", "Date *"), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { className: "csv-error-text" }, err), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-8" }, /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary cf-btn--csvsave" }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { className: "csv-field-grid" }, sel("desc", "Description", true), sel("amount", "Amount", true), sel("date", "Date", true), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { className: "csv-error-text" }, err), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-8" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: buildPreview,

@@ -3924,7 +3924,7 @@ document.addEventListener('DOMContentLoaded',function(){
       onImport(imported);
       setDone(true);
     };
-    const sel = (field, label) => /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, className: "csv-sel-label" }, label), /* @__PURE__ */ React.createElement(
+    const sel = (field, label, required = false) => /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, className: "csv-sel-label" }, label, required && /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: `csv-map-${field}`,
@@ -3956,7 +3956,7 @@ document.addEventListener('DOMContentLoaded',function(){
       placeholder: 'Name this mapping (e.g. "RBC chequing")',
       "aria-label": "Mapping name",
       className: "csv-select-input csv-name-input"
-    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary cf-btn--csvsave" }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { className: "csv-field-grid" }, sel("desc", "Description *"), sel("amount", "Amount *"), sel("date", "Date *"), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { className: "csv-error-text" }, err), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-8" }, /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary cf-btn--csvsave" }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { className: "csv-field-grid" }, sel("desc", "Description", true), sel("amount", "Amount", true), sel("date", "Date", true), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { className: "csv-error-text" }, err), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-8" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: buildPreview,
@@ -4887,7 +4887,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-amount" }, "Amount $"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-amount" }, "Amount $", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-amount",
@@ -4916,7 +4916,7 @@ document.addEventListener('DOMContentLoaded',function(){
             }
           },
           MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
-        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day"), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-day",
@@ -5855,7 +5855,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.target === e.currentTarget) setShowBvaModal(false);
             }
           },
-          /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category"), /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",
             {
               autoFocus: true,
@@ -5865,7 +5865,7 @@ document.addEventListener('DOMContentLoaded',function(){
             },
             /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"),
             availCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-          )) : /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Category: ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $"), /* @__PURE__ */ React.createElement(
+          )) : /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Category: ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "input",
             {
               autoFocus: !!bvaModalData.editCat,
@@ -6790,7 +6790,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             const lblCls = "field-label";
             const inpCls = (err) => "field-input" + (err ? " field-error" : "");
             const errTxt = (k) => goalErrors[k] && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, goalErrors[k]);
-            return /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-name" }, "Goal name"), /* @__PURE__ */ React.createElement(
+            return /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-name" }, "Goal name", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
               "input",
               {
                 id: "goal-name",
@@ -6800,7 +6800,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
                 placeholder: "e.g. Property Taxes",
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { name: e.target.value }))
               }
-            ), errTxt("name")), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2-12" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target" }, "Target $"), /* @__PURE__ */ React.createElement(
+            ), errTxt("name")), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2-12" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target" }, "Target $", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
               MoneyInput,
               {
                 id: "goal-target",
@@ -6824,7 +6824,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
                 value: goalForm.monthly,
                 onChange: (v) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { monthly: v }))
               }
-            ), errTxt("monthly")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target-date" }, "Target date"), /* @__PURE__ */ React.createElement(
+            ), errTxt("monthly")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-target-date" }, "Target date", goalForm.payoutEntry && /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
               "input",
               {
                 id: "goal-target-date",
@@ -7120,7 +7120,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             if (e.target === e.currentTarget) setShowDebtForm(false);
           }
         },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description *"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "debt-desc",
