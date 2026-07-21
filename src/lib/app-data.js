@@ -819,6 +819,7 @@
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+        .budget-toolbar-row--end{justify-content:flex-end;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
         .yoy-card{margin-top:14px;margin-bottom:14px;}
         .yoy-header-row{padding:16px 18px 10px;}
