@@ -86,6 +86,32 @@
     });
     return added;
   }
+  // A permanent amount change on a recurring entry is usually recorded as
+  // occurrence edits (the entry's base amount keeps the old value so past
+  // years stay accurate). Rule for carrying that into a new year: whatever
+  // amount is in effect on the entry's FINAL occurrence of the source year
+  // applies to ALL of its occurrences in the target year — the dates still
+  // come purely from the recurrence pattern. A mid-year one-off edit (final
+  // occurrence back at the base amount) carries nothing. Entries with
+  // per-month amount schedules are left to their schedule, and occurrences
+  // that already have an override (existing or just-copied) are not touched.
+  function carryLatestAmountsToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}, plannedAdds = {}) {
+    const recurring = entries.filter((e) => e.repeats && !e.monthlyAmounts);
+    if (!recurring.length) return {};
+    const lastAmtByEntry = {};
+    expandEntries(recurring, fromYear, fromOvs).forEach((ev) => {
+      lastAmtByEntry[ev.entryId] = ev.amount;
+    });
+    const added = {};
+    expandEntries(recurring, toYear, {}).forEach((ev) => {
+      const entry = recurring.find((e) => e.id === ev.entryId);
+      const lastAmt = lastAmtByEntry[ev.entryId];
+      if (!entry || lastAmt === void 0 || lastAmt === entry.amount) return;
+      if (existingToOvs[ev.id] || plannedAdds[ev.id]) return;
+      added[ev.id] = { amount: lastAmt };
+    });
+    return added;
+  }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
@@ -222,14 +248,17 @@
       const singleClones = copySingleEntriesToYear(entries, prevYear, y, prevOvs);
       if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
       const ovAdds = copyOccurrenceOverridesToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {});
+      const amtAdds = carryLatestAmountsToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {}, ovAdds);
       const ovCount = Object.keys(ovAdds).length;
-      if (ovCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [y]: __spreadValues(__spreadValues({}, prev[y] || {}), ovAdds) }));
+      const amtCount = Object.keys(amtAdds).length;
+      if (ovCount || amtCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [y]: __spreadValues(__spreadValues(__spreadValues({}, prev[y] || {}), ovAdds), amtAdds) }));
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       const parts = [`Year ${y} added — ${prevYear} is untouched.`];
       if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
       if (singleClones.length > 0) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied from ${prevYear}.`);
       if (ovCount > 0) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over.`);
+      if (amtCount > 0) parts.push(`Updated amounts applied to ${amtCount} occurrence${amtCount === 1 ? "" : "s"}.`);
       parts.push(`Recurring entries without an end date carry forward automatically.`);
       setYearMsg(parts.join(" "));
     };
@@ -450,12 +479,15 @@
               const singleClones = copySingleEntriesToYear(entries, yc.year, nextY, srcOvs);
               if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
               const ovAdds = copyOccurrenceOverridesToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {});
+              const amtAdds = carryLatestAmountsToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {}, ovAdds);
               const ovCount = Object.keys(ovAdds).length;
-              if (ovCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [nextY]: __spreadValues(__spreadValues({}, prev[nextY] || {}), ovAdds) }));
+              const amtCount = Object.keys(amtAdds).length;
+              if (ovCount || amtCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [nextY]: __spreadValues(__spreadValues(__spreadValues({}, prev[nextY] || {}), ovAdds), amtAdds) }));
               const parts = [];
               if (addedTargets) parts.push(`${addedTargets} budget target${addedTargets === 1 ? "" : "s"} added`);
               if (singleClones.length) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied`);
               if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
+              if (amtCount) parts.push(`updated amounts applied to ${amtCount} occurrence${amtCount === 1 ? "" : "s"}`);
               setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Existing ${nextY} values were left unchanged.` : `\u2705 ${nextY} already has everything from ${yc.year} \u2014 nothing to add.`);
             },
             title: `Copy ${yc.year} budget targets and one-time entries to ${nextY} \u2014 adds anything missing without overwriting ${nextY}`,
