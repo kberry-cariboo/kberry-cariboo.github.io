@@ -46,36 +46,76 @@
     // "Fingerprint sign-on": when enabled, the app starts locked and the lock
     // screen immediately prompts for the device biometric (fingerprint / face).
     // The Supabase session persists underneath — this gates the UI on-device.
+    //
+    // The idle-timeout auto-lock below needs the same "start locked" treatment
+    // — and needs a marker that survives a reload without being erased by the
+    // reload itself. A first attempt stamped a "went hidden at" timestamp on
+    // visibilitychange and checked it on the next visible/boot; that failed
+    // because a reload *also* fires visibilitychange→hidden on the outgoing
+    // page (browsers rely on this to flush analytics before unload), which
+    // overwrote the genuinely-stale timestamp with a fresh "now" moments
+    // before the new page could ever read it — silently re-opening the exact
+    // bypass this is meant to close. Tracking "last confirmed active" instead
+    // — stamped only while visible, never touched on hide/unload — sidesteps
+    // that: a reload during real activity reads a fresh stamp (correctly
+    // stays unlocked), while a reload after the tab sat hidden past the
+    // timeout reads a stale one (correctly locks), regardless of how the
+    // reload itself fires visibility events.
+    const LOCK_KEY = "cf_last_active_at";
     const [locked, setLocked] = useState(() => {
       try {
-        return localStorage.getItem("cf_lock_on_launch") === "1";
+        if (localStorage.getItem("cf_lock_on_launch") === "1") return true;
+        if (lockTimeout) {
+          const at = parseInt(localStorage.getItem(LOCK_KEY) || "0", 10);
+          if (at && Date.now() - at > lockTimeout * 6e4) return true;
+        }
+        return false;
       } catch (e) {
         return false;
       }
     });
     useEffect(() => {
-      if (!lockTimeout || !sessionUser) return;
-      const KEY = "cf_hidden_at";
-      const onVis = () => {
+      if (!lockTimeout || !sessionUser || locked) return;
+      const stamp = () => {
         try {
-          if (document.visibilityState === "hidden") {
-            sessionStorage.setItem(KEY, String(Date.now()));
-          } else {
-            const at = parseInt(sessionStorage.getItem(KEY) || "0", 10);
-            sessionStorage.removeItem(KEY);
-            if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
-          }
+          localStorage.setItem(LOCK_KEY, String(Date.now()));
+        } catch (e) {
+        }
+      };
+      stamp();
+      // Re-stamp periodically while visible so elapsed *hidden* time is what
+      // accumulates toward the timeout, not elapsed wall-clock time since
+      // the tab was last (re)focused — a long-running, continuously visible
+      // tab must never lock itself out just for staying open.
+      const iv = setInterval(() => {
+        if (document.visibilityState === "visible") stamp();
+      }, 2e4);
+      const onVis = () => {
+        if (document.visibilityState !== "visible") return;
+        try {
+          const at = parseInt(localStorage.getItem(LOCK_KEY) || "0", 10);
+          if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
+          else stamp();
         } catch (err) {
         }
       };
       document.addEventListener("visibilitychange", onVis);
-      return () => document.removeEventListener("visibilitychange", onVis);
-    }, [lockTimeout, sessionUser]);
+      return () => {
+        document.removeEventListener("visibilitychange", onVis);
+        clearInterval(iv);
+      };
+    }, [lockTimeout, sessionUser, locked]);
     useEffect(() => {
       // Clear the lock only on a real signed-out state — during startup the
       // session is still loading and the launch lock must survive until the
       // lock screen can prompt for the fingerprint.
-      if (!authLoading && !session) setLocked(false);
+      if (!authLoading && !session) {
+        setLocked(false);
+        try {
+          localStorage.removeItem(LOCK_KEY);
+        } catch (e) {
+        }
+      }
     }, [authLoading, session]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
@@ -687,7 +727,13 @@
       return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut }));
     }
     if (locked) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout }));
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => {
+        try {
+          localStorage.setItem(LOCK_KEY, String(Date.now()));
+        } catch (e) {
+        }
+        setLocked(false);
+      }, onSignOut: logout }));
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
