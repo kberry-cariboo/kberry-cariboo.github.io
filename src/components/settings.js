@@ -33,34 +33,68 @@
   }
   // One-time (non-repeating) entries exist only in the year of their startDate,
   // so carrying them into another year means cloning them onto the same
-  // month/day. Any per-occurrence edit made in the source year (moved date,
-  // changed amount/description/notes) is baked into the clone so the copy
-  // reflects what the user actually sees, not the original saved values.
-  // Returns only clones that don't already exist in the target year (matched
-  // on desc + type + category + amount + month/day), so re-running is safe and
-  // never duplicates or overwrites anything in the target year.
-  function copySingleEntriesToYear(entries, fromYear, toYear, fromOverrides = {}) {
-    const existing = new Set(
-      entries.filter((e) => !e.repeats && (e.startDate || "").startsWith(`${toYear}-`)).map((e) => [e.desc, e.type, e.category, e.amount, e.startDate.slice(5)].join("|"))
-    );
-    const clones = [];
-    let idBase = Date.now();
-    entries.forEach((e) => {
-      if (e.repeats || !(e.startDate || "").startsWith(`${fromYear}-`)) return;
+  // month/day, with any per-occurrence edit made in the source year (moved
+  // date, changed amount/description/notes) baked in so the copy reflects
+  // what the user actually sees, not the original saved values.
+  //
+  // Copies can also go stale: a copy made before an edit (or by an older app
+  // version that ignored edits) keeps the outdated date/amount forever, and a
+  // date-only dedupe would then re-clone the entry as a duplicate. So this is
+  // a sync, not a blind copy: source and target singles are paired by
+  // desc + type + category (positionally, in date order, when there are
+  // several of the same name). Paired copies the user hasn't edited in the
+  // target year are UPDATED to the source's effective date/amount/notes;
+  // paired copies with their own target-year edits are left entirely alone;
+  // unpaired source entries are cloned. Returns { clones, updates } where
+  // updates is [{ id, startDate, amount, notes }] to apply to existing
+  // entries. Re-running converges: a second pass changes nothing.
+  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}) {
+    const effOf = (e, yr, ovs) => {
       const [, mm, dd] = e.startDate.split("-").map(Number);
-      const ov = fromOverrides[`${e.id}-${fromYear}-${mm - 1}-${dd}`] || {};
-      const effDesc = ov.desc !== void 0 ? ov.desc : e.desc;
-      const effAmount = ov.amount !== void 0 ? ov.amount : e.amount;
-      const effNotes = ov.notes !== void 0 ? ov.notes : e.notes || "";
+      const ov = ovs[`${e.id}-${yr}-${mm - 1}-${dd}`] || {};
       const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : mm - 1;
       const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : dd), daysInMonth(effM, toYear));
-      const monthDay = `${String(effM + 1).padStart(2, "0")}-${String(effD).padStart(2, "0")}`;
-      const key = [effDesc, e.type, e.category, effAmount, monthDay].join("|");
-      if (existing.has(key)) return;
-      existing.add(key);
-      clones.push(__spreadProps(__spreadValues({}, e), { id: idBase++, desc: effDesc, amount: effAmount, notes: effNotes, startDate: `${toYear}-${monthDay}` }));
+      return {
+        desc: ov.desc !== void 0 ? ov.desc : e.desc,
+        amount: ov.amount !== void 0 ? ov.amount : e.amount,
+        notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
+        monthDay: `${String(effM + 1).padStart(2, "0")}-${String(effD).padStart(2, "0")}`,
+        edited: Object.keys(ov).length > 0
+      };
+    };
+    const groups = {};
+    entries.forEach((e) => {
+      if (e.repeats || !e.startDate) return;
+      const isSrc = e.startDate.startsWith(`${fromYear}-`);
+      const isTgt = e.startDate.startsWith(`${toYear}-`);
+      if (!isSrc && !isTgt) return;
+      const eff = effOf(e, isSrc ? fromYear : toYear, isSrc ? fromOvs : toOvs);
+      const key = [isSrc ? eff.desc : e.desc, e.type, e.category].join("|");
+      const g = groups[key] = groups[key] || { src: [], tgt: [] };
+      g[isSrc ? "src" : "tgt"].push({ e, eff });
     });
-    return clones;
+    const clones = [];
+    const updates = [];
+    let idBase = Date.now();
+    Object.keys(groups).forEach((key) => {
+      const { src, tgt } = groups[key];
+      src.sort((a, b) => a.eff.monthDay < b.eff.monthDay ? -1 : 1);
+      tgt.sort((a, b) => a.e.startDate < b.e.startDate ? -1 : 1);
+      src.forEach((s, i) => {
+        const t = tgt[i];
+        const startDate = `${toYear}-${s.eff.monthDay}`;
+        if (!t) {
+          clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.eff.desc, amount: s.eff.amount, notes: s.eff.notes, startDate }));
+          return;
+        }
+        // The user edited this copy in the target year — their version wins.
+        if (t.eff.edited) return;
+        if (t.e.startDate !== startDate || t.e.amount !== s.eff.amount || (t.e.notes || "") !== s.eff.notes) {
+          updates.push({ id: t.e.id, startDate, amount: s.eff.amount, notes: s.eff.notes });
+        }
+      });
+    });
+    return { clones, updates };
   }
   // Per-occurrence edits (overridesByYr) are keyed by entry + calendar date,
   // so a modified recurring occurrence silently reverts to its base values in
@@ -250,8 +284,14 @@
         return next;
       });
       const prevOvs = overridesByYr[prevYear] || {};
-      const singleClones = copySingleEntriesToYear(entries, prevYear, y, prevOvs);
-      if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+      const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, prevYear, y, prevOvs, overridesByYr[y] || {});
+      if (singleClones.length || singleUpdates.length) setEntries((prev) => [
+        ...prev.map((e) => {
+          const u = singleUpdates.find((x) => x.id === e.id);
+          return u ? __spreadProps(__spreadValues({}, e), { startDate: u.startDate, amount: u.amount, notes: u.notes }) : e;
+        }),
+        ...singleClones
+      ]);
       const ovAdds = copyOccurrenceOverridesToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {});
       const amtAdds = mirrorRecurringAmountsToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {}, ovAdds);
       const ovCount = Object.keys(ovAdds).length;
@@ -481,8 +521,14 @@
               }
               if (addedTargets) setBudgetTargets(nx);
               const srcOvs = overridesByYr[yc.year] || {};
-              const singleClones = copySingleEntriesToYear(entries, yc.year, nextY, srcOvs);
-              if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+              const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, yc.year, nextY, srcOvs, overridesByYr[nextY] || {});
+              if (singleClones.length || singleUpdates.length) setEntries((prev) => [
+                ...prev.map((e) => {
+                  const u = singleUpdates.find((x) => x.id === e.id);
+                  return u ? __spreadProps(__spreadValues({}, e), { startDate: u.startDate, amount: u.amount, notes: u.notes }) : e;
+                }),
+                ...singleClones
+              ]);
               const ovAdds = copyOccurrenceOverridesToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {});
               const amtAdds = mirrorRecurringAmountsToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {}, ovAdds);
               const ovCount = Object.keys(ovAdds).length;
@@ -491,11 +537,12 @@
               const parts = [];
               if (addedTargets) parts.push(`${addedTargets} budget target${addedTargets === 1 ? "" : "s"} added`);
               if (singleClones.length) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied`);
+              if (singleUpdates.length) parts.push(`${singleUpdates.length} one-time entr${singleUpdates.length === 1 ? "y" : "ies"} updated to match ${yc.year}`);
               if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
               if (amtCount) parts.push(`${yc.year}'s amount pattern mirrored onto ${amtCount} occurrence${amtCount === 1 ? "" : "s"}`);
-              setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Existing ${nextY} values were left unchanged.` : `\u2705 ${nextY} already has everything from ${yc.year} \u2014 nothing to add.`);
+              setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Anything you edited in ${nextY} was left alone.` : `\u2705 ${nextY} already matches ${yc.year} \u2014 nothing to change.`);
             },
-            title: `Copy ${yc.year} budget targets and one-time entries to ${nextY} \u2014 adds anything missing without overwriting ${nextY}`,
+            title: `Sync ${yc.year} into ${nextY} \u2014 adds missing budget targets and one-time entries, updates unedited copies, never touches anything edited in ${nextY}`,
             className: "copy-year-btn"
           },
           "Copy \u2192",
