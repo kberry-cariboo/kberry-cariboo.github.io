@@ -230,7 +230,7 @@
       // plain dollars. So buildContext's return stays in cents — the
       // prompt-building code down in runAssessment is the one place that
       // converts, right where the numbers get interpolated into text.
-      const savingsGoals = (Array.isArray(goals) ? goals : []).map((x) => ({
+      const savingsGoals = (Array.isArray(goals) ? goals : []).filter((x) => !x.archived).map((x) => ({
         name: x.name,
         target: roundMoney(x.target),
         saved: roundMoney(x.saved),
@@ -364,7 +364,7 @@ ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
 ${ctx.debtObligations.map((d) => `  ${d.category}: $${centsToDollars(d.ytdPaid).toLocaleString()}`).join("\n")}` : "No debt categories identified."}
 
 ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
-${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${d.balance.toLocaleString()}, Rate ${d.rate}%, Payment $${d.monthlyPayment}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
+${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${centsToDollars(d.balance).toLocaleString()}, Rate ${d.rate}%, Payment $${centsToDollars(d.monthlyPayment).toLocaleString()}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
 ${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}

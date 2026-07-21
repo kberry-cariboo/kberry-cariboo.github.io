@@ -67,9 +67,24 @@
       }));
     }
     if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
+    if (out.debtData && typeof out.debtData === "object") {
+      const toCentsStr = (s) => {
+        const n = parseFloat(s);
+        return isFinite(n) ? String(dollarsToCents(n)) : s;
+      };
+      const nextDebt = {};
+      Object.keys(out.debtData).forEach((key) => {
+        const d = out.debtData[key] || {};
+        nextDebt[key] = __spreadProps(__spreadValues({}, d), {
+          balance: d.balance ? toCentsStr(d.balance) : d.balance,
+          payment: d.payment ? toCentsStr(d.payment) : d.payment
+        });
+      });
+      out.debtData = nextDebt;
+    }
     return out;
   }
-  const SCHEMA_VERSION = 8;
+  const SCHEMA_VERSION = 9;
   function migrateData() {
     let storedVersion = 0;
     try {
@@ -270,6 +285,27 @@
       }
       const thresh = readJSON("cf_alertThresh", null);
       if (typeof thresh === "number" && isFinite(thresh)) write("cf_alertThresh", toCents(thresh));
+    }
+    if (storedVersion < 9) {
+      // Debt tracker balance/payment were left in dollars when the v8
+      // migration above moved every other money field to cents — this closes
+      // that gap. Rate is a percentage, not money, and is left untouched.
+      const toCentsStr = (s) => {
+        const n = parseFloat(s);
+        return isFinite(n) ? String(dollarsToCents(n)) : s;
+      };
+      const debt = readJSON("cf_debt_data", null);
+      if (debt && typeof debt === "object") {
+        const next = {};
+        Object.keys(debt).forEach((key) => {
+          const d = debt[key] || {};
+          next[key] = __spreadProps(__spreadValues({}, d), {
+            balance: d.balance ? toCentsStr(d.balance) : d.balance,
+            payment: d.payment ? toCentsStr(d.payment) : d.payment
+          });
+        });
+        write("cf_debt_data", next);
+      }
     }
     try {
       localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
