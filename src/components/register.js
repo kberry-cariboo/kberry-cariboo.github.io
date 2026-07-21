@@ -1,4 +1,4 @@
-  function RegisterView({ entries, setEntries, addEntry, categories, setCategories = () => {
+  function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, setCategories = () => {
   }, categoryColors = {}, activeYear, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
@@ -61,8 +61,10 @@
       else setEntries((prev) => [...prev, copy]);
     };
     const handleSave = (data) => {
-      if (editing) setEntries((prev) => prev.map((e) => e.id === editing.id ? __spreadProps(__spreadValues({}, data), { id: editing.id }) : e));
-      else if (addEntry) addEntry(data);
+      if (editing) {
+        if (saveEntryEdit) saveEntryEdit(editing.id, data);
+        else setEntries((prev) => prev.map((e) => e.id === editing.id ? __spreadProps(__spreadValues({}, data), { id: editing.id }) : e));
+      } else if (addEntry) addEntry(data);
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
       close();
     };

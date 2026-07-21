@@ -33,26 +33,180 @@
   }
   // One-time (non-repeating) entries exist only in the year of their startDate,
   // so carrying them into another year means cloning them onto the same
-  // month/day. Returns only clones that don't already exist in the target year
-  // (matched on desc + type + category + amount + month/day), so re-running is
-  // safe and never duplicates or overwrites anything in the target year.
-  function copySingleEntriesToYear(entries, fromYear, toYear) {
-    const keyOf = (e, monthDay) => [e.desc, e.type, e.category, e.amount, monthDay].join("|");
-    const existing = new Set(
-      entries.filter((e) => !e.repeats && (e.startDate || "").startsWith(`${toYear}-`)).map((e) => keyOf(e, e.startDate.slice(5)))
-    );
-    const clones = [];
-    let idBase = Date.now();
+  // month/day, with any per-occurrence edit made in the source year (moved
+  // date, changed amount/description/notes) baked in so the copy reflects
+  // what the user actually sees, not the original saved values.
+  //
+  // Copies can also go stale: a copy made before an edit (or by an older app
+  // version that ignored edits) keeps the outdated date/amount forever, and a
+  // date-only dedupe would then re-clone the entry as a duplicate. So this is
+  // a sync, not a blind copy: source and target singles are paired by
+  // desc + type + category (positionally, in date order, when there are
+  // several of the same name). Paired copies the user hasn't edited in the
+  // target year are UPDATED to the source's effective date/amount/notes;
+  // paired copies with their own target-year edits are left entirely alone;
+  // unpaired source entries are cloned. Returns { clones, updates } where
+  // updates is [{ id, startDate, amount, notes }] to apply to existing
+  // entries. Re-running converges: a second pass changes nothing.
+  // Pairing a source entry with its copy uses provenance first: every clone is
+  // stamped with copiedFrom = the source entry's id, making later syncs exact.
+  // Copies that predate the stamp fall back to matching by desc + type +
+  // category + month/day (the source's effective or original date, so both
+  // accurate and stale legacy copies are found) — and get stamped on the way,
+  // so a copy the user renamed or moved to an unrelated date simply stops
+  // being treated as a copy. A target-year entry that pairs with nothing —
+  // e.g. one the user added themselves — is never touched or re-dated.
+  //
+  // Updates are per-field: a field is only changed when it still holds the
+  // source's original value (a stale copy), never when the user has set it to
+  // something of their own — so editing a copy through the entry form keeps
+  // that edit, and a copy with its own occurrence edit is skipped entirely.
+  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}) {
+    const srcs = [];
+    const tgts = [];
     entries.forEach((e) => {
-      if (e.repeats || !(e.startDate || "").startsWith(`${fromYear}-`)) return;
-      const [, mm, dd] = e.startDate.split("-").map(Number);
-      const day = Math.min(dd, daysInMonth(mm - 1, toYear));
-      const monthDay = `${String(mm).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      if (existing.has(keyOf(e, monthDay))) return;
-      existing.add(keyOf(e, monthDay));
-      clones.push(__spreadProps(__spreadValues({}, e), { id: idBase++, startDate: `${toYear}-${monthDay}` }));
+      if (e.repeats || !e.startDate) return;
+      if (e.startDate.startsWith(`${fromYear}-`)) {
+        const [, mm, dd] = e.startDate.split("-").map(Number);
+        const ov = fromOvs[`${e.id}-${fromYear}-${mm - 1}-${dd}`] || {};
+        const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : mm - 1;
+        const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : dd), daysInMonth(effM, toYear));
+        srcs.push({
+          e,
+          desc: ov.desc !== void 0 ? ov.desc : e.desc,
+          amount: ov.amount !== void 0 ? ov.amount : e.amount,
+          notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
+          effMD: `${String(effM + 1).padStart(2, "0")}-${String(effD).padStart(2, "0")}`,
+          rawMD: e.startDate.slice(5)
+        });
+      } else if (e.startDate.startsWith(`${toYear}-`)) {
+        const [, tm, td] = e.startDate.split("-").map(Number);
+        tgts.push({ e, edited: !!toOvs[`${e.id}-${toYear}-${tm - 1}-${td}`] });
+      }
     });
-    return clones;
+    const claimed = new Set();
+    const pairOf = {};
+    const tgtByProv = {};
+    tgts.forEach((t) => {
+      if (t.e.copiedFrom !== void 0 && tgtByProv[t.e.copiedFrom] === void 0) tgtByProv[t.e.copiedFrom] = t;
+    });
+    srcs.forEach((s) => {
+      const t = tgtByProv[s.e.id];
+      if (t && !claimed.has(t.e.id)) {
+        claimed.add(t.e.id);
+        pairOf[s.e.id] = t;
+      }
+    });
+    // Legacy fallback: unstamped copies matched by identity + date (effective
+    // date first so accurate copies win, then the raw date to catch stale ones).
+    ["effMD", "rawMD"].forEach((dateField) => {
+      srcs.forEach((s) => {
+        if (pairOf[s.e.id]) return;
+        const t = tgts.find(
+          (t2) => !claimed.has(t2.e.id) && t2.e.copiedFrom === void 0 && t2.e.type === s.e.type && t2.e.category === s.e.category && (t2.e.desc === s.desc || t2.e.desc === s.e.desc) && t2.e.startDate.slice(5) === s[dateField]
+        );
+        if (t) {
+          claimed.add(t.e.id);
+          pairOf[s.e.id] = t;
+        }
+      });
+    });
+    const clones = [];
+    const updates = [];
+    let idBase = Date.now();
+    srcs.forEach((s) => {
+      const t = pairOf[s.e.id];
+      if (!t) {
+        clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        return;
+      }
+      // The user edited this copy's occurrence in the target year — theirs wins.
+      if (t.edited) return;
+      const desired = { startDate: `${toYear}-${s.effMD}`, amount: s.amount, notes: s.notes };
+      const original = { startDate: `${toYear}-${s.rawMD}`, amount: s.e.amount, notes: s.e.notes || "" };
+      const patch = {};
+      ["startDate", "amount", "notes"].forEach((f) => {
+        const cur = f === "notes" ? t.e.notes || "" : t.e[f];
+        if (cur !== desired[f] && cur === original[f]) patch[f] = desired[f];
+      });
+      if (t.e.copiedFrom !== s.e.id) patch.copiedFrom = s.e.id;
+      if (Object.keys(patch).length) updates.push({ id: t.e.id, patch });
+    });
+    return { clones, updates };
+  }
+  // Per-occurrence edits (overridesByYr) are keyed by entry + calendar date,
+  // so a modified recurring occurrence silently reverts to its base values in
+  // a newly added year. This maps the source year's overrides onto target-year
+  // occurrences that fall on the same month/day (monthly, semi-monthly and
+  // yearly recurrences; daily/weekly occurrences land on different dates so
+  // nothing matches and they're skipped). Only user-facing edit fields are
+  // carried — receipts and edit history stay in their own year — and existing
+  // target-year overrides are never touched.
+  // Overrides the user creates through the occurrence editor are stamped with
+  // _savedAt; overrides written by this sync are not. That stamp is the
+  // ownership marker: user-stamped target overrides are never touched, while
+  // sync-written ones may be refreshed on a later run so source-year edits
+  // made after the target year was created still flow forward.
+  function copyOccurrenceOverridesToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}) {
+    const valid = new Set(expandEntries(entries, toYear, {}).map((ev) => ev.id));
+    const added = {};
+    Object.keys(fromOvs || {}).forEach((key) => {
+      const m = key.match(new RegExp(`^(.+)-${fromYear}-(\\d+)-(\\d+)$`));
+      if (!m) return;
+      const newKey = `${m[1]}-${toYear}-${m[2]}-${m[3]}`;
+      if (!valid.has(newKey)) return;
+      const existing = existingToOvs[newKey];
+      if (existing && existing._savedAt !== void 0) return;
+      const copy = {};
+      let changed = false;
+      ["desc", "amount", "notes", "month", "day"].forEach((f) => {
+        if (fromOvs[key][f] === void 0) return;
+        copy[f] = fromOvs[key][f];
+        if (!existing || existing[f] !== copy[f]) changed = true;
+      });
+      if (!Object.keys(copy).length || !changed) return;
+      added[newKey] = existing ? __spreadValues(__spreadValues({}, existing), copy) : copy;
+    });
+    return added;
+  }
+  // Recurring amounts often vary WITHIN a year (net pay starts lower in
+  // January and rises once CPP/EI max out, then resets the next January), so
+  // no single amount can represent an entry. Rule for carrying amounts into a
+  // new year: mirror the source year's amount profile occurrence-by-occurrence
+  // — the target year's Nth occurrence gets the effective amount (base +
+  // occurrence edits) of the source year's Nth occurrence, and the dates still
+  // come purely from the recurrence pattern. If the target year has more
+  // occurrences (e.g. 27 biweekly paydays vs 26), the extras repeat the final
+  // source amount. Overrides are only written where the mirrored amount
+  // differs from what the occurrence would show anyway; user-made overrides
+  // in the target year (stamped _savedAt) are never touched.
+  function mirrorRecurringAmountsToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}, plannedAdds = {}) {
+    const recurring = entries.filter((e) => e.repeats);
+    if (!recurring.length) return {};
+    const srcAmts = {};
+    expandEntries(recurring, fromYear, fromOvs).forEach((ev) => {
+      (srcAmts[ev.entryId] = srcAmts[ev.entryId] || []).push(ev.amount);
+    });
+    const added = {};
+    const idxByEntry = {};
+    expandEntries(recurring, toYear, {}).forEach((ev) => {
+      const src = srcAmts[ev.entryId];
+      const i = idxByEntry[ev.entryId] = (idxByEntry[ev.entryId] || 0) + 1;
+      if (!src || !src.length) return;
+      const srcAmt = src[Math.min(i - 1, src.length - 1)];
+      if (plannedAdds[ev.id]) return;
+      const existing = existingToOvs[ev.id];
+      if (existing) {
+        // _savedAt marks a user-made override — protected. Sync-written ones
+        // may be refreshed so later source-year edits still mirror forward.
+        if (existing._savedAt !== void 0 || existing.amount === srcAmt) return;
+        added[ev.id] = __spreadProps(__spreadValues({}, existing), { amount: srcAmt });
+      } else {
+        if (srcAmt === ev.amount) return;
+        added[ev.id] = { amount: srcAmt };
+      }
+    });
+    return added;
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
@@ -105,6 +259,7 @@
       setMemberBusy(false);
     };
     const [tgtResetMsg, setTgtResetMsg] = useState("");
+    const [confirmDelYear, setConfirmDelYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
@@ -185,13 +340,27 @@
         }
         return next;
       });
-      const singleClones = copySingleEntriesToYear(entries, prevYear, y);
-      if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+      const prevOvs = overridesByYr[prevYear] || {};
+      const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, prevYear, y, prevOvs, overridesByYr[y] || {});
+      if (singleClones.length || singleUpdates.length) setEntries((prev) => [
+        ...prev.map((e) => {
+          const u = singleUpdates.find((x) => x.id === e.id);
+          return u ? __spreadValues(__spreadValues({}, e), u.patch) : e;
+        }),
+        ...singleClones
+      ]);
+      const ovAdds = copyOccurrenceOverridesToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {});
+      const amtAdds = mirrorRecurringAmountsToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {}, ovAdds);
+      const ovCount = Object.keys(ovAdds).length;
+      const amtCount = Object.keys(amtAdds).length;
+      if (ovCount || amtCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [y]: __spreadValues(__spreadValues(__spreadValues({}, prev[y] || {}), ovAdds), amtAdds) }));
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       const parts = [`Year ${y} added — ${prevYear} is untouched.`];
       if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
       if (singleClones.length > 0) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied from ${prevYear}.`);
+      if (ovCount > 0) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over.`);
+      if (amtCount > 0) parts.push(`${prevYear}'s amount pattern mirrored onto ${amtCount} occurrence${amtCount === 1 ? "" : "s"}.`);
       parts.push(`Recurring entries without an end date carry forward automatically.`);
       setYearMsg(parts.join(" "));
     };
@@ -382,7 +551,8 @@
         const hasNext = yearConfigs.some((y) => y.year === nextY);
         const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
         const hasSingles = entries.some((e) => !e.repeats && (e.startDate || "").startsWith(yc.year + "-"));
-        return hasNext && (hasTargets || hasSingles) && /* @__PURE__ */ React.createElement(
+        const hasOvs = Object.keys(overridesByYr[yc.year] || {}).length > 0;
+        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
@@ -407,21 +577,55 @@
                 if (changed) nx[nk] = merged;
               }
               if (addedTargets) setBudgetTargets(nx);
-              const singleClones = copySingleEntriesToYear(entries, yc.year, nextY);
-              if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+              const srcOvs = overridesByYr[yc.year] || {};
+              const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, yc.year, nextY, srcOvs, overridesByYr[nextY] || {});
+              if (singleClones.length || singleUpdates.length) setEntries((prev) => [
+                ...prev.map((e) => {
+                  const u = singleUpdates.find((x) => x.id === e.id);
+                  return u ? __spreadValues(__spreadValues({}, e), u.patch) : e;
+                }),
+                ...singleClones
+              ]);
+              const ovAdds = copyOccurrenceOverridesToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {});
+              const amtAdds = mirrorRecurringAmountsToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {}, ovAdds);
+              const ovCount = Object.keys(ovAdds).length;
+              const amtCount = Object.keys(amtAdds).length;
+              if (ovCount || amtCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [nextY]: __spreadValues(__spreadValues(__spreadValues({}, prev[nextY] || {}), ovAdds), amtAdds) }));
               const parts = [];
               if (addedTargets) parts.push(`${addedTargets} budget target${addedTargets === 1 ? "" : "s"} added`);
               if (singleClones.length) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied`);
-              setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Existing ${nextY} values were left unchanged.` : `\u2705 ${nextY} already has everything from ${yc.year} \u2014 nothing to add.`);
+              const visibleUpdates = singleUpdates.filter((u) => u.patch.startDate !== void 0 || u.patch.amount !== void 0 || u.patch.notes !== void 0).length;
+              if (visibleUpdates) parts.push(`${visibleUpdates} one-time entr${visibleUpdates === 1 ? "y" : "ies"} updated to match ${yc.year}`);
+              if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
+              if (amtCount) parts.push(`${yc.year}'s amount pattern mirrored onto ${amtCount} occurrence${amtCount === 1 ? "" : "s"}`);
+              setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Anything you edited in ${nextY} was left alone.` : `\u2705 ${nextY} already matches ${yc.year} \u2014 nothing to change.`);
             },
-            title: `Copy ${yc.year} budget targets and one-time entries to ${nextY} \u2014 adds anything missing without overwriting ${nextY}`,
+            title: `Sync ${yc.year} into ${nextY} \u2014 adds missing budget targets and one-time entries, updates unedited copies, never touches anything edited in ${nextY}`,
             className: "copy-year-btn"
           },
           "Copy \u2192",
           nextY
         );
-      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        if (yearConfigs.length <= 1) {
+          setYearMsg("Cannot delete the only year.");
+          return;
+        }
+        setConfirmDelYear(yc.year);
+      }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: `Remove budget year ${confirmDelYear}?`,
+        message: `Budget year ${confirmDelYear} will be removed from the app, along with any per-occurrence edits made in ${confirmDelYear}. Entries and budget targets are not deleted.`,
+        confirmLabel: "Remove Year",
+        onConfirm: () => {
+          delYear(confirmDelYear);
+          setConfirmDelYear(null);
+        },
+        onCancel: () => setConfirmDelYear(null)
+      }
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");

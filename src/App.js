@@ -353,6 +353,24 @@
       }
       return entry;
     };
+    // Single save path for entry edits: recurring entries with history are
+    // split at the current month (past occurrences keep their old values) and
+    // occurrence-keyed data from the split onward follows the new segment.
+    const saveEntryEdit = (editedId, data) => {
+      const res = splitEntryEditFromCurrentMonth(entries, editedId, data);
+      setEntries(res.entries);
+      if (res.newId) {
+        setOverridesByYr((prev) => {
+          const next = {};
+          Object.keys(prev).forEach((y) => {
+            next[y] = remapOccurrenceKeys(prev[y], editedId, res.newId, res.splitDate);
+          });
+          return next;
+        });
+        setCompleted((prev) => remapOccurrenceKeys(prev, editedId, res.newId, res.splitDate));
+        setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
+      }
+    };
     const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     const {
       status: houseStatus,
@@ -920,6 +938,7 @@
         categories,
         categoryColors,
         setEntries,
+        saveEntryEdit,
         addEntry,
         budgetSub,
         setBudgetSub,
@@ -945,6 +964,7 @@
       {
         entries,
         setEntries,
+        saveEntryEdit,
         addEntry,
         categories,
         categoryColors,
