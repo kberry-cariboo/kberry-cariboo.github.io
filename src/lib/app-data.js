@@ -684,7 +684,6 @@
         .budget-subtab-btn{font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;
           border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;}
         /* ── forms.js ── */
-        .entry-form-card{margin-bottom:20px;background:var(--stripe);}
         .required-mark{color:var(--red);margin-left:2px;}
         .entry-form-row2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
         .recur-summary-chip{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--navyLt);background:var(--stripe);border-radius:6px;padding:3px 8px;border:1px solid var(--border);}
@@ -708,7 +707,7 @@
         .month-amt-label{font-size:10px;color:var(--textLt);text-align:center;margin-bottom:3px;}
         .month-amt-input{font-size:12px;padding:6px 6px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);width:100%;box-sizing:border-box;outline:none;}
         .entry-form-save-btn{padding:9px 22px;}
-        .ef-save-template{font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;margin-left:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:6px;}
+        .ef-save-template{font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;margin-right:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:6px;}
         .csv-importer-card{background:var(--bgCard);border-radius:14px;padding:20px;margin-bottom:16px;border:1px solid var(--border);max-width:600px;}
         .csv-title{font-size:15px;font-weight:700;color:var(--text);}
         .csv-instructions{font-size:13px;color:var(--textLt);margin-bottom:12px;line-height:1.5;}
@@ -782,25 +781,23 @@
         .fab-panel--lg{width:min(680px,calc(100vw - 32px));}
         .fab-panel-title-sm{font-size:14px;font-weight:700;color:var(--text);}
         .fab-panel-close{background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--textLt);padding:4px;line-height:1;}
-        .reg-th--select{padding:10px 6px 10px 12px;width:34px;background:var(--navy);}
         .reg-selectall-btn{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;}
         .reg-th--col{font-size:11px;font-weight:700;color:#fff;padding:10px 12px;text-align:left;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:grab;user-select:none;transition:background 0.1s;}
         .reg-th-sort-label{cursor:pointer;display:inline-flex;align-items:center;gap:3px;user-select:none;}
         .reg-sort-arrow{font-size:9px;}
         .reg-tr{border-bottom:1px solid var(--border);cursor:context-menu;}
-        .reg-td-checkbox{padding:8px 6px 8px 12px;width:34px;}
-        .reg-row-checkbox{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;line-height:1;}
         .reg-empty-cell{padding:32px;text-align:center;color:var(--textLt);}
         .reg-mobile-card{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bgCard);cursor:context-menu;}
         .reg-mobile-card-toprow{display:flex;align-items:flex-start;gap:10px;margin-bottom:4px;}
-        .reg-mobile-checkbox{width:22px;height:22px;border-radius:5px;cursor:pointer;padding:0;flex-shrink:0;margin-top:1px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;line-height:1;}
         .reg-mobile-desc{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .reg-mobile-amount{font-weight:600;white-space:nowrap;flex-shrink:0;}
         .reg-mobile-actions-btn{width:26px;height:26px;flex-shrink:0;margin-top:-2px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--textLt);font-size:16px;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
         .reg-mobile-date{font-size:11px;color:var(--textMid);}
         .reg-mobile-notes{font-size:11px;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;}
         .reg-bulkbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:1450;background:var(--navy);border-radius:26px;padding:8px 10px 8px 18px;box-shadow:var(--shadowXl);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);}
+        .reg-bulkbar--accent{background:var(--primary);}
         .reg-bulkbar-count{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;}
+        .reg-bulkbar-total{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff;opacity:0.9;white-space:nowrap;}
         .reg-bulk-markpaid-btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:18px;border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:#fff;}
         .reg-bulk-clear-btn{font-size:12px;font-weight:600;padding:8px 12px;border-radius:18px;border:1px solid rgba(255,255,255,0.35);cursor:pointer;background:transparent;color:#fff;}
         .fab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;box-shadow:var(--shadowXl);border:1px solid var(--border);max-height:80vh;overflow-y:auto;}
@@ -819,6 +816,7 @@
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+        .budget-toolbar-row--end{justify-content:flex-end;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
         .yoy-card{margin-top:14px;margin-bottom:14px;}
         .yoy-header-row{padding:16px 18px 10px;}
