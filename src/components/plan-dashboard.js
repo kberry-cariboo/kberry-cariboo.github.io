@@ -1,7 +1,11 @@
+  // Hoisted out of PlanView/DashboardView render bodies — inline component
+  // definitions create a new type each render and force React to remount.
+  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
+  const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
-  }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear() }) {
-    const [debtData, setDebtData] = useLS("cf_debt_data", {});
+  }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
+  } }) {
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
@@ -493,7 +497,6 @@
         const sn = simulateDebtStrategy(simDebts, extra, "snowball");
         const base = simulateDebtStrategy(simDebts, 0, "avalanche");
         if (!av || !sn) return /* @__PURE__ */ React.createElement("div", { className: "strat-error" }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies.");
-        const StratCard = ({ title, icon, sub, r }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  \u2192  ")));
         return /* @__PURE__ */ React.createElement("div", { className: "strat-section" }, /* @__PURE__ */ React.createElement("div", { className: "strat-section-header" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("label", { className: "strat-extra-label" }, "Extra $/month", /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
@@ -501,7 +504,7 @@
             onChange: (v) => setDebtExtra(v),
             className: "strat-extra-input cf-text-mono-13"
           }
-        ))), /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn })), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
+        ))), /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
       })(), debtCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
@@ -640,7 +643,7 @@
   }, setEntries = () => {
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
   }, dashOrder = [], setDashOrder = () => {
-  } }) {
+  }, debtData = {} }) {
     var _a;
     const isMobile = useIsMobile();
     const isPhone = useIsPhone();
@@ -778,7 +781,6 @@
       });
       return merged;
     }, [dashOrder]);
-    const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
     const insight = useMemo(() => {
       try {
         const now = /* @__PURE__ */ new Date();
@@ -866,12 +868,11 @@
             "button",
             {
               type: "button",
-              className: "cf-checkbtn",
               onClick: () => toggleComplete(ev.id),
               title: isPaid ? "Mark as not paid" : "Mark as paid",
               "aria-label": (isPaid ? "Mark as not paid: " : "Mark as paid: ") + ev.desc,
               "aria-pressed": isPaid,
-              className: "paid-btn",
+              className: "cf-checkbtn paid-btn",
               style: {
                 border: isPaid ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
                 background: isPaid ? "var(--greenLt)" : "transparent"
@@ -1049,12 +1050,7 @@
         } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: tColor } }, fmt(tDiff) + " over"))));
       })())),
       debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
-        let dData = {};
-        try {
-          const raw = localStorage.getItem("cf_debt_data");
-          if (raw) dData = JSON.parse(raw);
-        } catch (e) {
-        }
+        const dData = debtData && typeof debtData === "object" ? debtData : {};
         const toMo = (ev) => {
           var _a2;
           if (!ev) return 0;
@@ -1146,7 +1142,7 @@
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
           }
         )),
-        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary heatmap" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
           position: i === 4 ? "sticky" : "static",
           right: i === 4 ? 0 : "auto",
@@ -1163,7 +1159,7 @@
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
           return /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-inc-td", style: { background: heatInc } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-exp-td", style: { background: heatExp } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: { background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-heat-bal-td", style: { background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" } }, fmt(m.close)));
         }))))),
-        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary table" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
           position: i === 4 ? "sticky" : "static",
           right: i === 4 ? 0 : "auto",
@@ -1175,7 +1171,7 @@
         } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-table-bal-td", style: {
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
       ))),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
@@ -1189,12 +1185,12 @@
           dot: { r: 3 },
           activeDot: { r: 5 }
         }
-      ))))), /* @__PURE__ */ React.createElement("div", { className: "hscroll mt-16" }, /* @__PURE__ */ React.createElement("table", { className: "table-collapse" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-14", style: {
+      ))))), /* @__PURE__ */ React.createElement("div", { className: "hscroll mt-16", tabIndex: 0, role: "region", "aria-label": "Annual comparison table" }, /* @__PURE__ */ React.createElement("table", { className: "table-collapse" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-14", style: {
         textAlign: i === 0 ? "left" : "right"
       } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, annualRows.map((row, i) => {
         const prev = annualRows[i - 1];
         const delta = prev ? row.surplus - prev.surplus : null;
-        return /* @__PURE__ */ React.createElement("tr", { key: row.year, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("div", { className: "dash-year-dot", style: { background: row.color } }), /* @__PURE__ */ React.createElement("span", { className: "dash-year-label" }, row.year))), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-greenDk" }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-red" }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-600", style: { color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
+        return /* @__PURE__ */ React.createElement("tr", { key: row.year, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("div", { className: "dash-year-dot", style: { background: row.color } }), /* @__PURE__ */ React.createElement("span", { className: "dash-year-label" }, row.year))), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-greenDk" }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-text" }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-600", style: { color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : fmt(delta, true)));
       }))))) : /* @__PURE__ */ React.createElement("div", { className: "yoy-empty-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 14, style: { color: "var(--textLt)", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Add a second year to unlock the Year-over-Year comparison.")))
     };
     const loadSampleData = () => {

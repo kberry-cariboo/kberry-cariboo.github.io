@@ -55,6 +55,18 @@
         window.removeEventListener("cf:reg-open-csv", onCSV);
       };
     }, []);
+    useEffect(() => {
+      if (!showForm && !showCSV) return;
+      const h = (e) => {
+        if (e.key === "Escape") {
+          setShowForm(false);
+          setEditing(null);
+          setShowCSV(false);
+        }
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [showForm, showCSV]);
     const doCopy = (e) => {
       const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
@@ -129,6 +141,15 @@
       setColOrder(arr);
       setDragCol(null);
       setDragOver(null);
+    };
+    // Keyboard alternative to drag-reordering the columns.
+    const moveCol = (col, dir) => {
+      const arr = [...cols];
+      const from = arr.indexOf(col), to = from + dir;
+      if (from < 0 || to < 0 || to >= arr.length) return;
+      arr.splice(from, 1);
+      arr.splice(to, 0, col);
+      setColOrder(arr);
     };
     const cellVal = (e, col) => {
       const archived = isArchived(e, activeYear);
@@ -259,62 +280,81 @@
         },
         "Show results"
       ))
-    ), showCSV && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    ), showCSV && /* @__PURE__ */ React.createElement(
       "div",
       {
-        onClick: () => setShowCSV(false),
-        className: "fab-panel-backdrop"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "fab-panel fab-panel--sm" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title-sm" }, "Import CSV"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowCSV(false),
-        "aria-label": "Close",
-        className: "fab-panel-close"
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Import CSV",
+        onClick: (e) => {
+          if (e.target === e.currentTarget) setShowCSV(false);
+        }
       },
-      "\u2715"
-    )), /* @__PURE__ */ React.createElement(
-      CSVImporter,
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card csv-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(
+        CSVImporter,
+        {
+          categories,
+          onImport: (imported) => {
+            const newCats = [...new Set(imported.map((e) => e.category).filter(Boolean))];
+            setCategories((prev) => [.../* @__PURE__ */ new Set([...prev, ...newCats])]);
+            setEntries((prev) => [...prev, ...imported]);
+            setShowCSV(false);
+          },
+          onClose: () => setShowCSV(false)
+        }
+      ))
+    ), showForm && /* @__PURE__ */ React.createElement(
+      "div",
       {
-        categories,
-        onImport: (imported) => {
-          const newCats = [...new Set(imported.map((e) => e.category).filter(Boolean))];
-          setCategories((prev) => [.../* @__PURE__ */ new Set([...prev, ...newCats])]);
-          setEntries((prev) => [...prev, ...imported]);
-          setShowCSV(false);
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": editing ? "Edit entry" : "Add entry",
+        onClick: (e) => {
+          if (e.target === e.currentTarget) close();
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: close,
+          "aria-label": "Close",
+          className: "fab-panel-close"
         },
-        onClose: () => setShowCSV(false)
-      }
-    ))), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        onClick: close,
-        className: "fab-panel-backdrop"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "fab-panel fab-panel--lg" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title-sm" }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: close,
-        "aria-label": "Close",
-        className: "fab-panel-close"
-      },
-      "\u2715"
-    )), /* @__PURE__ */ React.createElement(
-      EntryForm,
-      {
-        initial: editing,
-        onSave: handleSave,
-        onCancel: close,
-        categories,
-        templates: templates || [],
-        onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
-      }
-    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+        "\u2715"
+      )), /* @__PURE__ */ React.createElement(
+        EntryForm,
+        {
+          initial: editing,
+          onSave: handleSave,
+          onCancel: close,
+          categories,
+          templates: templates || [],
+          onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
+        }
+      ))
+    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
         className: "reg-th reg-th--col",
         draggable: true,
+        tabIndex: 0,
+        "aria-label": `${REG_COL_LABELS[col] || col} column — press left or right arrow to reorder`,
+        "aria-sort": sortCol === col ? sortDir === "asc" ? "ascending" : "descending" : void 0,
+        onKeyDown: (e) => {
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            moveCol(col, -1);
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            moveCol(col, 1);
+          } else if ((e.key === "Enter" || e.key === " ") && ["desc", "amount", "startDate", "category", "schedule"].includes(col)) {
+            e.preventDefault();
+            toggleSort(col);
+          }
+        },
         onDragStart: () => onDragStart(col),
         onDragOver: (e) => onDragOver(e, col),
         onDrop: () => onDrop(col),

@@ -1,3 +1,7 @@
+  // Hoisted out of BudgetView: defining these inside the component made React
+  // see a new component type each render and remount their DOM.
+  const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
+  const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
   function BudgetView({ flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
@@ -191,6 +195,15 @@
       setDragBCol(null);
       setDragOverBCol(null);
     };
+    // Keyboard alternative to drag-reordering the columns.
+    const moveBCol = (col, dir) => {
+      const arr = [...bCols];
+      const from = arr.indexOf(col), to = from + dir;
+      if (from < 0 || to < 0 || to >= arr.length) return;
+      arr.splice(from, 1);
+      arr.splice(to, 0, col);
+      setBudgetColOrder(arr);
+    };
     const toggleSel = (id) => setSelIds((prev) => {
       const n = new Set(prev);
       n.has(id) ? n.delete(id) : n.add(id);
@@ -217,7 +230,7 @@
     }, [monthIdx, budgetSub]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
-    const monthEvents = flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq));
+    const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
@@ -325,8 +338,6 @@
         background: "var(--navyMid)"
       } }), /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "period-hdr-td" }, label))
     );
-    const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
-    const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
     const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, className: "period-hdr-td" }, label);
     const renderEventCard = (ev, opts = {}) => {
       const hideDayLabel = !!opts.hideDayLabel;
@@ -389,7 +400,7 @@
     };
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)"
-    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), period1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), period2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true)))));
+    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), period1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), period2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
       return Array.from({ length: daysInMonth(monthIdx, activeYear) }, (_, i) => {
@@ -398,7 +409,7 @@
         if (evs.length > 0) runBal = evs[evs.length - 1].balance;
         return { day, events: evs, balance: runBal };
       }).filter((d) => d.events.length > 0);
-    }, [monthEvents, s, monthIdx]);
+    }, [monthEvents, s, monthIdx, activeYear, openBal]);
     const renderDailyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : days.map((dayObj) => /* @__PURE__ */ React.createElement(React.Fragment, { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderPeriodCardHdr(`${MONTHS[monthIdx]} ${dayObj.day}`), dayObj.events.map((ev) => renderEventCard(ev, { hideDayLabel: true })))));
     const renderYoyCompare = () => {
       const deltaCls = (d) => d > 0 ? "yoy-delta-pos" : d < 0 ? "yoy-delta-neg" : "";
@@ -412,7 +423,7 @@
         /* @__PURE__ */ React.createElement("div", { className: "yoy-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "yoy-title" }, `${MONTHS[monthIdx]} ${activeYear} vs ${MONTHS[monthIdx]} ${prevYear}`)),
         !prevHasData ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, `No ${prevYear} entries to compare against.`) : yoyRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, `No entries in ${MONTHS[monthIdx]} for either year.`) : /* @__PURE__ */ React.createElement(
           "div",
-          { className: "hscroll" },
+          { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Year-over-year comparison table" },
           /* @__PURE__ */ React.createElement(
             "table",
             { className: "forecast-table yoy-table" },
@@ -434,7 +445,9 @@
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
       const t = e.target;
-      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable]")) {
+      // .hscroll panes scroll horizontally themselves — a fast table fling
+      // must never double as a change-month swipe.
+      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable],.hscroll")) {
         touchStart.current = null;
         return;
       }
@@ -532,7 +545,7 @@
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
-      )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
+      )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly budget table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
         return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "budget-col-checkbox budget-th-checkbox", "aria-label": "Select all rows" }, (() => {
           const allSel = allIds.length > 0 && allIds.every((id) => selIds.has(id));
@@ -562,6 +575,17 @@
           {
             key: col,
             draggable: true,
+            tabIndex: 0,
+            "aria-label": `${BUDGET_COL_LABELS[col]} column — press left or right arrow to reorder`,
+            onKeyDown: (e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                moveBCol(col, -1);
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                moveBCol(col, 1);
+              }
+            },
             onDragStart: () => onBColDragStart(col),
             onDragOver: (e) => onBColDragOver(e, col),
             onDrop: () => onBColDrop(col),
@@ -586,8 +610,8 @@
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-totals-label" }, "Monthly Totals");
         if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat budget-col-category pad-10-14" });
         if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-totals-amt", style: { color: "var(--green)" } }, fmt(s.income));
-        if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "#FF8A7A" } }, fmt(s.expense));
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--green)" : "#FF8A7A" } }, fmt(s.surplus, true));
+        if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense));
+        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true));
         return null;
       })))))), showEntryForm && /* @__PURE__ */ React.createElement(
         "div",
@@ -635,7 +659,13 @@
             setShowOccurrenceForm(false);
             setEditingEv(null);
           } : null,
-          onDelete: () => requestDeleteEntry(editingEv)
+          onDelete: () => requestDeleteEntry(editingEv),
+          onEditEntry: () => {
+            const ev = editingEv;
+            setShowOccurrenceForm(false);
+            setEditingEv(null);
+            openEntryEdit(ev);
+          }
         }
       ), confirmDelEv && /* @__PURE__ */ React.createElement(
         ConfirmDialog,
@@ -709,7 +739,7 @@
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
         /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "income" ? "var(--greenDk)" : "var(--red)",
+          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.type === "income" ? "+" : "-", fmt(ev.amount))
       )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {

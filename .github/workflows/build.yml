@@ -32,6 +32,11 @@ jobs:
       - name: Build index.html
         run: node build.js
 
+      # Correctness-only lint (no-dupe-keys etc.) — style rules stay off since
+      # src/ is transpiled-style output. See eslint.config.mjs.
+      - name: Lint source
+        run: npx --yes eslint@9 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js
+
       - name: Check for changes
         id: diff
         run: |

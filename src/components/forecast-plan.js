@@ -1,7 +1,9 @@
   function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {} }) {
     const isMobile = useIsMobile();
-    const today = /* @__PURE__ */ new Date();
+    // Snapshot once: a fresh Date each render changes the memo dependency's
+    // identity and would recompute futureEvents on every render.
+    const today = useMemo(() => /* @__PURE__ */ new Date(), []);
     const horizons = [30, 60, 90];
     const gq2 = (globalSearch || "").toLowerCase();
     const futureEvents = useMemo(() => {
@@ -30,7 +32,7 @@
         },
         onPrint: () => printView(`CashFlow Forecast - ${horizon} Days`)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
+    )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
@@ -183,7 +185,10 @@
       (p, i) => i % 2 === 1 ? React.createElement("strong", { key: i }, p) : p
     ));
   }
-  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "" }) {
+  // Hoisted out of AIInsightsView (was remounted every parent render).
+  const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, className: "vizrow-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-toprow" }, /* @__PURE__ */ React.createElement("span", { className: "txm vizrow-label" }, label), /* @__PURE__ */ React.createElement("span", { className: "mno vizrow-value" }, value, sub && /* @__PURE__ */ React.createElement("span", { className: "vizrow-sub" }, " ", sub))), /* @__PURE__ */ React.createElement("div", { className: "vizrow-track" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-fill", style: { width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor } })));
+  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, setTab = () => {
+  } }) {
     const [loading, setLoading] = useState(false);
     const [report, setReport] = useState(null);
     const [rawText, setRawText] = useState("");
@@ -215,28 +220,18 @@
       const now = /* @__PURE__ */ new Date();
       const summaries = getMonthSummaries(flow, openBal);
       const currentMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
-      let debtTrackerData = {};
-      try {
-        const raw = localStorage.getItem("cf_debt_data");
-        if (raw) debtTrackerData = JSON.parse(raw);
-      } catch (e) {
-      }
-      let savingsGoals = [];
-      try {
-        const raw = localStorage.getItem("cf_goals");
-        if (raw) {
-          const g = JSON.parse(raw);
-          if (Array.isArray(g)) savingsGoals = g.map((x) => ({
-            name: x.name,
-            target: x.target,
-            saved: x.saved,
-            monthly: x.monthly,
-            targetDate: x.targetDate || null,
-            pct: x.target > 0 ? Math.round(x.saved / x.target * 100) : 0
-          }));
-        }
-      } catch (e) {
-      }
+      // Goals and debt-tracker data come in as props (single source of truth
+      // in App state) rather than re-reading localStorage, which went stale
+      // when household sync updated them mid-session.
+      const debtTrackerData = debtData && typeof debtData === "object" ? debtData : {};
+      const savingsGoals = (Array.isArray(goals) ? goals : []).map((x) => ({
+        name: x.name,
+        target: x.target,
+        saved: x.saved,
+        monthly: x.monthly,
+        targetDate: x.targetDate || null,
+        pct: x.target > 0 ? Math.round(x.saved / x.target * 100) : 0
+      }));
       const ytdMonths = summaries.slice(0, currentMonth + 1).map((m) => ({
         month: m.month,
         income: m.income,
@@ -464,8 +459,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       } catch (e) {
         return null;
       }
-    }, [report, flow, openBal, budgetTargets, activeYear]);
-    const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, className: "vizrow-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-toprow" }, /* @__PURE__ */ React.createElement("span", { className: "txm vizrow-label" }, label), /* @__PURE__ */ React.createElement("span", { className: "mno vizrow-value" }, value, sub && /* @__PURE__ */ React.createElement("span", { className: "vizrow-sub" }, " ", sub))), /* @__PURE__ */ React.createElement("div", { className: "vizrow-track" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-fill", style: { width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor } })));
+    }, [report, flow, openBal, budgetTargets, activeYear, goals, debtData]);
     const sectionViz = (t) => {
       const c = vizCtx;
       if (!c) return null;
@@ -504,7 +498,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "ai-title" }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { className: "ai-subtitle" }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())), !apiKey.trim() && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner" }, /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => window.dispatchEvent(new CustomEvent("cf:goto-tab", { detail: { tab: "settings" } })),
+        onClick: () => setTab("settings"),
         className: "ai-settings-link"
       },
       "Settings \u2192 General"
@@ -536,9 +530,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "cf-btn cf-btn--secondary cf-btn--wide"
       },
       "Clear"
-    )), err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner" }, "\u26A0 ", err)), loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, ["Executive Summary", "Income Analysis", "Spending Analysis", "Debt Management", "Priority Action Items"].map((s) => /* @__PURE__ */ React.createElement(Card, { key: s }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: {
+    )), err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "\u26A0 ", err)), loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, ["Executive Summary", "Income Analysis", "Spending Analysis", "Debt Management", "Priority Action Items"].map((s) => /* @__PURE__ */ React.createElement(Card, { key: s }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: {
       width: `${w}%`
-    } })))), /* @__PURE__ */ React.createElement("style", null, `@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}`)), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+    } }))))), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
       const match = rawText.match(/\b([1-9]|10)\s*\/\s*10\b|\bscore[:\s]+([1-9]|10)\b/i);
       if (!match) return null;
       const score = parseInt(match[1] || match[2]);

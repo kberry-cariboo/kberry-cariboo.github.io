@@ -1,6 +1,6 @@
   function App() {
     var _a;
-    if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(SelfTestView, null));
+    if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SelfTestView, null));
     const {
       configured: sbConfigured,
       session,
@@ -80,7 +80,10 @@
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
     const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }]);
-    const [activeYear, setActiveYear] = useLS("cf_activeYear", 2026);
+    // Default must track the cf_years default — a hardcoded year left fresh
+    // installs pointed at an empty year once the calendar rolled over.
+    const [activeYear, setActiveYear] = useLS("cf_activeYear", () => (/* @__PURE__ */ new Date()).getFullYear());
+    const [debtData, setDebtData] = useLS("cf_debt_data", {});
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
     const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
@@ -115,6 +118,7 @@
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
     const hashSyncGuard = useRef(false);
+    const hashInitialized = useRef(false);
     useEffect(() => {
       const fromHash = parseTabHash().budgetSub;
       if (fromHash) setBudgetSub(fromHash);
@@ -127,7 +131,13 @@
       let newHash;
       try {
         newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "");
-        if (location.hash !== newHash) history.pushState(null, "", newHash);
+        if (location.hash !== newHash) {
+          // First sync on a hashless load replaces the entry instead of
+          // pushing — otherwise the first Back press appears to do nothing.
+          if (!hashInitialized.current && !location.hash) history.replaceState(null, "", newHash);
+          else history.pushState(null, "", newHash);
+        }
+        hashInitialized.current = true;
       } catch (e) {
       }
     }, [tab, budgetSub]);
@@ -167,25 +177,11 @@
       }
     }, [tab, budgetSub]);
     useEffect(() => {
-      const h = (e) => {
-        setTab("budget");
-        if (e.detail && e.detail.sub) setBudgetSub(e.detail.sub);
-      };
-      window.addEventListener("cf:goto-budget-sub", h);
-      return () => window.removeEventListener("cf:goto-budget-sub", h);
-    }, []);
-    useEffect(() => {
-      const h = (e) => {
-        if (e.detail && e.detail.tab) setTab(e.detail.tab);
-      };
-      window.addEventListener("cf:goto-tab", h);
-      return () => window.removeEventListener("cf:goto-tab", h);
-    }, []);
-    useEffect(() => {
       const trap = (e) => {
         if (e.key !== "Tab") return;
         try {
-          const overlays = document.querySelectorAll(".modal-overlay");
+          // .fab-panel surfaces (mobile quick-add) share the modal contract.
+          const overlays = document.querySelectorAll(".modal-overlay,.fab-panel");
           if (!overlays || !overlays.length) return;
           const modal = overlays[overlays.length - 1];
           const focusables = modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
@@ -231,33 +227,10 @@
         a.href = URL.createObjectURL(blob);
         a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
         a.click();
+        URL.revokeObjectURL(a.href);
       }
     };
     const searchRef = useRef(null);
-    useEffect(() => {
-      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "plan", "4": "ai", "5": "settings" };
-      const handler = (e) => {
-        var _a2, _b;
-        const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
-        const isInput = tag === "input" || tag === "textarea" || tag === "select" || ((_b = e.target) == null ? void 0 : _b.isContentEditable);
-        if (!isInput && TAB_KEYS[e.key] && !document.querySelector(".modal-overlay")) {
-          e.preventDefault();
-          setTab(TAB_KEYS[e.key]);
-          return;
-        }
-        if (!isInput && e.key === "/" && !document.querySelector(".modal-overlay")) {
-          e.preventDefault();
-          const el = document.getElementById("global-search");
-          if (el) {
-            el.focus();
-            el.select();
-          }
-          return;
-        }
-      };
-      window.addEventListener("keydown", handler);
-      return () => window.removeEventListener("keydown", handler);
-    }, []);
     const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
@@ -282,13 +255,16 @@
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
     useEffect(() => {
-      if (!profileForm) return;
+      if (!profileForm && !menuOpen) return;
       const h = (e) => {
-        if (e.key === "Escape") setProfileForm(null);
+        if (e.key === "Escape") {
+          setProfileForm(null);
+          setMenuOpen(false);
+        }
       };
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
-    }, [profileForm]);
+    }, [profileForm, menuOpen]);
     const [pf, setPf] = useState({ fullName: "", email: "" });
     const [pwf, setPwf] = useState({ current: "", next: "", confirm: "" });
     const [pfErr, setPfErr] = useState("");
@@ -306,6 +282,9 @@
       Object.entries(theme).forEach(([k, v]) => {
         document.documentElement.style.setProperty(`--${k}`, v);
       });
+      // Keep native UI (selects, date pickers, scrollbars, autofill) on the
+      // same scheme as the theme — CSS variables can't reach those.
+      document.documentElement.style.colorScheme = theme === DARK ? "dark" : "light";
     }, [darkMode, sessionUser]);
     const yearFlows = useMemo(() => {
       const flows = {};
@@ -514,11 +493,36 @@
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
     }, []);
+    // Single global shortcut handler — digits, letters, arrows, and search
+    // share one guard set: never while typing, never under an open modal or
+    // panel (the letter shortcuts used to fire behind confirm dialogs).
     useEffect(() => {
+      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "plan", "4": "ai", "5": "settings" };
       const handler = (e) => {
-        var _a2;
-        const tag = (_a2 = document.activeElement) == null ? void 0 : _a2.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        var _a2, _b;
+        const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
+        const isInput = tag === "input" || tag === "textarea" || tag === "select" || ((_b = e.target) == null ? void 0 : _b.isContentEditable);
+        if (isInput) return;
+        if (e.key === "Escape") {
+          setGlobalSearch("");
+          setShowHelp(false);
+          return;
+        }
+        if (document.querySelector(".modal-overlay,.fab-panel")) return;
+        if (TAB_KEYS[e.key]) {
+          e.preventDefault();
+          setTab(TAB_KEYS[e.key]);
+          return;
+        }
+        if (e.key === "/") {
+          e.preventDefault();
+          const el = document.getElementById("global-search");
+          if (el) {
+            el.focus();
+            el.select();
+          }
+          return;
+        }
         switch (e.key) {
           case "d":
           case "D":
@@ -553,10 +557,6 @@
           case "n":
           case "N":
             window.dispatchEvent(new CustomEvent("cf:quickadd"));
-            break;
-          case "Escape":
-            setGlobalSearch("");
-            setShowHelp(false);
             break;
           case "?":
             setShowHelp((v) => !v);
@@ -663,25 +663,25 @@
       return null;
     }
     if (!session) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(LoginView, null));
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LoginView, null));
     }
     if (membershipLoading) {
       return null;
     }
     if (!household) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut }));
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut }));
     }
     if (locked) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout }));
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("style", null, GLOBAL_STYLES), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills-mobile" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "global-search",
         "aria-label": "Search",
-        placeholder: "Search\u2026",
+        placeholder: "Search\u2026 try >100",
         autoComplete: "off",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),
@@ -731,7 +731,6 @@
         {
           onClick: () => setMenuOpen((v) => !v),
           "aria-label": "User menu",
-          "aria-haspopup": "menu",
           "aria-expanded": menuOpen,
           title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
           className: "user-avatar-btn",
@@ -807,7 +806,7 @@
           value: pf[key],
           onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))),/* @__PURE__ */ React.createElement("div", { className: "form-note-text" }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && /* @__PURE__ */ React.createElement("div", { className: "form-err-text" }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
+      ))),/* @__PURE__ */ React.createElement("div", { className: "form-note-text" }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && React.createElement("div", { role: "alert", className: "form-err-text" }, pfErr), pfOk && React.createElement("div", { role: "status", className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
@@ -841,7 +840,7 @@
           value: val,
           onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
         }
-      ))),pfErr && /* @__PURE__ */ React.createElement("div", { className: "form-err-text" }, pfErr), pfOk && /* @__PURE__ */ React.createElement("div", { className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
+      ))),pfErr && React.createElement("div", { role: "alert", className: "form-err-text" }, pfErr), pfOk && React.createElement("div", { role: "status", className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setProfileForm(null),
@@ -923,7 +922,8 @@
         dashHidden,
         setDashHidden,
         dashOrder,
-        setDashOrder
+        setDashOrder,
+        debtData
       }
     ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
@@ -985,7 +985,10 @@
         filterStatus: regFilterStatus,
         setFilterStatus: setRegFilterStatus
       }
-    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab }), tab === "plan" && /* @__PURE__ */ React.createElement(
+    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
+      setTab("budget");
+      setBudgetSub("forecast");
+    } }), tab === "plan" && /* @__PURE__ */ React.createElement(
       PlanView,
       {
         flow: activeFlow,
@@ -996,9 +999,11 @@
         setGoals,
         categories,
         alertThreshold: alertThresh,
-        activeYear
+        activeYear,
+        debtData,
+        setDebtData
       }
-    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
