@@ -820,7 +820,7 @@
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
-        .yoy-card{margin-top:14px;}
+        .yoy-card{margin-top:14px;margin-bottom:14px;}
         .yoy-header-row{padding:16px 18px 10px;}
         .yoy-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--textLt);}
         .yoy-table{width:100%;border-collapse:collapse;min-width:420px;}

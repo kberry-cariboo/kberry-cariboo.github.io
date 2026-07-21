@@ -1910,7 +1910,7 @@ document.addEventListener('DOMContentLoaded',function(){
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
-        .yoy-card{margin-top:14px;}
+        .yoy-card{margin-top:14px;margin-bottom:14px;}
         .yoy-header-row{padding:16px 18px 10px;}
         .yoy-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--textLt);}
         .yoy-table{width:100%;border-collapse:collapse;min-width:420px;}
@@ -5077,7 +5077,7 @@ document.addEventListener('DOMContentLoaded',function(){
       "Sign out"
     ))));
   }
-  function BudgetView({ flow, prevYearFlow = [], openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -5194,7 +5194,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const s = summaries[monthIdx] || summaries[0];
     const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
-    const yoyActive = budgetSub === "monthly" && compareYoy;
+    const yoyActive = budgetSub === "monthly" && compareYoy && prevYearConfigured;
     const prevSummaries = useMemo(() => getMonthSummaries(prevYearFlow, 0), [prevYearFlow]);
     const ps = prevSummaries[monthIdx] || { income: 0, expense: 0, surplus: 0 };
     const prevHasData = prevYearFlow.length > 0;
@@ -5586,7 +5586,7 @@ document.addEventListener('DOMContentLoaded',function(){
       )),
       gq && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
       /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
-      budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" }, /* @__PURE__ */ React.createElement(
+      budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" }, prevYearConfigured ? /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => {
@@ -5599,7 +5599,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 12 }),
         `Compare ${prevYear}`
-      ), /* @__PURE__ */ React.createElement(
+      ) : /* @__PURE__ */ React.createElement("span"), /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => {
@@ -7962,7 +7962,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [dragIdx, setDragIdx] = useState(null);
     const [dragOverIdx, setDragOverIdx] = useState(null);
     const [colorPickerFor, setColorPickerFor] = useState(null);
-    const [newYear, setNewYear] = useState("");
     const [yearMsg, setYearMsg] = useState("");
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
@@ -8044,12 +8043,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     };
     const sortedYears = [...yearConfigs].sort((a, b) => a.year - b.year);
+    const nextYear = (yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : (/* @__PURE__ */ new Date()).getFullYear()) + 1;
     const addYear = () => {
-      const y = parseInt(newYear);
-      if (!y || y < 1900 || y > 2200) {
-        setYearMsg("Enter a valid year between 1900 and 2200.");
-        return;
-      }
+      const y = nextYear;
       if (yearConfigs.find((yc) => yc.year === y)) {
         setYearMsg(`Year ${y} already exists.`);
         return;
@@ -8075,7 +8071,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       });
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
-      setNewYear("");
       const parts = [`Year ${y} added — ${prevYear} is untouched.`];
       if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
       parts.push(`Recurring entries without an end date carry forward automatically.`);
@@ -8245,7 +8240,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         value: alertThreshold,
         onChange: (e) => setAlertThreshold(roundMoney(Math.max(0, parseFloat(e.target.value) || 0)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, "Add or remove years. Opening balance for the first year is set here; subsequent years carry forward automatically."), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -8293,18 +8288,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           nextY
         );
       })(), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        inputMode: "decimal",
-        placeholder: "e.g. 2027",
-        value: newYear,
-        className: "cf-text-mono-13 newyear-input",
-        onChange: (e) => setNewYear(e.target.value),
-        onKeyDown: (e) => e.key === "Enter" && addYear()
-      }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add Year")), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -9597,12 +9581,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
     }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
     const activeFlow = yearFlows[activeYear] || [];
-    const prevYearFlow = useMemo(() => {
-      const py = activeYear - 1;
-      if (yearFlows[py]) return yearFlows[py];
-      const ovs = overridesByYr[py] || {};
-      return computeFlow(expandEntries(entries, py, ovs), 0);
-    }, [yearFlows, activeYear, entries, overridesByYr]);
+    const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
+    const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
@@ -10182,6 +10162,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       {
         flow: activeFlow,
         prevYearFlow,
+        prevYearConfigured,
         openBal: activeOpenBal,
         entries,
         setOverride,
