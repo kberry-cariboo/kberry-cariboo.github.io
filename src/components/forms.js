@@ -16,7 +16,10 @@
       monthlyAmounts: null
     };
     const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
-      amount: String(initial.amount),
+      // Money is cents at rest; this form's fields are plain dollar text the
+      // whole time it's open, converted back to cents only in handleSave.
+      amount: String(centsToDollars(initial.amount)),
+      monthlyAmounts: Array.isArray(initial.monthlyAmounts) ? initial.monthlyAmounts.map(centsToDollars) : null,
       recurEvery: (_a = initial.recurEvery) != null ? _a : 1,
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
@@ -67,11 +70,11 @@
     };
     const handleSave = () => {
       if (!validate()) return;
-      const ma = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
+      const maDollars = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
       onSave(__spreadProps(__spreadValues({}, f), {
-        amount: parseFloat(f.amount),
+        amount: dollarsToCents(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
-        monthlyAmounts: ma,
+        monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
         recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
@@ -82,7 +85,7 @@
       setF((p) => __spreadProps(__spreadValues({}, p), {
         desc: t.desc,
         type: t.type,
-        amount: String(t.amount),
+        amount: String(centsToDollars(t.amount)),
         category: t.category,
         repeats: t.repeats || false,
         recurEvery: t.recurEvery || 1,
@@ -205,7 +208,7 @@
         }
       ));
     })))))), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const amt = parseFloat(f.amount) || 0;
+      const amt = dollarsToCents(f.amount);
       onSaveTemplate({
         desc: f.desc,
         type: f.type,
@@ -359,7 +362,7 @@
       const ci = headers.indexOf(map.category);
       const imported = rows.map((r, idx) => {
         const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
-        const amt = isNaN(rawAmt) ? 0 : roundMoney(Math.abs(rawAmt));
+        const amt = isNaN(rawAmt) ? 0 : dollarsToCents(Math.abs(rawAmt));
         const raw = r[dti] || todayS;
         const parsed = new Date(raw);
         const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);

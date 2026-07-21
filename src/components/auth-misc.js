@@ -506,8 +506,8 @@
         const apply = (sel) => items.filter((x) => !sel.length || sel.includes(x.cat)).length;
         return apply([]) === 3 && apply(["A"]) === 1 && apply(["A", "C"]) === 2;
       });
-      t("amount search: >, <, exact", () => matchesAmountQuery(">500", 600) === true && matchesAmountQuery(">500", 400) === false && matchesAmountQuery("<100", 50) === true && matchesAmountQuery("49.50", 49.5) === true && matchesAmountQuery("rent", 100) === null);
-      t("fmtVarRange equal/range/empty", () => fmtVarRange([100, 100]) === "\u2248 $100" && fmtVarRange([1200, 2400]) === "$1.2k\u2013$2.4k" && fmtVarRange([]) === "Variable");
+      t("amount search: >, <, exact (amounts are cents)", () => matchesAmountQuery(">500", 6e4) === true && matchesAmountQuery(">500", 4e4) === false && matchesAmountQuery("<100", 5e3) === true && matchesAmountQuery("49.50", 4950) === true && matchesAmountQuery("rent", 1e4) === null);
+      t("fmtVarRange equal/range/empty (amounts are cents)", () => fmtVarRange([1e4, 1e4]) === "\u2248 $100" && fmtVarRange([12e4, 24e4]) === "$1.2k\u2013$2.4k" && fmtVarRange([]) === "Variable");
       t("debt sim: avalanche \u2264 snowball interest", () => {
         const debts = [{ label: "HighRate", bal: 5e3, rate: 22, pmt: 150 }, { label: "LowRate", bal: 2e3, rate: 5, pmt: 100 }];
         const av = simulateDebtStrategy(debts, 100, "avalanche");

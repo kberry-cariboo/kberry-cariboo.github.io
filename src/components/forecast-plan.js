@@ -26,7 +26,7 @@
         onCSV: () => {
           const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
-            return [dateStr, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance];
+            return [dateStr, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
         },
@@ -76,7 +76,7 @@
           className: "wizard-openbal-input"
         }
       )), /* @__PURE__ */ React.createElement("div", { className: "wizard-btn-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        const v = roundMoney(parseFloat(openBal) || 0);
+        const v = dollarsToCents(openBal);
         setYearConfigs((prev) => prev.map((yc, i) => i === 0 ? __spreadProps(__spreadValues({}, yc), { openingBalance: v }) : yc));
         setStep(1);
       }, className: "cf-btn cf-btn--primary wizard-next-btn" }, "Next \u2192"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDone(true), className: "cf-btn cf-btn--secondary cf-btn--wide" }, "Skip"))),
@@ -105,7 +105,7 @@
           addEntry({
             desc: income.desc.trim(),
             type: "income",
-            amount: roundMoney(parseFloat(income.amount) || 0),
+            amount: dollarsToCents(income.amount),
             category: income.category,
             repeats: true,
             recurEvery: 1,
@@ -151,7 +151,7 @@
           addEntry({
             desc: expense.desc.trim(),
             type: "expense",
-            amount: roundMoney(parseFloat(expense.amount) || 0),
+            amount: dollarsToCents(expense.amount),
             category: expense.category,
             repeats: true,
             recurEvery: 1,
@@ -177,7 +177,7 @@
     const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
     if (!alerts.length) return null;
     const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
+    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", centsToDollars(alertThreshold).toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -224,11 +224,17 @@
       // in App state) rather than re-reading localStorage, which went stale
       // when household sync updated them mid-session.
       const debtTrackerData = debtData && typeof debtData === "object" ? debtData : {};
+      // This context is used two ways: as vizCtx, feeding the on-screen KPI
+      // tiles/charts via fmt() (which expects cents, like everywhere else in
+      // the app), and serialized into the AI prompt text below, which needs
+      // plain dollars. So buildContext's return stays in cents — the
+      // prompt-building code down in runAssessment is the one place that
+      // converts, right where the numbers get interpolated into text.
       const savingsGoals = (Array.isArray(goals) ? goals : []).map((x) => ({
         name: x.name,
-        target: x.target,
-        saved: x.saved,
-        monthly: x.monthly,
+        target: roundMoney(x.target),
+        saved: roundMoney(x.saved),
+        monthly: roundMoney(x.monthly),
         targetDate: x.targetDate || null,
         pct: x.target > 0 ? Math.round(x.saved / x.target * 100) : 0
       }));
@@ -253,9 +259,9 @@
         });
       }
       Object.entries(targetByCat).forEach(([cat, tgt]) => {
-        const act = roundMoney((expenseCats[cat] || 0));
+        const act = roundMoney(expenseCats[cat] || 0);
         const t = roundMoney(tgt);
-        bvaRows.push({ category: cat, actual: act, target: t, variance: roundMoney((act - t)) });
+        bvaRows.push({ category: cat, actual: act, target: t, variance: roundMoney(act - t) });
       });
       bvaRows.sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
       const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "lease", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "child support"];
@@ -337,31 +343,31 @@
       const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
 
 FINANCIAL DATA (${ctx.reportingWindow}):
-Opening Balance: $${ctx.openingBalance.toLocaleString()}
-Closing Balance: $${ctx.closingBalance.toLocaleString()}
-Total Income: $${ctx.totalIncome.toLocaleString()}
-Total Expenses: $${ctx.totalExpenses.toLocaleString()}
-Net Surplus/Shortfall: $${ctx.totalSurplus.toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
-Lowest Balance This Period: $${ctx.lowestBalance.toLocaleString()}
-Average Monthly Expenses: $${ctx.avgMonthlyExpense.toLocaleString()}
+Opening Balance: $${centsToDollars(ctx.openingBalance).toLocaleString()}
+Closing Balance: $${centsToDollars(ctx.closingBalance).toLocaleString()}
+Total Income: $${centsToDollars(ctx.totalIncome).toLocaleString()}
+Total Expenses: $${centsToDollars(ctx.totalExpenses).toLocaleString()}
+Net Surplus/Shortfall: $${centsToDollars(ctx.totalSurplus).toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
+Lowest Balance This Period: $${centsToDollars(ctx.lowestBalance).toLocaleString()}
+Average Monthly Expenses: $${centsToDollars(ctx.avgMonthlyExpense).toLocaleString()}
 
 MONTHLY BREAKDOWN:
-${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${m.income.toLocaleString()}, Expenses $${m.expenses.toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(m.surplus).toLocaleString()}, Balance $${m.closingBalance.toLocaleString()}`).join("\n")}
+${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${centsToDollars(m.income).toLocaleString()}, Expenses $${centsToDollars(m.expenses).toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(centsToDollars(m.surplus)).toLocaleString()}, Balance $${centsToDollars(m.closingBalance).toLocaleString()}`).join("\n")}
 
 TOP EXPENSE CATEGORIES (YTD):
-${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
+${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
 
 INCOME SOURCES:
-${ctx.incomeCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()}`).join("\n")}
+${ctx.incomeCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()}`).join("\n")}
 
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
-${ctx.debtObligations.map((d) => `  ${d.category}: $${d.ytdPaid.toLocaleString()}`).join("\n")}` : "No debt categories identified."}
+${ctx.debtObligations.map((d) => `  ${d.category}: $${centsToDollars(d.ytdPaid).toLocaleString()}`).join("\n")}` : "No debt categories identified."}
 
 ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
 ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${d.balance.toLocaleString()}, Rate ${d.rate}%, Payment $${d.monthlyPayment}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${r.actual.toLocaleString()} vs Target $${r.target.toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(r.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
 
 Provide your assessment using these EXACT section headers, in this order (markdown ## format):
 ## Executive Summary

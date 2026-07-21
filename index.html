@@ -2019,7 +2019,77 @@ document.addEventListener('DOMContentLoaded',function(){
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
-  const SCHEMA_VERSION = 7;
+  // Defined here (not format.js) because the schema v8 migration below needs
+  // them at module-load time — migrate.js runs before format.js in the
+  // concatenation order, and a `const` in a later file isn't hoisted.
+  const dollarsToCents = (x) => {
+    const n = Number(x);
+    return isFinite(n) ? Math.round(n * 100) : 0;
+  };
+  const centsToDollars = (c) => {
+    const n = Number(c);
+    return isFinite(n) ? n / 100 : 0;
+  };
+  // Same schema-v8 dollars->cents upgrade as migrateData below, but for a
+  // household payload just loaded from Supabase rather than localStorage —
+  // a household member's browser can still be holding an older, un-migrated
+  // save (or an even older client saved after this shipped but before that
+  // device reloaded), so this runs on every load whose schemaVersion is
+  // stale, independent of this device's own local schema version.
+  function centsifyHouseholdPayload(d) {
+    if (!d) return d;
+    const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
+    const out = __spreadValues({}, d);
+    if (Array.isArray(out.entries)) {
+      out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
+        amount: toCents(e.amount),
+        monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
+      }));
+    }
+    if (out.overridesByYr && typeof out.overridesByYr === "object") {
+      const nextOvr = {};
+      Object.keys(out.overridesByYr).forEach((year) => {
+        const yOvr = out.overridesByYr[year] || {};
+        nextOvr[year] = {};
+        Object.keys(yOvr).forEach((evId) => {
+          const o = yOvr[evId] || {};
+          nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+        });
+      });
+      out.overridesByYr = nextOvr;
+    }
+    if (Array.isArray(out.yearConfigs)) {
+      out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
+    }
+    if (out.budgetTargets && typeof out.budgetTargets === "object") {
+      const nextTargets = {};
+      Object.keys(out.budgetTargets).forEach((key) => {
+        const cats = out.budgetTargets[key] || {};
+        const nextCats = {};
+        Object.keys(cats).forEach((cat) => {
+          nextCats[cat] = toCents(cats[cat]);
+        });
+        nextTargets[key] = nextCats;
+      });
+      out.budgetTargets = nextTargets;
+    }
+    if (Array.isArray(out.goals)) {
+      out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
+        target: toCents(g.target),
+        saved: toCents(g.saved),
+        monthly: toCents(g.monthly)
+      }));
+    }
+    if (Array.isArray(out.templates)) {
+      out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
+        amount: toCents(t.amount),
+        monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
+      }));
+    }
+    if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
+    return out;
+  }
+  const SCHEMA_VERSION = 8;
   function migrateData() {
     let storedVersion = 0;
     try {
@@ -2157,6 +2227,69 @@ document.addEventListener('DOMContentLoaded',function(){
         write("cf_entries", res.entries);
         write("cf_overrides", res.overridesByYr);
       }
+    }
+    if (storedVersion < 8) {
+      // Money moves from dollar-floats to integer cents everywhere it's
+      // stored — entries, overrides, opening balances, budget targets,
+      // goals, templates, the low-balance alert threshold — closing the
+      // float-drift class of bug properly instead of just rounding after
+      // every fold (the earlier AR5 fix). One-time and idempotent, gated on
+      // storedVersion like every migration here.
+      const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
+      const entries = readJSON("cf_entries", null);
+      if (Array.isArray(entries)) {
+        write("cf_entries", entries.map((e) => __spreadProps(__spreadValues({}, e), {
+          amount: toCents(e.amount),
+          monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
+        })));
+      }
+      const ovr = readJSON("cf_overrides", null);
+      if (ovr && typeof ovr === "object") {
+        const nextOvr = {};
+        Object.keys(ovr).forEach((year) => {
+          const yOvr = ovr[year] || {};
+          nextOvr[year] = {};
+          Object.keys(yOvr).forEach((evId) => {
+            const o = yOvr[evId] || {};
+            nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+          });
+        });
+        write("cf_overrides", nextOvr);
+      }
+      const years = readJSON("cf_years", null);
+      if (Array.isArray(years)) {
+        write("cf_years", years.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) })));
+      }
+      const targets = readJSON("cf_budgtargets", null);
+      if (targets && typeof targets === "object") {
+        const nextTargets = {};
+        Object.keys(targets).forEach((key) => {
+          const cats = targets[key] || {};
+          const nextCats = {};
+          Object.keys(cats).forEach((cat) => {
+            nextCats[cat] = toCents(cats[cat]);
+          });
+          nextTargets[key] = nextCats;
+        });
+        write("cf_budgtargets", nextTargets);
+      }
+      const goals = readJSON("cf_goals", null);
+      if (Array.isArray(goals)) {
+        write("cf_goals", goals.map((g) => __spreadProps(__spreadValues({}, g), {
+          target: toCents(g.target),
+          saved: toCents(g.saved),
+          monthly: toCents(g.monthly)
+        })));
+      }
+      const templates = readJSON("cf_templates", null);
+      if (Array.isArray(templates)) {
+        write("cf_templates", templates.map((t) => __spreadProps(__spreadValues({}, t), {
+          amount: toCents(t.amount),
+          monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
+        })));
+      }
+      const thresh = readJSON("cf_alertThresh", null);
+      if (typeof thresh === "number" && isFinite(thresh)) write("cf_alertThresh", toCents(thresh));
     }
     try {
       localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
@@ -2416,17 +2549,26 @@ document.addEventListener('DOMContentLoaded',function(){
     return past.length > 0 ? past[past.length - 1].balance : openBal;
   }
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
-  const roundMoney = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+  // Money is stored as integer cents everywhere at rest (state, localStorage,
+  // the cloud payload) — see migrate.js's schema v8 migration, which also
+  // defines dollarsToCents/centsToDollars (it needs them at module-load time,
+  // before this file's consts would exist). roundMoney now rounds to the
+  // nearest whole cent (an integer), not the nearest 1/100 of a dollar; the
+  // two coincide at every existing call site since those are all
+  // post-arithmetic "fold" points (proration, splits, percentages) that can
+  // land on a fractional cent.
+  const roundMoney = (n) => Math.round(Number(n) + Number.EPSILON);
   // One negative-number convention app-wide: a minus sign, never parentheses
   // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
+  // `n` is cents.
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
-    const abs = Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const abs = Math.abs(centsToDollars(n)).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (n < 0) return `-$${abs}`;
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
-  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(v) / 1e3).toFixed(0) + "k";
+  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(centsToDollars(v)) / 1e3).toFixed(0) + "k";
   function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
@@ -2467,7 +2609,7 @@ document.addEventListener('DOMContentLoaded',function(){
   ));
   function fmtVarRange(monthlyAmounts) {
     try {
-      const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v));
+      const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);
       if (!vals.length) return "Variable";
       const mn = Math.min(...vals), mx = Math.max(...vals);
       const k = (v) => v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
@@ -2792,7 +2934,11 @@ document.addEventListener('DOMContentLoaded',function(){
     const lastSavedAtRef = useRef(null);
     const applyPayload = useCallback((d) => {
       if (!d) return;
-      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(d[key], setters[key]));
+      // Money is cents from schema v8 on; a payload saved by an older,
+      // un-migrated client (another device that hasn't reloaded yet) is
+      // still dollars and needs upgrading before it reaches app state.
+      const data = (d.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(d) : d;
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], setters[key]));
     }, [setters]);
     // Receipt images live in the receipts table as binary blobs, not inside the
     // save payload — the payload only carries the rest of each entry/override.
@@ -2996,7 +3142,7 @@ document.addEventListener('DOMContentLoaded',function(){
   const CategoriesContext = createContext({ categories: [], categoryColors: {} });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
   const LOGO_SRC = "data:image/png;base64,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";
-  const DEFAULT_ALERT_THRESHOLD = 1500;
+  const DEFAULT_ALERT_THRESHOLD = 150000;
   const APP_VERSION = CF_VERSION;
   let _lastStorageErrorToastAt = 0;
   function notifyStorageWriteFailure(err) {
@@ -3312,13 +3458,19 @@ document.addEventListener('DOMContentLoaded',function(){
     if (amtMatch !== null) return amtMatch;
     return (ev.desc || "").toLowerCase().includes(q) || (ev.category || "").toLowerCase().includes(q) || (ev.notes || "").toLowerCase().includes(q);
   }
+  // `amount` is cents; the query text (typed by the user) is always dollars,
+  // so compare against the dollar form rather than converting the parsed
+  // threshold — that also keeps the digit-substring fallback working against
+  // a normal-looking "1234.56" string instead of a decimal-point-free cents
+  // integer.
   function matchesAmountQuery(q, amount) {
     const s = (q || "").trim();
-    if (/^>\s*[\d.]+$/.test(s)) return amount > parseFloat(s.slice(1));
-    if (/^<\s*[\d.]+$/.test(s)) return amount < parseFloat(s.slice(1));
+    const dollarAmount = centsToDollars(amount);
+    if (/^>\s*[\d.]+$/.test(s)) return dollarAmount > parseFloat(s.slice(1));
+    if (/^<\s*[\d.]+$/.test(s)) return dollarAmount < parseFloat(s.slice(1));
     if (/^[\d.]+$/.test(s)) {
       const n = parseFloat(s);
-      return !isNaN(n) && (Math.abs(amount - n) < 5e-3 || String(amount).includes(s));
+      return !isNaN(n) && (Math.abs(dollarAmount - n) < 5e-3 || String(dollarAmount).includes(s));
     }
     return null;
   }
@@ -3697,7 +3849,10 @@ document.addEventListener('DOMContentLoaded',function(){
       monthlyAmounts: null
     };
     const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
-      amount: String(initial.amount),
+      // Money is cents at rest; this form's fields are plain dollar text the
+      // whole time it's open, converted back to cents only in handleSave.
+      amount: String(centsToDollars(initial.amount)),
+      monthlyAmounts: Array.isArray(initial.monthlyAmounts) ? initial.monthlyAmounts.map(centsToDollars) : null,
       recurEvery: (_a = initial.recurEvery) != null ? _a : 1,
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
@@ -3748,11 +3903,11 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const handleSave = () => {
       if (!validate()) return;
-      const ma = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
+      const maDollars = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
       onSave(__spreadProps(__spreadValues({}, f), {
-        amount: parseFloat(f.amount),
+        amount: dollarsToCents(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
-        monthlyAmounts: ma,
+        monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
         recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
@@ -3763,7 +3918,7 @@ document.addEventListener('DOMContentLoaded',function(){
       setF((p) => __spreadProps(__spreadValues({}, p), {
         desc: t.desc,
         type: t.type,
-        amount: String(t.amount),
+        amount: String(centsToDollars(t.amount)),
         category: t.category,
         repeats: t.repeats || false,
         recurEvery: t.recurEvery || 1,
@@ -3886,7 +4041,7 @@ document.addEventListener('DOMContentLoaded',function(){
         }
       ));
     })))))), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const amt = parseFloat(f.amount) || 0;
+      const amt = dollarsToCents(f.amount);
       onSaveTemplate({
         desc: f.desc,
         type: f.type,
@@ -4040,7 +4195,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const ci = headers.indexOf(map.category);
       const imported = rows.map((r, idx) => {
         const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
-        const amt = isNaN(rawAmt) ? 0 : roundMoney(Math.abs(rawAmt));
+        const amt = isNaN(rawAmt) ? 0 : dollarsToCents(Math.abs(rawAmt));
         const raw = r[dti] || todayS;
         const parsed = new Date(raw);
         const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
@@ -4900,7 +5055,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
-    const [amount, setAmount] = useState(String(ev.amount));
+    const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
     const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
@@ -4920,11 +5075,12 @@ document.addEventListener('DOMContentLoaded',function(){
     const inpCls = (isErr) => "field-input" + (isErr ? " field-error" : "");
     const lblCls = "field-label";
     const save = () => {
-      const a = parseFloat(amount);
-      if (isNaN(a) || a < 0) {
+      const rawAmount = Number(amount);
+      if (amount.trim() === "" || isNaN(rawAmount) || rawAmount < 0) {
         setErr("Enter a valid amount.");
         return;
       }
+      const a = dollarsToCents(amount);
       const dNum = parseInt(day, 10);
       if (isNaN(dNum) || dNum < 1 || dNum > maxDay) {
         setDayErr(`Enter a day between 1 and ${maxDay}.`);
@@ -5713,7 +5869,7 @@ document.addEventListener('DOMContentLoaded',function(){
         ExportBar,
         {
           onCSV: () => {
-            const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance]);
+            const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
@@ -5888,7 +6044,7 @@ document.addEventListener('DOMContentLoaded',function(){
         ExportBar,
         {
           onCSV: () => {
-            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", d.balance]));
+            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
@@ -5928,7 +6084,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onClose: () => setBvaCtxMenu(null),
           items: [
             { icon: "\u270E", label: "Edit target", action: () => {
-              setBvaModalData({ cat: bvaCtxMenu.cat, target: String(bvaCtxMenu.target || ""), editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
+              setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
             } },
             { icon: "\u2715", label: "Remove target", action: () => {
@@ -5949,10 +6105,10 @@ document.addEventListener('DOMContentLoaded',function(){
         const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
         const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
         const saveBva = () => {
-          const t = parseFloat(bvaModalData.target);
-          if (!bvaModalData.cat || isNaN(t) || t < 0) return;
+          const t = dollarsToCents(bvaModalData.target);
+          if (!bvaModalData.cat || t < 0) return;
           setBudgetTargets((prev) => {
-            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: roundMoney(t) }) });
+            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: t }) });
             const ro = __spreadValues({}, prev._rollover || {});
             if (bvaModalData.rollover) ro[bvaModalData.cat] = true;
             else delete ro[bvaModalData.cat];
@@ -6071,7 +6227,7 @@ document.addEventListener('DOMContentLoaded',function(){
           const target = roundMoney((baseTarget + carry));
           const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
-          const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
+          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return /* @__PURE__ */ React.createElement(
             "div",
@@ -6107,7 +6263,7 @@ document.addEventListener('DOMContentLoaded',function(){
           const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
-          const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
+          const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
             color: tOver ? tColor : "var(--text)"
           } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over")));
@@ -6143,7 +6299,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onCSV: () => {
           const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
-            return [dateStr, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance];
+            return [dateStr, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
         },
@@ -6193,7 +6349,7 @@ document.addEventListener('DOMContentLoaded',function(){
           className: "wizard-openbal-input"
         }
       )), /* @__PURE__ */ React.createElement("div", { className: "wizard-btn-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        const v = roundMoney(parseFloat(openBal) || 0);
+        const v = dollarsToCents(openBal);
         setYearConfigs((prev) => prev.map((yc, i) => i === 0 ? __spreadProps(__spreadValues({}, yc), { openingBalance: v }) : yc));
         setStep(1);
       }, className: "cf-btn cf-btn--primary wizard-next-btn" }, "Next \u2192"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDone(true), className: "cf-btn cf-btn--secondary cf-btn--wide" }, "Skip"))),
@@ -6222,7 +6378,7 @@ document.addEventListener('DOMContentLoaded',function(){
           addEntry({
             desc: income.desc.trim(),
             type: "income",
-            amount: roundMoney(parseFloat(income.amount) || 0),
+            amount: dollarsToCents(income.amount),
             category: income.category,
             repeats: true,
             recurEvery: 1,
@@ -6268,7 +6424,7 @@ document.addEventListener('DOMContentLoaded',function(){
           addEntry({
             desc: expense.desc.trim(),
             type: "expense",
-            amount: roundMoney(parseFloat(expense.amount) || 0),
+            amount: dollarsToCents(expense.amount),
             category: expense.category,
             repeats: true,
             recurEvery: 1,
@@ -6294,7 +6450,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
     if (!alerts.length) return null;
     const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", alertThreshold.toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
+    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", centsToDollars(alertThreshold).toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -6341,11 +6497,17 @@ document.addEventListener('DOMContentLoaded',function(){
       // in App state) rather than re-reading localStorage, which went stale
       // when household sync updated them mid-session.
       const debtTrackerData = debtData && typeof debtData === "object" ? debtData : {};
+      // This context is used two ways: as vizCtx, feeding the on-screen KPI
+      // tiles/charts via fmt() (which expects cents, like everywhere else in
+      // the app), and serialized into the AI prompt text below, which needs
+      // plain dollars. So buildContext's return stays in cents — the
+      // prompt-building code down in runAssessment is the one place that
+      // converts, right where the numbers get interpolated into text.
       const savingsGoals = (Array.isArray(goals) ? goals : []).map((x) => ({
         name: x.name,
-        target: x.target,
-        saved: x.saved,
-        monthly: x.monthly,
+        target: roundMoney(x.target),
+        saved: roundMoney(x.saved),
+        monthly: roundMoney(x.monthly),
         targetDate: x.targetDate || null,
         pct: x.target > 0 ? Math.round(x.saved / x.target * 100) : 0
       }));
@@ -6370,9 +6532,9 @@ document.addEventListener('DOMContentLoaded',function(){
         });
       }
       Object.entries(targetByCat).forEach(([cat, tgt]) => {
-        const act = roundMoney((expenseCats[cat] || 0));
+        const act = roundMoney(expenseCats[cat] || 0);
         const t = roundMoney(tgt);
-        bvaRows.push({ category: cat, actual: act, target: t, variance: roundMoney((act - t)) });
+        bvaRows.push({ category: cat, actual: act, target: t, variance: roundMoney(act - t) });
       });
       bvaRows.sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
       const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "lease", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "child support"];
@@ -6454,31 +6616,31 @@ document.addEventListener('DOMContentLoaded',function(){
       const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
 
 FINANCIAL DATA (${ctx.reportingWindow}):
-Opening Balance: $${ctx.openingBalance.toLocaleString()}
-Closing Balance: $${ctx.closingBalance.toLocaleString()}
-Total Income: $${ctx.totalIncome.toLocaleString()}
-Total Expenses: $${ctx.totalExpenses.toLocaleString()}
-Net Surplus/Shortfall: $${ctx.totalSurplus.toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
-Lowest Balance This Period: $${ctx.lowestBalance.toLocaleString()}
-Average Monthly Expenses: $${ctx.avgMonthlyExpense.toLocaleString()}
+Opening Balance: $${centsToDollars(ctx.openingBalance).toLocaleString()}
+Closing Balance: $${centsToDollars(ctx.closingBalance).toLocaleString()}
+Total Income: $${centsToDollars(ctx.totalIncome).toLocaleString()}
+Total Expenses: $${centsToDollars(ctx.totalExpenses).toLocaleString()}
+Net Surplus/Shortfall: $${centsToDollars(ctx.totalSurplus).toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
+Lowest Balance This Period: $${centsToDollars(ctx.lowestBalance).toLocaleString()}
+Average Monthly Expenses: $${centsToDollars(ctx.avgMonthlyExpense).toLocaleString()}
 
 MONTHLY BREAKDOWN:
-${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${m.income.toLocaleString()}, Expenses $${m.expenses.toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(m.surplus).toLocaleString()}, Balance $${m.closingBalance.toLocaleString()}`).join("\n")}
+${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${centsToDollars(m.income).toLocaleString()}, Expenses $${centsToDollars(m.expenses).toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(centsToDollars(m.surplus)).toLocaleString()}, Balance $${centsToDollars(m.closingBalance).toLocaleString()}`).join("\n")}
 
 TOP EXPENSE CATEGORIES (YTD):
-${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
+${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
 
 INCOME SOURCES:
-${ctx.incomeCategories.map((c) => `  ${c.category}: $${c.total.toLocaleString()}`).join("\n")}
+${ctx.incomeCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()}`).join("\n")}
 
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
-${ctx.debtObligations.map((d) => `  ${d.category}: $${d.ytdPaid.toLocaleString()}`).join("\n")}` : "No debt categories identified."}
+${ctx.debtObligations.map((d) => `  ${d.category}: $${centsToDollars(d.ytdPaid).toLocaleString()}`).join("\n")}` : "No debt categories identified."}
 
 ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
 ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${d.balance.toLocaleString()}, Rate ${d.rate}%, Payment $${d.monthlyPayment}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${r.actual.toLocaleString()} vs Target $${r.target.toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(r.variance).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
 
 Provide your assessment using these EXACT section headers, in this order (markdown ## format):
 ## Executive Summary
@@ -6724,9 +6886,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const saveGoal = () => {
       const errs = {};
       const name = (goalForm.name || "").trim();
-      const target = roundMoney(parseFloat(goalForm.target));
-      const saved = roundMoney(parseFloat(goalForm.saved) || 0);
-      const monthly = roundMoney(parseFloat(goalForm.monthly) || 0);
+      const target = dollarsToCents(goalForm.target);
+      const saved = dollarsToCents(goalForm.saved);
+      const monthly = dollarsToCents(goalForm.monthly);
       if (!name) errs.name = "Name is required.";
       if (isNaN(target) || target <= 0) errs.target = "Enter a target above $0.";
       if (saved < 0) errs.saved = "Cannot be negative.";
@@ -6789,8 +6951,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       setGoalForm(null);
     };
     const applyFunds = () => {
-      const amt = parseFloat(fundForm.amount);
-      if (isNaN(amt) || amt <= 0) return;
+      const amt = dollarsToCents(fundForm.amount);
+      if (amt <= 0) return;
       haptic();
       setGoals((prev) => prev.map((g) => g.id === fundForm.goal.id ? __spreadProps(__spreadValues({}, g), { saved: roundMoney(g.saved + amt) }) : g));
       toast(`Added ${fmt(amt)} to ${fundForm.goal.name}`);
@@ -6799,7 +6961,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
       const openGoalForm = (g) => {
-        setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(g.target), saved: String(g.saved), monthly: String(g.monthly) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
+        setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
         setShowGoalForm(true);
       };
@@ -7733,7 +7895,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           const target = roundMoney((targetByCat[c] || 0));
           const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
-          const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
+          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return { cat: c, actual, target, diff, over, color, pct };
         });
@@ -7741,7 +7903,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const totalTarget = roundMoney(rows.reduce((s, r) => s + r.target, 0));
         const tDiff = roundMoney((totalActual - totalTarget));
         const tOver = totalTarget > 0 && tDiff > 0;
-        const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
+        const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bva-rows-wrap" }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { className: "dash-bva-row-hdr" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { className: "dash-bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           color: r.over ? r.color : "var(--text)"
         } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
@@ -7838,7 +8000,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           {
             onCSV: () => downloadCSV(
               `CashFlow_Monthly_Summary_${activeYear}.csv`,
-              summaries.map((m) => [m.month, m.income, m.expense, m.surplus, m.close]),
+              summaries.map((m) => [m.month, centsToDollars(m.income), centsToDollars(m.expense), centsToDollars(m.surplus), centsToDollars(m.close)]),
               ["Month", "Income", "Expenses", "Surplus", "Closing Balance"]
             ),
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
@@ -7900,12 +8062,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const base = Date.now();
       const mk = (i, e) => ({ id: base + i, notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
       setEntries((prev) => [...prev, ...[
-        mk(0, { desc: "(Sample) Paycheque", type: "income", amount: 2350, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
-        mk(1, { desc: "(Sample) Rent", type: "expense", amount: 1400, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
-        mk(2, { desc: "(Sample) Groceries", type: "expense", amount: 550, category: "Food", repeats: true, startDate: `${y}-01-08` }),
-        mk(3, { desc: "(Sample) Hydro & Internet", type: "expense", amount: 210, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
-        mk(4, { desc: "(Sample) Streaming", type: "expense", amount: 32, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
-        mk(5, { desc: "(Sample) Fuel", type: "expense", amount: 260, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
+        mk(0, { desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
+        mk(1, { desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
+        mk(2, { desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
+        mk(3, { desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
+        mk(4, { desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
+        mk(5, { desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
       ]]);
     };
     const hasSample = entries.some((e) => e.sample);
@@ -7914,9 +8076,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const quickAdd = () => window.dispatchEvent(new CustomEvent("cf:quickadd"));
     const firstRunPanel = entries.length === 0 && /* @__PURE__ */ React.createElement(Card, { className: "firstrun-card" }, /* @__PURE__ */ React.createElement("div", { className: "firstrun-title" }, "Welcome — let's map out your cash flow"), /* @__PURE__ */ React.createElement("div", { className: "firstrun-subtitle" }, "Three quick steps and this dashboard comes to life."), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(1, openBal !== 0), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Set your opening balance"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "What's in the account today?")), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", placeholder: "e.g. 2500", value: obDraft, onChange: (e) => setObDraft(e.target.value), "aria-label": "Opening balance", className: "field-input field-input--mono firstrun-ob-input", onKeyDown: (e) => {
       if (e.key === "Enter" && obDraft !== "") {
-        setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc));
+        setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc));
       }
-    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
+    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner" }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row" }, /* @__PURE__ */ React.createElement(
       "button",
@@ -8559,8 +8721,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         step: "100",
         min: "0",
         className: "settings-input w-120",
-        value: alertThreshold,
-        onChange: (e) => setAlertThreshold(roundMoney(Math.max(0, parseFloat(e.target.value) || 0)))
+        value: centsToDollars(alertThreshold),
+        onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
     ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
@@ -8574,8 +8736,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           inputMode: "decimal",
           step: "0.01",
           className: "cf-text-mono-13 openbal-input",
-          value: yc.openingBalance,
-          onChange: (e) => updateOpenBal(yc.year, roundMoney(parseFloat(e.target.value) || 0))
+          value: centsToDollars(yc.openingBalance),
+          onChange: (e) => updateOpenBal(yc.year, dollarsToCents(e.target.value))
         }
       )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { className: "txl flex-1" }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-checkbtn year-active-btn", style: {
         background: activeYear === yc.year ? "var(--primary)" : "transparent",
@@ -8673,7 +8835,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
-          const d = JSON.parse(ev.target.result);
+          const parsed = JSON.parse(ev.target.result);
+          // A backup exported before schema v8 (round-9 AR5) still has
+          // dollar-scale amounts — upgrade it the same way a stale cloud
+          // payload gets upgraded on load, so an old backup can't silently
+          // restore 100x-wrong figures.
+          const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
           const fixed = moveEntryAttachmentsToOverrides(
             Array.isArray(d.entries) ? d.entries : [],
             d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
@@ -9535,8 +9702,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const apply = (sel) => items.filter((x) => !sel.length || sel.includes(x.cat)).length;
         return apply([]) === 3 && apply(["A"]) === 1 && apply(["A", "C"]) === 2;
       });
-      t("amount search: >, <, exact", () => matchesAmountQuery(">500", 600) === true && matchesAmountQuery(">500", 400) === false && matchesAmountQuery("<100", 50) === true && matchesAmountQuery("49.50", 49.5) === true && matchesAmountQuery("rent", 100) === null);
-      t("fmtVarRange equal/range/empty", () => fmtVarRange([100, 100]) === "\u2248 $100" && fmtVarRange([1200, 2400]) === "$1.2k\u2013$2.4k" && fmtVarRange([]) === "Variable");
+      t("amount search: >, <, exact (amounts are cents)", () => matchesAmountQuery(">500", 6e4) === true && matchesAmountQuery(">500", 4e4) === false && matchesAmountQuery("<100", 5e3) === true && matchesAmountQuery("49.50", 4950) === true && matchesAmountQuery("rent", 1e4) === null);
+      t("fmtVarRange equal/range/empty (amounts are cents)", () => fmtVarRange([1e4, 1e4]) === "\u2248 $100" && fmtVarRange([12e4, 24e4]) === "$1.2k\u2013$2.4k" && fmtVarRange([]) === "Variable");
       t("debt sim: avalanche \u2264 snowball interest", () => {
         const debts = [{ label: "HighRate", bal: 5e3, rate: 22, pmt: 150 }, { label: "LowRate", bal: 2e3, rate: 5, pmt: 100 }];
         const av = simulateDebtStrategy(debts, 100, "avalanche");
@@ -10583,7 +10750,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "low-balance-banner", style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`
-    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${alertThresh} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,

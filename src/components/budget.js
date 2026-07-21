@@ -540,7 +540,7 @@
         ExportBar,
         {
           onCSV: () => {
-            const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", ev.balance]);
+            const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
@@ -715,7 +715,7 @@
         ExportBar,
         {
           onCSV: () => {
-            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? ev.amount : "", ev.type === "expense" ? ev.amount : "", d.balance]));
+            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
@@ -755,7 +755,7 @@
           onClose: () => setBvaCtxMenu(null),
           items: [
             { icon: "\u270E", label: "Edit target", action: () => {
-              setBvaModalData({ cat: bvaCtxMenu.cat, target: String(bvaCtxMenu.target || ""), editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
+              setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
             } },
             { icon: "\u2715", label: "Remove target", action: () => {
@@ -776,10 +776,10 @@
         const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
         const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
         const saveBva = () => {
-          const t = parseFloat(bvaModalData.target);
-          if (!bvaModalData.cat || isNaN(t) || t < 0) return;
+          const t = dollarsToCents(bvaModalData.target);
+          if (!bvaModalData.cat || t < 0) return;
           setBudgetTargets((prev) => {
-            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: roundMoney(t) }) });
+            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: t }) });
             const ro = __spreadValues({}, prev._rollover || {});
             if (bvaModalData.rollover) ro[bvaModalData.cat] = true;
             else delete ro[bvaModalData.cat];
@@ -898,7 +898,7 @@
           const target = roundMoney((baseTarget + carry));
           const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
-          const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
+          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return /* @__PURE__ */ React.createElement(
             "div",
@@ -934,7 +934,7 @@
           const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
-          const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
+          const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
             color: tOver ? tColor : "var(--text)"
           } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over")));
