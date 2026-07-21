@@ -136,15 +136,16 @@
         const signed = ev.type === "income" ? ev.amount : -ev.amount;
         let row = map.get(k);
         if (!row) {
-          row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0 };
+          row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0, day: ev.day };
           map.set(k, row);
         }
         row[key] += signed;
+        if (key === "cur" || row.day == null) row.day = ev.day;
       };
       flow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "cur"));
       prevYearFlow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "prev"));
       const rows = [...map.values()].map((row) => __spreadProps(__spreadValues({}, row), { cur: r2(row.cur), prev: r2(row.prev), delta: r2(row.cur - row.prev) }));
-      rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || (a.desc || "").localeCompare(b.desc || ""));
+      rows.sort((a, b) => a.day - b.day || (a.desc || "").localeCompare(b.desc || ""));
       return rows;
     }, [yoyActive, flow, prevYearFlow, monthIdx]);
     const todayDate = /* @__PURE__ */ new Date();
@@ -222,8 +223,8 @@
     const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
-    const isToday = (day) => todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
-    const isPast = (day) => monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate();
+    const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
+    const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
     const handleAdd = (data) => {
       if (addEntry) addEntry(data);
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
