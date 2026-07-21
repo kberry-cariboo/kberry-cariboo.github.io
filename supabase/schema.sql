@@ -69,6 +69,15 @@ create table if not exists household_data (
 );
 
 -- Normalized budget tables ----------------------------------------------------
+--
+-- Money columns (app schema v8+, round-9 AR5): the client stores every
+-- amount as integer cents, so these numeric(14,2) columns always hold whole
+-- numbers (165000, never 1650.00) despite the 2-decimal scale — that's just
+-- headroom, not a unit hint. A row written by a pre-v8 client is still
+-- dollars; cf_apply_household_payload passes values through untouched
+-- either way, and the client upgrades old data on load by checking
+-- household_settings.schema_version (see centsifyHouseholdPayload in
+-- household-sync.js).
 
 -- One row per register entry (a one-off or recurring income/expense).
 create table if not exists entries (

@@ -22,9 +22,9 @@
     const saveGoal = () => {
       const errs = {};
       const name = (goalForm.name || "").trim();
-      const target = roundMoney(parseFloat(goalForm.target));
-      const saved = roundMoney(parseFloat(goalForm.saved) || 0);
-      const monthly = roundMoney(parseFloat(goalForm.monthly) || 0);
+      const target = dollarsToCents(goalForm.target);
+      const saved = dollarsToCents(goalForm.saved);
+      const monthly = dollarsToCents(goalForm.monthly);
       if (!name) errs.name = "Name is required.";
       if (isNaN(target) || target <= 0) errs.target = "Enter a target above $0.";
       if (saved < 0) errs.saved = "Cannot be negative.";
@@ -87,8 +87,8 @@
       setGoalForm(null);
     };
     const applyFunds = () => {
-      const amt = parseFloat(fundForm.amount);
-      if (isNaN(amt) || amt <= 0) return;
+      const amt = dollarsToCents(fundForm.amount);
+      if (amt <= 0) return;
       haptic();
       setGoals((prev) => prev.map((g) => g.id === fundForm.goal.id ? __spreadProps(__spreadValues({}, g), { saved: roundMoney(g.saved + amt) }) : g));
       toast(`Added ${fmt(amt)} to ${fundForm.goal.name}`);
@@ -97,7 +97,7 @@
     };
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
       const openGoalForm = (g) => {
-        setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(g.target), saved: String(g.saved), monthly: String(g.monthly) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
+        setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
         setShowGoalForm(true);
       };
@@ -1031,7 +1031,7 @@
           const target = roundMoney((targetByCat[c] || 0));
           const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
-          const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
+          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return { cat: c, actual, target, diff, over, color, pct };
         });
@@ -1039,7 +1039,7 @@
         const totalTarget = roundMoney(rows.reduce((s, r) => s + r.target, 0));
         const tDiff = roundMoney((totalActual - totalTarget));
         const tOver = totalTarget > 0 && tDiff > 0;
-        const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
+        const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bva-rows-wrap" }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { className: "dash-bva-row-hdr" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { className: "dash-bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
           color: r.over ? r.color : "var(--text)"
         } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
@@ -1136,7 +1136,7 @@
           {
             onCSV: () => downloadCSV(
               `CashFlow_Monthly_Summary_${activeYear}.csv`,
-              summaries.map((m) => [m.month, m.income, m.expense, m.surplus, m.close]),
+              summaries.map((m) => [m.month, centsToDollars(m.income), centsToDollars(m.expense), centsToDollars(m.surplus), centsToDollars(m.close)]),
               ["Month", "Income", "Expenses", "Surplus", "Closing Balance"]
             ),
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
@@ -1198,12 +1198,12 @@
       const base = Date.now();
       const mk = (i, e) => ({ id: base + i, notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
       setEntries((prev) => [...prev, ...[
-        mk(0, { desc: "(Sample) Paycheque", type: "income", amount: 2350, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
-        mk(1, { desc: "(Sample) Rent", type: "expense", amount: 1400, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
-        mk(2, { desc: "(Sample) Groceries", type: "expense", amount: 550, category: "Food", repeats: true, startDate: `${y}-01-08` }),
-        mk(3, { desc: "(Sample) Hydro & Internet", type: "expense", amount: 210, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
-        mk(4, { desc: "(Sample) Streaming", type: "expense", amount: 32, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
-        mk(5, { desc: "(Sample) Fuel", type: "expense", amount: 260, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
+        mk(0, { desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
+        mk(1, { desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
+        mk(2, { desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
+        mk(3, { desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
+        mk(4, { desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
+        mk(5, { desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
       ]]);
     };
     const hasSample = entries.some((e) => e.sample);
@@ -1212,9 +1212,9 @@
     const quickAdd = () => window.dispatchEvent(new CustomEvent("cf:quickadd"));
     const firstRunPanel = entries.length === 0 && /* @__PURE__ */ React.createElement(Card, { className: "firstrun-card" }, /* @__PURE__ */ React.createElement("div", { className: "firstrun-title" }, "Welcome — let's map out your cash flow"), /* @__PURE__ */ React.createElement("div", { className: "firstrun-subtitle" }, "Three quick steps and this dashboard comes to life."), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(1, openBal !== 0), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Set your opening balance"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "What's in the account today?")), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", placeholder: "e.g. 2500", value: obDraft, onChange: (e) => setObDraft(e.target.value), "aria-label": "Opening balance", className: "field-input field-input--mono firstrun-ob-input", onKeyDown: (e) => {
       if (e.key === "Enter" && obDraft !== "") {
-        setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc));
+        setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc));
       }
-    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: parseFloat(obDraft) || 0 } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
+    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner" }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row" }, /* @__PURE__ */ React.createElement(
       "button",

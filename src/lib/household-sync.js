@@ -228,7 +228,11 @@
     const lastSavedAtRef = useRef(null);
     const applyPayload = useCallback((d) => {
       if (!d) return;
-      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(d[key], setters[key]));
+      // Money is cents from schema v8 on; a payload saved by an older,
+      // un-migrated client (another device that hasn't reloaded yet) is
+      // still dollars and needs upgrading before it reaches app state.
+      const data = (d.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(d) : d;
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], setters[key]));
     }, [setters]);
     // Receipt images live in the receipts table as binary blobs, not inside the
     // save payload — the payload only carries the rest of each entry/override.

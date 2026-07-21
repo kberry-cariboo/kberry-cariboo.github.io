@@ -1,15 +1,24 @@
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
-  const roundMoney = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+  // Money is stored as integer cents everywhere at rest (state, localStorage,
+  // the cloud payload) — see migrate.js's schema v8 migration, which also
+  // defines dollarsToCents/centsToDollars (it needs them at module-load time,
+  // before this file's consts would exist). roundMoney now rounds to the
+  // nearest whole cent (an integer), not the nearest 1/100 of a dollar; the
+  // two coincide at every existing call site since those are all
+  // post-arithmetic "fold" points (proration, splits, percentages) that can
+  // land on a fractional cent.
+  const roundMoney = (n) => Math.round(Number(n) + Number.EPSILON);
   // One negative-number convention app-wide: a minus sign, never parentheses
   // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
+  // `n` is cents.
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
-    const abs = Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const abs = Math.abs(centsToDollars(n)).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (n < 0) return `-$${abs}`;
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
-  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(v) / 1e3).toFixed(0) + "k";
+  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(centsToDollars(v)) / 1e3).toFixed(0) + "k";
   function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
@@ -50,7 +59,7 @@
   ));
   function fmtVarRange(monthlyAmounts) {
     try {
-      const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v));
+      const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);
       if (!vals.length) return "Variable";
       const mn = Math.min(...vals), mx = Math.max(...vals);
       const k = (v) => v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);

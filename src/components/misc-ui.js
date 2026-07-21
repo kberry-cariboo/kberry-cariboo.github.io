@@ -193,7 +193,7 @@
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
-    const [amount, setAmount] = useState(String(ev.amount));
+    const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
     const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
@@ -213,11 +213,12 @@
     const inpCls = (isErr) => "field-input" + (isErr ? " field-error" : "");
     const lblCls = "field-label";
     const save = () => {
-      const a = parseFloat(amount);
-      if (isNaN(a) || a < 0) {
+      const rawAmount = Number(amount);
+      if (amount.trim() === "" || isNaN(rawAmount) || rawAmount < 0) {
         setErr("Enter a valid amount.");
         return;
       }
+      const a = dollarsToCents(amount);
       const dNum = parseInt(day, 10);
       if (isNaN(dNum) || dNum < 1 || dNum > maxDay) {
         setDayErr(`Enter a day between 1 and ${maxDay}.`);

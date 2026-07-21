@@ -543,8 +543,8 @@
         step: "100",
         min: "0",
         className: "settings-input w-120",
-        value: alertThreshold,
-        onChange: (e) => setAlertThreshold(roundMoney(Math.max(0, parseFloat(e.target.value) || 0)))
+        value: centsToDollars(alertThreshold),
+        onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
     ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
@@ -558,8 +558,8 @@
           inputMode: "decimal",
           step: "0.01",
           className: "cf-text-mono-13 openbal-input",
-          value: yc.openingBalance,
-          onChange: (e) => updateOpenBal(yc.year, roundMoney(parseFloat(e.target.value) || 0))
+          value: centsToDollars(yc.openingBalance),
+          onChange: (e) => updateOpenBal(yc.year, dollarsToCents(e.target.value))
         }
       )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { className: "txl flex-1" }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-checkbtn year-active-btn", style: {
         background: activeYear === yc.year ? "var(--primary)" : "transparent",
@@ -657,7 +657,12 @@
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
-          const d = JSON.parse(ev.target.result);
+          const parsed = JSON.parse(ev.target.result);
+          // A backup exported before schema v8 (round-9 AR5) still has
+          // dollar-scale amounts — upgrade it the same way a stale cloud
+          // payload gets upgraded on load, so an old backup can't silently
+          // restore 100x-wrong figures.
+          const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
           const fixed = moveEntryAttachmentsToOverrides(
             Array.isArray(d.entries) ? d.entries : [],
             d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}

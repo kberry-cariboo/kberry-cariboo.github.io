@@ -1,5 +1,75 @@
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
-  const SCHEMA_VERSION = 7;
+  // Defined here (not format.js) because the schema v8 migration below needs
+  // them at module-load time — migrate.js runs before format.js in the
+  // concatenation order, and a `const` in a later file isn't hoisted.
+  const dollarsToCents = (x) => {
+    const n = Number(x);
+    return isFinite(n) ? Math.round(n * 100) : 0;
+  };
+  const centsToDollars = (c) => {
+    const n = Number(c);
+    return isFinite(n) ? n / 100 : 0;
+  };
+  // Same schema-v8 dollars->cents upgrade as migrateData below, but for a
+  // household payload just loaded from Supabase rather than localStorage —
+  // a household member's browser can still be holding an older, un-migrated
+  // save (or an even older client saved after this shipped but before that
+  // device reloaded), so this runs on every load whose schemaVersion is
+  // stale, independent of this device's own local schema version.
+  function centsifyHouseholdPayload(d) {
+    if (!d) return d;
+    const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
+    const out = __spreadValues({}, d);
+    if (Array.isArray(out.entries)) {
+      out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
+        amount: toCents(e.amount),
+        monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
+      }));
+    }
+    if (out.overridesByYr && typeof out.overridesByYr === "object") {
+      const nextOvr = {};
+      Object.keys(out.overridesByYr).forEach((year) => {
+        const yOvr = out.overridesByYr[year] || {};
+        nextOvr[year] = {};
+        Object.keys(yOvr).forEach((evId) => {
+          const o = yOvr[evId] || {};
+          nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+        });
+      });
+      out.overridesByYr = nextOvr;
+    }
+    if (Array.isArray(out.yearConfigs)) {
+      out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
+    }
+    if (out.budgetTargets && typeof out.budgetTargets === "object") {
+      const nextTargets = {};
+      Object.keys(out.budgetTargets).forEach((key) => {
+        const cats = out.budgetTargets[key] || {};
+        const nextCats = {};
+        Object.keys(cats).forEach((cat) => {
+          nextCats[cat] = toCents(cats[cat]);
+        });
+        nextTargets[key] = nextCats;
+      });
+      out.budgetTargets = nextTargets;
+    }
+    if (Array.isArray(out.goals)) {
+      out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
+        target: toCents(g.target),
+        saved: toCents(g.saved),
+        monthly: toCents(g.monthly)
+      }));
+    }
+    if (Array.isArray(out.templates)) {
+      out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
+        amount: toCents(t.amount),
+        monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
+      }));
+    }
+    if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
+    return out;
+  }
+  const SCHEMA_VERSION = 8;
   function migrateData() {
     let storedVersion = 0;
     try {
@@ -137,6 +207,69 @@
         write("cf_entries", res.entries);
         write("cf_overrides", res.overridesByYr);
       }
+    }
+    if (storedVersion < 8) {
+      // Money moves from dollar-floats to integer cents everywhere it's
+      // stored — entries, overrides, opening balances, budget targets,
+      // goals, templates, the low-balance alert threshold — closing the
+      // float-drift class of bug properly instead of just rounding after
+      // every fold (the earlier AR5 fix). One-time and idempotent, gated on
+      // storedVersion like every migration here.
+      const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
+      const entries = readJSON("cf_entries", null);
+      if (Array.isArray(entries)) {
+        write("cf_entries", entries.map((e) => __spreadProps(__spreadValues({}, e), {
+          amount: toCents(e.amount),
+          monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
+        })));
+      }
+      const ovr = readJSON("cf_overrides", null);
+      if (ovr && typeof ovr === "object") {
+        const nextOvr = {};
+        Object.keys(ovr).forEach((year) => {
+          const yOvr = ovr[year] || {};
+          nextOvr[year] = {};
+          Object.keys(yOvr).forEach((evId) => {
+            const o = yOvr[evId] || {};
+            nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+          });
+        });
+        write("cf_overrides", nextOvr);
+      }
+      const years = readJSON("cf_years", null);
+      if (Array.isArray(years)) {
+        write("cf_years", years.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) })));
+      }
+      const targets = readJSON("cf_budgtargets", null);
+      if (targets && typeof targets === "object") {
+        const nextTargets = {};
+        Object.keys(targets).forEach((key) => {
+          const cats = targets[key] || {};
+          const nextCats = {};
+          Object.keys(cats).forEach((cat) => {
+            nextCats[cat] = toCents(cats[cat]);
+          });
+          nextTargets[key] = nextCats;
+        });
+        write("cf_budgtargets", nextTargets);
+      }
+      const goals = readJSON("cf_goals", null);
+      if (Array.isArray(goals)) {
+        write("cf_goals", goals.map((g) => __spreadProps(__spreadValues({}, g), {
+          target: toCents(g.target),
+          saved: toCents(g.saved),
+          monthly: toCents(g.monthly)
+        })));
+      }
+      const templates = readJSON("cf_templates", null);
+      if (Array.isArray(templates)) {
+        write("cf_templates", templates.map((t) => __spreadProps(__spreadValues({}, t), {
+          amount: toCents(t.amount),
+          monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
+        })));
+      }
+      const thresh = readJSON("cf_alertThresh", null);
+      if (typeof thresh === "number" && isFinite(thresh)) write("cf_alertThresh", toCents(thresh));
     }
     try {
       localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));

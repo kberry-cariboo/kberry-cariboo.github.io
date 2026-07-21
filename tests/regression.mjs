@@ -35,9 +35,11 @@ await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
 
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
 
-// Fictional demo data (self-contained)
+// Fictional demo data (self-contained). Money is stored as integer cents
+// (schema v8) — `amount` args below are dollars, multiplied by 100 so the
+// fixtures read naturally while matching the app's on-disk representation.
 const E = (id, desc, type, amount, category, opts = {}) => ({
-  id, desc, type, amount, category,
+  id, desc, type, amount: Math.round(amount * 100), category,
   repeats: opts.once ? false : true,
   recurUnit: opts.unit || 'month',
   recurEvery: opts.every || 1,
@@ -65,8 +67,8 @@ const entries = [
   E(17, 'Vet checkup', 'expense', 240, 'Farm / Animals', { once: true, start: '2026-08-12' }),
 ];
 const monthTargets = {
-  Housing: 1650, Food: 560, Insurance: 210, Utilities: 290, Subscriptions: 125,
-  Transportation: 340, Personal: 320, 'Debt / Credit': 385, 'Savings / RRSP': 400
+  Housing: 165000, Food: 56000, Insurance: 21000, Utilities: 29000, Subscriptions: 12500,
+  Transportation: 34000, Personal: 32000, 'Debt / Credit': 38500, 'Savings / RRSP': 40000
 };
 const entriesMatch = 'const entries = ' + JSON.stringify(entries) + ';';
 const eMatch = '';
@@ -80,7 +82,7 @@ const mkStub = (dark, loggedIn = true) => `
   ${targetsMatch}
   ${btMatch}
   const session = ${loggedIn} ? { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' } : null;
-  const payload = { entries, overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 12500 }], budgetTargets, templates: [], completed: {}, activeYear: 2026, alertThreshold: 500, darkMode: ${dark}, goals: [], dashHidden: {}, dashOrder: [], schemaVersion: 999 };
+  const payload = { entries, overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 1250000 }], budgetTargets, templates: [], completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: ${dark}, goals: [], dashHidden: {}, dashOrder: [], schemaVersion: 999 };
   const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }];
   const resolved = (data) => Promise.resolve({ data, error: null });
   function chain(table) {
@@ -416,6 +418,66 @@ await test('E2 create-account mode switches', async () => {
   await page.getByText('Create account', { exact: true }).first().click();
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: /Create account/ }).first().waitFor(V);
+  await ctx.close();
+});
+
+// ── F. Money schema migration (schema v8: dollars -> cents) ────────────────
+// Every other test's fixture payload declares schemaVersion: 999, so it's
+// taken as already-cents and never exercises the upgrade path. This test
+// simulates a real existing household's save from before this migration
+// shipped — no schemaVersion field, amounts still dollar-scale — the exact
+// shape applyPayload's centsifyHouseholdPayload (household-sync.js) must
+// catch and convert on load.
+await test('F1 loading a pre-v8 cloud payload (dollar-scale, no schemaVersion) upgrades to cents on display', async () => {
+  const oldPayload = {
+    entries: [{ id: 1, desc: 'Old Format Rent', type: 'expense', amount: 1234.56, category: 'Housing', repeats: false, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-05', notes: '' }],
+    overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 5000 }], budgetTargets: {}, templates: [],
+    completed: {}, activeYear: 2026, alertThreshold: 500, darkMode: false, goals: [], dashHidden: {}, dashOrder: []
+    // schemaVersion intentionally omitted
+  };
+  const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }];
+  const stub = `
+  (() => {
+    const session = { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' };
+    const payload = ${JSON.stringify(oldPayload)};
+    const members = ${JSON.stringify(members)};
+    const resolved = (data) => Promise.resolve({ data, error: null });
+    function chain(table) {
+      const c = {};
+      for (const m of ['select','eq','limit','order','update','insert','delete','neq','in']) {
+        c[m] = () => { if (m === 'order') return resolved(table === 'household_members' ? members : []); return c; };
+      }
+      c.maybeSingle = () => resolved(table === 'household_members' ? { household_id: 'hh-demo' } : { id: 'hh-demo', name: 'Demo Household' });
+      c.single = c.maybeSingle;
+      c.then = (res, rej) => resolved(null).then(res, rej);
+      return c;
+    }
+    const fakeClient = {
+      auth: {
+        getSession: () => resolved({ session }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }),
+        signOut: () => resolved(null),
+      },
+      from: (t) => chain(t),
+      rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),
+      channel: () => { const ch = { on: () => ch, subscribe: () => ({ unsubscribe(){} }) }; return ch; },
+      removeChannel(){},
+    };
+    const fake = { createClient: () => fakeClient };
+    Object.defineProperty(window, 'supabase', { get: () => fake, set: () => {} });
+  })();
+  `;
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.addInitScript(stub);
+  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.getByText('Old Format Rent', { exact: false }).first().waitFor(V);
+  await page.getByText('-$1,234.56', { exact: false }).first().waitFor(V);
+  const wrongScale = await page.getByText('$123,456', { exact: false }).count();
+  if (wrongScale > 0) throw new Error('pre-v8 payload was not upgraded — rendered 100x too large');
   await ctx.close();
 });
 

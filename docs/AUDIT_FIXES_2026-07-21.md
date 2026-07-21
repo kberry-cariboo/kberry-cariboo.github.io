@@ -103,18 +103,28 @@ ESLint correctness gate (clean), and the 29-test Playwright regression suite —
   that would have caught B1 — `no-dupe-args`, `no-duplicate-case`, `no-unreachable`,
   `use-isnan`, etc.) runs in CI via `npx eslint@9` next to the build-drift gate.
 
-### Consciously deferred (with reasons)
+### Deferred items — since resolved (round-9)
 
-- **AR2 server-side conflict rejection** — requires a coordinated `supabase/schema.sql`
-  function-signature change (`save_household` gaining an expected-`savedAt` param);
-  shipping the client half first would break saves against already-deployed databases.
-  The client-side half of the stomp problem (M3 flush-before-load) is fixed. Follow-up:
-  ship schema + client together with a graceful fallback for the old signature.
-- **R6 payload/props consolidation** — collapsing the ~20 synced value/setter pairs into
-  one `settings` object changes the cloud payload schema and would need a payload
-  migration for existing households; too much blast radius to bundle into a fix pass.
-- **AR4 remainder** — further splitting `app-data.js` into dates/format/biometric files
-  is now much lower-value at ~890 lines; revisit if it grows again.
-- **AR5 integer cents** — money math still rounds at fold sites; converting to cents is
-  a data-shape change (entries, overrides, payload, backups) deserving its own tested
-  round. No visible defect today.
+All four items originally deferred above were later implemented in a dedicated pass:
+
+- **AR2 server-side conflict rejection** — `save_household` gained an additive 2-arg
+  overload (`p_data`, `p_expected_saved_at`); rejects a save with `CONFLICT: ...` when
+  another device's save landed first instead of silently overwriting it. Client tracks
+  the `savedAt` it last loaded and reloads + toasts on conflict. The 1-arg overload
+  stays so an un-migrated tab still works.
+- **R6 payload/props consolidation** — `useHouseholdData`'s ~40 flat named params
+  collapsed into `{household, values, setters}`, backed by a `HOUSEHOLD_SYNCED_FIELDS`
+  registry shared by `applyPayload`/`buildPayload` so a field can't drift between them.
+  The wire format itself didn't need to change, so this shipped without a payload
+  migration.
+- **AR4 remainder** — `app-data.js` split into `dates.js`, `format.js`, `biometric.js`,
+  `migrate.js` (888 → 349 lines).
+- **AR5 integer cents** — money is now stored as integer cents everywhere (state,
+  localStorage, the cloud payload, JSON backups), not dollar-floats. A schema-v8
+  migration (`migrate.js`) converts existing localStorage data once; `household-sync.js`
+  and the Backup Import path upgrade older cloud/backup payloads the same way, gated on
+  a `schemaVersion` field already tracked server-side (`household_settings.schema_version`)
+  from the AR2 work. `fmt()`/`fmtAxisK()`/`fmtVarRange()` are the sole cents→dollars
+  display boundary; `dollarsToCents()`/`centsToDollars()` are the sole conversion points
+  at form inputs. `supabase/schema.sql`'s `numeric(14,2)` money columns needed no schema
+  change — they pass values through untouched regardless of unit, documented inline.
