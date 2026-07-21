@@ -3632,7 +3632,7 @@ document.addEventListener('DOMContentLoaded',function(){
         recurDays: t.recurDays || [],
         notes: t.notes || ""
       }));
-    } })), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-desc" }, "Description *"), /* @__PURE__ */ React.createElement(
+    } })), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-desc",
@@ -3664,7 +3664,7 @@ document.addEventListener('DOMContentLoaded',function(){
     ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
       set({ category: e.target.value });
       if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
-    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-date-row" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-160" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-date" }, "Date *"), /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-date-row" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-160" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-date" }, "Date", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-date",
