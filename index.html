@@ -1774,7 +1774,6 @@ document.addEventListener('DOMContentLoaded',function(){
         .budget-subtab-btn{font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;
           border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;}
         /* ── forms.js ── */
-        .entry-form-card{margin-bottom:20px;background:var(--stripe);}
         .required-mark{color:var(--red);margin-left:2px;}
         .entry-form-row2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
         .recur-summary-chip{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--navyLt);background:var(--stripe);border-radius:6px;padding:3px 8px;border:1px solid var(--border);}
@@ -1798,7 +1797,7 @@ document.addEventListener('DOMContentLoaded',function(){
         .month-amt-label{font-size:10px;color:var(--textLt);text-align:center;margin-bottom:3px;}
         .month-amt-input{font-size:12px;padding:6px 6px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);width:100%;box-sizing:border-box;outline:none;}
         .entry-form-save-btn{padding:9px 22px;}
-        .ef-save-template{font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;margin-left:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:6px;}
+        .ef-save-template{font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;margin-right:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:6px;}
         .csv-importer-card{background:var(--bgCard);border-radius:14px;padding:20px;margin-bottom:16px;border:1px solid var(--border);max-width:600px;}
         .csv-title{font-size:15px;font-weight:700;color:var(--text);}
         .csv-instructions{font-size:13px;color:var(--textLt);margin-bottom:12px;line-height:1.5;}
@@ -1872,25 +1871,23 @@ document.addEventListener('DOMContentLoaded',function(){
         .fab-panel--lg{width:min(680px,calc(100vw - 32px));}
         .fab-panel-title-sm{font-size:14px;font-weight:700;color:var(--text);}
         .fab-panel-close{background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--textLt);padding:4px;line-height:1;}
-        .reg-th--select{padding:10px 6px 10px 12px;width:34px;background:var(--navy);}
         .reg-selectall-btn{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;}
         .reg-th--col{font-size:11px;font-weight:700;color:#fff;padding:10px 12px;text-align:left;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:grab;user-select:none;transition:background 0.1s;}
         .reg-th-sort-label{cursor:pointer;display:inline-flex;align-items:center;gap:3px;user-select:none;}
         .reg-sort-arrow{font-size:9px;}
         .reg-tr{border-bottom:1px solid var(--border);cursor:context-menu;}
-        .reg-td-checkbox{padding:8px 6px 8px 12px;width:34px;}
-        .reg-row-checkbox{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;line-height:1;}
         .reg-empty-cell{padding:32px;text-align:center;color:var(--textLt);}
         .reg-mobile-card{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bgCard);cursor:context-menu;}
         .reg-mobile-card-toprow{display:flex;align-items:flex-start;gap:10px;margin-bottom:4px;}
-        .reg-mobile-checkbox{width:22px;height:22px;border-radius:5px;cursor:pointer;padding:0;flex-shrink:0;margin-top:1px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;line-height:1;}
         .reg-mobile-desc{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .reg-mobile-amount{font-weight:600;white-space:nowrap;flex-shrink:0;}
         .reg-mobile-actions-btn{width:26px;height:26px;flex-shrink:0;margin-top:-2px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--textLt);font-size:16px;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
         .reg-mobile-date{font-size:11px;color:var(--textMid);}
         .reg-mobile-notes{font-size:11px;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;}
         .reg-bulkbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:1450;background:var(--navy);border-radius:26px;padding:8px 10px 8px 18px;box-shadow:var(--shadowXl);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);}
+        .reg-bulkbar--accent{background:var(--primary);}
         .reg-bulkbar-count{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;}
+        .reg-bulkbar-total{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff;opacity:0.9;white-space:nowrap;}
         .reg-bulk-markpaid-btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:18px;border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:#fff;}
         .reg-bulk-clear-btn{font-size:12px;font-weight:600;padding:8px 12px;border-radius:18px;border:1px solid rgba(255,255,255,0.35);cursor:pointer;background:transparent;color:#fff;}
         .fab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;box-shadow:var(--shadowXl);border:1px solid var(--border);max-height:80vh;overflow-y:auto;}
@@ -3621,7 +3618,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(Card, { className: "entry-form-card" }, templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
       setF((p) => __spreadProps(__spreadValues({}, p), {
         desc: t.desc,
         type: t.type,
@@ -3747,7 +3744,7 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
       ));
-    })))))), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-wrap cf-gap-8" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    })))))), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const amt = parseFloat(f.amount) || 0;
       onSaveTemplate({
         desc: f.desc,
@@ -3760,7 +3757,7 @@ document.addEventListener('DOMContentLoaded',function(){
         recurDays: f.recurDays || [],
         notes: f.notes
       });
-    }, className: "ef-save-template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template")));
+    }, className: "ef-save-template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
   }
   function CSVImporter({ categories, onImport, onClose }) {
     const [rows, setRows] = useState([]);
@@ -4123,39 +4120,11 @@ document.addEventListener('DOMContentLoaded',function(){
   }, filterCats = [], setFilterCats = () => {
   }, filterScheds = [], setFilterScheds = () => {
   }, filterStatus = [], setFilterStatus = () => {
-  }, flow = [], completed = {}, markOccurrencesPaid = () => {
   } }) {
     const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_REG_COLS;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [searchAllYears, setSearchAllYears] = useState(false);
-    const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
-    const toggleSel = (id) => setSelIds((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-    const markSelectedPaid = () => {
-      try {
-        const cm = (/* @__PURE__ */ new Date()).getMonth();
-        const occIds = [];
-        selIds.forEach((id) => {
-          (flow || []).forEach((ev) => {
-            if (ev.entryId === id && ev.month === cm && !completed[ev.id]) occIds.push(ev.id);
-          });
-        });
-        if (!occIds.length) {
-          toast("No unpaid items this month in selection", "error");
-          return;
-        }
-        markOccurrencesPaid(occIds);
-        haptic();
-        toast(`Marked ${occIds.length} item${occIds.length !== 1 ? "s" : ""} paid for ${MONTHS[cm]}`);
-        setSelIds(/* @__PURE__ */ new Set());
-      } catch (err) {
-        toast("Bulk update failed: " + err.message, "error");
-      }
-    };
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
     const toggleSort = (col) => {
@@ -4429,24 +4398,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         onClose: () => setShowCSV(false)
       }
-    ))), selIds.size > 0 && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar" }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: markSelectedPaid,
-        className: "reg-bulk-markpaid-btn"
-      },
-      "\u2713 Mark paid (",
-      MONTHS[(/* @__PURE__ */ new Date()).getMonth()],
-      ")"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setSelIds(/* @__PURE__ */ new Set()),
-        "aria-label": "Clear selection",
-        className: "reg-bulk-clear-btn"
-      },
-      "Clear"
-    )), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    ))), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
       {
         onClick: close,
@@ -4470,30 +4422,7 @@ document.addEventListener('DOMContentLoaded',function(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "reg-th reg-th--select" }, (() => {
-      const allSel = filtered.length > 0 && filtered.every((e) => selIds.has(e.id));
-      const someSel = filtered.some((e) => selIds.has(e.id));
-      return /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            if (allSel) setSelIds(/* @__PURE__ */ new Set());
-            else setSelIds(new Set(filtered.map((e) => e.id)));
-          },
-          role: "checkbox",
-          "aria-checked": allSel,
-          "aria-label": allSel ? "Deselect all" : "Select all",
-          title: allSel ? "Deselect all" : "Select all",
-          className: "reg-selectall-btn",
-          style: {
-            border: allSel ? "none" : "1.5px solid rgba(255,255,255,0.4)",
-            background: allSel ? "var(--navy)" : someSel ? "rgba(255,255,255,0.25)" : "transparent",
-            boxShadow: allSel ? "0 0 0 1.5px #fff" : "none"
-          }
-        },
-        allSel ? "\u2713" : someSel ? "\u2013" : ""
-      );
-    })()), visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -4519,24 +4448,7 @@ document.addEventListener('DOMContentLoaded',function(){
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "reg-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { onClick: (ev) => ev.stopPropagation(), className: "reg-td-checkbox" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          haptic();
-          toggleSel(e.id);
-        },
-        role: "checkbox",
-        "aria-checked": selIds.has(e.id),
-        "aria-label": selIds.has(e.id) ? "Deselect row" : "Select row",
-        className: "cf-checkbtn reg-row-checkbox",
-        style: {
-          border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
-          background: selIds.has(e.id) ? "var(--primary)" : "transparent"
-        }
-      },
-      selIds.has(e.id) ? "\u2713" : ""
-    )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
@@ -4555,25 +4467,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onContextMenu: (ev) => openCtx(ev, e),
           className: "reg-mobile-card"
         },
-        /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-card-toprow" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (ev) => {
-              ev.stopPropagation();
-              haptic();
-              toggleSel(e.id);
-            },
-            role: "checkbox",
-            "aria-checked": selIds.has(e.id),
-            "aria-label": selIds.has(e.id) ? "Deselect entry" : "Select entry",
-            className: "cf-checkbtn reg-mobile-checkbox",
-            style: {
-              border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
-              background: selIds.has(e.id) ? "var(--navy)" : "transparent"
-            }
-          },
-          selIds.has(e.id) ? "\u2713" : ""
-        ), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 reg-mobile-amount", style: {
+        /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-card-toprow" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 reg-mobile-amount", style: {
           color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
         } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
@@ -5298,6 +5192,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
+    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
@@ -5543,9 +5438,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
-      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar", style: {
-        background: "var(--primary)"
-      } }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement(
+      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar reg-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: markSelectedPaid,
@@ -10207,9 +10100,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         globalSearch,
         colOrder,
         setColOrder,
-        flow: activeFlow,
-        completed,
-        markOccurrencesPaid,
         filter: regFilter,
         setFilter: setRegFilter,
         filterCats: regFilterCats,

@@ -218,6 +218,7 @@
     const monthEvents = flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq));
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
+    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
@@ -463,9 +464,7 @@
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
-      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar", style: {
-        background: "var(--primary)"
-      } }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement(
+      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar reg-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: markSelectedPaid,

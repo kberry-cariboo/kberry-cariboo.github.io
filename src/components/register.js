@@ -5,39 +5,11 @@
   }, filterCats = [], setFilterCats = () => {
   }, filterScheds = [], setFilterScheds = () => {
   }, filterStatus = [], setFilterStatus = () => {
-  }, flow = [], completed = {}, markOccurrencesPaid = () => {
   } }) {
     const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_REG_COLS;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [searchAllYears, setSearchAllYears] = useState(false);
-    const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
-    const toggleSel = (id) => setSelIds((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-    const markSelectedPaid = () => {
-      try {
-        const cm = (/* @__PURE__ */ new Date()).getMonth();
-        const occIds = [];
-        selIds.forEach((id) => {
-          (flow || []).forEach((ev) => {
-            if (ev.entryId === id && ev.month === cm && !completed[ev.id]) occIds.push(ev.id);
-          });
-        });
-        if (!occIds.length) {
-          toast("No unpaid items this month in selection", "error");
-          return;
-        }
-        markOccurrencesPaid(occIds);
-        haptic();
-        toast(`Marked ${occIds.length} item${occIds.length !== 1 ? "s" : ""} paid for ${MONTHS[cm]}`);
-        setSelIds(/* @__PURE__ */ new Set());
-      } catch (err) {
-        toast("Bulk update failed: " + err.message, "error");
-      }
-    };
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
     const toggleSort = (col) => {
@@ -311,24 +283,7 @@
         },
         onClose: () => setShowCSV(false)
       }
-    ))), selIds.size > 0 && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar" }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: markSelectedPaid,
-        className: "reg-bulk-markpaid-btn"
-      },
-      "\u2713 Mark paid (",
-      MONTHS[(/* @__PURE__ */ new Date()).getMonth()],
-      ")"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setSelIds(/* @__PURE__ */ new Set()),
-        "aria-label": "Clear selection",
-        className: "reg-bulk-clear-btn"
-      },
-      "Clear"
-    )), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    ))), showForm && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
       {
         onClick: close,
@@ -352,30 +307,7 @@
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "reg-th reg-th--select" }, (() => {
-      const allSel = filtered.length > 0 && filtered.every((e) => selIds.has(e.id));
-      const someSel = filtered.some((e) => selIds.has(e.id));
-      return /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            if (allSel) setSelIds(/* @__PURE__ */ new Set());
-            else setSelIds(new Set(filtered.map((e) => e.id)));
-          },
-          role: "checkbox",
-          "aria-checked": allSel,
-          "aria-label": allSel ? "Deselect all" : "Select all",
-          title: allSel ? "Deselect all" : "Select all",
-          className: "reg-selectall-btn",
-          style: {
-            border: allSel ? "none" : "1.5px solid rgba(255,255,255,0.4)",
-            background: allSel ? "var(--navy)" : someSel ? "rgba(255,255,255,0.25)" : "transparent",
-            boxShadow: allSel ? "0 0 0 1.5px #fff" : "none"
-          }
-        },
-        allSel ? "\u2713" : someSel ? "\u2013" : ""
-      );
-    })()), visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -401,24 +333,7 @@
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "reg-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { onClick: (ev) => ev.stopPropagation(), className: "reg-td-checkbox" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          haptic();
-          toggleSel(e.id);
-        },
-        role: "checkbox",
-        "aria-checked": selIds.has(e.id),
-        "aria-label": selIds.has(e.id) ? "Deselect row" : "Select row",
-        className: "cf-checkbtn reg-row-checkbox",
-        style: {
-          border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
-          background: selIds.has(e.id) ? "var(--primary)" : "transparent"
-        }
-      },
-      selIds.has(e.id) ? "\u2713" : ""
-    )), visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
@@ -437,25 +352,7 @@
           onContextMenu: (ev) => openCtx(ev, e),
           className: "reg-mobile-card"
         },
-        /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-card-toprow" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (ev) => {
-              ev.stopPropagation();
-              haptic();
-              toggleSel(e.id);
-            },
-            role: "checkbox",
-            "aria-checked": selIds.has(e.id),
-            "aria-label": selIds.has(e.id) ? "Deselect entry" : "Select entry",
-            className: "cf-checkbtn reg-mobile-checkbox",
-            style: {
-              border: selIds.has(e.id) ? "none" : "1.5px solid var(--border)",
-              background: selIds.has(e.id) ? "var(--navy)" : "transparent"
-            }
-          },
-          selIds.has(e.id) ? "\u2713" : ""
-        ), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 reg-mobile-amount", style: {
+        /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-card-toprow" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 reg-mobile-amount", style: {
           color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
         } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
