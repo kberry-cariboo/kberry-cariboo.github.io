@@ -134,61 +134,84 @@
       signOut
     };
   }
-  function useHouseholdData({
-    household,
-    entries,
-    setEntries,
-    overridesByYr,
-    setOverridesByYr,
-    yearConfigs,
-    setYearConfigs,
-    budgetTargets,
-    setBudgetTargets,
-    templates,
-    setTemplates,
-    completed,
-    setCompleted,
-    goals = [],
-    setGoals = () => {
-    },
-    dashHidden = {},
-    setDashHidden = () => {
-    },
-    dashOrder = [],
-    setDashOrder = () => {
-    },
-    categories,
-    setCategories,
-    categoryColors = {},
-    setCategoryColors = () => {
-    },
-    activeYear,
-    setActiveYear,
-    alertThreshold,
-    setAlertThreshold,
-    darkMode,
-    setDarkMode,
-    forecastHorizon = 90,
-    setForecastHorizon = () => {
-    },
-    colOrder = [],
-    setColOrder = () => {
-    },
-    regFilter = "all",
-    setRegFilter = () => {
-    },
-    regFilterCats = [],
-    setRegFilterCats = () => {
-    },
-    regFilterScheds = [],
-    setRegFilterScheds = () => {
-    },
-    regFilterStatus = [],
-    setRegFilterStatus = () => {
-    },
-    aiApiKey = "",
-    setAiApiKey
-  }) {
+  // Every field synced between App state and the household's Supabase row.
+  // Both directions — load (apply server data to state) and save (build the
+  // payload to send) — read from this single list instead of two
+  // hand-written ones that could silently drift apart (a field added to one
+  // and forgotten in the other was exactly the class of bug this closes).
+  // Adding a new synced setting: one useLS() in App.js, one property each in
+  // the `values`/`setters` objects at the useHouseholdData call site, one
+  // name in the debounce effect's dependency list there, and one entry here.
+  // Each `apply` is a direct, unchanged transcription of the validation that
+  // previously lived inline in applyPayload — legacy/malformed data (an old
+  // backup, an older app version's payload) is still guarded exactly as
+  // before, just declared once instead of duplicated across apply/build.
+  const HOUSEHOLD_SYNCED_FIELDS = [
+    { key: "entries", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "overridesByYr", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "yearConfigs", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "categories", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "categoryColors", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    } },
+    { key: "activeYear", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "alertThreshold", apply: (v, set) => {
+      if (v != null) set(v);
+    } },
+    { key: "darkMode", apply: (v, set) => {
+      if (v != null) set(v);
+    } },
+    { key: "forecastHorizon", apply: (v, set) => {
+      if (v != null) set(v);
+    } },
+    { key: "goals", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "dashHidden", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    } },
+    { key: "dashOrder", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "colOrder", apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
+    } },
+    { key: "regFilter", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "regFilterCats", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "regFilterScheds", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "regFilterStatus", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "budgetTargets", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "templates", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "completed", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "aiApiKey", apply: (v, set) => {
+      if (v && set) set(v);
+    } }
+  ];
+  function useHouseholdData({ household, values, setters }) {
     const [status, setStatus] = useState("idle");
     const [msg, setMsg] = useState("");
     const initialized = useRef(false);
@@ -199,30 +222,14 @@
     // added/changed/removed images travel over the network. Receipts are
     // strictly per-occurrence; entry-level attachments no longer exist.
     const receiptCache = useRef({});
+    // The `savedAt` this device last loaded from the server — sent back on
+    // every save so the server can detect a concurrent save from another
+    // device/member and reject instead of silently overwriting it (AR2).
+    const lastSavedAtRef = useRef(null);
     const applyPayload = useCallback((d) => {
       if (!d) return;
-      if (d.entries) setEntries(d.entries);
-      if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
-      if (d.yearConfigs) setYearConfigs(d.yearConfigs);
-      if (d.categories) setCategories(d.categories);
-      if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-      if (d.activeYear) setActiveYear(d.activeYear);
-      if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-      if (d.darkMode != null) setDarkMode(d.darkMode);
-      if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
-      if (Array.isArray(d.goals)) setGoals(d.goals);
-      if (d.dashHidden && typeof d.dashHidden === "object") setDashHidden(d.dashHidden);
-      if (Array.isArray(d.dashOrder)) setDashOrder(d.dashOrder);
-      if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
-      if (d.regFilter) setRegFilter(d.regFilter);
-      if (Array.isArray(d.regFilterCats)) setRegFilterCats(d.regFilterCats);
-      if (Array.isArray(d.regFilterScheds)) setRegFilterScheds(d.regFilterScheds);
-      if (Array.isArray(d.regFilterStatus)) setRegFilterStatus(d.regFilterStatus);
-      if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
-      if (d.templates) setTemplates(d.templates);
-      if (d.completed) setCompleted(d.completed);
-      if (d.aiApiKey && setAiApiKey) setAiApiKey(d.aiApiKey);
-    }, [setEntries, setOverridesByYr, setYearConfigs, setCategories, setCategoryColors, setActiveYear, setAlertThreshold, setDarkMode, setForecastHorizon, setGoals, setDashHidden, setDashOrder, setColOrder, setRegFilter, setRegFilterCats, setRegFilterScheds, setRegFilterStatus, setBudgetTargets, setTemplates, setCompleted, setAiApiKey]);
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(d[key], setters[key]));
+    }, [setters]);
     // Receipt images live in the receipts table as binary blobs, not inside the
     // save payload — the payload only carries the rest of each entry/override.
     const stripAttachments = (list) => (list || []).map((e) => {
@@ -251,39 +258,25 @@
     };
     const collectAttachments = useCallback(() => {
       const map = {};
-      Object.keys(overridesByYr || {}).forEach((year) => {
-        const yOvs = overridesByYr[year] || {};
+      Object.keys(values.overridesByYr || {}).forEach((year) => {
+        const yOvs = values.overridesByYr[year] || {};
         Object.keys(yOvs).forEach((k) => {
           if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
         });
       });
       return map;
-    }, [overridesByYr]);
-    const buildPayload = useCallback(() => ({
-      entries: stripAttachments(entries),
-      overridesByYr: stripOverrideAttachments(overridesByYr),
-      yearConfigs,
-      categories,
-      categoryColors,
-      budgetTargets,
-      templates,
-      completed,
-      activeYear,
-      alertThreshold,
-      darkMode,
-      forecastHorizon,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder,
-      aiApiKey,
-      schemaVersion: SCHEMA_VERSION,
-      savedAt: (/* @__PURE__ */ new Date()).toISOString()
-    }), [entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode, forecastHorizon, colOrder, regFilter, regFilterCats, regFilterScheds, regFilterStatus, goals, dashHidden, dashOrder, aiApiKey]);
+    }, [values.overridesByYr]);
+    const buildPayload = useCallback(() => {
+      const out = {};
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key }) => {
+        out[key] = values[key];
+      });
+      out.entries = stripAttachments(out.entries);
+      out.overridesByYr = stripOverrideAttachments(out.overridesByYr);
+      out.schemaVersion = SCHEMA_VERSION;
+      out.savedAt = (/* @__PURE__ */ new Date()).toISOString();
+      return out;
+    }, [values]);
     const loadData = useCallback(async () => {
       if (!supabaseClient || !household) return false;
       // Flush any pending debounced save first — otherwise a pull-to-refresh
@@ -300,6 +293,7 @@
         const { data, error } = await supabaseClient.rpc("load_household");
         if (error) throw error;
         const payload = (data && data.data) || {};
+        lastSavedAtRef.current = payload.savedAt || null;
         const receipts = (data && data.receipts) || [];
         const rmap = {};
         receipts.forEach((r) => {
@@ -355,18 +349,31 @@
       if (!silent) setStatus("syncing");
       try {
         const payload = buildPayload();
-        const { error } = await supabaseClient.rpc("save_household", { p_data: payload });
+        const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
+          p_data: payload,
+          p_expected_saved_at: lastSavedAtRef.current
+        });
         if (error) throw error;
+        if (newSavedAt) lastSavedAtRef.current = newSavedAt;
         await syncReceipts();
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
+        // Another member's save landed since this device last loaded —
+        // pull their version instead of silently clobbering it, and say so.
+        if (/^CONFLICT:/.test(e.message || "")) {
+          setStatus("error");
+          setMsg("⚠ Updated on another device — reloading the latest version…");
+          await loadData();
+          toast("Another device saved changes to this household — reloaded the latest version. Please redo your last change if it's missing.", "error");
+          return false;
+        }
         setStatus("error");
         setMsg("❌ " + e.message);
         return false;
       }
-    }, [household, buildPayload, syncReceipts]);
+    }, [household, buildPayload, syncReceipts, loadData]);
     // loadData is declared before saveData, so it reaches the latest saveData
     // through a ref (also keeps loadData's identity stable across payload edits).
     const saveDataRef = useRef(saveData);
@@ -378,6 +385,7 @@
         lastLoadedHousehold.current = null;
         initialized.current = false;
         receiptCache.current = {};
+        lastSavedAtRef.current = null;
         return;
       }
       if (lastLoadedHousehold.current === household.id) return;
@@ -397,27 +405,27 @@
       saveTimer.current = setTimeout(() => saveData(true), 2e3);
       return () => clearTimeout(saveTimer.current);
     }, [
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      alertThreshold,
-      darkMode,
-      activeYear,
-      budgetTargets,
-      templates,
-      completed,
-      forecastHorizon,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder,
-      aiApiKey
+      values.entries,
+      values.overridesByYr,
+      values.yearConfigs,
+      values.categories,
+      values.categoryColors,
+      values.alertThreshold,
+      values.darkMode,
+      values.activeYear,
+      values.budgetTargets,
+      values.templates,
+      values.completed,
+      values.forecastHorizon,
+      values.colOrder,
+      values.regFilter,
+      values.regFilterCats,
+      values.regFilterScheds,
+      values.regFilterStatus,
+      values.goals,
+      values.dashHidden,
+      values.dashOrder,
+      values.aiApiKey
     ]);
     return { status, msg, saveData, loadData };
   }

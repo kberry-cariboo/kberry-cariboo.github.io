@@ -126,14 +126,14 @@
     const prevHasData = prevYearFlow.length > 0;
     const yoyDeltaSub = (cur, prev) => {
       if (!yoyActive || !prevHasData) return null;
-      const d = Math.round((cur - prev) * 100) / 100;
+      const d = roundMoney((cur - prev));
       const sign = d > 0 ? "▲ " : d < 0 ? "▼ " : "";
       return `${sign}${fmt(Math.abs(d))} vs ${prevYear}`;
     };
     const yoyRows = useMemo(() => {
       if (!yoyActive) return [];
       const norm = (str) => (str || "").toLowerCase().trim();
-      const r2 = (n) => Math.round(n * 100) / 100;
+      const r2 = (n) => roundMoney(n);
       const map = /* @__PURE__ */ new Map();
       const add = (ev, key) => {
         const k = ev.type + "|" + norm(ev.desc);
@@ -416,7 +416,7 @@
       const amtCell = (v) => v === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(v, true);
       const totCur = yoyRows.reduce((a, r) => a + r.cur, 0);
       const totPrev = yoyRows.reduce((a, r) => a + r.prev, 0);
-      const totDelta = Math.round((totCur - totPrev) * 100) / 100;
+      const totDelta = roundMoney((totCur - totPrev));
       return /* @__PURE__ */ React.createElement(
         Card,
         { className: "cf-card--flush yoy-card" },
@@ -779,7 +779,7 @@
           const t = parseFloat(bvaModalData.target);
           if (!bvaModalData.cat || isNaN(t) || t < 0) return;
           setBudgetTargets((prev) => {
-            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: Math.round(t * 100) / 100 }) });
+            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: roundMoney(t) }) });
             const ro = __spreadValues({}, prev._rollover || {});
             if (bvaModalData.rollover) ro[bvaModalData.cat] = true;
             else delete ro[bvaModalData.cat];
@@ -861,7 +861,7 @@
             const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
             carry = Math.max(0, carry + t - spent);
           }
-          return Math.round(carry * 100) / 100;
+          return roundMoney(carry);
         };
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
         return /* @__PURE__ */ React.createElement(Card, { className: "bva-card" }, /* @__PURE__ */ React.createElement("div", { className: "bva-header-row", style: {
@@ -892,11 +892,11 @@
             setShowBvaModal(true);
           }
         })), cats.map((cat) => {
-          const actual = Math.round((catExpenses[cat] || 0) * 100) / 100;
-          const baseTarget = Math.round((targets[cat] || 0) * 100) / 100;
+          const actual = roundMoney((catExpenses[cat] || 0));
+          const baseTarget = roundMoney((targets[cat] || 0));
           const carry = carryFor(cat);
-          const target = Math.round((baseTarget + carry) * 100) / 100;
-          const diff = Math.round((actual - target) * 100) / 100;
+          const target = roundMoney((baseTarget + carry));
+          const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
           const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
@@ -930,9 +930,9 @@
             } }))
           );
         }), cats.length > 0 && (() => {
-          const totalActual = Math.round(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0) * 100) / 100;
-          const totalTarget = Math.round(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0) * 100) / 100;
-          const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
+          const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
+          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
+          const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {

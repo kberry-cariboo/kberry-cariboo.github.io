@@ -323,7 +323,7 @@
             occ.filter((ev) => ev.type === "expense").forEach((ev) => {
               const key = `${yc.year}:${ev.month}`;
               const month = __spreadValues({}, next[key] || {});
-              month[ev.category] = Math.round(((month[ev.category] || 0) + ev.amount) * 100) / 100;
+              month[ev.category] = roundMoney(((month[ev.category] || 0) + ev.amount));
               next[key] = month;
             });
           });
@@ -351,6 +351,61 @@
       }
     };
     const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
+    // Rebuilt fresh every render (cheap — plain values, no computation), so
+    // buildPayload/applyPayload can never close over a stale field.
+    const houseValues = {
+      entries,
+      overridesByYr,
+      yearConfigs,
+      categories,
+      categoryColors,
+      activeYear,
+      alertThreshold: alertThresh,
+      darkMode,
+      forecastHorizon,
+      colOrder,
+      regFilter,
+      regFilterCats,
+      regFilterScheds,
+      regFilterStatus,
+      aiApiKey,
+      budgetTargets,
+      templates,
+      completed,
+      goals,
+      dashHidden,
+      dashOrder
+    };
+    // Every setter here is permanently stable (useLS's setter never changes
+    // identity), so this only needs to be built once — memoizing it keeps
+    // applyPayload/loadData stable too, matching the pre-consolidation
+    // behavior where the household-load effect only re-ran when `household`
+    // itself changed, not on every render. Keys match houseValues' bare field
+    // names (not the setXxx names) — useHouseholdData indexes both objects
+    // by the same HOUSEHOLD_SYNCED_FIELDS key.
+    const houseSetters = useMemo(() => ({
+      entries: setEntries,
+      overridesByYr: setOverridesByYr,
+      yearConfigs: setYearConfigs,
+      categories: setCategories,
+      categoryColors: setCategoryColors,
+      activeYear: setActiveYear,
+      alertThreshold: setAlertThresh,
+      darkMode: setDarkMode,
+      forecastHorizon: setForecastHorizon,
+      colOrder: setColOrder,
+      regFilter: setRegFilter,
+      regFilterCats: setRegFilterCats,
+      regFilterScheds: setRegFilterScheds,
+      regFilterStatus: setRegFilterStatus,
+      aiApiKey: setAiApiKey,
+      budgetTargets: setBudgetTargets,
+      templates: setTemplates,
+      completed: setCompleted,
+      goals: setGoals,
+      dashHidden: setDashHidden,
+      dashOrder: setDashOrder
+    }), []);
     const {
       status: houseStatus,
       msg: houseMsg,
@@ -358,48 +413,8 @@
       loadData: houseLoad
     } = useHouseholdData({
       household,
-      entries,
-      setEntries,
-      overridesByYr,
-      setOverridesByYr,
-      yearConfigs,
-      setYearConfigs,
-      categories,
-      setCategories,
-      categoryColors,
-      setCategoryColors,
-      activeYear,
-      setActiveYear,
-      alertThreshold: alertThresh,
-      setAlertThreshold: setAlertThresh,
-      darkMode,
-      setDarkMode,
-      forecastHorizon,
-      setForecastHorizon,
-      colOrder,
-      setColOrder,
-      regFilter,
-      setRegFilter,
-      regFilterCats,
-      setRegFilterCats,
-      regFilterScheds,
-      setRegFilterScheds,
-      regFilterStatus,
-      setRegFilterStatus,
-      aiApiKey,
-      setAiApiKey,
-      budgetTargets,
-      setBudgetTargets,
-      templates,
-      setTemplates,
-      completed,
-      setCompleted,
-      goals,
-      setGoals,
-      dashHidden,
-      setDashHidden,
-      dashOrder,
-      setDashOrder
+      values: houseValues,
+      setters: houseSetters
     });
     useEffect(() => {
       houseLoadRef.current = houseLoad;

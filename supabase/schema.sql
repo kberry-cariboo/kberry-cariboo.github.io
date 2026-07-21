@@ -681,6 +681,9 @@ revoke execute on function cf_my_household() from public, anon, authenticated;
 -- Save the caller's full budget state into the normalized tables (atomic).
 -- The app strips receipt images out of the payload before calling this;
 -- receipts change through put_receipt / delete_receipt instead.
+-- Kept (not dropped) alongside the 2-arg conflict-aware overload below so
+-- an already-open browser tab, or an install that hasn't re-run this file
+-- yet, keeps saving — just without conflict detection.
 create or replace function save_household(p_data jsonb)
 returns void
 language plpgsql
@@ -689,6 +692,42 @@ set search_path = public
 as $$
 begin
   perform cf_apply_household_payload(cf_my_household(), p_data);
+end $$;
+
+-- Conflict-aware save (round-8 audit AR2): p_expected_saved_at is the
+-- `savedAt` value the caller last got back from load_household(). If another
+-- member's save has landed since — household_settings.updated_at no longer
+-- matches — this raises instead of silently overwriting their change
+-- (previously last-write-wins with no detection at all). The row is locked
+-- for update first so two concurrent conflict-checked saves can't both pass
+-- the check and then race each other into cf_apply_household_payload.
+-- A null p_expected_saved_at (e.g. a save before any load ever completed)
+-- skips the check, same as the 1-arg overload above. Returns the new
+-- updated_at so the caller can track it for its next save.
+create or replace function save_household(p_data jsonb, p_expected_saved_at timestamptz)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hid uuid := cf_my_household();
+  current_saved_at timestamptz;
+  new_saved_at timestamptz;
+begin
+  select updated_at into current_saved_at
+  from household_settings where household_id = hid for update;
+
+  if p_expected_saved_at is not null and current_saved_at is not null
+     and current_saved_at <> p_expected_saved_at then
+    raise exception 'CONFLICT: household data changed since you last loaded it.';
+  end if;
+
+  perform cf_apply_household_payload(hid, p_data);
+
+  select updated_at into new_saved_at
+  from household_settings where household_id = hid;
+  return new_saved_at;
 end $$;
 
 -- Load the caller's full budget state, rebuilt from the normalized tables.
