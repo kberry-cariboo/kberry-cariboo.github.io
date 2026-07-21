@@ -375,7 +375,7 @@
       const toMonthlyFromEvs = (evs) => {
         if (!evs || !evs.length) return 0;
         const annual = evs.reduce((s, ev) => s + (ev.amount || 0), 0);
-        return Math.round(annual / 12 * 100) / 100;
+        return roundMoney(annual / 12);
       };
       const autoRows = Object.entries(autoGroups).filter(([desc]) => {
         var _a;
@@ -386,7 +386,7 @@
           key: desc.replace(/[^a-zA-Z0-9]/g, "_"),
           label: desc,
           monthlyPmt: toMonthlyFromEvs(evs),
-          annualTotal: Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) * 100) / 100,
+          annualTotal: roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0)),
           timesPerYear: evs.length,
           perOccurrence: ((_a = evs[0]) == null ? void 0 : _a.amount) || 0,
           recurDesc: (() => {
@@ -425,7 +425,7 @@
         if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
         const r = rate / 100 / 12;
         const m = r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
-        const interest = r > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
+        const interest = r > 0 ? roundMoney((pmt * m - bal)) : null;
         const d = /* @__PURE__ */ new Date();
         d.setMonth(d.getMonth() + m);
         return { monthsLeft: m, totalInterest: interest, payoffDate: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
@@ -749,7 +749,7 @@
         const daysToLow = low ? Math.max(0, Math.round((low.date - new Date(activeYear, todayM, todayD)) / 864e5)) : null;
         const due = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).reduce((s, ev) => s + ev.amount, 0);
         const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
-        return { balanceNow, low, daysToLow, due: Math.round(due * 100) / 100, dueCount, month: MONTHS[todayM] };
+        return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
       } catch (err) {
         return null;
       }
@@ -840,7 +840,7 @@
           return d >= today && d <= horizon;
         }).map((e) => {
           const evs = flow.filter((ev) => ev.entryId === e.id);
-          const monthly = evs.length ? Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100 : e.amount;
+          const monthly = evs.length ? roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12) : e.amount;
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
@@ -1027,17 +1027,17 @@
           return /* @__PURE__ */ React.createElement("div", { className: "bva-empty-state" }, /* @__PURE__ */ React.createElement("div", { className: "bva-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-title" }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-body" }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
         }
         const rows = cats.map((c) => {
-          const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
-          const target = Math.round((targetByCat[c] || 0) * 100) / 100;
-          const diff = Math.round((actual - target) * 100) / 100;
+          const actual = roundMoney((actualByCat[c] || 0));
+          const target = roundMoney((targetByCat[c] || 0));
+          const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
           const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return { cat: c, actual, target, diff, over, color, pct };
         });
-        const totalActual = Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100;
-        const totalTarget = Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100;
-        const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
+        const totalActual = roundMoney(rows.reduce((s, r) => s + r.actual, 0));
+        const totalTarget = roundMoney(rows.reduce((s, r) => s + r.target, 0));
+        const tDiff = roundMoney((totalActual - totalTarget));
         const tOver = totalTarget > 0 && tDiff > 0;
         const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bva-rows-wrap" }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { className: "dash-bva-row-hdr" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { className: "dash-bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
@@ -1056,7 +1056,7 @@
           if (!ev) return 0;
           const amt = ev.amount || 0, every = ev.recurEvery || 1;
           const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
-          return Math.round(amt * (ppy / 12) * 100) / 100;
+          return roundMoney(amt * (ppy / 12));
         };
         const dkw = [
           "debt",
@@ -1084,7 +1084,7 @@
         const autoMonthly = (key) => {
           const evs = autoAllEvs[key] || [];
           if (!evs.length) return 0;
-          return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
+          return roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12);
         };
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
@@ -1097,7 +1097,7 @@
           const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
           const r = rate / 100 / 12;
           const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
-          const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
+          const totalInterest = monthsLeft && r > 0 ? roundMoney((pmt * monthsLeft - bal)) : null;
           const payoffDate = monthsLeft ? (() => {
             const d = /* @__PURE__ */ new Date();
             d.setMonth(d.getMonth() + monthsLeft);

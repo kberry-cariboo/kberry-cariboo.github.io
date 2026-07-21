@@ -253,9 +253,9 @@
         });
       }
       Object.entries(targetByCat).forEach(([cat, tgt]) => {
-        const act = Math.round((expenseCats[cat] || 0) * 100) / 100;
-        const t = Math.round(tgt * 100) / 100;
-        bvaRows.push({ category: cat, actual: act, target: t, variance: Math.round((act - t) * 100) / 100 });
+        const act = roundMoney((expenseCats[cat] || 0));
+        const t = roundMoney(tgt);
+        bvaRows.push({ category: cat, actual: act, target: t, variance: roundMoney((act - t)) });
       });
       bvaRows.sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
       const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "lease", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "child support"];
@@ -273,30 +273,30 @@
         year: activeYear,
         savingsGoals,
         reportingWindow: `January\u2013${MONTHS[currentMonth]} ${activeYear} (${currentMonth + 1} months)`,
-        openingBalance: Math.round(openBal * 100) / 100,
-        closingBalance: Math.round(closingBal * 100) / 100,
-        totalIncome: Math.round(totalIncome * 100) / 100,
-        totalExpenses: Math.round(totalExp * 100) / 100,
-        totalSurplus: Math.round(totalSurplus * 100) / 100,
-        avgMonthlyExpense: Math.round(avgMonthly * 100) / 100,
+        openingBalance: roundMoney(openBal),
+        closingBalance: roundMoney(closingBal),
+        totalIncome: roundMoney(totalIncome),
+        totalExpenses: roundMoney(totalExp),
+        totalSurplus: roundMoney(totalSurplus),
+        avgMonthlyExpense: roundMoney(avgMonthly),
         savingsRatePct: Math.round(savingsRate * 10) / 10,
-        lowestBalance: Math.round(lowestBal * 100) / 100,
+        lowestBalance: roundMoney(lowestBal),
         monthlyBreakdown: ytdMonths,
         topExpenseCategories: Object.entries(expenseCats).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([cat, amt]) => ({
           category: cat,
-          total: Math.round(amt * 100) / 100,
+          total: roundMoney(amt),
           pctOfExpenses: totalExp > 0 ? Math.round(amt / totalExp * 1e3) / 10 : 0
         })),
-        incomeCategories: Object.entries(incomeCats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({ category: cat, total: Math.round(amt * 100) / 100 })),
-        debtObligations: debtItems.map(([cat, amt]) => ({ category: cat, ytdPaid: Math.round(amt * 100) / 100 })),
+        incomeCategories: Object.entries(incomeCats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({ category: cat, total: roundMoney(amt) })),
+        debtObligations: debtItems.map(([cat, amt]) => ({ category: cat, ytdPaid: roundMoney(amt) })),
         budgetVsActual: bvaRows.slice(0, 15),
         hasBudgetTargets: Object.keys(targetByCat).length > 0,
         // Debt tracker data (balances + rates user has entered)
         debtTrackerItems: Object.entries(debtTrackerData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0).map(([k, v]) => ({
           name: v.label || k.replace("manual_", "").replace(/_/g, " "),
-          balance: Math.round(parseFloat(v.balance || 0) * 100) / 100,
+          balance: roundMoney(parseFloat(v.balance || 0)),
           rate: parseFloat(v.rate || 0),
-          monthlyPayment: Math.round(parseFloat(v.payment || 0) * 100) / 100
+          monthlyPayment: roundMoney(parseFloat(v.payment || 0))
         }))
       };
     };

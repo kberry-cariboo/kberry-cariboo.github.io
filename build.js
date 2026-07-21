@@ -13,6 +13,10 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 const APP_MODULES = [
   "src/lib/runtime.js",
   "src/lib/supabase-config.js",
+  "src/lib/migrate.js",
+  "src/lib/dates.js",
+  "src/lib/format.js",
+  "src/lib/biometric.js",
   "src/lib/household-sync.js",
   "src/lib/app-data.js",
   "src/components/primitives.js",

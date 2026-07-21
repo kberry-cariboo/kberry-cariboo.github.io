@@ -830,7 +830,7 @@
             Object.keys(byMonthCat).forEach((key) => {
               const cats = {};
               Object.keys(byMonthCat[key]).forEach((c) => {
-                cats[c] = Math.round(byMonthCat[key][c] * 100) / 100;
+                cats[c] = roundMoney(byMonthCat[key][c]);
               });
               next[key] = cats;
             });

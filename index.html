@@ -2018,435 +2018,8 @@ document.addEventListener('DOMContentLoaded',function(){
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod3JmbHlxY3Vidnlib2xiaWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzQ5NzUsImV4cCI6MjA5OTgxMDk3NX0.PKKtR6c6mcXV-Sfou3awEDI0HL_1MePaumoOMUZcAug";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-  // ── Centralized Supabase auth calls ────────────────────────────────
-  // Every supabase.auth touchpoint lives in this file (these helpers plus
-  // useHousehold below); components never call supabaseClient directly.
-  async function sbSignIn(email, password) {
-    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  }
-  async function sbSignUp(email, password) {
-    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
-    const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
-    if (error) throw error;
-  }
-  // Verify the current password by re-authenticating, then set the new one.
-  async function sbChangePassword(email, currentPassword, nextPassword) {
-    try {
-      await sbSignIn(email, currentPassword);
-    } catch (e) {
-      throw new Error("Current password is incorrect.");
-    }
-    const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
-    if (error) throw error;
-  }
-  function useHousehold() {
-    const [session, setSession] = useState(null);
-    const [authLoading, setAuthLoading] = useState(true);
-    const [household, setHousehold] = useState(null);
-    const [members, setMembers] = useState([]);
-    const [membershipLoading, setMembershipLoading] = useState(true);
-    const refreshMembership = useCallback(async (uid) => {
-      if (!supabaseClient) return;
-      setMembershipLoading(true);
-      try {
-        const { data: myRow } = await supabaseClient.from("household_members").select("household_id").eq("user_id", uid).limit(1).maybeSingle();
-        if (!myRow) {
-          setHousehold(null);
-          setMembers([]);
-          return;
-        }
-        const [{ data: hh }, { data: mem }] = await Promise.all([
-          supabaseClient.from("households").select("id, name").eq("id", myRow.household_id).maybeSingle(),
-          supabaseClient.from("household_members").select("user_id, full_name, disabled, role, joined_at").eq("household_id", myRow.household_id).order("joined_at")
-        ]);
-        setHousehold(hh || { id: myRow.household_id, name: "My Household" });
-        setMembers(mem || []);
-      } finally {
-        setMembershipLoading(false);
-      }
-    }, []);
-    useEffect(() => {
-      if (!supabaseClient) {
-        setAuthLoading(false);
-        setMembershipLoading(false);
-        return;
-      }
-      supabaseClient.auth.getSession().then(({ data }) => {
-        setSession(data.session || null);
-        setAuthLoading(false);
-        if (data.session) refreshMembership(data.session.user.id);
-        else setMembershipLoading(false);
-      });
-      const { data: sub } = supabaseClient.auth.onAuthStateChange((_event, sess) => {
-        setSession(sess);
-        if (sess) {
-          refreshMembership(sess.user.id);
-        } else {
-          setHousehold(null);
-          setMembers([]);
-          setMembershipLoading(false);
-        }
-      });
-      return () => {
-        var _a;
-        (_a = sub == null ? void 0 : sub.subscription) == null ? void 0 : _a.unsubscribe();
-      };
-    }, [refreshMembership]);
-    const createHousehold = useCallback(async (fullName) => {
-      if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
-      const { error } = await supabaseClient.rpc("create_household", { p_full_name: fullName || "" });
-      if (error) throw error;
-      if (session) await refreshMembership(session.user.id);
-    }, [session, refreshMembership]);
-    const joinHousehold = useCallback(async (code, fullName) => {
-      if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
-      const { error } = await supabaseClient.rpc("join_household", { p_code: code, p_full_name: fullName || "" });
-      if (error) throw error;
-      if (session) await refreshMembership(session.user.id);
-    }, [session, refreshMembership]);
-    const createInvite = useCallback(async () => {
-      if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
-      const { data, error } = await supabaseClient.rpc("create_invite");
-      if (error) throw error;
-      return data;
-    }, []);
-    const setMemberDisabled = useCallback(async (userId, disabled) => {
-      if (!supabaseClient || !household || !session) return;
-      const { error } = await supabaseClient.from("household_members").update({ disabled }).eq("household_id", household.id).eq("user_id", userId);
-      if (error) throw error;
-      await refreshMembership(session.user.id);
-    }, [household, session, refreshMembership]);
-    const updateMyName = useCallback(async (fullName) => {
-      if (!supabaseClient || !household || !session) return;
-      const { error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", session.user.id);
-      if (error) throw error;
-      await refreshMembership(session.user.id);
-    }, [household, session, refreshMembership]);
-    // Rename any member row. RLS allows your own row always and other rows
-    // only for the owner — a silently-filtered update returns zero rows, which
-    // we surface as a permission error instead of a fake success.
-    const updateMemberName = useCallback(async (userId, fullName) => {
-      if (!supabaseClient || !household || !session) return;
-      const { data, error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", userId).select("user_id");
-      if (error) throw error;
-      if (!data || !data.length) throw new Error("Only the household owner can rename other members.");
-      await refreshMembership(session.user.id);
-    }, [household, session, refreshMembership]);
-    const signOut = useCallback(async () => {
-      if (!supabaseClient) return;
-      await supabaseClient.auth.signOut();
-    }, []);
-    return {
-      configured: !!supabaseClient,
-      session,
-      authLoading,
-      household,
-      members,
-      membershipLoading,
-      createHousehold,
-      joinHousehold,
-      createInvite,
-      setMemberDisabled,
-      updateMemberName,
-      updateMyName,
-      signOut
-    };
-  }
-  function useHouseholdData({
-    household,
-    entries,
-    setEntries,
-    overridesByYr,
-    setOverridesByYr,
-    yearConfigs,
-    setYearConfigs,
-    budgetTargets,
-    setBudgetTargets,
-    templates,
-    setTemplates,
-    completed,
-    setCompleted,
-    goals = [],
-    setGoals = () => {
-    },
-    dashHidden = {},
-    setDashHidden = () => {
-    },
-    dashOrder = [],
-    setDashOrder = () => {
-    },
-    categories,
-    setCategories,
-    categoryColors = {},
-    setCategoryColors = () => {
-    },
-    activeYear,
-    setActiveYear,
-    alertThreshold,
-    setAlertThreshold,
-    darkMode,
-    setDarkMode,
-    forecastHorizon = 90,
-    setForecastHorizon = () => {
-    },
-    colOrder = [],
-    setColOrder = () => {
-    },
-    regFilter = "all",
-    setRegFilter = () => {
-    },
-    regFilterCats = [],
-    setRegFilterCats = () => {
-    },
-    regFilterScheds = [],
-    setRegFilterScheds = () => {
-    },
-    regFilterStatus = [],
-    setRegFilterStatus = () => {
-    },
-    aiApiKey = "",
-    setAiApiKey
-  }) {
-    const [status, setStatus] = useState("idle");
-    const [msg, setMsg] = useState("");
-    const initialized = useRef(false);
-    const saveTimer = useRef(null);
-    const lastLoadedHousehold = useRef(null);
-    // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
-    // receipts table holds server-side. Used to diff on save so only
-    // added/changed/removed images travel over the network. Receipts are
-    // strictly per-occurrence; entry-level attachments no longer exist.
-    const receiptCache = useRef({});
-    const applyPayload = useCallback((d) => {
-      if (!d) return;
-      if (d.entries) setEntries(d.entries);
-      if (d.overridesByYr) setOverridesByYr(d.overridesByYr);
-      if (d.yearConfigs) setYearConfigs(d.yearConfigs);
-      if (d.categories) setCategories(d.categories);
-      if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-      if (d.activeYear) setActiveYear(d.activeYear);
-      if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-      if (d.darkMode != null) setDarkMode(d.darkMode);
-      if (d.forecastHorizon != null) setForecastHorizon(d.forecastHorizon);
-      if (Array.isArray(d.goals)) setGoals(d.goals);
-      if (d.dashHidden && typeof d.dashHidden === "object") setDashHidden(d.dashHidden);
-      if (Array.isArray(d.dashOrder)) setDashOrder(d.dashOrder);
-      if (Array.isArray(d.colOrder) && d.colOrder.length > 1) setColOrder(d.colOrder.filter((c) => c !== "actions"));
-      if (d.regFilter) setRegFilter(d.regFilter);
-      if (Array.isArray(d.regFilterCats)) setRegFilterCats(d.regFilterCats);
-      if (Array.isArray(d.regFilterScheds)) setRegFilterScheds(d.regFilterScheds);
-      if (Array.isArray(d.regFilterStatus)) setRegFilterStatus(d.regFilterStatus);
-      if (d.budgetTargets) setBudgetTargets(d.budgetTargets);
-      if (d.templates) setTemplates(d.templates);
-      if (d.completed) setCompleted(d.completed);
-      if (d.aiApiKey && setAiApiKey) setAiApiKey(d.aiApiKey);
-    }, [setEntries, setOverridesByYr, setYearConfigs, setCategories, setCategoryColors, setActiveYear, setAlertThreshold, setDarkMode, setForecastHorizon, setGoals, setDashHidden, setDashOrder, setColOrder, setRegFilter, setRegFilterCats, setRegFilterScheds, setRegFilterStatus, setBudgetTargets, setTemplates, setCompleted, setAiApiKey]);
-    // Receipt images live in the receipts table as binary blobs, not inside the
-    // save payload — the payload only carries the rest of each entry/override.
-    const stripAttachments = (list) => (list || []).map((e) => {
-      if (!e || e.attachment === void 0) return e;
-      const copy = Object.assign({}, e);
-      delete copy.attachment;
-      return copy;
-    });
-    const stripOverrideAttachments = (byYr) => {
-      const out = {};
-      Object.keys(byYr || {}).forEach((year) => {
-        const yOvs = byYr[year] || {};
-        out[year] = {};
-        Object.keys(yOvs).forEach((k) => {
-          const o = yOvs[k];
-          if (o && o.attachment !== void 0) {
-            const copy = Object.assign({}, o);
-            delete copy.attachment;
-            out[year][k] = copy;
-          } else {
-            out[year][k] = o;
-          }
-        });
-      });
-      return out;
-    };
-    const collectAttachments = useCallback(() => {
-      const map = {};
-      Object.keys(overridesByYr || {}).forEach((year) => {
-        const yOvs = overridesByYr[year] || {};
-        Object.keys(yOvs).forEach((k) => {
-          if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
-        });
-      });
-      return map;
-    }, [overridesByYr]);
-    const buildPayload = useCallback(() => ({
-      entries: stripAttachments(entries),
-      overridesByYr: stripOverrideAttachments(overridesByYr),
-      yearConfigs,
-      categories,
-      categoryColors,
-      budgetTargets,
-      templates,
-      completed,
-      activeYear,
-      alertThreshold,
-      darkMode,
-      forecastHorizon,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder,
-      aiApiKey,
-      schemaVersion: SCHEMA_VERSION,
-      savedAt: (/* @__PURE__ */ new Date()).toISOString()
-    }), [entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode, forecastHorizon, colOrder, regFilter, regFilterCats, regFilterScheds, regFilterStatus, goals, dashHidden, dashOrder, aiApiKey]);
-    const loadData = useCallback(async () => {
-      if (!supabaseClient || !household) return false;
-      // Flush any pending debounced save first — otherwise a pull-to-refresh
-      // or "Reload from Cloud" inside the 2s autosave window silently
-      // overwrites the just-made local edit with the server copy.
-      if (saveTimer.current && initialized.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-        await saveDataRef.current(true);
-      }
-      setStatus("syncing");
-      setMsg("Loading…");
-      try {
-        const { data, error } = await supabaseClient.rpc("load_household");
-        if (error) throw error;
-        const payload = (data && data.data) || {};
-        const receipts = (data && data.receipts) || [];
-        const rmap = {};
-        receipts.forEach((r) => {
-          if (r && r.ownerKey && r.b64) rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
-        });
-        receiptCache.current = Object.assign({}, rmap);
-        // Re-attach receipt images to the occurrences they belong to so the
-        // rest of the app keeps seeing plain `attachment` data URLs.
-        if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
-          Object.keys(payload.overridesByYr).forEach((year) => {
-            const yOvs = payload.overridesByYr[year] || {};
-            Object.keys(yOvs).forEach((k) => {
-              const src = rmap["override:" + year + ":" + k];
-              if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
-            });
-          });
-        }
-        applyPayload(payload);
-        initialized.current = true;
-        setStatus("ok");
-        setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
-        return true;
-      } catch (e) {
-        setStatus("error");
-        setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
-        return false;
-      }
-    }, [household, applyPayload]);
-    const syncReceipts = useCallback(async () => {
-      const current = collectAttachments();
-      const cached = receiptCache.current;
-      const parse = (dataUrl) => {
-        const m = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl || "");
-        return m ? { mime: m[1], b64: m[2] } : null;
-      };
-      for (const key of Object.keys(current)) {
-        if (cached[key] === current[key]) continue;
-        const img = parse(current[key]);
-        if (!img) continue;
-        const { error } = await supabaseClient.rpc("put_receipt", { p_owner_key: key, p_mime: img.mime, p_b64: img.b64 });
-        if (error) throw error;
-        cached[key] = current[key];
-      }
-      for (const key of Object.keys(cached)) {
-        if (current[key]) continue;
-        const { error } = await supabaseClient.rpc("delete_receipt", { p_owner_key: key });
-        if (error) throw error;
-        delete cached[key];
-      }
-    }, [collectAttachments]);
-    const saveData = useCallback(async (silent = false) => {
-      if (!supabaseClient || !household) return false;
-      if (!silent) setStatus("syncing");
-      try {
-        const payload = buildPayload();
-        const { error } = await supabaseClient.rpc("save_household", { p_data: payload });
-        if (error) throw error;
-        await syncReceipts();
-        setStatus("ok");
-        setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
-        return true;
-      } catch (e) {
-        setStatus("error");
-        setMsg("❌ " + e.message);
-        return false;
-      }
-    }, [household, buildPayload, syncReceipts]);
-    // loadData is declared before saveData, so it reaches the latest saveData
-    // through a ref (also keeps loadData's identity stable across payload edits).
-    const saveDataRef = useRef(saveData);
-    useEffect(() => {
-      saveDataRef.current = saveData;
-    }, [saveData]);
-    useEffect(() => {
-      if (!household) {
-        lastLoadedHousehold.current = null;
-        initialized.current = false;
-        receiptCache.current = {};
-        return;
-      }
-      if (lastLoadedHousehold.current === household.id) return;
-      lastLoadedHousehold.current = household.id;
-      initialized.current = false;
-      // Autosave stays disabled until a load succeeds (loadData flips
-      // `initialized` on success) — saving after a failed load would overwrite
-      // the household with this device's (possibly empty) local state. A manual
-      // "Reload from Cloud" retries and re-enables autosave when it succeeds.
-      loadData().then((ok) => {
-        if (!ok) lastLoadedHousehold.current = null;
-      });
-    }, [household, loadData]);
-    useEffect(() => {
-      if (!household || !initialized.current) return;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveData(true), 2e3);
-      return () => clearTimeout(saveTimer.current);
-    }, [
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      alertThreshold,
-      darkMode,
-      activeYear,
-      budgetTargets,
-      templates,
-      completed,
-      forecastHorizon,
-      colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
-      goals,
-      dashHidden,
-      dashOrder,
-      aiApiKey
-    ]);
-    return { status, msg, saveData, loadData };
-  }
-  const CategoriesContext = createContext({ categories: [], categoryColors: {} });
-  const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
-  const LOGO_SRC = "data:image/png;base64,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";
+  // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
   const SCHEMA_VERSION = 7;
-  const DEFAULT_ALERT_THRESHOLD = 1500;
-  const APP_VERSION = CF_VERSION;
   function migrateData() {
     let storedVersion = 0;
     try {
@@ -2591,342 +2164,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   }
   migrateData();
-  let _lastStorageErrorToastAt = 0;
-  function notifyStorageWriteFailure(err) {
-    const now = Date.now();
-    if (now - _lastStorageErrorToastAt < 5e3) return;
-    _lastStorageErrorToastAt = now;
-    const isQuota = err && (err.name === "QuotaExceededError" || err.code === 22 || err.code === 1014 || /quota/i.test(err.message || ""));
-    toast(
-      isQuota ? "Couldn't save \u2014 your browser's storage is full. Export a backup, then clear old data (Settings \u2192 Data Backup & Restore)." : "Couldn't save your changes. Please try again, or export a backup from Settings.",
-      "error"
-    );
-  }
-  function useLS(key, init) {
-    const [val, setVal] = useState(() => {
-      try {
-        const s = localStorage.getItem(key);
-        return s ? JSON.parse(s) : typeof init === "function" ? init() : init;
-      } catch (e) {
-        return typeof init === "function" ? init() : init;
-      }
-    });
-    const set = useCallback((v) => {
-      setVal((prev) => {
-        const next = typeof v === "function" ? v(prev) : v;
-        try {
-          localStorage.setItem(key, JSON.stringify(next));
-        } catch (err) {
-          notifyStorageWriteFailure(err);
-        }
-        return next;
-      });
-    }, [key]);
-    return [val, set];
-  }
-  function useMediaQuery(query) {
-    const [matches, setMatches] = useState(() => {
-      try {
-        return window.matchMedia(query).matches;
-      } catch (e) {
-        return false;
-      }
-    });
-    useEffect(() => {
-      let mq;
-      try {
-        mq = window.matchMedia(query);
-      } catch (e) {
-        return;
-      }
-      const onChange = () => setMatches(mq.matches);
-      onChange();
-      if (mq.addEventListener) mq.addEventListener("change", onChange);
-      else mq.addListener(onChange);
-      return () => {
-        if (mq.removeEventListener) mq.removeEventListener("change", onChange);
-        else mq.removeListener(onChange);
-      };
-    }, [query]);
-    return matches;
-  }
-  const useIsMobile = () => useMediaQuery("(max-width: 768px)");
-  const useIsPhone = () => useMediaQuery("(max-width: 480px)");
-  const useIsCoarsePointer = () => useMediaQuery("(pointer: coarse)");
-
-  // ── Biometric unlock (WebAuthn platform authenticator) ──────────────
-  // This is a *local device unlock*, not a replacement for Supabase auth:
-  // there's no relying-party server to verify the assertion against, so a
-  // successful ceremony only proves "the same fingerprint/face that
-  // registered this device is present right now." It gates re-entry after
-  // the auto-lock timeout; it never signs anyone in or out of Supabase.
-  function b64urlEncode(buf) {
-    const bytes = new Uint8Array(buf);
-    let str = "";
-    for (let i = 0; i < bytes.byteLength; i++) str += String.fromCharCode(bytes[i]);
-    return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  }
-  function b64urlDecode(str) {
-    str = str.replace(/-/g, "+").replace(/_/g, "/");
-    while (str.length % 4) str += "=";
-    const bin = atob(str);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes.buffer;
-  }
-  function randomChallenge() {
-    const arr = new Uint8Array(32);
-    crypto.getRandomValues(arr);
-    return arr;
-  }
-  async function isBiometricAvailable() {
-    try {
-      if (!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
-      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    } catch (e) {
-      return false;
-    }
-  }
-  function getBiometricCredId(userId) {
-    try {
-      return localStorage.getItem("cf_webauthn_" + userId);
-    } catch (e) {
-      return null;
-    }
-  }
-  async function registerBiometric(userId, email, fullName) {
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        rp: { name: "CashFlow" },
-        user: {
-          id: new TextEncoder().encode(userId),
-          name: email,
-          displayName: fullName || email
-        },
-        challenge: randomChallenge(),
-        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
-        timeout: 6e4,
-        attestation: "none"
-      }
-    });
-    if (!cred) throw new Error("No credential returned.");
-    const credId = b64urlEncode(cred.rawId);
-    try {
-      localStorage.setItem("cf_webauthn_" + userId, credId);
-    } catch (e) {
-    }
-    return credId;
-  }
-  function clearBiometric(userId) {
-    try {
-      localStorage.removeItem("cf_webauthn_" + userId);
-    } catch (e) {
-    }
-  }
-  async function verifyBiometric(userId) {
-    const credId = getBiometricCredId(userId);
-    if (!credId) throw new Error("No biometric unlock set up on this device.");
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge: randomChallenge(),
-        allowCredentials: [{ id: b64urlDecode(credId), type: "public-key" }],
-        userVerification: "required",
-        timeout: 6e4
-      }
-    });
-    if (!assertion) throw new Error("Verification failed.");
-    return true;
-  }
-  const LIGHT = {
-    navy: "#1C2B3A",
-    navyMid: "#243447",
-    navyLt: "#2D4057",
-    bg: "#F7F4EF",
-    bgCard: "#FFFFFF",
-    green: "#2ECC8A",
-    greenDk: "#27AE73",
-    greenLt: "#EAFBF3",
-    red: "#E85D4A",
-    redLt: "#FFF0EE",
-    amber: "#F5A623",
-    amberLt: "#FFF8EC",
-    text: "#1C2B3A",
-    textMid: "#5A6A7A",
-    textLt: "#66798C",
-    border: "#E8E4DD",
-    stripe: "#F7F4EF",
-    headerBg: "#1C2B3A",
-    headerText: "#ffffff",
-    inputBg: "#F7F4EF",
-    doneBg: "#EAFBF3",
-    shadowSm: "0 1px 3px rgba(28,43,58,0.06), 0 1px 2px rgba(28,43,58,0.04)",
-    shadowMd: "0 4px 12px rgba(28,43,58,0.08), 0 2px 4px rgba(28,43,58,0.04)",
-    shadowLg: "0 12px 32px rgba(28,43,58,0.12), 0 4px 8px rgba(28,43,58,0.06)",
-    shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
-    accent: "#2F6FED",
-    accentLt: "#EAF1FE",
-    // Chip text = category hue mixed toward white by (100% - chipKeep).
-    // Light surfaces keep the full hue; dark surfaces lighten it so deep
-    // hues (indigo, dark red) stay readable on dark cards.
-    chipKeep: "100%",
-    // Interactive fills (active pills, primary buttons, FAB). Same as the brand
-    // navy in light mode; dark mode needs its own value because there the navy
-    // doubles as a surface color and active states would vanish into it.
-    primary: "#1C2B3A",
-    // Negative amounts rendered ON navy surfaces (totals rows) — --red is too
-    // dark against navy, so those cells use this lighter coral.
-    coral: "#FF8A7A"
-  };
-  const DARK = {
-    navy: "#0F1923",
-    navyMid: "#162230",
-    navyLt: "#1E3045",
-    bg: "#111921",
-    bgCard: "#1A2535",
-    green: "#2ECC8A",
-    greenDk: "#27AE73",
-    greenLt: "#16291F",
-    red: "#E85D4A",
-    redLt: "#2A1515",
-    amber: "#F5A623",
-    amberLt: "#2A2010",
-    text: "#E8EDF2",
-    textMid: "#8FA3B8",
-    textLt: "#7A93AC",
-    border: "#243447",
-    stripe: "#1E2D3E",
-    headerBg: "#0F1923",
-    headerText: "#ffffff",
-    inputBg: "#162230",
-    doneBg: "#16291F",
-    shadowSm: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
-    shadowMd: "0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.25)",
-    shadowLg: "0 12px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)",
-    shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
-    accent: "#5B8DEF",
-    accentLt: "#1A2942",
-    primary: "#4E729C",
-    chipKeep: "60%",
-    coral: "#FF8A7A"
-  };
-  const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  function compressReceiptImage(file, cb) {
-    if (!file) return;
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-      const cv = document.createElement("canvas");
-      cv.width = Math.round(img.width * scale);
-      cv.height = Math.round(img.height * scale);
-      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-      const b64 = cv.toDataURL("image/jpeg", 0.6);
-      if (b64.length > 3e5) {
-        toast("Image too large even after compression \u2014 try a smaller photo.", "error");
-        cb(null);
-        return;
-      }
-      cb(b64);
-    };
-    img.onerror = () => {
-      toast("Could not read that image \u2014 try a different photo.", "error");
-      cb(null);
-    };
-    img.src = URL.createObjectURL(file);
-  }
-  // Receipts are strictly per-occurrence. Legacy data (old backups, old
-  // localStorage) may still carry an entry-level `attachment`; this moves each
-  // one onto the entry's start-date occurrence so the image survives.
-  function moveEntryAttachmentsToOverrides(entries, overridesByYr) {
-    let moved = 0;
-    const ovs = {};
-    Object.keys(overridesByYr || {}).forEach((y) => {
-      ovs[y] = __spreadValues({}, overridesByYr[y] || {});
-    });
-    const cleaned = (entries || []).map((e) => {
-      if (!e || !e.attachment) return e;
-      const d = parseDate(e.startDate);
-      if (d && !isNaN(d)) {
-        const year = d.getFullYear();
-        const occId = `${e.id}-${year}-${d.getMonth()}-${d.getDate()}`;
-        ovs[year] = ovs[year] || {};
-        const existing = ovs[year][occId] || {};
-        if (existing.attachment === void 0) {
-          ovs[year][occId] = __spreadProps(__spreadValues({}, existing), { attachment: e.attachment });
-        }
-      }
-      moved++;
-      const copy = __spreadValues({}, e);
-      delete copy.attachment;
-      return copy;
-    });
-    return { entries: cleaned, overridesByYr: ovs, moved };
-  }
-  const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const DEFAULT_CATEGORIES = [
-    "Income",
-    "Housing",
-    "Insurance",
-    "Transportation",
-    "Food",
-    "Utilities",
-    "Subscriptions",
-    "Debt / Credit",
-    "Savings / RRSP",
-    "Medical",
-    "Education",
-    "Personal",
-    "Farm / Animals",
-    "Gifts / Events",
-    "Other"
-  ];
-  // Validated categorical palette (OKLab lightness band, chroma floor, adjacent
-  // CVD separation, 3:1 contrast on white — all pass). The old set had three
-  // near-identical greens and two colors that read as gray. Hue families kept.
-  const DEFAULT_CATEGORY_COLORS = {
-    "Income": "#217F4C",
-    "Housing": "#2F6FB8",
-    "Insurance": "#5E70C4",
-    "Transportation": "#C06722",
-    "Food": "#6B8E23",
-    "Utilities": "#0E9483",
-    "Subscriptions": "#7E3FBF",
-    "Debt / Credit": "#B03A30",
-    "Savings / RRSP": "#1189B5",
-    "Medical": "#A8309F",
-    "Education": "#4348B8",
-    "Personal": "#C22F6E",
-    "Farm / Animals": "#96551C",
-    "Gifts / Events": "#8E4585",
-    "Other": "#8F8A26"
-  };
-  const DEFAULT_REG_COLS = ["desc", "type", "amount", "startDate", "schedule", "until", "category", "notes"];
-  const DEFAULT_BUDGET_COLS = ["desc", "category", "income", "expense", "balance"];
-  const BUDGET_COL_LABELS = { desc: "Description", category: "Category", income: "Income", expense: "Expense", balance: "Balance" };
-  const REG_COL_LABELS = {
-    desc: "Description",
-    type: "Type",
-    amount: "Amount",
-    startDate: "Date",
-    schedule: "Schedule",
-    until: "Until",
-    category: "Category",
-    notes: "Notes",
-    actions: ""
-  };
-  const roundMoney = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-  // One negative-number convention app-wide: a minus sign, never parentheses
-  // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
-  const fmt = (n, showSign = false) => {
-    if (n === void 0 || n === null || isNaN(n)) return "\u2014";
-    const abs = Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (n < 0) return `-$${abs}`;
-    if (showSign && n > 0) return `+$${abs}`;
-    return `$${abs}`;
-  };
-  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(v) / 1e3).toFixed(0) + "k";
+  // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
   const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
   const daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
   function parseDate(str) {
@@ -2938,20 +2176,6 @@ document.addEventListener('DOMContentLoaded',function(){
     const d = parseDate(str);
     if (!d || isNaN(d)) return str;
     return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
-  }
-  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
-  const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
-  function parseTabHash() {
-    let raw = "";
-    try {
-      raw = (location.hash || "").replace(/^#\/?/, "");
-    } catch (e) {
-    }
-    const [t, s] = raw.split("/");
-    return {
-      tab: ROUTE_TABS.includes(t) ? t : null,
-      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null
-    };
   }
   function todayStr() {
     const t = /* @__PURE__ */ new Date();
@@ -2971,44 +2195,6 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!e.recurEnd) return false;
     return e.recurEnd < yearStart;
   }
-  function downloadCSV(filename, rows, headers) {
-    const esc = (v) => {
-      const s = v === null || v === void 0 ? "" : String(v);
-      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-  function printView(title) {
-    const prev = document.title;
-    document.title = title;
-    window.print();
-    document.title = prev;
-  }
-  const ExportBar = ({ onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onCSV,
-      title: "Export to CSV",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
-    },
-    /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
-    "CSV"
-  ), onPrint && /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onPrint,
-      title: "Print / Save as PDF",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
-    },
-    /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
-    "PDF"
-  ));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3206,7 +2392,7 @@ document.addEventListener('DOMContentLoaded',function(){
     let bal = openBal;
     return events.map((ev) => {
       bal += ev.type === "income" ? ev.amount : -ev.amount;
-      return __spreadProps(__spreadValues({}, ev), { balance: Math.round(bal * 100) / 100 });
+      return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
     });
   }
   function getMonthSummaries(flow, openBal) {
@@ -3229,12 +2415,56 @@ document.addEventListener('DOMContentLoaded',function(){
     const past = flow.filter((ev) => ev.date <= today);
     return past.length > 0 ? past[past.length - 1].balance : openBal;
   }
-  function haptic() {
-    try {
-      navigator.vibrate && navigator.vibrate(8);
-    } catch (err) {
-    }
+  // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
+  const roundMoney = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+  // One negative-number convention app-wide: a minus sign, never parentheses
+  // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
+  const fmt = (n, showSign = false) => {
+    if (n === void 0 || n === null || isNaN(n)) return "\u2014";
+    const abs = Math.abs(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (n < 0) return `-$${abs}`;
+    if (showSign && n > 0) return `+$${abs}`;
+    return `$${abs}`;
+  };
+  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(v) / 1e3).toFixed(0) + "k";
+  function downloadCSV(filename, rows, headers) {
+    const esc = (v) => {
+      const s = v === null || v === void 0 ? "" : String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
+  function printView(title) {
+    const prev = document.title;
+    document.title = title;
+    window.print();
+    document.title = prev;
+  }
+  const ExportBar = ({ onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onCSV,
+      title: "Export to CSV",
+      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+    },
+    /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+    "CSV"
+  ), onPrint && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onPrint,
+      title: "Print / Save as PDF",
+      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+    },
+    /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
+    "PDF"
+  ));
   function fmtVarRange(monthlyAmounts) {
     try {
       const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v));
@@ -3244,6 +2474,788 @@ document.addEventListener('DOMContentLoaded',function(){
       return mn === mx ? "\u2248 " + k(mn) : k(mn) + "\u2013" + k(mx);
     } catch (err) {
       return "Variable";
+    }
+  }
+  // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
+
+  // ── Biometric unlock (WebAuthn platform authenticator) ──────────────
+  // This is a *local device unlock*, not a replacement for Supabase auth:
+  // there's no relying-party server to verify the assertion against, so a
+  // successful ceremony only proves "the same fingerprint/face that
+  // registered this device is present right now." It gates re-entry after
+  // the auto-lock timeout; it never signs anyone in or out of Supabase.
+  function b64urlEncode(buf) {
+    const bytes = new Uint8Array(buf);
+    let str = "";
+    for (let i = 0; i < bytes.byteLength; i++) str += String.fromCharCode(bytes[i]);
+    return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function b64urlDecode(str) {
+    str = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (str.length % 4) str += "=";
+    const bin = atob(str);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  function randomChallenge() {
+    const arr = new Uint8Array(32);
+    crypto.getRandomValues(arr);
+    return arr;
+  }
+  async function isBiometricAvailable() {
+    try {
+      if (!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch (e) {
+      return false;
+    }
+  }
+  function getBiometricCredId(userId) {
+    try {
+      return localStorage.getItem("cf_webauthn_" + userId);
+    } catch (e) {
+      return null;
+    }
+  }
+  async function registerBiometric(userId, email, fullName) {
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        rp: { name: "CashFlow" },
+        user: {
+          id: new TextEncoder().encode(userId),
+          name: email,
+          displayName: fullName || email
+        },
+        challenge: randomChallenge(),
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
+        timeout: 6e4,
+        attestation: "none"
+      }
+    });
+    if (!cred) throw new Error("No credential returned.");
+    const credId = b64urlEncode(cred.rawId);
+    try {
+      localStorage.setItem("cf_webauthn_" + userId, credId);
+    } catch (e) {
+    }
+    return credId;
+  }
+  function clearBiometric(userId) {
+    try {
+      localStorage.removeItem("cf_webauthn_" + userId);
+    } catch (e) {
+    }
+  }
+  async function verifyBiometric(userId) {
+    const credId = getBiometricCredId(userId);
+    if (!credId) throw new Error("No biometric unlock set up on this device.");
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: randomChallenge(),
+        allowCredentials: [{ id: b64urlDecode(credId), type: "public-key" }],
+        userVerification: "required",
+        timeout: 6e4
+      }
+    });
+    if (!assertion) throw new Error("Verification failed.");
+    return true;
+  }
+  // ── Centralized Supabase auth calls ────────────────────────────────
+  // Every supabase.auth touchpoint lives in this file (these helpers plus
+  // useHousehold below); components never call supabaseClient directly.
+  async function sbSignIn(email, password) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+  async function sbSignUp(email, password) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) throw error;
+  }
+  // Verify the current password by re-authenticating, then set the new one.
+  async function sbChangePassword(email, currentPassword, nextPassword) {
+    try {
+      await sbSignIn(email, currentPassword);
+    } catch (e) {
+      throw new Error("Current password is incorrect.");
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
+    if (error) throw error;
+  }
+  function useHousehold() {
+    const [session, setSession] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [household, setHousehold] = useState(null);
+    const [members, setMembers] = useState([]);
+    const [membershipLoading, setMembershipLoading] = useState(true);
+    const refreshMembership = useCallback(async (uid) => {
+      if (!supabaseClient) return;
+      setMembershipLoading(true);
+      try {
+        const { data: myRow } = await supabaseClient.from("household_members").select("household_id").eq("user_id", uid).limit(1).maybeSingle();
+        if (!myRow) {
+          setHousehold(null);
+          setMembers([]);
+          return;
+        }
+        const [{ data: hh }, { data: mem }] = await Promise.all([
+          supabaseClient.from("households").select("id, name").eq("id", myRow.household_id).maybeSingle(),
+          supabaseClient.from("household_members").select("user_id, full_name, disabled, role, joined_at").eq("household_id", myRow.household_id).order("joined_at")
+        ]);
+        setHousehold(hh || { id: myRow.household_id, name: "My Household" });
+        setMembers(mem || []);
+      } finally {
+        setMembershipLoading(false);
+      }
+    }, []);
+    useEffect(() => {
+      if (!supabaseClient) {
+        setAuthLoading(false);
+        setMembershipLoading(false);
+        return;
+      }
+      supabaseClient.auth.getSession().then(({ data }) => {
+        setSession(data.session || null);
+        setAuthLoading(false);
+        if (data.session) refreshMembership(data.session.user.id);
+        else setMembershipLoading(false);
+      });
+      const { data: sub } = supabaseClient.auth.onAuthStateChange((_event, sess) => {
+        setSession(sess);
+        if (sess) {
+          refreshMembership(sess.user.id);
+        } else {
+          setHousehold(null);
+          setMembers([]);
+          setMembershipLoading(false);
+        }
+      });
+      return () => {
+        var _a;
+        (_a = sub == null ? void 0 : sub.subscription) == null ? void 0 : _a.unsubscribe();
+      };
+    }, [refreshMembership]);
+    const createHousehold = useCallback(async (fullName) => {
+      if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+      const { error } = await supabaseClient.rpc("create_household", { p_full_name: fullName || "" });
+      if (error) throw error;
+      if (session) await refreshMembership(session.user.id);
+    }, [session, refreshMembership]);
+    const joinHousehold = useCallback(async (code, fullName) => {
+      if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+      const { error } = await supabaseClient.rpc("join_household", { p_code: code, p_full_name: fullName || "" });
+      if (error) throw error;
+      if (session) await refreshMembership(session.user.id);
+    }, [session, refreshMembership]);
+    const createInvite = useCallback(async () => {
+      if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+      const { data, error } = await supabaseClient.rpc("create_invite");
+      if (error) throw error;
+      return data;
+    }, []);
+    const setMemberDisabled = useCallback(async (userId, disabled) => {
+      if (!supabaseClient || !household || !session) return;
+      const { error } = await supabaseClient.from("household_members").update({ disabled }).eq("household_id", household.id).eq("user_id", userId);
+      if (error) throw error;
+      await refreshMembership(session.user.id);
+    }, [household, session, refreshMembership]);
+    const updateMyName = useCallback(async (fullName) => {
+      if (!supabaseClient || !household || !session) return;
+      const { error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", session.user.id);
+      if (error) throw error;
+      await refreshMembership(session.user.id);
+    }, [household, session, refreshMembership]);
+    // Rename any member row. RLS allows your own row always and other rows
+    // only for the owner — a silently-filtered update returns zero rows, which
+    // we surface as a permission error instead of a fake success.
+    const updateMemberName = useCallback(async (userId, fullName) => {
+      if (!supabaseClient || !household || !session) return;
+      const { data, error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", userId).select("user_id");
+      if (error) throw error;
+      if (!data || !data.length) throw new Error("Only the household owner can rename other members.");
+      await refreshMembership(session.user.id);
+    }, [household, session, refreshMembership]);
+    const signOut = useCallback(async () => {
+      if (!supabaseClient) return;
+      await supabaseClient.auth.signOut();
+    }, []);
+    return {
+      configured: !!supabaseClient,
+      session,
+      authLoading,
+      household,
+      members,
+      membershipLoading,
+      createHousehold,
+      joinHousehold,
+      createInvite,
+      setMemberDisabled,
+      updateMemberName,
+      updateMyName,
+      signOut
+    };
+  }
+  // Every field synced between App state and the household's Supabase row.
+  // Both directions — load (apply server data to state) and save (build the
+  // payload to send) — read from this single list instead of two
+  // hand-written ones that could silently drift apart (a field added to one
+  // and forgotten in the other was exactly the class of bug this closes).
+  // Adding a new synced setting: one useLS() in App.js, one property each in
+  // the `values`/`setters` objects at the useHouseholdData call site, one
+  // name in the debounce effect's dependency list there, and one entry here.
+  // Each `apply` is a direct, unchanged transcription of the validation that
+  // previously lived inline in applyPayload — legacy/malformed data (an old
+  // backup, an older app version's payload) is still guarded exactly as
+  // before, just declared once instead of duplicated across apply/build.
+  const HOUSEHOLD_SYNCED_FIELDS = [
+    { key: "entries", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "overridesByYr", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "yearConfigs", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "categories", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "categoryColors", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    } },
+    { key: "activeYear", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "alertThreshold", apply: (v, set) => {
+      if (v != null) set(v);
+    } },
+    { key: "darkMode", apply: (v, set) => {
+      if (v != null) set(v);
+    } },
+    { key: "forecastHorizon", apply: (v, set) => {
+      if (v != null) set(v);
+    } },
+    { key: "goals", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "dashHidden", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    } },
+    { key: "dashOrder", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "colOrder", apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
+    } },
+    { key: "regFilter", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "regFilterCats", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "regFilterScheds", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "regFilterStatus", apply: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    } },
+    { key: "budgetTargets", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "templates", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "completed", apply: (v, set) => {
+      if (v) set(v);
+    } },
+    { key: "aiApiKey", apply: (v, set) => {
+      if (v && set) set(v);
+    } }
+  ];
+  function useHouseholdData({ household, values, setters }) {
+    const [status, setStatus] = useState("idle");
+    const [msg, setMsg] = useState("");
+    const initialized = useRef(false);
+    const saveTimer = useRef(null);
+    const lastLoadedHousehold = useRef(null);
+    // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
+    // receipts table holds server-side. Used to diff on save so only
+    // added/changed/removed images travel over the network. Receipts are
+    // strictly per-occurrence; entry-level attachments no longer exist.
+    const receiptCache = useRef({});
+    // The `savedAt` this device last loaded from the server — sent back on
+    // every save so the server can detect a concurrent save from another
+    // device/member and reject instead of silently overwriting it (AR2).
+    const lastSavedAtRef = useRef(null);
+    const applyPayload = useCallback((d) => {
+      if (!d) return;
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(d[key], setters[key]));
+    }, [setters]);
+    // Receipt images live in the receipts table as binary blobs, not inside the
+    // save payload — the payload only carries the rest of each entry/override.
+    const stripAttachments = (list) => (list || []).map((e) => {
+      if (!e || e.attachment === void 0) return e;
+      const copy = Object.assign({}, e);
+      delete copy.attachment;
+      return copy;
+    });
+    const stripOverrideAttachments = (byYr) => {
+      const out = {};
+      Object.keys(byYr || {}).forEach((year) => {
+        const yOvs = byYr[year] || {};
+        out[year] = {};
+        Object.keys(yOvs).forEach((k) => {
+          const o = yOvs[k];
+          if (o && o.attachment !== void 0) {
+            const copy = Object.assign({}, o);
+            delete copy.attachment;
+            out[year][k] = copy;
+          } else {
+            out[year][k] = o;
+          }
+        });
+      });
+      return out;
+    };
+    const collectAttachments = useCallback(() => {
+      const map = {};
+      Object.keys(values.overridesByYr || {}).forEach((year) => {
+        const yOvs = values.overridesByYr[year] || {};
+        Object.keys(yOvs).forEach((k) => {
+          if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
+        });
+      });
+      return map;
+    }, [values.overridesByYr]);
+    const buildPayload = useCallback(() => {
+      const out = {};
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key }) => {
+        out[key] = values[key];
+      });
+      out.entries = stripAttachments(out.entries);
+      out.overridesByYr = stripOverrideAttachments(out.overridesByYr);
+      out.schemaVersion = SCHEMA_VERSION;
+      out.savedAt = (/* @__PURE__ */ new Date()).toISOString();
+      return out;
+    }, [values]);
+    const loadData = useCallback(async () => {
+      if (!supabaseClient || !household) return false;
+      // Flush any pending debounced save first — otherwise a pull-to-refresh
+      // or "Reload from Cloud" inside the 2s autosave window silently
+      // overwrites the just-made local edit with the server copy.
+      if (saveTimer.current && initialized.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        await saveDataRef.current(true);
+      }
+      setStatus("syncing");
+      setMsg("Loading…");
+      try {
+        const { data, error } = await supabaseClient.rpc("load_household");
+        if (error) throw error;
+        const payload = (data && data.data) || {};
+        lastSavedAtRef.current = payload.savedAt || null;
+        const receipts = (data && data.receipts) || [];
+        const rmap = {};
+        receipts.forEach((r) => {
+          if (r && r.ownerKey && r.b64) rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+        });
+        receiptCache.current = Object.assign({}, rmap);
+        // Re-attach receipt images to the occurrences they belong to so the
+        // rest of the app keeps seeing plain `attachment` data URLs.
+        if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+          Object.keys(payload.overridesByYr).forEach((year) => {
+            const yOvs = payload.overridesByYr[year] || {};
+            Object.keys(yOvs).forEach((k) => {
+              const src = rmap["override:" + year + ":" + k];
+              if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+            });
+          });
+        }
+        applyPayload(payload);
+        initialized.current = true;
+        setStatus("ok");
+        setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+        return true;
+      } catch (e) {
+        setStatus("error");
+        setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
+        return false;
+      }
+    }, [household, applyPayload]);
+    const syncReceipts = useCallback(async () => {
+      const current = collectAttachments();
+      const cached = receiptCache.current;
+      const parse = (dataUrl) => {
+        const m = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl || "");
+        return m ? { mime: m[1], b64: m[2] } : null;
+      };
+      for (const key of Object.keys(current)) {
+        if (cached[key] === current[key]) continue;
+        const img = parse(current[key]);
+        if (!img) continue;
+        const { error } = await supabaseClient.rpc("put_receipt", { p_owner_key: key, p_mime: img.mime, p_b64: img.b64 });
+        if (error) throw error;
+        cached[key] = current[key];
+      }
+      for (const key of Object.keys(cached)) {
+        if (current[key]) continue;
+        const { error } = await supabaseClient.rpc("delete_receipt", { p_owner_key: key });
+        if (error) throw error;
+        delete cached[key];
+      }
+    }, [collectAttachments]);
+    const saveData = useCallback(async (silent = false) => {
+      if (!supabaseClient || !household) return false;
+      if (!silent) setStatus("syncing");
+      try {
+        const payload = buildPayload();
+        const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
+          p_data: payload,
+          p_expected_saved_at: lastSavedAtRef.current
+        });
+        if (error) throw error;
+        if (newSavedAt) lastSavedAtRef.current = newSavedAt;
+        await syncReceipts();
+        setStatus("ok");
+        setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+        return true;
+      } catch (e) {
+        // Another member's save landed since this device last loaded —
+        // pull their version instead of silently clobbering it, and say so.
+        if (/^CONFLICT:/.test(e.message || "")) {
+          setStatus("error");
+          setMsg("⚠ Updated on another device — reloading the latest version…");
+          await loadData();
+          toast("Another device saved changes to this household — reloaded the latest version. Please redo your last change if it's missing.", "error");
+          return false;
+        }
+        setStatus("error");
+        setMsg("❌ " + e.message);
+        return false;
+      }
+    }, [household, buildPayload, syncReceipts, loadData]);
+    // loadData is declared before saveData, so it reaches the latest saveData
+    // through a ref (also keeps loadData's identity stable across payload edits).
+    const saveDataRef = useRef(saveData);
+    useEffect(() => {
+      saveDataRef.current = saveData;
+    }, [saveData]);
+    useEffect(() => {
+      if (!household) {
+        lastLoadedHousehold.current = null;
+        initialized.current = false;
+        receiptCache.current = {};
+        lastSavedAtRef.current = null;
+        return;
+      }
+      if (lastLoadedHousehold.current === household.id) return;
+      lastLoadedHousehold.current = household.id;
+      initialized.current = false;
+      // Autosave stays disabled until a load succeeds (loadData flips
+      // `initialized` on success) — saving after a failed load would overwrite
+      // the household with this device's (possibly empty) local state. A manual
+      // "Reload from Cloud" retries and re-enables autosave when it succeeds.
+      loadData().then((ok) => {
+        if (!ok) lastLoadedHousehold.current = null;
+      });
+    }, [household, loadData]);
+    useEffect(() => {
+      if (!household || !initialized.current) return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveData(true), 2e3);
+      return () => clearTimeout(saveTimer.current);
+    }, [
+      values.entries,
+      values.overridesByYr,
+      values.yearConfigs,
+      values.categories,
+      values.categoryColors,
+      values.alertThreshold,
+      values.darkMode,
+      values.activeYear,
+      values.budgetTargets,
+      values.templates,
+      values.completed,
+      values.forecastHorizon,
+      values.colOrder,
+      values.regFilter,
+      values.regFilterCats,
+      values.regFilterScheds,
+      values.regFilterStatus,
+      values.goals,
+      values.dashHidden,
+      values.dashOrder,
+      values.aiApiKey
+    ]);
+    return { status, msg, saveData, loadData };
+  }
+  const CategoriesContext = createContext({ categories: [], categoryColors: {} });
+  const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
+  const LOGO_SRC = "data:image/png;base64,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";
+  const DEFAULT_ALERT_THRESHOLD = 1500;
+  const APP_VERSION = CF_VERSION;
+  let _lastStorageErrorToastAt = 0;
+  function notifyStorageWriteFailure(err) {
+    const now = Date.now();
+    if (now - _lastStorageErrorToastAt < 5e3) return;
+    _lastStorageErrorToastAt = now;
+    const isQuota = err && (err.name === "QuotaExceededError" || err.code === 22 || err.code === 1014 || /quota/i.test(err.message || ""));
+    toast(
+      isQuota ? "Couldn't save \u2014 your browser's storage is full. Export a backup, then clear old data (Settings \u2192 Data Backup & Restore)." : "Couldn't save your changes. Please try again, or export a backup from Settings.",
+      "error"
+    );
+  }
+  function useLS(key, init) {
+    const [val, setVal] = useState(() => {
+      try {
+        const s = localStorage.getItem(key);
+        return s ? JSON.parse(s) : typeof init === "function" ? init() : init;
+      } catch (e) {
+        return typeof init === "function" ? init() : init;
+      }
+    });
+    const set = useCallback((v) => {
+      setVal((prev) => {
+        const next = typeof v === "function" ? v(prev) : v;
+        try {
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch (err) {
+          notifyStorageWriteFailure(err);
+        }
+        return next;
+      });
+    }, [key]);
+    return [val, set];
+  }
+  function useMediaQuery(query) {
+    const [matches, setMatches] = useState(() => {
+      try {
+        return window.matchMedia(query).matches;
+      } catch (e) {
+        return false;
+      }
+    });
+    useEffect(() => {
+      let mq;
+      try {
+        mq = window.matchMedia(query);
+      } catch (e) {
+        return;
+      }
+      const onChange = () => setMatches(mq.matches);
+      onChange();
+      if (mq.addEventListener) mq.addEventListener("change", onChange);
+      else mq.addListener(onChange);
+      return () => {
+        if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+        else mq.removeListener(onChange);
+      };
+    }, [query]);
+    return matches;
+  }
+  const useIsMobile = () => useMediaQuery("(max-width: 768px)");
+  const useIsPhone = () => useMediaQuery("(max-width: 480px)");
+  const useIsCoarsePointer = () => useMediaQuery("(pointer: coarse)");
+  const LIGHT = {
+    navy: "#1C2B3A",
+    navyMid: "#243447",
+    navyLt: "#2D4057",
+    bg: "#F7F4EF",
+    bgCard: "#FFFFFF",
+    green: "#2ECC8A",
+    greenDk: "#27AE73",
+    greenLt: "#EAFBF3",
+    red: "#E85D4A",
+    redLt: "#FFF0EE",
+    amber: "#F5A623",
+    amberLt: "#FFF8EC",
+    text: "#1C2B3A",
+    textMid: "#5A6A7A",
+    textLt: "#66798C",
+    border: "#E8E4DD",
+    stripe: "#F7F4EF",
+    headerBg: "#1C2B3A",
+    headerText: "#ffffff",
+    inputBg: "#F7F4EF",
+    doneBg: "#EAFBF3",
+    shadowSm: "0 1px 3px rgba(28,43,58,0.06), 0 1px 2px rgba(28,43,58,0.04)",
+    shadowMd: "0 4px 12px rgba(28,43,58,0.08), 0 2px 4px rgba(28,43,58,0.04)",
+    shadowLg: "0 12px 32px rgba(28,43,58,0.12), 0 4px 8px rgba(28,43,58,0.06)",
+    shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
+    accent: "#2F6FED",
+    accentLt: "#EAF1FE",
+    // Chip text = category hue mixed toward white by (100% - chipKeep).
+    // Light surfaces keep the full hue; dark surfaces lighten it so deep
+    // hues (indigo, dark red) stay readable on dark cards.
+    chipKeep: "100%",
+    // Interactive fills (active pills, primary buttons, FAB). Same as the brand
+    // navy in light mode; dark mode needs its own value because there the navy
+    // doubles as a surface color and active states would vanish into it.
+    primary: "#1C2B3A",
+    // Negative amounts rendered ON navy surfaces (totals rows) — --red is too
+    // dark against navy, so those cells use this lighter coral.
+    coral: "#FF8A7A"
+  };
+  const DARK = {
+    navy: "#0F1923",
+    navyMid: "#162230",
+    navyLt: "#1E3045",
+    bg: "#111921",
+    bgCard: "#1A2535",
+    green: "#2ECC8A",
+    greenDk: "#27AE73",
+    greenLt: "#16291F",
+    red: "#E85D4A",
+    redLt: "#2A1515",
+    amber: "#F5A623",
+    amberLt: "#2A2010",
+    text: "#E8EDF2",
+    textMid: "#8FA3B8",
+    textLt: "#7A93AC",
+    border: "#243447",
+    stripe: "#1E2D3E",
+    headerBg: "#0F1923",
+    headerText: "#ffffff",
+    inputBg: "#162230",
+    doneBg: "#16291F",
+    shadowSm: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
+    shadowMd: "0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.25)",
+    shadowLg: "0 12px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)",
+    shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
+    accent: "#5B8DEF",
+    accentLt: "#1A2942",
+    primary: "#4E729C",
+    chipKeep: "60%",
+    coral: "#FF8A7A"
+  };
+  const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function compressReceiptImage(file, cb) {
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * scale);
+      cv.height = Math.round(img.height * scale);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      const b64 = cv.toDataURL("image/jpeg", 0.6);
+      if (b64.length > 3e5) {
+        toast("Image too large even after compression \u2014 try a smaller photo.", "error");
+        cb(null);
+        return;
+      }
+      cb(b64);
+    };
+    img.onerror = () => {
+      toast("Could not read that image \u2014 try a different photo.", "error");
+      cb(null);
+    };
+    img.src = URL.createObjectURL(file);
+  }
+  // Receipts are strictly per-occurrence. Legacy data (old backups, old
+  // localStorage) may still carry an entry-level `attachment`; this moves each
+  // one onto the entry's start-date occurrence so the image survives.
+  function moveEntryAttachmentsToOverrides(entries, overridesByYr) {
+    let moved = 0;
+    const ovs = {};
+    Object.keys(overridesByYr || {}).forEach((y) => {
+      ovs[y] = __spreadValues({}, overridesByYr[y] || {});
+    });
+    const cleaned = (entries || []).map((e) => {
+      if (!e || !e.attachment) return e;
+      const d = parseDate(e.startDate);
+      if (d && !isNaN(d)) {
+        const year = d.getFullYear();
+        const occId = `${e.id}-${year}-${d.getMonth()}-${d.getDate()}`;
+        ovs[year] = ovs[year] || {};
+        const existing = ovs[year][occId] || {};
+        if (existing.attachment === void 0) {
+          ovs[year][occId] = __spreadProps(__spreadValues({}, existing), { attachment: e.attachment });
+        }
+      }
+      moved++;
+      const copy = __spreadValues({}, e);
+      delete copy.attachment;
+      return copy;
+    });
+    return { entries: cleaned, overridesByYr: ovs, moved };
+  }
+  const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const DEFAULT_CATEGORIES = [
+    "Income",
+    "Housing",
+    "Insurance",
+    "Transportation",
+    "Food",
+    "Utilities",
+    "Subscriptions",
+    "Debt / Credit",
+    "Savings / RRSP",
+    "Medical",
+    "Education",
+    "Personal",
+    "Farm / Animals",
+    "Gifts / Events",
+    "Other"
+  ];
+  // Validated categorical palette (OKLab lightness band, chroma floor, adjacent
+  // CVD separation, 3:1 contrast on white — all pass). The old set had three
+  // near-identical greens and two colors that read as gray. Hue families kept.
+  const DEFAULT_CATEGORY_COLORS = {
+    "Income": "#217F4C",
+    "Housing": "#2F6FB8",
+    "Insurance": "#5E70C4",
+    "Transportation": "#C06722",
+    "Food": "#6B8E23",
+    "Utilities": "#0E9483",
+    "Subscriptions": "#7E3FBF",
+    "Debt / Credit": "#B03A30",
+    "Savings / RRSP": "#1189B5",
+    "Medical": "#A8309F",
+    "Education": "#4348B8",
+    "Personal": "#C22F6E",
+    "Farm / Animals": "#96551C",
+    "Gifts / Events": "#8E4585",
+    "Other": "#8F8A26"
+  };
+  const DEFAULT_REG_COLS = ["desc", "type", "amount", "startDate", "schedule", "until", "category", "notes"];
+  const DEFAULT_BUDGET_COLS = ["desc", "category", "income", "expense", "balance"];
+  const BUDGET_COL_LABELS = { desc: "Description", category: "Category", income: "Income", expense: "Expense", balance: "Balance" };
+  const REG_COL_LABELS = {
+    desc: "Description",
+    type: "Type",
+    amount: "Amount",
+    startDate: "Date",
+    schedule: "Schedule",
+    until: "Until",
+    category: "Category",
+    notes: "Notes",
+    actions: ""
+  };
+  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
+  const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
+  function parseTabHash() {
+    let raw = "";
+    try {
+      raw = (location.hash || "").replace(/^#\/?/, "");
+    } catch (e) {
+    }
+    const [t, s] = raw.split("/");
+    return {
+      tab: ROUTE_TABS.includes(t) ? t : null,
+      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null
+    };
+  }
+  function haptic() {
+    try {
+      navigator.vibrate && navigator.vibrate(8);
+    } catch (err) {
     }
   }
   function simulateDebtStrategy(debts, extra, order) {
@@ -3284,7 +3296,7 @@ document.addEventListener('DOMContentLoaded',function(){
       d.setMonth(d.getMonth() + months);
       return {
         months,
-        totalInterest: Math.round(totalInterest * 100) / 100,
+        totalInterest: roundMoney(totalInterest),
         debtFreeDate: MONTHS[d.getMonth()] + " " + d.getFullYear(),
         payoffOrder
       };
@@ -5287,14 +5299,14 @@ document.addEventListener('DOMContentLoaded',function(){
     const prevHasData = prevYearFlow.length > 0;
     const yoyDeltaSub = (cur, prev) => {
       if (!yoyActive || !prevHasData) return null;
-      const d = Math.round((cur - prev) * 100) / 100;
+      const d = roundMoney((cur - prev));
       const sign = d > 0 ? "▲ " : d < 0 ? "▼ " : "";
       return `${sign}${fmt(Math.abs(d))} vs ${prevYear}`;
     };
     const yoyRows = useMemo(() => {
       if (!yoyActive) return [];
       const norm = (str) => (str || "").toLowerCase().trim();
-      const r2 = (n) => Math.round(n * 100) / 100;
+      const r2 = (n) => roundMoney(n);
       const map = /* @__PURE__ */ new Map();
       const add = (ev, key) => {
         const k = ev.type + "|" + norm(ev.desc);
@@ -5577,7 +5589,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const amtCell = (v) => v === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(v, true);
       const totCur = yoyRows.reduce((a, r) => a + r.cur, 0);
       const totPrev = yoyRows.reduce((a, r) => a + r.prev, 0);
-      const totDelta = Math.round((totCur - totPrev) * 100) / 100;
+      const totDelta = roundMoney((totCur - totPrev));
       return /* @__PURE__ */ React.createElement(
         Card,
         { className: "cf-card--flush yoy-card" },
@@ -5940,7 +5952,7 @@ document.addEventListener('DOMContentLoaded',function(){
           const t = parseFloat(bvaModalData.target);
           if (!bvaModalData.cat || isNaN(t) || t < 0) return;
           setBudgetTargets((prev) => {
-            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: Math.round(t * 100) / 100 }) });
+            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: roundMoney(t) }) });
             const ro = __spreadValues({}, prev._rollover || {});
             if (bvaModalData.rollover) ro[bvaModalData.cat] = true;
             else delete ro[bvaModalData.cat];
@@ -6022,7 +6034,7 @@ document.addEventListener('DOMContentLoaded',function(){
             const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
             carry = Math.max(0, carry + t - spent);
           }
-          return Math.round(carry * 100) / 100;
+          return roundMoney(carry);
         };
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
         return /* @__PURE__ */ React.createElement(Card, { className: "bva-card" }, /* @__PURE__ */ React.createElement("div", { className: "bva-header-row", style: {
@@ -6053,11 +6065,11 @@ document.addEventListener('DOMContentLoaded',function(){
             setShowBvaModal(true);
           }
         })), cats.map((cat) => {
-          const actual = Math.round((catExpenses[cat] || 0) * 100) / 100;
-          const baseTarget = Math.round((targets[cat] || 0) * 100) / 100;
+          const actual = roundMoney((catExpenses[cat] || 0));
+          const baseTarget = roundMoney((targets[cat] || 0));
           const carry = carryFor(cat);
-          const target = Math.round((baseTarget + carry) * 100) / 100;
-          const diff = Math.round((actual - target) * 100) / 100;
+          const target = roundMoney((baseTarget + carry));
+          const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
           const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
@@ -6091,9 +6103,9 @@ document.addEventListener('DOMContentLoaded',function(){
             } }))
           );
         }), cats.length > 0 && (() => {
-          const totalActual = Math.round(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0) * 100) / 100;
-          const totalTarget = Math.round(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0) * 100) / 100;
-          const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
+          const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
+          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
+          const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
@@ -6358,9 +6370,9 @@ document.addEventListener('DOMContentLoaded',function(){
         });
       }
       Object.entries(targetByCat).forEach(([cat, tgt]) => {
-        const act = Math.round((expenseCats[cat] || 0) * 100) / 100;
-        const t = Math.round(tgt * 100) / 100;
-        bvaRows.push({ category: cat, actual: act, target: t, variance: Math.round((act - t) * 100) / 100 });
+        const act = roundMoney((expenseCats[cat] || 0));
+        const t = roundMoney(tgt);
+        bvaRows.push({ category: cat, actual: act, target: t, variance: roundMoney((act - t)) });
       });
       bvaRows.sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
       const debtKeywords = ["debt", "credit", "loan", "mortgage", "line of credit", "lease", "cc-", "visa", "amex", "mastercard", "car payment", "truck payment", "trailer payment", "child support"];
@@ -6378,30 +6390,30 @@ document.addEventListener('DOMContentLoaded',function(){
         year: activeYear,
         savingsGoals,
         reportingWindow: `January\u2013${MONTHS[currentMonth]} ${activeYear} (${currentMonth + 1} months)`,
-        openingBalance: Math.round(openBal * 100) / 100,
-        closingBalance: Math.round(closingBal * 100) / 100,
-        totalIncome: Math.round(totalIncome * 100) / 100,
-        totalExpenses: Math.round(totalExp * 100) / 100,
-        totalSurplus: Math.round(totalSurplus * 100) / 100,
-        avgMonthlyExpense: Math.round(avgMonthly * 100) / 100,
+        openingBalance: roundMoney(openBal),
+        closingBalance: roundMoney(closingBal),
+        totalIncome: roundMoney(totalIncome),
+        totalExpenses: roundMoney(totalExp),
+        totalSurplus: roundMoney(totalSurplus),
+        avgMonthlyExpense: roundMoney(avgMonthly),
         savingsRatePct: Math.round(savingsRate * 10) / 10,
-        lowestBalance: Math.round(lowestBal * 100) / 100,
+        lowestBalance: roundMoney(lowestBal),
         monthlyBreakdown: ytdMonths,
         topExpenseCategories: Object.entries(expenseCats).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([cat, amt]) => ({
           category: cat,
-          total: Math.round(amt * 100) / 100,
+          total: roundMoney(amt),
           pctOfExpenses: totalExp > 0 ? Math.round(amt / totalExp * 1e3) / 10 : 0
         })),
-        incomeCategories: Object.entries(incomeCats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({ category: cat, total: Math.round(amt * 100) / 100 })),
-        debtObligations: debtItems.map(([cat, amt]) => ({ category: cat, ytdPaid: Math.round(amt * 100) / 100 })),
+        incomeCategories: Object.entries(incomeCats).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({ category: cat, total: roundMoney(amt) })),
+        debtObligations: debtItems.map(([cat, amt]) => ({ category: cat, ytdPaid: roundMoney(amt) })),
         budgetVsActual: bvaRows.slice(0, 15),
         hasBudgetTargets: Object.keys(targetByCat).length > 0,
         // Debt tracker data (balances + rates user has entered)
         debtTrackerItems: Object.entries(debtTrackerData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0).map(([k, v]) => ({
           name: v.label || k.replace("manual_", "").replace(/_/g, " "),
-          balance: Math.round(parseFloat(v.balance || 0) * 100) / 100,
+          balance: roundMoney(parseFloat(v.balance || 0)),
           rate: parseFloat(v.rate || 0),
-          monthlyPayment: Math.round(parseFloat(v.payment || 0) * 100) / 100
+          monthlyPayment: roundMoney(parseFloat(v.payment || 0))
         }))
       };
     };
@@ -7065,7 +7077,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const toMonthlyFromEvs = (evs) => {
         if (!evs || !evs.length) return 0;
         const annual = evs.reduce((s, ev) => s + (ev.amount || 0), 0);
-        return Math.round(annual / 12 * 100) / 100;
+        return roundMoney(annual / 12);
       };
       const autoRows = Object.entries(autoGroups).filter(([desc]) => {
         var _a;
@@ -7076,7 +7088,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           key: desc.replace(/[^a-zA-Z0-9]/g, "_"),
           label: desc,
           monthlyPmt: toMonthlyFromEvs(evs),
-          annualTotal: Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) * 100) / 100,
+          annualTotal: roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0)),
           timesPerYear: evs.length,
           perOccurrence: ((_a = evs[0]) == null ? void 0 : _a.amount) || 0,
           recurDesc: (() => {
@@ -7115,7 +7127,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
         const r = rate / 100 / 12;
         const m = r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
-        const interest = r > 0 ? Math.round((pmt * m - bal) * 100) / 100 : null;
+        const interest = r > 0 ? roundMoney((pmt * m - bal)) : null;
         const d = /* @__PURE__ */ new Date();
         d.setMonth(d.getMonth() + m);
         return { monthsLeft: m, totalInterest: interest, payoffDate: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
@@ -7439,7 +7451,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const daysToLow = low ? Math.max(0, Math.round((low.date - new Date(activeYear, todayM, todayD)) / 864e5)) : null;
         const due = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).reduce((s, ev) => s + ev.amount, 0);
         const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
-        return { balanceNow, low, daysToLow, due: Math.round(due * 100) / 100, dueCount, month: MONTHS[todayM] };
+        return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
       } catch (err) {
         return null;
       }
@@ -7530,7 +7542,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           return d >= today && d <= horizon;
         }).map((e) => {
           const evs = flow.filter((ev) => ev.entryId === e.id);
-          const monthly = evs.length ? Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100 : e.amount;
+          const monthly = evs.length ? roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12) : e.amount;
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
@@ -7717,17 +7729,17 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           return /* @__PURE__ */ React.createElement("div", { className: "bva-empty-state" }, /* @__PURE__ */ React.createElement("div", { className: "bva-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-title" }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-body" }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
         }
         const rows = cats.map((c) => {
-          const actual = Math.round((actualByCat[c] || 0) * 100) / 100;
-          const target = Math.round((targetByCat[c] || 0) * 100) / 100;
-          const diff = Math.round((actual - target) * 100) / 100;
+          const actual = roundMoney((actualByCat[c] || 0));
+          const target = roundMoney((targetByCat[c] || 0));
+          const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
           const color = !over ? "var(--greenDk)" : diff <= 50 ? "var(--amber)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return { cat: c, actual, target, diff, over, color, pct };
         });
-        const totalActual = Math.round(rows.reduce((s, r) => s + r.actual, 0) * 100) / 100;
-        const totalTarget = Math.round(rows.reduce((s, r) => s + r.target, 0) * 100) / 100;
-        const tDiff = Math.round((totalActual - totalTarget) * 100) / 100;
+        const totalActual = roundMoney(rows.reduce((s, r) => s + r.actual, 0));
+        const totalTarget = roundMoney(rows.reduce((s, r) => s + r.target, 0));
+        const tDiff = roundMoney((totalActual - totalTarget));
         const tOver = totalTarget > 0 && tDiff > 0;
         const tColor = !tOver ? "var(--greenDk)" : tDiff <= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bva-rows-wrap" }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { className: "dash-bva-row-hdr" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { className: "dash-bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
@@ -7746,7 +7758,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           if (!ev) return 0;
           const amt = ev.amount || 0, every = ev.recurEvery || 1;
           const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
-          return Math.round(amt * (ppy / 12) * 100) / 100;
+          return roundMoney(amt * (ppy / 12));
         };
         const dkw = [
           "debt",
@@ -7774,7 +7786,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const autoMonthly = (key) => {
           const evs = autoAllEvs[key] || [];
           if (!evs.length) return 0;
-          return Math.round(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12 * 100) / 100;
+          return roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12);
         };
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
@@ -7787,7 +7799,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
           const r = rate / 100 / 12;
           const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
-          const totalInterest = monthsLeft && r > 0 ? Math.round((pmt * monthsLeft - bal) * 100) / 100 : null;
+          const totalInterest = monthsLeft && r > 0 ? roundMoney((pmt * monthsLeft - bal)) : null;
           const payoffDate = monthsLeft ? (() => {
             const d = /* @__PURE__ */ new Date();
             d.setMonth(d.getMonth() + monthsLeft);
@@ -8834,7 +8846,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             Object.keys(byMonthCat).forEach((key) => {
               const cats = {};
               Object.keys(byMonthCat[key]).forEach((c) => {
-                cats[c] = Math.round(byMonthCat[key][c] * 100) / 100;
+                cats[c] = roundMoney(byMonthCat[key][c]);
               });
               next[key] = cats;
             });
@@ -9658,36 +9670,76 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     // "Fingerprint sign-on": when enabled, the app starts locked and the lock
     // screen immediately prompts for the device biometric (fingerprint / face).
     // The Supabase session persists underneath — this gates the UI on-device.
+    //
+    // The idle-timeout auto-lock below needs the same "start locked" treatment
+    // — and needs a marker that survives a reload without being erased by the
+    // reload itself. A first attempt stamped a "went hidden at" timestamp on
+    // visibilitychange and checked it on the next visible/boot; that failed
+    // because a reload *also* fires visibilitychange→hidden on the outgoing
+    // page (browsers rely on this to flush analytics before unload), which
+    // overwrote the genuinely-stale timestamp with a fresh "now" moments
+    // before the new page could ever read it — silently re-opening the exact
+    // bypass this is meant to close. Tracking "last confirmed active" instead
+    // — stamped only while visible, never touched on hide/unload — sidesteps
+    // that: a reload during real activity reads a fresh stamp (correctly
+    // stays unlocked), while a reload after the tab sat hidden past the
+    // timeout reads a stale one (correctly locks), regardless of how the
+    // reload itself fires visibility events.
+    const LOCK_KEY = "cf_last_active_at";
     const [locked, setLocked] = useState(() => {
       try {
-        return localStorage.getItem("cf_lock_on_launch") === "1";
+        if (localStorage.getItem("cf_lock_on_launch") === "1") return true;
+        if (lockTimeout) {
+          const at = parseInt(localStorage.getItem(LOCK_KEY) || "0", 10);
+          if (at && Date.now() - at > lockTimeout * 6e4) return true;
+        }
+        return false;
       } catch (e) {
         return false;
       }
     });
     useEffect(() => {
-      if (!lockTimeout || !sessionUser) return;
-      const KEY = "cf_hidden_at";
-      const onVis = () => {
+      if (!lockTimeout || !sessionUser || locked) return;
+      const stamp = () => {
         try {
-          if (document.visibilityState === "hidden") {
-            sessionStorage.setItem(KEY, String(Date.now()));
-          } else {
-            const at = parseInt(sessionStorage.getItem(KEY) || "0", 10);
-            sessionStorage.removeItem(KEY);
-            if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
-          }
+          localStorage.setItem(LOCK_KEY, String(Date.now()));
+        } catch (e) {
+        }
+      };
+      stamp();
+      // Re-stamp periodically while visible so elapsed *hidden* time is what
+      // accumulates toward the timeout, not elapsed wall-clock time since
+      // the tab was last (re)focused — a long-running, continuously visible
+      // tab must never lock itself out just for staying open.
+      const iv = setInterval(() => {
+        if (document.visibilityState === "visible") stamp();
+      }, 2e4);
+      const onVis = () => {
+        if (document.visibilityState !== "visible") return;
+        try {
+          const at = parseInt(localStorage.getItem(LOCK_KEY) || "0", 10);
+          if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
+          else stamp();
         } catch (err) {
         }
       };
       document.addEventListener("visibilitychange", onVis);
-      return () => document.removeEventListener("visibilitychange", onVis);
-    }, [lockTimeout, sessionUser]);
+      return () => {
+        document.removeEventListener("visibilitychange", onVis);
+        clearInterval(iv);
+      };
+    }, [lockTimeout, sessionUser, locked]);
     useEffect(() => {
       // Clear the lock only on a real signed-out state — during startup the
       // session is still loading and the launch lock must survive until the
       // lock screen can prompt for the fingerprint.
-      if (!authLoading && !session) setLocked(false);
+      if (!authLoading && !session) {
+        setLocked(false);
+        try {
+          localStorage.removeItem(LOCK_KEY);
+        } catch (e) {
+        }
+      }
     }, [authLoading, session]);
     const [entries, setEntries] = useLS("cf_entries", []);
     const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
@@ -9935,7 +9987,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             occ.filter((ev) => ev.type === "expense").forEach((ev) => {
               const key = `${yc.year}:${ev.month}`;
               const month = __spreadValues({}, next[key] || {});
-              month[ev.category] = Math.round(((month[ev.category] || 0) + ev.amount) * 100) / 100;
+              month[ev.category] = roundMoney(((month[ev.category] || 0) + ev.amount));
               next[key] = month;
             });
           });
@@ -9963,6 +10015,61 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     };
     const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
+    // Rebuilt fresh every render (cheap — plain values, no computation), so
+    // buildPayload/applyPayload can never close over a stale field.
+    const houseValues = {
+      entries,
+      overridesByYr,
+      yearConfigs,
+      categories,
+      categoryColors,
+      activeYear,
+      alertThreshold: alertThresh,
+      darkMode,
+      forecastHorizon,
+      colOrder,
+      regFilter,
+      regFilterCats,
+      regFilterScheds,
+      regFilterStatus,
+      aiApiKey,
+      budgetTargets,
+      templates,
+      completed,
+      goals,
+      dashHidden,
+      dashOrder
+    };
+    // Every setter here is permanently stable (useLS's setter never changes
+    // identity), so this only needs to be built once — memoizing it keeps
+    // applyPayload/loadData stable too, matching the pre-consolidation
+    // behavior where the household-load effect only re-ran when `household`
+    // itself changed, not on every render. Keys match houseValues' bare field
+    // names (not the setXxx names) — useHouseholdData indexes both objects
+    // by the same HOUSEHOLD_SYNCED_FIELDS key.
+    const houseSetters = useMemo(() => ({
+      entries: setEntries,
+      overridesByYr: setOverridesByYr,
+      yearConfigs: setYearConfigs,
+      categories: setCategories,
+      categoryColors: setCategoryColors,
+      activeYear: setActiveYear,
+      alertThreshold: setAlertThresh,
+      darkMode: setDarkMode,
+      forecastHorizon: setForecastHorizon,
+      colOrder: setColOrder,
+      regFilter: setRegFilter,
+      regFilterCats: setRegFilterCats,
+      regFilterScheds: setRegFilterScheds,
+      regFilterStatus: setRegFilterStatus,
+      aiApiKey: setAiApiKey,
+      budgetTargets: setBudgetTargets,
+      templates: setTemplates,
+      completed: setCompleted,
+      goals: setGoals,
+      dashHidden: setDashHidden,
+      dashOrder: setDashOrder
+    }), []);
     const {
       status: houseStatus,
       msg: houseMsg,
@@ -9970,48 +10077,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       loadData: houseLoad
     } = useHouseholdData({
       household,
-      entries,
-      setEntries,
-      overridesByYr,
-      setOverridesByYr,
-      yearConfigs,
-      setYearConfigs,
-      categories,
-      setCategories,
-      categoryColors,
-      setCategoryColors,
-      activeYear,
-      setActiveYear,
-      alertThreshold: alertThresh,
-      setAlertThreshold: setAlertThresh,
-      darkMode,
-      setDarkMode,
-      forecastHorizon,
-      setForecastHorizon,
-      colOrder,
-      setColOrder,
-      regFilter,
-      setRegFilter,
-      regFilterCats,
-      setRegFilterCats,
-      regFilterScheds,
-      setRegFilterScheds,
-      regFilterStatus,
-      setRegFilterStatus,
-      aiApiKey,
-      setAiApiKey,
-      budgetTargets,
-      setBudgetTargets,
-      templates,
-      setTemplates,
-      completed,
-      setCompleted,
-      goals,
-      setGoals,
-      dashHidden,
-      setDashHidden,
-      dashOrder,
-      setDashOrder
+      values: houseValues,
+      setters: houseSetters
     });
     useEffect(() => {
       houseLoadRef.current = houseLoad;
@@ -10284,7 +10351,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut }));
     }
     if (locked) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => setLocked(false), onSignOut: logout }));
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => {
+        try {
+          localStorage.setItem(LOCK_KEY, String(Date.now()));
+        } catch (e) {
+        }
+        setLocked(false);
+      }, onSignOut: logout }));
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
