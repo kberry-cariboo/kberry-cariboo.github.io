@@ -209,6 +209,9 @@
     } },
     { key: "aiApiKey", apply: (v, set) => {
       if (v && set) set(v);
+    } },
+    { key: "debtData", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
     } }
   ];
   function useHouseholdData({ household, values, setters }) {
@@ -429,7 +432,8 @@
       values.goals,
       values.dashHidden,
       values.dashOrder,
-      values.aiApiKey
+      values.aiApiKey,
+      values.debtData
     ]);
     return { status, msg, saveData, loadData };
   }

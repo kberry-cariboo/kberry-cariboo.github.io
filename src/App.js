@@ -286,11 +286,14 @@
       const had = !!prevSearchRef.current;
       prevSearchRef.current = globalSearch;
       if (!globalSearch || had) return;
+      // Plan filters its own goals/debts in place — don't yank the user off
+      // it the moment they start typing.
+      if (tab === "plan") return;
       // Starting a search shows results in the Budget monthly view (which
       // jumps to the most recent matching month), not the Entries register.
       setTab("budget");
       setBudgetSub("monthly");
-    }, [globalSearch]);
+    }, [globalSearch, tab]);
     const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
@@ -414,7 +417,8 @@
       completed,
       goals,
       dashHidden,
-      dashOrder
+      dashOrder,
+      debtData
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -444,7 +448,8 @@
       completed: setCompleted,
       goals: setGoals,
       dashHidden: setDashHidden,
-      dashOrder: setDashOrder
+      dashOrder: setDashOrder,
+      debtData: setDebtData
     }), []);
     const {
       status: houseStatus,
@@ -1062,7 +1067,8 @@
         alertThreshold: alertThresh,
         activeYear,
         debtData,
-        setDebtData
+        setDebtData,
+        globalSearch
       }
     ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
@@ -1087,6 +1093,8 @@
         setCompleted,
         goals,
         setGoals,
+        debtData,
+        setDebtData,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,
