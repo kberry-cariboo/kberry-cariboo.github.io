@@ -1,4 +1,4 @@
-  function BudgetView({ flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -60,7 +60,8 @@
       if (editingEntry) {
         let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
         delete finalData._editMonth;
-        setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
+        if (saveEntryEdit) saveEntryEdit(editingEntry.id, finalData);
+        else setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
       setShowEntryForm(false);
