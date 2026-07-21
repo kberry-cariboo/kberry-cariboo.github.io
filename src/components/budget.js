@@ -262,12 +262,13 @@
             onClick: (e) => {
               e.stopPropagation();
               haptic();
-              toggleSel(ev.id);
+              if (isDone) toggleComplete(ev.id);
+              else toggleSel(ev.id);
             },
             role: "checkbox",
-            "aria-checked": selIds.has(ev.id),
-            "aria-label": selIds.has(ev.id) ? "Deselect row" : "Select row",
-            title: isDone ? "Paid \u2014 select to change" : "Select to mark paid",
+            "aria-checked": isDone || selIds.has(ev.id),
+            "aria-label": isDone ? "Mark unpaid" : selIds.has(ev.id) ? "Deselect row" : "Select row",
+            title: isDone ? "Paid \u2014 click to mark unpaid" : "Select to mark paid",
             className: "cf-checkbtn budget-row-checkbtn",
             style: {
               border: isDone || selIds.has(ev.id) ? "none" : "1.5px solid var(--border)",
@@ -353,12 +354,13 @@
             onClick: (e) => {
               e.stopPropagation();
               haptic();
-              toggleSel(ev.id);
+              if (isDone) toggleComplete(ev.id);
+              else toggleSel(ev.id);
             },
             role: "checkbox",
-            "aria-checked": isSel,
-            "aria-label": isSel ? "Deselect row" : "Select row",
-            title: isDone ? "Paid — select to change" : "Select to mark paid",
+            "aria-checked": isDone || isSel,
+            "aria-label": isDone ? "Mark unpaid" : isSel ? "Deselect row" : "Select row",
+            title: isDone ? "Paid — click to mark unpaid" : "Select to mark paid",
             className: "cf-checkbtn budget-card-checkbtn",
             style: {
               border: isDone || isSel ? "none" : "1.5px solid var(--border)",
@@ -530,15 +532,6 @@
         }
       )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
         const allIds = [...period1, ...period2].map((e) => e.id);
-        const allDone = allIds.length > 0 && allIds.every((id) => completed[id]);
-        const someDone = allIds.some((id) => completed[id]);
-        const toggleAll = () => {
-          if (allDone) {
-            allIds.forEach((id) => completed[id] && toggleComplete(id));
-          } else {
-            allIds.forEach((id) => !completed[id] && toggleComplete(id));
-          }
-        };
         return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "budget-col-checkbox budget-th-checkbox", "aria-label": "Select all rows" }, (() => {
           const allSel = allIds.length > 0 && allIds.every((id) => selIds.has(id));
           const someSel = allIds.some((id) => selIds.has(id));
