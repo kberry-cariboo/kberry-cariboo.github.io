@@ -7828,26 +7828,58 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   }
   // One-time (non-repeating) entries exist only in the year of their startDate,
   // so carrying them into another year means cloning them onto the same
-  // month/day. Returns only clones that don't already exist in the target year
-  // (matched on desc + type + category + amount + month/day), so re-running is
-  // safe and never duplicates or overwrites anything in the target year.
-  function copySingleEntriesToYear(entries, fromYear, toYear) {
-    const keyOf = (e, monthDay) => [e.desc, e.type, e.category, e.amount, monthDay].join("|");
+  // month/day. Any per-occurrence edit made in the source year (moved date,
+  // changed amount/description/notes) is baked into the clone so the copy
+  // reflects what the user actually sees, not the original saved values.
+  // Returns only clones that don't already exist in the target year (matched
+  // on desc + type + category + amount + month/day), so re-running is safe and
+  // never duplicates or overwrites anything in the target year.
+  function copySingleEntriesToYear(entries, fromYear, toYear, fromOverrides = {}) {
     const existing = new Set(
-      entries.filter((e) => !e.repeats && (e.startDate || "").startsWith(`${toYear}-`)).map((e) => keyOf(e, e.startDate.slice(5)))
+      entries.filter((e) => !e.repeats && (e.startDate || "").startsWith(`${toYear}-`)).map((e) => [e.desc, e.type, e.category, e.amount, e.startDate.slice(5)].join("|"))
     );
     const clones = [];
     let idBase = Date.now();
     entries.forEach((e) => {
       if (e.repeats || !(e.startDate || "").startsWith(`${fromYear}-`)) return;
       const [, mm, dd] = e.startDate.split("-").map(Number);
-      const day = Math.min(dd, daysInMonth(mm - 1, toYear));
-      const monthDay = `${String(mm).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      if (existing.has(keyOf(e, monthDay))) return;
-      existing.add(keyOf(e, monthDay));
-      clones.push(__spreadProps(__spreadValues({}, e), { id: idBase++, startDate: `${toYear}-${monthDay}` }));
+      const ov = fromOverrides[`${e.id}-${fromYear}-${mm - 1}-${dd}`] || {};
+      const effDesc = ov.desc !== void 0 ? ov.desc : e.desc;
+      const effAmount = ov.amount !== void 0 ? ov.amount : e.amount;
+      const effNotes = ov.notes !== void 0 ? ov.notes : e.notes || "";
+      const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : mm - 1;
+      const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : dd), daysInMonth(effM, toYear));
+      const monthDay = `${String(effM + 1).padStart(2, "0")}-${String(effD).padStart(2, "0")}`;
+      const key = [effDesc, e.type, e.category, effAmount, monthDay].join("|");
+      if (existing.has(key)) return;
+      existing.add(key);
+      clones.push(__spreadProps(__spreadValues({}, e), { id: idBase++, desc: effDesc, amount: effAmount, notes: effNotes, startDate: `${toYear}-${monthDay}` }));
     });
     return clones;
+  }
+  // Per-occurrence edits (overridesByYr) are keyed by entry + calendar date,
+  // so a modified recurring occurrence silently reverts to its base values in
+  // a newly added year. This maps the source year's overrides onto target-year
+  // occurrences that fall on the same month/day (monthly, semi-monthly and
+  // yearly recurrences; daily/weekly occurrences land on different dates so
+  // nothing matches and they're skipped). Only user-facing edit fields are
+  // carried — receipts and edit history stay in their own year — and existing
+  // target-year overrides are never touched.
+  function copyOccurrenceOverridesToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}) {
+    const valid = new Set(expandEntries(entries, toYear, {}).map((ev) => ev.id));
+    const added = {};
+    Object.keys(fromOvs || {}).forEach((key) => {
+      const m = key.match(new RegExp(`^(.+)-${fromYear}-(\\d+)-(\\d+)$`));
+      if (!m) return;
+      const newKey = `${m[1]}-${toYear}-${m[2]}-${m[3]}`;
+      if (!valid.has(newKey) || existingToOvs[newKey]) return;
+      const copy = {};
+      ["desc", "amount", "notes", "month", "day"].forEach((f) => {
+        if (fromOvs[key][f] !== void 0) copy[f] = fromOvs[key][f];
+      });
+      if (Object.keys(copy).length) added[newKey] = copy;
+    });
+    return added;
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
@@ -7981,13 +8013,18 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         return next;
       });
-      const singleClones = copySingleEntriesToYear(entries, prevYear, y);
+      const prevOvs = overridesByYr[prevYear] || {};
+      const singleClones = copySingleEntriesToYear(entries, prevYear, y, prevOvs);
       if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+      const ovAdds = copyOccurrenceOverridesToYear(entries, prevOvs, prevYear, y, overridesByYr[y] || {});
+      const ovCount = Object.keys(ovAdds).length;
+      if (ovCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [y]: __spreadValues(__spreadValues({}, prev[y] || {}), ovAdds) }));
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       const parts = [`Year ${y} added — ${prevYear} is untouched.`];
       if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
       if (singleClones.length > 0) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied from ${prevYear}.`);
+      if (ovCount > 0) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over.`);
       parts.push(`Recurring entries without an end date carry forward automatically.`);
       setYearMsg(parts.join(" "));
     };
@@ -8178,7 +8215,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const hasNext = yearConfigs.some((y) => y.year === nextY);
         const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
         const hasSingles = entries.some((e) => !e.repeats && (e.startDate || "").startsWith(yc.year + "-"));
-        return hasNext && (hasTargets || hasSingles) && /* @__PURE__ */ React.createElement(
+        const hasOvs = Object.keys(overridesByYr[yc.year] || {}).length > 0;
+        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
@@ -8203,11 +8241,16 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
                 if (changed) nx[nk] = merged;
               }
               if (addedTargets) setBudgetTargets(nx);
-              const singleClones = copySingleEntriesToYear(entries, yc.year, nextY);
+              const srcOvs = overridesByYr[yc.year] || {};
+              const singleClones = copySingleEntriesToYear(entries, yc.year, nextY, srcOvs);
               if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+              const ovAdds = copyOccurrenceOverridesToYear(entries, srcOvs, yc.year, nextY, overridesByYr[nextY] || {});
+              const ovCount = Object.keys(ovAdds).length;
+              if (ovCount) setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), { [nextY]: __spreadValues(__spreadValues({}, prev[nextY] || {}), ovAdds) }));
               const parts = [];
               if (addedTargets) parts.push(`${addedTargets} budget target${addedTargets === 1 ? "" : "s"} added`);
               if (singleClones.length) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied`);
+              if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
               setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Existing ${nextY} values were left unchanged.` : `\u2705 ${nextY} already has everything from ${yc.year} \u2014 nothing to add.`);
             },
             title: `Copy ${yc.year} budget targets and one-time entries to ${nextY} \u2014 adds anything missing without overwriting ${nextY}`,
