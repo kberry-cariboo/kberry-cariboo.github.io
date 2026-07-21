@@ -7826,6 +7826,29 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       color: "var(--amber)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev, i) => renderAlertRow(ev, i))));
   }
+  // One-time (non-repeating) entries exist only in the year of their startDate,
+  // so carrying them into another year means cloning them onto the same
+  // month/day. Returns only clones that don't already exist in the target year
+  // (matched on desc + type + category + amount + month/day), so re-running is
+  // safe and never duplicates or overwrites anything in the target year.
+  function copySingleEntriesToYear(entries, fromYear, toYear) {
+    const keyOf = (e, monthDay) => [e.desc, e.type, e.category, e.amount, monthDay].join("|");
+    const existing = new Set(
+      entries.filter((e) => !e.repeats && (e.startDate || "").startsWith(`${toYear}-`)).map((e) => keyOf(e, e.startDate.slice(5)))
+    );
+    const clones = [];
+    let idBase = Date.now();
+    entries.forEach((e) => {
+      if (e.repeats || !(e.startDate || "").startsWith(`${fromYear}-`)) return;
+      const [, mm, dd] = e.startDate.split("-").map(Number);
+      const day = Math.min(dd, daysInMonth(mm - 1, toYear));
+      const monthDay = `${String(mm).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      if (existing.has(keyOf(e, monthDay))) return;
+      existing.add(keyOf(e, monthDay));
+      clones.push(__spreadProps(__spreadValues({}, e), { id: idBase++, startDate: `${toYear}-${monthDay}` }));
+    });
+    return clones;
+  }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
@@ -7939,7 +7962,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
       // Adding a year never touches existing years' data. Ongoing recurring
       // entries flow into the new year automatically via expandEntries; the
-      // only thing seeded is a copy of the previous year's budget targets.
+      // new year is seeded with a copy of the previous year's budget targets
+      // and clones of its one-time entries (shifted to the same month/day).
       // (Entries used to have their end dates cleared here, which retroactively
       // resurrected ended entries in earlier years — that was a data bug.)
       const prevYear = y - 1;
@@ -7956,10 +7980,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         return next;
       });
+      const singleClones = copySingleEntriesToYear(entries, prevYear, y);
+      if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       const parts = [`Year ${y} added — ${prevYear} is untouched.`];
       if (copiedTargets > 0) parts.push(`${copiedTargets} monthly budget targets copied from ${prevYear}.`);
+      if (singleClones.length > 0) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied from ${prevYear}.`);
       parts.push(`Recurring entries without an end date carry forward automatically.`);
       setYearMsg(parts.join(" "));
     };
@@ -8149,26 +8176,40 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const nextY = yc.year + 1;
         const hasNext = yearConfigs.some((y) => y.year === nextY);
         const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
-        return hasNext && hasTargets && /* @__PURE__ */ React.createElement(
+        const hasSingles = entries.some((e) => !e.repeats && (e.startDate || "").startsWith(yc.year + "-"));
+        return hasNext && (hasTargets || hasSingles) && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
-              let n = 0;
-              setBudgetTargets((prev) => {
-                const nx = __spreadValues({}, prev);
-                for (let m = 0; m < 12; m++) {
-                  const pk = `${yc.year}:${m}`;
-                  const nk = `${nextY}:${m}`;
-                  if (prev[pk] && Object.keys(prev[pk]).length) {
-                    nx[nk] = __spreadValues({}, prev[pk]);
-                    n++;
+              // Compare-and-sync rather than blind copy: anything added to this
+              // year after the next year was created gets carried forward, but
+              // values already set on the next year are never overwritten.
+              let addedTargets = 0;
+              const nx = __spreadValues({}, budgetTargets);
+              for (let m = 0; m < 12; m++) {
+                const pk = `${yc.year}:${m}`;
+                const nk = `${nextY}:${m}`;
+                if (!budgetTargets[pk] || !Object.keys(budgetTargets[pk]).length) continue;
+                const merged = __spreadValues({}, budgetTargets[nk] || {});
+                let changed = false;
+                Object.keys(budgetTargets[pk]).forEach((cat) => {
+                  if (merged[cat] === void 0) {
+                    merged[cat] = budgetTargets[pk][cat];
+                    addedTargets++;
+                    changed = true;
                   }
-                }
-                return nx;
-              });
-              setYearMsg(`\u2705 Copied monthly targets from ${yc.year} \u2192 ${nextY}.`);
+                });
+                if (changed) nx[nk] = merged;
+              }
+              if (addedTargets) setBudgetTargets(nx);
+              const singleClones = copySingleEntriesToYear(entries, yc.year, nextY);
+              if (singleClones.length) setEntries((prev) => [...prev, ...singleClones]);
+              const parts = [];
+              if (addedTargets) parts.push(`${addedTargets} budget target${addedTargets === 1 ? "" : "s"} added`);
+              if (singleClones.length) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied`);
+              setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Existing ${nextY} values were left unchanged.` : `\u2705 ${nextY} already has everything from ${yc.year} \u2014 nothing to add.`);
             },
-            title: `Copy ${yc.year} budget targets to ${nextY}`,
+            title: `Copy ${yc.year} budget targets and one-time entries to ${nextY} \u2014 adds anything missing without overwriting ${nextY}`,
             className: "copy-year-btn"
           },
           "Copy \u2192",
