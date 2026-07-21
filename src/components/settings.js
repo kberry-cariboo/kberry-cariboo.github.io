@@ -105,6 +105,7 @@
       setMemberBusy(false);
     };
     const [tgtResetMsg, setTgtResetMsg] = useState("");
+    const [confirmDelYear, setConfirmDelYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
@@ -420,8 +421,26 @@
           "Copy \u2192",
           nextY
         );
-      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => delYear(yc.year), className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        if (yearConfigs.length <= 1) {
+          setYearMsg("Cannot delete the only year.");
+          return;
+        }
+        setConfirmDelYear(yc.year);
+      }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: `Remove budget year ${confirmDelYear}?`,
+        message: `Budget year ${confirmDelYear} will be removed from the app, along with any per-occurrence edits made in ${confirmDelYear}. Entries and budget targets are not deleted.`,
+        confirmLabel: "Remove Year",
+        onConfirm: () => {
+          delYear(confirmDelYear);
+          setConfirmDelYear(null);
+        },
+        onCancel: () => setConfirmDelYear(null)
+      }
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
