@@ -776,7 +776,7 @@
               if (e.target === e.currentTarget) setShowBvaModal(false);
             }
           },
-          /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category"), /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",
             {
               autoFocus: true,
@@ -786,7 +786,7 @@
             },
             /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"),
             availCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-          )) : /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Category: ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $"), /* @__PURE__ */ React.createElement(
+          )) : /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Category: ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "input",
             {
               autoFocus: !!bvaModalData.editCat,
