@@ -7843,51 +7843,89 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   // unpaired source entries are cloned. Returns { clones, updates } where
   // updates is [{ id, startDate, amount, notes }] to apply to existing
   // entries. Re-running converges: a second pass changes nothing.
+  // Pairing a source entry with its copy uses provenance first: every clone is
+  // stamped with copiedFrom = the source entry's id, making later syncs exact.
+  // Copies that predate the stamp fall back to matching by desc + type +
+  // category + month/day (the source's effective or original date, so both
+  // accurate and stale legacy copies are found) — and get stamped on the way,
+  // so a copy the user renamed or moved to an unrelated date simply stops
+  // being treated as a copy. A target-year entry that pairs with nothing —
+  // e.g. one the user added themselves — is never touched or re-dated.
+  //
+  // Updates are per-field: a field is only changed when it still holds the
+  // source's original value (a stale copy), never when the user has set it to
+  // something of their own — so editing a copy through the entry form keeps
+  // that edit, and a copy with its own occurrence edit is skipped entirely.
   function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}) {
-    const effOf = (e, yr, ovs) => {
-      const [, mm, dd] = e.startDate.split("-").map(Number);
-      const ov = ovs[`${e.id}-${yr}-${mm - 1}-${dd}`] || {};
-      const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : mm - 1;
-      const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : dd), daysInMonth(effM, toYear));
-      return {
-        desc: ov.desc !== void 0 ? ov.desc : e.desc,
-        amount: ov.amount !== void 0 ? ov.amount : e.amount,
-        notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
-        monthDay: `${String(effM + 1).padStart(2, "0")}-${String(effD).padStart(2, "0")}`,
-        edited: Object.keys(ov).length > 0
-      };
-    };
-    const groups = {};
+    const srcs = [];
+    const tgts = [];
     entries.forEach((e) => {
       if (e.repeats || !e.startDate) return;
-      const isSrc = e.startDate.startsWith(`${fromYear}-`);
-      const isTgt = e.startDate.startsWith(`${toYear}-`);
-      if (!isSrc && !isTgt) return;
-      const eff = effOf(e, isSrc ? fromYear : toYear, isSrc ? fromOvs : toOvs);
-      const key = [isSrc ? eff.desc : e.desc, e.type, e.category].join("|");
-      const g = groups[key] = groups[key] || { src: [], tgt: [] };
-      g[isSrc ? "src" : "tgt"].push({ e, eff });
+      if (e.startDate.startsWith(`${fromYear}-`)) {
+        const [, mm, dd] = e.startDate.split("-").map(Number);
+        const ov = fromOvs[`${e.id}-${fromYear}-${mm - 1}-${dd}`] || {};
+        const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : mm - 1;
+        const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : dd), daysInMonth(effM, toYear));
+        srcs.push({
+          e,
+          desc: ov.desc !== void 0 ? ov.desc : e.desc,
+          amount: ov.amount !== void 0 ? ov.amount : e.amount,
+          notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
+          effMD: `${String(effM + 1).padStart(2, "0")}-${String(effD).padStart(2, "0")}`,
+          rawMD: e.startDate.slice(5)
+        });
+      } else if (e.startDate.startsWith(`${toYear}-`)) {
+        const [, tm, td] = e.startDate.split("-").map(Number);
+        tgts.push({ e, edited: !!toOvs[`${e.id}-${toYear}-${tm - 1}-${td}`] });
+      }
+    });
+    const claimed = new Set();
+    const pairOf = {};
+    const tgtByProv = {};
+    tgts.forEach((t) => {
+      if (t.e.copiedFrom !== void 0 && tgtByProv[t.e.copiedFrom] === void 0) tgtByProv[t.e.copiedFrom] = t;
+    });
+    srcs.forEach((s) => {
+      const t = tgtByProv[s.e.id];
+      if (t && !claimed.has(t.e.id)) {
+        claimed.add(t.e.id);
+        pairOf[s.e.id] = t;
+      }
+    });
+    // Legacy fallback: unstamped copies matched by identity + date (effective
+    // date first so accurate copies win, then the raw date to catch stale ones).
+    ["effMD", "rawMD"].forEach((dateField) => {
+      srcs.forEach((s) => {
+        if (pairOf[s.e.id]) return;
+        const t = tgts.find(
+          (t2) => !claimed.has(t2.e.id) && t2.e.copiedFrom === void 0 && t2.e.type === s.e.type && t2.e.category === s.e.category && (t2.e.desc === s.desc || t2.e.desc === s.e.desc) && t2.e.startDate.slice(5) === s[dateField]
+        );
+        if (t) {
+          claimed.add(t.e.id);
+          pairOf[s.e.id] = t;
+        }
+      });
     });
     const clones = [];
     const updates = [];
     let idBase = Date.now();
-    Object.keys(groups).forEach((key) => {
-      const { src, tgt } = groups[key];
-      src.sort((a, b) => a.eff.monthDay < b.eff.monthDay ? -1 : 1);
-      tgt.sort((a, b) => a.e.startDate < b.e.startDate ? -1 : 1);
-      src.forEach((s, i) => {
-        const t = tgt[i];
-        const startDate = `${toYear}-${s.eff.monthDay}`;
-        if (!t) {
-          clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.eff.desc, amount: s.eff.amount, notes: s.eff.notes, startDate }));
-          return;
-        }
-        // The user edited this copy in the target year — their version wins.
-        if (t.eff.edited) return;
-        if (t.e.startDate !== startDate || t.e.amount !== s.eff.amount || (t.e.notes || "") !== s.eff.notes) {
-          updates.push({ id: t.e.id, startDate, amount: s.eff.amount, notes: s.eff.notes });
-        }
+    srcs.forEach((s) => {
+      const t = pairOf[s.e.id];
+      if (!t) {
+        clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        return;
+      }
+      // The user edited this copy's occurrence in the target year — theirs wins.
+      if (t.edited) return;
+      const desired = { startDate: `${toYear}-${s.effMD}`, amount: s.amount, notes: s.notes };
+      const original = { startDate: `${toYear}-${s.rawMD}`, amount: s.e.amount, notes: s.e.notes || "" };
+      const patch = {};
+      ["startDate", "amount", "notes"].forEach((f) => {
+        const cur = f === "notes" ? t.e.notes || "" : t.e[f];
+        if (cur !== desired[f] && cur === original[f]) patch[f] = desired[f];
       });
+      if (t.e.copiedFrom !== s.e.id) patch.copiedFrom = s.e.id;
+      if (Object.keys(patch).length) updates.push({ id: t.e.id, patch });
     });
     return { clones, updates };
   }
@@ -7899,6 +7937,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   // nothing matches and they're skipped). Only user-facing edit fields are
   // carried — receipts and edit history stay in their own year — and existing
   // target-year overrides are never touched.
+  // Overrides the user creates through the occurrence editor are stamped with
+  // _savedAt; overrides written by this sync are not. That stamp is the
+  // ownership marker: user-stamped target overrides are never touched, while
+  // sync-written ones may be refreshed on a later run so source-year edits
+  // made after the target year was created still flow forward.
   function copyOccurrenceOverridesToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}) {
     const valid = new Set(expandEntries(entries, toYear, {}).map((ev) => ev.id));
     const added = {};
@@ -7906,12 +7949,18 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const m = key.match(new RegExp(`^(.+)-${fromYear}-(\\d+)-(\\d+)$`));
       if (!m) return;
       const newKey = `${m[1]}-${toYear}-${m[2]}-${m[3]}`;
-      if (!valid.has(newKey) || existingToOvs[newKey]) return;
+      if (!valid.has(newKey)) return;
+      const existing = existingToOvs[newKey];
+      if (existing && existing._savedAt !== void 0) return;
       const copy = {};
+      let changed = false;
       ["desc", "amount", "notes", "month", "day"].forEach((f) => {
-        if (fromOvs[key][f] !== void 0) copy[f] = fromOvs[key][f];
+        if (fromOvs[key][f] === void 0) return;
+        copy[f] = fromOvs[key][f];
+        if (!existing || existing[f] !== copy[f]) changed = true;
       });
-      if (Object.keys(copy).length) added[newKey] = copy;
+      if (!Object.keys(copy).length || !changed) return;
+      added[newKey] = existing ? __spreadValues(__spreadValues({}, existing), copy) : copy;
     });
     return added;
   }
@@ -7924,8 +7973,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   // come purely from the recurrence pattern. If the target year has more
   // occurrences (e.g. 27 biweekly paydays vs 26), the extras repeat the final
   // source amount. Overrides are only written where the mirrored amount
-  // differs from what the entry would produce anyway, and occurrences that
-  // already have an override (existing or just-copied) are not touched.
+  // differs from what the occurrence would show anyway; user-made overrides
+  // in the target year (stamped _savedAt) are never touched.
   function mirrorRecurringAmountsToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}, plannedAdds = {}) {
     const recurring = entries.filter((e) => e.repeats);
     if (!recurring.length) return {};
@@ -7940,9 +7989,17 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const i = idxByEntry[ev.entryId] = (idxByEntry[ev.entryId] || 0) + 1;
       if (!src || !src.length) return;
       const srcAmt = src[Math.min(i - 1, src.length - 1)];
-      if (srcAmt === ev.amount) return;
-      if (existingToOvs[ev.id] || plannedAdds[ev.id]) return;
-      added[ev.id] = { amount: srcAmt };
+      if (plannedAdds[ev.id]) return;
+      const existing = existingToOvs[ev.id];
+      if (existing) {
+        // _savedAt marks a user-made override — protected. Sync-written ones
+        // may be refreshed so later source-year edits still mirror forward.
+        if (existing._savedAt !== void 0 || existing.amount === srcAmt) return;
+        added[ev.id] = __spreadProps(__spreadValues({}, existing), { amount: srcAmt });
+      } else {
+        if (srcAmt === ev.amount) return;
+        added[ev.id] = { amount: srcAmt };
+      }
     });
     return added;
   }
@@ -8083,7 +8140,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       if (singleClones.length || singleUpdates.length) setEntries((prev) => [
         ...prev.map((e) => {
           const u = singleUpdates.find((x) => x.id === e.id);
-          return u ? __spreadProps(__spreadValues({}, e), { startDate: u.startDate, amount: u.amount, notes: u.notes }) : e;
+          return u ? __spreadValues(__spreadValues({}, e), u.patch) : e;
         }),
         ...singleClones
       ]);
@@ -8320,7 +8377,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               if (singleClones.length || singleUpdates.length) setEntries((prev) => [
                 ...prev.map((e) => {
                   const u = singleUpdates.find((x) => x.id === e.id);
-                  return u ? __spreadProps(__spreadValues({}, e), { startDate: u.startDate, amount: u.amount, notes: u.notes }) : e;
+                  return u ? __spreadValues(__spreadValues({}, e), u.patch) : e;
                 }),
                 ...singleClones
               ]);
@@ -8332,7 +8389,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               const parts = [];
               if (addedTargets) parts.push(`${addedTargets} budget target${addedTargets === 1 ? "" : "s"} added`);
               if (singleClones.length) parts.push(`${singleClones.length} one-time entr${singleClones.length === 1 ? "y" : "ies"} copied`);
-              if (singleUpdates.length) parts.push(`${singleUpdates.length} one-time entr${singleUpdates.length === 1 ? "y" : "ies"} updated to match ${yc.year}`);
+              const visibleUpdates = singleUpdates.filter((u) => u.patch.startDate !== void 0 || u.patch.amount !== void 0 || u.patch.notes !== void 0).length;
+              if (visibleUpdates) parts.push(`${visibleUpdates} one-time entr${visibleUpdates === 1 ? "y" : "ies"} updated to match ${yc.year}`);
               if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
               if (amtCount) parts.push(`${yc.year}'s amount pattern mirrored onto ${amtCount} occurrence${amtCount === 1 ? "" : "s"}`);
               setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Anything you edited in ${nextY} was left alone.` : `\u2705 ${nextY} already matches ${yc.year} \u2014 nothing to change.`);
