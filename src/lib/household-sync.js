@@ -286,6 +286,14 @@
     }), [entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, activeYear, alertThreshold, darkMode, forecastHorizon, colOrder, regFilter, regFilterCats, regFilterScheds, regFilterStatus, goals, dashHidden, dashOrder, aiApiKey]);
     const loadData = useCallback(async () => {
       if (!supabaseClient || !household) return false;
+      // Flush any pending debounced save first — otherwise a pull-to-refresh
+      // or "Reload from Cloud" inside the 2s autosave window silently
+      // overwrites the just-made local edit with the server copy.
+      if (saveTimer.current && initialized.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        await saveDataRef.current(true);
+      }
       setStatus("syncing");
       setMsg("Loading…");
       try {
@@ -359,6 +367,12 @@
         return false;
       }
     }, [household, buildPayload, syncReceipts]);
+    // loadData is declared before saveData, so it reaches the latest saveData
+    // through a ref (also keeps loadData's identity stable across payload edits).
+    const saveDataRef = useRef(saveData);
+    useEffect(() => {
+      saveDataRef.current = saveData;
+    }, [saveData]);
     useEffect(() => {
       if (!household) {
         lastLoadedHousehold.current = null;

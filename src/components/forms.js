@@ -217,6 +217,7 @@
         recurDays: f.recurDays || [],
         notes: f.notes
       });
+      toast(`Template "${f.desc || "Untitled"}" saved${templates.some((t) => t.desc === f.desc) ? " (replaced existing)" : ""}`);
     }, className: "ef-save-template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
   }
   function CSVImporter({ categories, onImport, onClose }) {
@@ -451,9 +452,19 @@
       };
     }, [onClose]);
     const isTouch = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
-    const menuW = 180, menuH = items.length * 38 + 8;
-    const ax = Math.min(x, window.innerWidth - menuW - 8);
-    const ay = Math.min(y, window.innerHeight - menuH - 8);
+    // Position from the menu's real rendered size, not a guessed row height —
+    // clamped after first paint so the last items can't land off-screen.
+    const [pos, setPos] = useState({ x, y });
+    useLayoutEffect(() => {
+      const el = menuRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPos({
+        x: Math.max(8, Math.min(x, window.innerWidth - r.width - 8)),
+        y: Math.max(8, Math.min(y, window.innerHeight - r.height - 8))
+      });
+    }, [x, y, items.length]);
+    const ax = pos.x, ay = pos.y;
     if (isTouch) {
       return /* @__PURE__ */ React.createElement(
         "div",
@@ -534,6 +545,7 @@
       "button",
       {
         onClick: () => setOpen((v) => !v),
+        "aria-expanded": open,
         className: "filter-pill-btn",
         style: {
           border: "1.5px solid " + (allSel ? "var(--border)" : "var(--primary)"),
@@ -547,11 +559,9 @@
     ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" }, /* @__PURE__ */ React.createElement(
       "label",
       {
-        className: "filter-pill-all-row",
-        onClick: () => onChange([])
+        className: "filter-pill-all-row"
       },
-      /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => {
-      }, className: "filter-pill-checkbox" }),
+      /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => onChange([]), className: "filter-pill-checkbox" }),
       "All ",
       label,
       "s"
@@ -564,11 +574,9 @@
           className: "filter-pill-option-row",
           style: {
             background: sel ? "rgba(28,43,58,0.05)" : "transparent"
-          },
-          onClick: () => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value])
+          }
         },
-        /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: sel, onChange: () => {
-        }, className: "filter-pill-checkbox" }),
+        /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: sel, onChange: () => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value]), className: "filter-pill-checkbox" }),
         o.label
       );
     })));

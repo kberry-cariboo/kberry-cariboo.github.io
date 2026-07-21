@@ -4,12 +4,12 @@
     const idx = sorted.indexOf(category);
     return CAT_PALETTE[(idx < 0 ? 0 : idx) % CAT_PALETTE.length];
   }
-  const CatChip = ({ category, categories, categoryColors, style = {} }) => {
+  const CatChip = ({ category, categories, categoryColors, style = {}, className = "" }) => {
     const ctxCats = useContext(CategoriesContext);
     const cats = categories || ctxCats.categories;
     const catColors = categoryColors || ctxCats.categoryColors;
     const color = getCatColor(category, cats, catColors);
-    return /* @__PURE__ */ React.createElement("span", { className: "cat-chip", style: __spreadValues({
+    return /* @__PURE__ */ React.createElement("span", { className: ("cat-chip " + className).trim(), style: __spreadValues({
       background: color + "22",
       color: `color-mix(in srgb, ${color} var(--chipKeep, 100%), #fff)`,
       border: `1px solid ${color}44`
@@ -44,6 +44,19 @@
         setMenu(false);
       }
     }, [open]);
+    // Esc closes the quick-add panel/menu — same contract as the modal system.
+    useEffect(() => {
+      if (!form && !menu) return;
+      const h = (e) => {
+        if (e.key === "Escape") {
+          setMenu(false);
+          setForm(false);
+          setOpen(false);
+        }
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [form, menu]);
     useEffect(() => {
       let idleTimer = null;
       const onScroll = () => {
@@ -151,7 +164,8 @@
     ))));
   }
   const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
-  const SectionTitle = ({ children, action }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
+  // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
+  const SectionTitle = ({ children, action, className }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
   const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -304,10 +318,15 @@
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card" }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    // Backdrop click dismisses (matching every other overlay) and initial
+    // focus lands on Cancel, never the destructive action — Enter must not
+    // delete by default.
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
+      if (e.target === e.currentTarget) onCancel();
+    } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
-    }, className: "cf-btn cf-btn--danger-solid", autoFocus: true }, confirmLabel))));
+    }, className: "cf-btn cf-btn--danger-solid" }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",

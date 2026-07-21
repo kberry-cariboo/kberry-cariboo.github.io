@@ -106,7 +106,10 @@
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
+    // Restart the countdown when a further delete lands while the toast is
+    // still up — the newest deletion gets the full undo window.
     useEffect(() => {
+      setSecs(5);
       const iv = setInterval(() => setSecs((s) => {
         if (s <= 1) {
           clearInterval(iv);
@@ -116,7 +119,7 @@
         return s - 1;
       }), 1e3);
       return () => clearInterval(iv);
-    }, []);
+    }, [entry, count]);
     return /* @__PURE__ */ React.createElement("div", { className: "undo-toast" }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
       "button",
       {
