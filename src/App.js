@@ -414,7 +414,8 @@
       completed,
       goals,
       dashHidden,
-      dashOrder
+      dashOrder,
+      debtData
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -444,7 +445,8 @@
       completed: setCompleted,
       goals: setGoals,
       dashHidden: setDashHidden,
-      dashOrder: setDashOrder
+      dashOrder: setDashOrder,
+      debtData: setDebtData
     }), []);
     const {
       status: houseStatus,
@@ -1087,6 +1089,8 @@
         setCompleted,
         goals,
         setGoals,
+        debtData,
+        setDebtData,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,

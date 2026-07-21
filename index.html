@@ -1134,7 +1134,7 @@
         .mno {font-family:'IBM Plex Mono',monospace;font-size:13px;}
         /* Small caps section label (uppercase, letter-spaced) — intentionally 11px */
         .lbl {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
-              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);}
+              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);margin:0;}
         /* Hint / help text below fields — intentionally 11px */
         .hint{font-family:Inter,sans-serif;font-size:11px;color:var(--textLt);}
 
@@ -2915,6 +2915,9 @@ document.addEventListener('DOMContentLoaded',function(){
     } },
     { key: "aiApiKey", apply: (v, set) => {
       if (v && set) set(v);
+    } },
+    { key: "debtData", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
     } }
   ];
   function useHouseholdData({ household, values, setters }) {
@@ -3135,7 +3138,8 @@ document.addEventListener('DOMContentLoaded',function(){
       values.goals,
       values.dashHidden,
       values.dashOrder,
-      values.aiApiKey
+      values.aiApiKey,
+      values.debtData
     ]);
     return { status, msg, saveData, loadData };
   }
@@ -7455,7 +7459,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         )))
       ), /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
         marginBottom: debtExpanded ? 16 : 0
-      } }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("h2", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreHidden,
@@ -7478,7 +7482,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "cf-btn cf-btn--secondary debt-expand-btn"
         },
         debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
-      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "debt-empty-wrap" }, "No debt entries detected. Click ", /* @__PURE__ */ React.createElement("strong", null, "+ Add"), " to track a debt manually.") : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
+      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+        icon: /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 26, className: "c-textLt" }),
+        message: "No debt entries detected — debts matching your budget entries show up here automatically, or add one manually.",
+        actionLabel: "+ Add Debt",
+        onAction: addManualRow
+      })) : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRows.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
@@ -8396,6 +8405,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
+  }, debtData = {}, setDebtData = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
@@ -8822,7 +8832,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onCancel: () => setConfirmDelYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -8854,6 +8864,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           if (Array.isArray(d.templates)) setTemplates(d.templates);
           if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
           if (Array.isArray(d.goals)) setGoals(d.goals);
+          if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
           if (d.activeYear) setActiveYear(d.activeYear);
           if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
           if (d.darkMode != null) setDarkMode(d.darkMode);
@@ -10205,7 +10216,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       completed,
       goals,
       dashHidden,
-      dashOrder
+      dashOrder,
+      debtData
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -10235,7 +10247,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       completed: setCompleted,
       goals: setGoals,
       dashHidden: setDashHidden,
-      dashOrder: setDashOrder
+      dashOrder: setDashOrder,
+      debtData: setDebtData
     }), []);
     const {
       status: houseStatus,
@@ -10878,6 +10891,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setCompleted,
         goals,
         setGoals,
+        debtData,
+        setDebtData,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,

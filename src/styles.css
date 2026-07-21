@@ -1106,7 +1106,7 @@
         .mno {font-family:'IBM Plex Mono',monospace;font-size:13px;}
         /* Small caps section label (uppercase, letter-spaced) — intentionally 11px */
         .lbl {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
-              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);}
+              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);margin:0;}
         /* Hint / help text below fields — intentionally 11px */
         .hint{font-family:Inter,sans-serif;font-size:11px;color:var(--textLt);}
 
