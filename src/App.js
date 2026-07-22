@@ -134,6 +134,13 @@
     // installs pointed at an empty year once the calendar rolled over.
     const [activeYear, setActiveYear] = useLS("cf_activeYear", () => (/* @__PURE__ */ new Date()).getFullYear());
     const [debtData, setDebtData] = useLS("cf_debt_data", {});
+    // Tombstones for the year-copy sync: source-entry id -> true, recorded
+    // whenever the user deletes a one-time entry that was itself a copy
+    // (entry.copiedFrom set). Without this, re-running "Copy year -> year+1"
+    // has no way to tell "never copied" apart from "copied, then the user
+    // deliberately deleted it" — both just look like the target entry is
+    // missing — and would resurrect the deleted copy on the next sync.
+    const [deletedCopyIds, setDeletedCopyIds] = useLS("cf_deleted_copy_ids", {});
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
     const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
@@ -327,7 +334,10 @@
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
     const [undoStack, setUndoStack] = useState([]);
-    const pushUndo = (e) => setUndoStack((prev) => [...prev.slice(-9), e]);
+    const pushUndo = (e) => {
+      setUndoStack((prev) => [...prev.slice(-9), e]);
+      if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
+    };
     const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
@@ -428,7 +438,8 @@
       goals,
       dashHidden,
       dashOrder,
-      debtData
+      debtData,
+      deletedCopyIds
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -459,7 +470,8 @@
       goals: setGoals,
       dashHidden: setDashHidden,
       dashOrder: setDashOrder,
-      debtData: setDebtData
+      debtData: setDebtData,
+      deletedCopyIds: setDeletedCopyIds
     }), []);
     const {
       status: houseStatus,
@@ -1080,7 +1092,8 @@
         setDebtData,
         globalSearch,
         yearConfigs: sortedConfigs,
-        setActiveYear
+        setActiveYear,
+        setDeletedCopyIds
       }
     ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
@@ -1107,6 +1120,8 @@
         setGoals,
         debtData,
         setDebtData,
+        deletedCopyIds,
+        setDeletedCopyIds,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,
@@ -1141,6 +1156,12 @@
           const e = undoStack[undoStack.length - 1];
           setEntries((prev) => [...prev, e]);
           setUndoStack((prev) => prev.slice(0, -1));
+          if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
+            if (!(e.copiedFrom in prev)) return prev;
+            const next = __spreadValues({}, prev);
+            delete next[e.copiedFrom];
+            return next;
+          });
         },
         onDismiss: () => setUndoStack([])
       }

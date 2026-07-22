@@ -68,7 +68,7 @@
   // source's original value (a stale copy), never when the user has set it to
   // something of their own — so editing a copy through the entry form keeps
   // that edit, and a copy with its own occurrence edit is skipped entirely.
-  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}) {
+  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}, deletedCopyIds = {}) {
     const srcs = [];
     const tgts = [];
     entries.forEach((e) => {
@@ -124,6 +124,9 @@
     srcs.forEach((s) => {
       const t = pairOf[s.e.id];
       if (!t) {
+        // The user deliberately deleted a previous copy of this source entry —
+        // don't resurrect it just because it's "missing" from the target year.
+        if (deletedCopyIds[s.e.id]) return;
         clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
         return;
       }
@@ -219,6 +222,7 @@
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
+  }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
@@ -595,7 +599,7 @@
               }
               if (addedTargets) setBudgetTargets(nx);
               const srcOvs = overridesByYr[yc.year] || {};
-              const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, yc.year, nextY, srcOvs, overridesByYr[nextY] || {});
+              const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, yc.year, nextY, srcOvs, overridesByYr[nextY] || {}, deletedCopyIds);
               if (singleClones.length || singleUpdates.length) setEntries((prev) => [
                 ...prev.map((e) => {
                   const u = singleUpdates.find((x) => x.id === e.id);
@@ -660,7 +664,7 @@
         onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -693,6 +697,7 @@
           if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
           if (Array.isArray(d.goals)) setGoals(d.goals);
           if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
+          if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
           if (d.activeYear) setActiveYear(d.activeYear);
           if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
           if (d.darkMode != null) setDarkMode(d.darkMode);

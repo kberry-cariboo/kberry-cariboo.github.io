@@ -21,6 +21,7 @@
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
+  }, setDeletedCopyIds = () => {
   } }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
@@ -383,7 +384,17 @@
           onCancel: () => setConfirmGoalDelete(null),
           onConfirm: () => {
             const rm = [confirmGoalDelete.entryId, confirmGoalDelete.payoutEntryId].filter(Boolean);
-            if (rm.length) setEntries((prev) => prev.filter((e) => !rm.includes(e.id)));
+            if (rm.length) {
+              const removedCopyFroms = entries.filter((e) => rm.includes(e.id) && e.copiedFrom !== void 0).map((e) => e.copiedFrom);
+              if (removedCopyFroms.length) setDeletedCopyIds((prev) => {
+                const next = __spreadValues({}, prev);
+                removedCopyFroms.forEach((id) => {
+                  next[id] = true;
+                });
+                return next;
+              });
+              setEntries((prev) => prev.filter((e) => !rm.includes(e.id)));
+            }
             setGoals((prev) => prev.filter((g) => g.id !== confirmGoalDelete.id));
             setConfirmGoalDelete(null);
           }
