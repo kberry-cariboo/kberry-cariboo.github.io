@@ -178,7 +178,37 @@
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   // Mobile-only "which year am I on" indicator — desktop already shows the
   // year pills in the header, which are hidden on mobile to save space.
-  const MobileYearBadge = ({ year }) => /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
+  // Tapping it opens the same year switcher the header pills provide.
+  const MobileYearBadge = ({ year, years = [], onSelect = () => {
+  } }) => {
+    const [ctx, setCtx] = useState(null);
+    if (years.length < 2) {
+      return /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
+    }
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "mobile-year-badge mobile-year-badge--btn",
+        "aria-label": "Switch year",
+        "aria-haspopup": "menu",
+        onClick: (e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setCtx({ x: r.left, y: r.bottom + 4 });
+        }
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }),
+      year,
+      /* @__PURE__ */ React.createElement("span", { className: "mobile-year-badge-caret" }, "▾")
+    ), ctx && /* @__PURE__ */ React.createElement(
+      ContextMenu,
+      {
+        x: ctx.x,
+        y: ctx.y,
+        onClose: () => setCtx(null),
+        items: years.map((y) => ({ icon: y === year ? "✓" : "", label: String(y), action: () => onSelect(y) }))
+      }
+    ));
+  };
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no

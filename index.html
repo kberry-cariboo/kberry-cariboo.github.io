@@ -1168,6 +1168,18 @@
           .year-pills{display:none!important;}
         }
         @media(max-width:768px){.help-btn{display:none!important;}}
+        /* A card's title + action-button row (Savings Goals, Debt Payoff
+           Tracker, Budget vs Actual) has no room for both on a phone width —
+           title text was overlapping the first button instead of wrapping.
+           Stack title above the (right-aligned) button group instead. Plain
+           flex-wrap isn't enough here: the title's flex:1;min-width:0 (needed
+           for its ellipsis truncation at desktop width) collapses it to 0
+           width once wrapping forces the button group onto its own line, so
+           switching the row to a column stack sidesteps that interaction. */
+        @media(max-width:480px){
+          .goal-header-row,.bva-header-row{flex-direction:column;align-items:flex-start;row-gap:8px;}
+          .goal-header-row>div:last-child,.bva-header-row>div:last-child{align-self:stretch;justify-content:flex-end;}
+        }
         /* Small "which year am I looking at" indicator for Budget/Plan on
            mobile, where the header's year-pills are hidden (see above) and
            there'd otherwise be no on-screen indication of the active year. */
@@ -1180,6 +1192,8 @@
             padding:5px 12px;border-radius:14px;margin-bottom:10px;
           }
         }
+        .mobile-year-badge--btn{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+        .mobile-year-badge-caret{font-size:9px;color:var(--textLt);}
         /* ── Print stylesheet (PDF export via window.print()) ───────────
            Goal: only the report content prints — no header, nav, footer,
            FAB, or transient banners — and it always prints in the light
@@ -3757,7 +3771,37 @@ document.addEventListener('DOMContentLoaded',function(){
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   // Mobile-only "which year am I on" indicator — desktop already shows the
   // year pills in the header, which are hidden on mobile to save space.
-  const MobileYearBadge = ({ year }) => /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
+  // Tapping it opens the same year switcher the header pills provide.
+  const MobileYearBadge = ({ year, years = [], onSelect = () => {
+  } }) => {
+    const [ctx, setCtx] = useState(null);
+    if (years.length < 2) {
+      return /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
+    }
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "mobile-year-badge mobile-year-badge--btn",
+        "aria-label": "Switch year",
+        "aria-haspopup": "menu",
+        onClick: (e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setCtx({ x: r.left, y: r.bottom + 4 });
+        }
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }),
+      year,
+      /* @__PURE__ */ React.createElement("span", { className: "mobile-year-badge-caret" }, "▾")
+    ), ctx && /* @__PURE__ */ React.createElement(
+      ContextMenu,
+      {
+        x: ctx.x,
+        y: ctx.y,
+        onClose: () => setCtx(null),
+        items: years.map((y) => ({ icon: y === year ? "✓" : "", label: String(y), action: () => onSelect(y) }))
+      }
+    ));
+  };
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -6975,7 +7019,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
-  }, globalSearch = "" }) {
+  }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
+  } }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
@@ -7076,7 +7121,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const restoreArchivedGoals = () => {
       setGoals((prev) => prev.map((g) => g.archived ? __spreadProps(__spreadValues({}, g), { archived: false }) : g));
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear }), (() => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: yearConfigs.map((yc) => yc.year), onSelect: setActiveYear }), (() => {
       const openGoalForm = (g) => {
         setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
@@ -7624,9 +7669,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           },
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
-      ), /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row mt-16", style: {
-        marginBottom: 12
-      } }, /* @__PURE__ */ React.createElement("h2", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+      ), /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
+        marginBottom: debtExpanded ? 14 : 0
+      } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreHidden,
@@ -7635,14 +7680,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         "Restore ",
         hiddenCount,
         " hidden"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setDebtExpanded((v) => !v),
-          className: "cf-btn cf-btn--secondary debt-expand-btn"
-        },
-        debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
-      ))), debtExpanded && allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
+      ), debtExpanded && allRows.length > 0 && /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => downloadCSV(
@@ -7659,19 +7697,26 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           ),
           onPrint: () => printView("CashFlow Debt Payoff Tracker")
         }
-      ), /* @__PURE__ */ React.createElement(
+      ), debtExpanded && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: addManualRow,
           className: "cf-btn cf-btn--primary goal-add-btn"
         },
         "+ Add"
-      )), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setDebtExpanded((v) => !v),
+          className: "cf-btn cf-btn--secondary debt-expand-btn"
+        },
+        debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
+      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
         icon: /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 26, className: "c-textLt" }),
         message: "No debt entries detected — debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      }))) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" — ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.")) : /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" — ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
@@ -7691,7 +7736,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           /* @__PURE__ */ React.createElement("div", { className: "debt-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "debt-row-name-col" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, label), /* @__PURE__ */ React.createElement("div", { className: "debt-row-meta" }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-row-paid" }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-row-bal-wrap" }, payoffTrend && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 2 }, title: "Projected balance decline to payoff" }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 22, width: 56 })), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { className: "debt-row-interest" }, "+", fmt(totalInterest), " interest"))),
           (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { className: "debt-stats-row" }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
         );
-      })))))));
+      }))))));
     })());
   }
   function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
@@ -10994,7 +11039,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setDashOrder,
         debtData
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -11071,7 +11116,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         activeYear,
         debtData,
         setDebtData,
-        globalSearch
+        globalSearch,
+        yearConfigs: sortedConfigs,
+        setActiveYear
       }
     ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
