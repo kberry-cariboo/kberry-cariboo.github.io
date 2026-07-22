@@ -697,7 +697,6 @@
         .bva-header-row{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;}
         .bva-header-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
         .bva-add-btn{font-size:11px;font-weight:700;padding:6px 12px;border-radius:7px;white-space:nowrap;}
-        .bva-collapse-btn{font-size:11px;padding:6px 12px;border-radius:7px;flex-shrink:0;}
         .bva-body{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px;}
         .bva-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:8px 0;}
         .context-menu-cursor{cursor:context-menu;}
@@ -754,7 +753,7 @@
         .moneyinput-lg{font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .label-amt-row{display:flex;justify-content:space-between;margin-bottom:3px;}
         .amt-mid-600{font-weight:600;color:var(--textMid);}
-        .strat-card{flex:1 1 220px;background:var(--stripe);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+        .strat-card{flex:1 1 220px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
         .strat-card-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
         .strat-card-sub{font-size:10px;color:var(--textLt);margin-bottom:10px;}
         .strat-card-row{display:flex;justify-content:space-between;margin-bottom:4px;}
@@ -762,15 +761,12 @@
         .strat-value{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--greenDk);}
         .strat-value-neutral{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--text);}
         .strat-order{font-size:10px;color:var(--textLt);line-height:1.7;}
-        .strat-section{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
-        .strat-section-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
         .strat-extra-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--textMid);}
         .strat-extra-input{padding:5px 10px;width:90px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .strat-cards-row{display:flex;gap:12px;flex-wrap:wrap;}
         .strat-footnote{font-size:10px;color:var(--textLt);margin-top:8px;}
         .strat-error{font-size:12px;color:var(--red);margin-top:14px;}
         .debt-restore-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--amber);cursor:pointer;background:transparent;color:var(--amber);white-space:nowrap;}
-        .debt-expand-btn{font-size:11px;padding:6px 12px;border-radius:7px;flex-shrink:0;}
         .debt-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:20px 0;}
         .debt-row{padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);cursor:context-menu;}
         .debt-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}

@@ -72,7 +72,6 @@
       setEditingEntry(null);
       setEditingInitial(null);
     };
-    const [budgetOpen, setBudgetOpen] = useLS("cf_budgetOpen", true);
     const dragRef = useRef(null);
     const justDraggedRef = useRef(false);
     const [draggingId, setDraggingId] = useState(null);
@@ -866,8 +865,8 @@
         };
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
         return /* @__PURE__ */ React.createElement(Card, { className: "bva-card" }, /* @__PURE__ */ React.createElement("div", { className: "bva-header-row", style: {
-          marginBottom: budgetOpen ? 12 : 0
-        } }, /* @__PURE__ */ React.createElement("span", { className: "bva-header-label" }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, budgetOpen && /* @__PURE__ */ React.createElement(
+          marginBottom: 12
+        } }, /* @__PURE__ */ React.createElement("span", { className: "bva-header-label" }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
@@ -877,14 +876,7 @@
             className: "cf-btn cf-btn--primary bva-add-btn"
           },
           "+ Add"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setBudgetOpen((v) => !v),
-            className: "cf-btn cf-btn--secondary bva-collapse-btn"
-          },
-          budgetOpen ? "Collapse \u25B2" : "Expand \u25BC"
-        ))), budgetOpen && /* @__PURE__ */ React.createElement("div", { className: "bva-body" }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+        ))), /* @__PURE__ */ React.createElement("div", { className: "bva-body" }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
           icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, className: "c-textLt" }),
           message: "No budget lines yet. Track a category against a monthly target.",
           actionLabel: "+ Add Budget Line",
