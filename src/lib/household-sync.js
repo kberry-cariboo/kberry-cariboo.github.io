@@ -212,6 +212,9 @@
     } },
     { key: "debtData", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
+    } },
+    { key: "deletedCopyIds", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
     } }
   ];
   function useHouseholdData({ household, values, setters }) {
@@ -433,7 +436,8 @@
       values.dashHidden,
       values.dashOrder,
       values.aiApiKey,
-      values.debtData
+      values.debtData,
+      values.deletedCopyIds
     ]);
     return { status, msg, saveData, loadData };
   }

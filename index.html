@@ -3008,6 +3008,9 @@ document.addEventListener('DOMContentLoaded',function(){
     } },
     { key: "debtData", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
+    } },
+    { key: "deletedCopyIds", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
     } }
   ];
   function useHouseholdData({ household, values, setters }) {
@@ -3229,7 +3232,8 @@ document.addEventListener('DOMContentLoaded',function(){
       values.dashHidden,
       values.dashOrder,
       values.aiApiKey,
-      values.debtData
+      values.debtData,
+      values.deletedCopyIds
     ]);
     return { status, msg, saveData, loadData };
   }
@@ -7008,6 +7012,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
+  }, setDeletedCopyIds = () => {
   } }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
@@ -7370,7 +7375,17 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onCancel: () => setConfirmGoalDelete(null),
           onConfirm: () => {
             const rm = [confirmGoalDelete.entryId, confirmGoalDelete.payoutEntryId].filter(Boolean);
-            if (rm.length) setEntries((prev) => prev.filter((e) => !rm.includes(e.id)));
+            if (rm.length) {
+              const removedCopyFroms = entries.filter((e) => rm.includes(e.id) && e.copiedFrom !== void 0).map((e) => e.copiedFrom);
+              if (removedCopyFroms.length) setDeletedCopyIds((prev) => {
+                const next = __spreadValues({}, prev);
+                removedCopyFroms.forEach((id) => {
+                  next[id] = true;
+                });
+                return next;
+              });
+              setEntries((prev) => prev.filter((e) => !rm.includes(e.id)));
+            }
             setGoals((prev) => prev.filter((g) => g.id !== confirmGoalDelete.id));
             setConfirmGoalDelete(null);
           }
@@ -8484,7 +8499,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   // source's original value (a stale copy), never when the user has set it to
   // something of their own — so editing a copy through the entry form keeps
   // that edit, and a copy with its own occurrence edit is skipped entirely.
-  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}) {
+  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}, deletedCopyIds = {}) {
     const srcs = [];
     const tgts = [];
     entries.forEach((e) => {
@@ -8540,6 +8555,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     srcs.forEach((s) => {
       const t = pairOf[s.e.id];
       if (!t) {
+        // The user deliberately deleted a previous copy of this source entry —
+        // don't resurrect it just because it's "missing" from the target year.
+        if (deletedCopyIds[s.e.id]) return;
         clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
         return;
       }
@@ -8635,6 +8653,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
+  }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
@@ -9011,7 +9030,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               }
               if (addedTargets) setBudgetTargets(nx);
               const srcOvs = overridesByYr[yc.year] || {};
-              const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, yc.year, nextY, srcOvs, overridesByYr[nextY] || {});
+              const { clones: singleClones, updates: singleUpdates } = syncSingleEntriesToYear(entries, yc.year, nextY, srcOvs, overridesByYr[nextY] || {}, deletedCopyIds);
               if (singleClones.length || singleUpdates.length) setEntries((prev) => [
                 ...prev.map((e) => {
                   const u = singleUpdates.find((x) => x.id === e.id);
@@ -9076,7 +9095,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -9109,6 +9128,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
           if (Array.isArray(d.goals)) setGoals(d.goals);
           if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
+          if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
           if (d.activeYear) setActiveYear(d.activeYear);
           if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
           if (d.darkMode != null) setDarkMode(d.darkMode);
@@ -10180,6 +10200,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     // installs pointed at an empty year once the calendar rolled over.
     const [activeYear, setActiveYear] = useLS("cf_activeYear", () => (/* @__PURE__ */ new Date()).getFullYear());
     const [debtData, setDebtData] = useLS("cf_debt_data", {});
+    // Tombstones for the year-copy sync: source-entry id -> true, recorded
+    // whenever the user deletes a one-time entry that was itself a copy
+    // (entry.copiedFrom set). Without this, re-running "Copy year -> year+1"
+    // has no way to tell "never copied" apart from "copied, then the user
+    // deliberately deleted it" — both just look like the target entry is
+    // missing — and would resurrect the deleted copy on the next sync.
+    const [deletedCopyIds, setDeletedCopyIds] = useLS("cf_deleted_copy_ids", {});
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
     const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
@@ -10373,7 +10400,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
     const [undoStack, setUndoStack] = useState([]);
-    const pushUndo = (e) => setUndoStack((prev) => [...prev.slice(-9), e]);
+    const pushUndo = (e) => {
+      setUndoStack((prev) => [...prev.slice(-9), e]);
+      if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
+    };
     const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
@@ -10474,7 +10504,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       goals,
       dashHidden,
       dashOrder,
-      debtData
+      debtData,
+      deletedCopyIds
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -10505,7 +10536,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       goals: setGoals,
       dashHidden: setDashHidden,
       dashOrder: setDashOrder,
-      debtData: setDebtData
+      debtData: setDebtData,
+      deletedCopyIds: setDeletedCopyIds
     }), []);
     const {
       status: houseStatus,
@@ -11126,7 +11158,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setDebtData,
         globalSearch,
         yearConfigs: sortedConfigs,
-        setActiveYear
+        setActiveYear,
+        setDeletedCopyIds
       }
     ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
@@ -11153,6 +11186,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setGoals,
         debtData,
         setDebtData,
+        deletedCopyIds,
+        setDeletedCopyIds,
         installPrompt,
         triggerInstall: doInstall,
         lockTimeout,
@@ -11187,6 +11222,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           const e = undoStack[undoStack.length - 1];
           setEntries((prev) => [...prev, e]);
           setUndoStack((prev) => prev.slice(0, -1));
+          if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
+            if (!(e.copiedFrom in prev)) return prev;
+            const next = __spreadValues({}, prev);
+            delete next[e.copiedFrom];
+            return next;
+          });
         },
         onDismiss: () => setUndoStack([])
       }
