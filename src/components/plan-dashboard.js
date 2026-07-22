@@ -670,8 +670,24 @@
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
       ), /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
-        marginBottom: debtExpanded ? 16 : 0
-      } }, /* @__PURE__ */ React.createElement("h2", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && allRows.length > 0 && /* @__PURE__ */ React.createElement(
+        marginBottom: debtExpanded ? 12 : 0
+      } }, /* @__PURE__ */ React.createElement("h2", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: restoreHidden,
+          className: "debt-restore-btn"
+        },
+        "Restore ",
+        hiddenCount,
+        " hidden"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setDebtExpanded((v) => !v),
+          className: "cf-btn cf-btn--secondary debt-expand-btn"
+        },
+        debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
+      ))), debtExpanded && allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => downloadCSV(
@@ -688,30 +704,14 @@
           ),
           onPrint: () => printView("CashFlow Debt Payoff Tracker")
         }
-      ), debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: restoreHidden,
-          className: "debt-restore-btn"
-        },
-        "Restore ",
-        hiddenCount,
-        " hidden"
-      ), debtExpanded && /* @__PURE__ */ React.createElement(
+      ), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: addManualRow,
           className: "cf-btn cf-btn--primary goal-add-btn"
         },
         "+ Add"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setDebtExpanded((v) => !v),
-          className: "cf-btn cf-btn--secondary debt-expand-btn"
-        },
-        debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
-      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+      )), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
         icon: /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 26, className: "c-textLt" }),
         message: "No debt entries detected — debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
