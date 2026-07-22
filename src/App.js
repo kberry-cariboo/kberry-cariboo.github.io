@@ -61,12 +61,22 @@
     // stays unlocked), while a reload after the tab sat hidden past the
     // timeout reads a stale one (correctly locks), regardless of how the
     // reload itself fires visibility events.
+    //
+    // This marker lives in sessionStorage, not localStorage. localStorage is
+    // shared by every tab of the origin — with the marker there, an open,
+    // actively-used second tab keeps re-stamping it every 20s, so reloading
+    // a *different*, genuinely-idle tab that's already showing the lock
+    // screen would read that other tab's fresh stamp and boot straight back
+    // into the unlocked app, bypassing the password prompt entirely.
+    // sessionStorage is per-tab (isolated from every other tab) while still
+    // surviving a same-tab reload/hard-refresh, which is exactly the "last
+    // active" marker needs: reload-proof, but not cross-tab-forgeable.
     const LOCK_KEY = "cf_last_active_at";
     const [locked, setLocked] = useState(() => {
       try {
         if (localStorage.getItem("cf_lock_on_launch") === "1") return true;
         if (lockTimeout) {
-          const at = parseInt(localStorage.getItem(LOCK_KEY) || "0", 10);
+          const at = parseInt(sessionStorage.getItem(LOCK_KEY) || "0", 10);
           if (at && Date.now() - at > lockTimeout * 6e4) return true;
         }
         return false;
@@ -78,7 +88,7 @@
       if (!lockTimeout || !sessionUser || locked) return;
       const stamp = () => {
         try {
-          localStorage.setItem(LOCK_KEY, String(Date.now()));
+          sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
         }
       };
@@ -93,7 +103,7 @@
       const onVis = () => {
         if (document.visibilityState !== "visible") return;
         try {
-          const at = parseInt(localStorage.getItem(LOCK_KEY) || "0", 10);
+          const at = parseInt(sessionStorage.getItem(LOCK_KEY) || "0", 10);
           if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
           else stamp();
         } catch (err) {
@@ -112,7 +122,7 @@
       if (!authLoading && !session) {
         setLocked(false);
         try {
-          localStorage.removeItem(LOCK_KEY);
+          sessionStorage.removeItem(LOCK_KEY);
         } catch (e) {
         }
       }
@@ -734,7 +744,7 @@
     if (locked) {
       return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => {
         try {
-          localStorage.setItem(LOCK_KEY, String(Date.now()));
+          sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
         }
         setLocked(false);
