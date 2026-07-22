@@ -991,7 +991,7 @@
         setDashOrder,
         debtData
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -1068,7 +1068,9 @@
         activeYear,
         debtData,
         setDebtData,
-        globalSearch
+        globalSearch,
+        yearConfigs: sortedConfigs,
+        setActiveYear
       }
     ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,

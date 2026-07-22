@@ -20,7 +20,8 @@
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
-  }, globalSearch = "" }) {
+  }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
+  } }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
@@ -121,7 +122,7 @@
     const restoreArchivedGoals = () => {
       setGoals((prev) => prev.map((g) => g.archived ? __spreadProps(__spreadValues({}, g), { archived: false }) : g));
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear }), (() => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: yearConfigs.map((yc) => yc.year), onSelect: setActiveYear }), (() => {
       const openGoalForm = (g) => {
         setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
@@ -669,9 +670,9 @@
           },
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
-      ), /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row mt-16", style: {
-        marginBottom: 12
-      } }, /* @__PURE__ */ React.createElement("h2", { className: "lbl" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
+      ), /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
+        marginBottom: debtExpanded ? 14 : 0
+      } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Debt Payoff Tracker"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, debtExpanded && hiddenCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreHidden,
@@ -680,14 +681,7 @@
         "Restore ",
         hiddenCount,
         " hidden"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setDebtExpanded((v) => !v),
-          className: "cf-btn cf-btn--secondary debt-expand-btn"
-        },
-        debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
-      ))), debtExpanded && allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
+      ), debtExpanded && allRows.length > 0 && /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => downloadCSV(
@@ -704,19 +698,26 @@
           ),
           onPrint: () => printView("CashFlow Debt Payoff Tracker")
         }
-      ), /* @__PURE__ */ React.createElement(
+      ), debtExpanded && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: addManualRow,
           className: "cf-btn cf-btn--primary goal-add-btn"
         },
         "+ Add"
-      )), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setDebtExpanded((v) => !v),
+          className: "cf-btn cf-btn--secondary debt-expand-btn"
+        },
+        debtExpanded ? "Collapse \u25B2" : "Expand \u25BC"
+      ))), debtExpanded && (allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
         icon: /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 26, className: "c-textLt" }),
         message: "No debt entries detected — debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      }))) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" — ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.")) : /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" — ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
@@ -736,7 +737,7 @@
           /* @__PURE__ */ React.createElement("div", { className: "debt-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "debt-row-name-col" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, label), /* @__PURE__ */ React.createElement("div", { className: "debt-row-meta" }, isAuto && recurDesc ? /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc, " ", /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "\xB7 ", fmt(pmt), "/mo equiv.")) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-row-paid" }, "\u2713 Paid off ", payoffDate))), bal > 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-row-bal-wrap" }, payoffTrend && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 2 }, title: "Projected balance decline to payoff" }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 22, width: 56 })), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { className: "debt-row-interest" }, "+", fmt(totalInterest), " interest"))),
           (bal > 0 || rate > 0) && /* @__PURE__ */ React.createElement("div", { className: "debt-stats-row" }, bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
         );
-      })))))));
+      }))))));
     })());
   }
   function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {

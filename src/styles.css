@@ -1140,6 +1140,18 @@
           .year-pills{display:none!important;}
         }
         @media(max-width:768px){.help-btn{display:none!important;}}
+        /* A card's title + action-button row (Savings Goals, Debt Payoff
+           Tracker, Budget vs Actual) has no room for both on a phone width —
+           title text was overlapping the first button instead of wrapping.
+           Stack title above the (right-aligned) button group instead. Plain
+           flex-wrap isn't enough here: the title's flex:1;min-width:0 (needed
+           for its ellipsis truncation at desktop width) collapses it to 0
+           width once wrapping forces the button group onto its own line, so
+           switching the row to a column stack sidesteps that interaction. */
+        @media(max-width:480px){
+          .goal-header-row,.bva-header-row{flex-direction:column;align-items:flex-start;row-gap:8px;}
+          .goal-header-row>div:last-child,.bva-header-row>div:last-child{align-self:stretch;justify-content:flex-end;}
+        }
         /* Small "which year am I looking at" indicator for Budget/Plan on
            mobile, where the header's year-pills are hidden (see above) and
            there'd otherwise be no on-screen indication of the active year. */
@@ -1152,6 +1164,8 @@
             padding:5px 12px;border-radius:14px;margin-bottom:10px;
           }
         }
+        .mobile-year-badge--btn{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+        .mobile-year-badge-caret{font-size:9px;color:var(--textLt);}
         /* ── Print stylesheet (PDF export via window.print()) ───────────
            Goal: only the report content prints — no header, nav, footer,
            FAB, or transient banners — and it always prints in the light
