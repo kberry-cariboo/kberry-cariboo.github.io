@@ -513,7 +513,7 @@
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
+      budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: dismissSwipeCoach,
@@ -532,6 +532,7 @@
           },
           "aria-pressed": compareYoy,
           title: `Compare ${MONTHS[monthIdx]} ${activeYear} with ${prevYear}`,
+          "data-noprint": true,
           className: "cf-btn cf-btn--secondary cf-btn--sm cf-btn--iconrow-sm" + (compareYoy ? " yoy-toggle-active" : "")
         },
         /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 12 }),

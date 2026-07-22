@@ -268,6 +268,7 @@
     };
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [confirmDelYear, setConfirmDelYear] = useState(null);
+    const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
@@ -571,10 +572,7 @@
         const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
         const hasSingles = entries.some((e) => !e.repeats && (e.startDate || "").startsWith(yc.year + "-"));
         const hasOvs = Object.keys(overridesByYr[yc.year] || {}).length > 0;
-        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
+        const runCopy = () => {
               // Compare-and-sync rather than blind copy: anything added to this
               // year after the next year was created gets carried forward, but
               // values already set on the next year are never overwritten.
@@ -618,7 +616,11 @@
               if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
               if (amtCount) parts.push(`${yc.year}'s amount pattern mirrored onto ${amtCount} occurrence${amtCount === 1 ? "" : "s"}`);
               setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Anything you edited in ${nextY} was left alone.` : `\u2705 ${nextY} already matches ${yc.year} \u2014 nothing to change.`);
-            },
+        };
+        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setConfirmCopyYear({ year: yc.year, nextY, run: runCopy }),
             title: `Sync ${yc.year} into ${nextY} \u2014 adds missing budget targets and one-time entries, updates unedited copies, never touches anything edited in ${nextY}`,
             className: "copy-year-btn"
           },
@@ -643,6 +645,19 @@
           setConfirmDelYear(null);
         },
         onCancel: () => setConfirmDelYear(null)
+      }
+    ), confirmCopyYear !== null && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: `Copy ${confirmCopyYear.year} into ${confirmCopyYear.nextY}?`,
+        message: `Missing budget targets and one-time entries from ${confirmCopyYear.year} will be added to ${confirmCopyYear.nextY}, and unedited copies will be updated to match. Anything you've already edited in ${confirmCopyYear.nextY} is left alone.`,
+        confirmLabel: "Copy",
+        confirmVariant: "primary",
+        onConfirm: () => {
+          confirmCopyYear.run();
+          setConfirmCopyYear(null);
+        },
+        onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };

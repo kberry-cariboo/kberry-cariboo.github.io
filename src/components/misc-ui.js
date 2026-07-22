@@ -135,7 +135,7 @@
       { id: "ai", icon: "sparkle", label: "AI" },
       { id: "settings", icon: "settings", label: "Settings" }
     ];
-    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary" }, items.map((it) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: it.id,

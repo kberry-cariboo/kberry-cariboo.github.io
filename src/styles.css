@@ -961,7 +961,6 @@
              would flex-shrink and crush the header/footer to nothing. */
           .app-scroll>*{flex-shrink:0;}
         }
-        @media print{html,body{height:auto;overflow:visible;}.app-scroll{height:auto!important;overflow:visible!important;}}
         .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
         .settings-page-pills::-webkit-scrollbar{display:none;}
         /* ── Modern interaction polish (pointer devices) ───────────────── */
@@ -1141,7 +1140,52 @@
           .year-pills{display:none!important;}
         }
         @media(max-width:768px){.help-btn{display:none!important;}}
-        @media print{[data-noprint]{display:none!important;}body{background:#fff!important;}.content-area{padding:0!important;}}
+        /* Small "which year am I looking at" indicator for Budget/Plan on
+           mobile, where the header's year-pills are hidden (see above) and
+           there'd otherwise be no on-screen indication of the active year. */
+        .mobile-year-badge{display:none;}
+        @media(max-width:768px){
+          .mobile-year-badge{
+            display:inline-flex;align-items:center;gap:5px;
+            font-size:12px;font-weight:700;color:var(--textMid);
+            background:var(--stripe);border:1px solid var(--border);
+            padding:5px 12px;border-radius:14px;margin-bottom:10px;
+          }
+        }
+        /* ── Print stylesheet (PDF export via window.print()) ───────────
+           Goal: only the report content prints — no header, nav, footer,
+           FAB, or transient banners — and it always prints in the light
+           theme's colors, even mid-session in dark mode, since the theme
+           colors are set as inline custom properties on <html> (highest
+           specificity short of !important) rather than toggled by a class. */
+        @media print{
+          :root{
+            --navy:#1C2B3A!important;--navyMid:#243447!important;--navyLt:#2D4057!important;
+            --bg:#F7F4EF!important;--bgCard:#FFFFFF!important;
+            --green:#2ECC8A!important;--greenDk:#27AE73!important;--greenLt:#EAFBF3!important;
+            --red:#E85D4A!important;--redLt:#FFF0EE!important;
+            --amber:#F5A623!important;--amberLt:#FFF8EC!important;
+            --text:#1C2B3A!important;--textMid:#5A6A7A!important;--textLt:#66798C!important;
+            --border:#E8E4DD!important;--stripe:#F7F4EF!important;
+            --headerBg:#1C2B3A!important;--headerText:#ffffff!important;
+            --inputBg:#F7F4EF!important;--doneBg:#EAFBF3!important;
+            --shadowSm:none!important;--shadowMd:none!important;--shadowLg:none!important;--shadowXl:none!important;
+            --accent:#2F6FED!important;--accentLt:#EAF1FE!important;
+            --chipKeep:100%!important;--primary:#1C2B3A!important;--coral:#FF8A7A!important;
+          }
+          html,body{height:auto;overflow:visible;background:#fff!important;color-scheme:light!important;}
+          .app-scroll{height:auto!important;overflow:visible!important;}
+          /* App chrome: header, both nav variants, footer, FAB, and anything
+             else marked data-noprint (banners, toasts, the Customize row…). */
+          [data-noprint],.tab-bar,.cf-bottomnav,.month-picker,.month-picker-fade,
+          .budget-subtabs,.modal-overlay{
+            display:none!important;
+          }
+          .content-area{padding:0!important;}
+          .cf-page{max-width:none!important;}
+          .cf-card{box-shadow:none!important;border:1px solid #E8E4DD!important;}
+          .cf-card,tr,.debt-row,.goal-row-cursor{break-inside:avoid;}
+        }
 
         /* ── Mobile layout ─────────────────────────────────────────── */
         @media(max-width:768px){
