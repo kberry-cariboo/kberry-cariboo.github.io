@@ -157,40 +157,6 @@
       it.label
     )));
   }
-  function CollapseHeader({ id, title, summary, children, defaultCollapsed = false }) {
-    const [collapsed, setCollapsed] = useState(() => {
-      try {
-        const stored = localStorage.getItem("cf_collapse_" + id);
-        return stored === null ? defaultCollapsed : stored === "1";
-      } catch (e) {
-        return defaultCollapsed;
-      }
-    });
-    const toggle = () => {
-      setCollapsed((v) => {
-        const n = !v;
-        try {
-          localStorage.setItem("cf_collapse_" + id, n ? "1" : "0");
-        } catch (e) {
-        }
-        return n;
-      });
-    };
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: toggle,
-        "aria-expanded": !collapsed,
-        className: "collapse-header-btn",
-        style: { marginBottom: collapsed ? 0 : 2 }
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "collapse-header-title-wrap" }, /* @__PURE__ */ React.createElement("span", { className: "collapse-arrow", style: {
-        transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)"
-      } }, "\u25BC"), title),
-      collapsed && summary && /* @__PURE__ */ React.createElement("span", { className: "collapse-summary" }, summary)
-    ), !collapsed && children);
-  }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));

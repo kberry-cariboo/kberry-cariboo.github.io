@@ -209,13 +209,6 @@
           transition:background 0.15s;}
         .bottomnav-alert-dot{position:absolute;top:-2px;right:-6px;width:8px;height:8px;
           border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
-        .collapse-header-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;
-          width:100%;border:none;background:transparent;padding:0;font:inherit;text-align:left;
-          cursor:pointer;user-select:none;}
-        .collapse-header-title-wrap{display:inline-flex;align-items:center;gap:8px;min-width:0;}
-        .collapse-arrow{font-size:10px;color:var(--textLt);transition:transform 0.15s ease;display:inline-block;}
-        .collapse-summary{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--textLt);
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .oem-card{padding:24px 24px 20px;width:min(460px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
@@ -998,7 +991,6 @@
           .cf-footer-link{display:inline-block;padding:10px 4px;}
           .settings-page-pills button{min-height:40px;}
           .settings-quicklinks a{min-height:40px;display:inline-flex;align-items:center;}
-          .collapse-header-btn{min-height:36px;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
         }
         /* Accessible focus ring — keyboard only, consistent everywhere */
