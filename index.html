@@ -989,7 +989,6 @@
              would flex-shrink and crush the header/footer to nothing. */
           .app-scroll>*{flex-shrink:0;}
         }
-        @media print{html,body{height:auto;overflow:visible;}.app-scroll{height:auto!important;overflow:visible!important;}}
         .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
         .settings-page-pills::-webkit-scrollbar{display:none;}
         /* ── Modern interaction polish (pointer devices) ───────────────── */
@@ -1169,7 +1168,52 @@
           .year-pills{display:none!important;}
         }
         @media(max-width:768px){.help-btn{display:none!important;}}
-        @media print{[data-noprint]{display:none!important;}body{background:#fff!important;}.content-area{padding:0!important;}}
+        /* Small "which year am I looking at" indicator for Budget/Plan on
+           mobile, where the header's year-pills are hidden (see above) and
+           there'd otherwise be no on-screen indication of the active year. */
+        .mobile-year-badge{display:none;}
+        @media(max-width:768px){
+          .mobile-year-badge{
+            display:inline-flex;align-items:center;gap:5px;
+            font-size:12px;font-weight:700;color:var(--textMid);
+            background:var(--stripe);border:1px solid var(--border);
+            padding:5px 12px;border-radius:14px;margin-bottom:10px;
+          }
+        }
+        /* ── Print stylesheet (PDF export via window.print()) ───────────
+           Goal: only the report content prints — no header, nav, footer,
+           FAB, or transient banners — and it always prints in the light
+           theme's colors, even mid-session in dark mode, since the theme
+           colors are set as inline custom properties on <html> (highest
+           specificity short of !important) rather than toggled by a class. */
+        @media print{
+          :root{
+            --navy:#1C2B3A!important;--navyMid:#243447!important;--navyLt:#2D4057!important;
+            --bg:#F7F4EF!important;--bgCard:#FFFFFF!important;
+            --green:#2ECC8A!important;--greenDk:#27AE73!important;--greenLt:#EAFBF3!important;
+            --red:#E85D4A!important;--redLt:#FFF0EE!important;
+            --amber:#F5A623!important;--amberLt:#FFF8EC!important;
+            --text:#1C2B3A!important;--textMid:#5A6A7A!important;--textLt:#66798C!important;
+            --border:#E8E4DD!important;--stripe:#F7F4EF!important;
+            --headerBg:#1C2B3A!important;--headerText:#ffffff!important;
+            --inputBg:#F7F4EF!important;--doneBg:#EAFBF3!important;
+            --shadowSm:none!important;--shadowMd:none!important;--shadowLg:none!important;--shadowXl:none!important;
+            --accent:#2F6FED!important;--accentLt:#EAF1FE!important;
+            --chipKeep:100%!important;--primary:#1C2B3A!important;--coral:#FF8A7A!important;
+          }
+          html,body{height:auto;overflow:visible;background:#fff!important;color-scheme:light!important;}
+          .app-scroll{height:auto!important;overflow:visible!important;}
+          /* App chrome: header, both nav variants, footer, FAB, and anything
+             else marked data-noprint (banners, toasts, the Customize row…). */
+          [data-noprint],.tab-bar,.cf-bottomnav,.month-picker,.month-picker-fade,
+          .budget-subtabs,.modal-overlay{
+            display:none!important;
+          }
+          .content-area{padding:0!important;}
+          .cf-page{max-width:none!important;}
+          .cf-card{box-shadow:none!important;border:1px solid #E8E4DD!important;}
+          .cf-card,tr,.debt-row,.goal-row-cursor{break-inside:avoid;}
+        }
 
         /* ── Mobile layout ─────────────────────────────────────────── */
         @media(max-width:768px){
@@ -3614,7 +3658,7 @@ document.addEventListener('DOMContentLoaded',function(){
       setForm(true);
     };
     const fabActive = menu || form;
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry" }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title" }, "Add Entry"), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title" }, "Add Entry"), /* @__PURE__ */ React.createElement(
       EntryForm,
       {
         initial: null,
@@ -3627,7 +3671,7 @@ document.addEventListener('DOMContentLoaded',function(){
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu" }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), className: "fab-menu-backdrop" }), /* @__PURE__ */ React.createElement(
+    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), className: "fab-menu-backdrop" }), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -3652,6 +3696,7 @@ document.addEventListener('DOMContentLoaded',function(){
       "button",
       {
         className: "cf-quickfab",
+        "data-noprint": true,
         onClick: () => {
           if (form) {
             closeForm();
@@ -3710,6 +3755,9 @@ document.addEventListener('DOMContentLoaded',function(){
     actionLabel
   ));
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
+  // Mobile-only "which year am I on" indicator — desktop already shows the
+  // year pills in the header, which are hidden on mobile to save space.
+  const MobileYearBadge = ({ year }) => /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -3845,7 +3893,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }));
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
-  function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
+  function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
     useEffect(() => {
       const h = (e) => {
         if (e.key === "Escape") onCancel();
@@ -3854,14 +3902,16 @@ document.addEventListener('DOMContentLoaded',function(){
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
     // Backdrop click dismisses (matching every other overlay) and initial
-    // focus lands on Cancel, never the destructive action — Enter must not
-    // delete by default.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
+    // focus lands on Cancel — Enter must not trigger the primary action by
+    // default. confirmVariant "danger" (the default) is for destructive
+    // actions (delete/reset); "primary" is for a plain yes/no confirmation
+    // of a safe, additive action, where a red button would misrepresent risk.
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
       if (e.target === e.currentTarget) onCancel();
     } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
-    }, className: "cf-btn cf-btn--danger-solid" }, confirmLabel))));
+    }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
@@ -5037,7 +5087,7 @@ document.addEventListener('DOMContentLoaded',function(){
       { id: "ai", icon: "sparkle", label: "AI" },
       { id: "settings", icon: "settings", label: "Settings" }
     ];
-    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary" }, items.map((it) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: it.id,
@@ -5882,7 +5932,7 @@ document.addEventListener('DOMContentLoaded',function(){
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach" }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
+      budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: dismissSwipeCoach,
@@ -5901,6 +5951,7 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           "aria-pressed": compareYoy,
           title: `Compare ${MONTHS[monthIdx]} ${activeYear} with ${prevYear}`,
+          "data-noprint": true,
           className: "cf-btn cf-btn--secondary cf-btn--sm cf-btn--iconrow-sm" + (compareYoy ? " yoy-toggle-active" : "")
         },
         /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 12 }),
@@ -6490,7 +6541,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
     if (!alerts.length) return null;
     const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", centsToDollars(alertThreshold).toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
+    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", centsToDollars(alertThreshold).toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -7025,7 +7076,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const restoreArchivedGoals = () => {
       setGoals((prev) => prev.map((g) => g.archived ? __spreadProps(__spreadValues({}, g), { archived: false }) : g));
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear }), (() => {
       const openGoalForm = (g) => {
         setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
@@ -8223,8 +8274,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc));
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
-    const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner" }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row" }, /* @__PURE__ */ React.createElement(
+    const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowCustomize(true),
@@ -8291,7 +8342,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         categories,
         setTab
       }
-    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row" }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" })), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const out = [];
@@ -8590,6 +8641,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     const [tgtResetMsg, setTgtResetMsg] = useState("");
     const [confirmDelYear, setConfirmDelYear] = useState(null);
+    const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
@@ -8893,10 +8945,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
         const hasSingles = entries.some((e) => !e.repeats && (e.startDate || "").startsWith(yc.year + "-"));
         const hasOvs = Object.keys(overridesByYr[yc.year] || {}).length > 0;
-        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
+        const runCopy = () => {
               // Compare-and-sync rather than blind copy: anything added to this
               // year after the next year was created gets carried forward, but
               // values already set on the next year are never overwritten.
@@ -8940,7 +8989,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               if (ovCount) parts.push(`${ovCount} modified occurrence${ovCount === 1 ? "" : "s"} carried over`);
               if (amtCount) parts.push(`${yc.year}'s amount pattern mirrored onto ${amtCount} occurrence${amtCount === 1 ? "" : "s"}`);
               setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Anything you edited in ${nextY} was left alone.` : `\u2705 ${nextY} already matches ${yc.year} \u2014 nothing to change.`);
-            },
+        };
+        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setConfirmCopyYear({ year: yc.year, nextY, run: runCopy }),
             title: `Sync ${yc.year} into ${nextY} \u2014 adds missing budget targets and one-time entries, updates unedited copies, never touches anything edited in ${nextY}`,
             className: "copy-year-btn"
           },
@@ -8965,6 +9018,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           setConfirmDelYear(null);
         },
         onCancel: () => setConfirmDelYear(null)
+      }
+    ), confirmCopyYear !== null && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: `Copy ${confirmCopyYear.year} into ${confirmCopyYear.nextY}?`,
+        message: `Missing budget targets and one-time entries from ${confirmCopyYear.year} will be added to ${confirmCopyYear.nextY}, and unedited copies will be updated to match. Anything you've already edited in ${confirmCopyYear.nextY} is left alone.`,
+        confirmLabel: "Copy",
+        confirmVariant: "primary",
+        onConfirm: () => {
+          confirmCopyYear.run();
+          setConfirmCopyYear(null);
+        },
+        onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
@@ -10677,7 +10743,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link" }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer" }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -10872,7 +10938,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           setPfErr(err.message || "Couldn't change your password.");
         }
       }, className: "cf-btn cf-btn--primary fw-700" }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary" }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, className: "tab-bar-btn", style: {
+    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", "data-noprint": true }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, className: "tab-bar-btn", style: {
       borderBottom: tab === t.id ? "3px solid var(--amber)" : "3px solid transparent",
       color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)"
     } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
@@ -10898,7 +10964,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "low-balance-banner", style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`
     } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
@@ -10928,7 +10994,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setDashOrder,
         debtData
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -11069,7 +11135,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         },
         onDismiss: () => setUndoStack([])
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "app-footer" }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { className: "app-footer", "data-noprint": true }, /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "privacy.html",

@@ -79,7 +79,7 @@
       setForm(true);
     };
     const fabActive = menu || form;
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry" }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title" }, "Add Entry"), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title" }, "Add Entry"), /* @__PURE__ */ React.createElement(
       EntryForm,
       {
         initial: null,
@@ -92,7 +92,7 @@
         templates: templates || [],
         onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
       }
-    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu" }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), className: "fab-menu-backdrop" }), /* @__PURE__ */ React.createElement(
+    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), className: "fab-menu-backdrop" }), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -117,6 +117,7 @@
       "button",
       {
         className: "cf-quickfab",
+        "data-noprint": true,
         onClick: () => {
           if (form) {
             closeForm();
@@ -175,6 +176,9 @@
     actionLabel
   ));
   const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
+  // Mobile-only "which year am I on" indicator — desktop already shows the
+  // year pills in the header, which are hidden on mobile to save space.
+  const MobileYearBadge = ({ year }) => /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -310,7 +314,7 @@
     }));
   };
   const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
-  function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete" }) {
+  function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
     useEffect(() => {
       const h = (e) => {
         if (e.key === "Escape") onCancel();
@@ -319,14 +323,16 @@
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
     // Backdrop click dismisses (matching every other overlay) and initial
-    // focus lands on Cancel, never the destructive action — Enter must not
-    // delete by default.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
+    // focus lands on Cancel — Enter must not trigger the primary action by
+    // default. confirmVariant "danger" (the default) is for destructive
+    // actions (delete/reset); "primary" is for a plain yes/no confirmation
+    // of a safe, additive action, where a red button would misrepresent risk.
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
       if (e.target === e.currentTarget) onCancel();
     } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
-    }, className: "cf-btn cf-btn--danger-solid" }, confirmLabel))));
+    }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
   }
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
