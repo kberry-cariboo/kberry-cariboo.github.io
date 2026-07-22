@@ -977,6 +977,7 @@
       })()),
       upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
+        today.setHours(0, 0, 0, 0);
         const in7 = new Date(today);
         in7.setDate(today.getDate() + 7);
         const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7 && !completed[ev.id]).sort((a, b) => a.date - b.date).slice(0, 6);
@@ -1243,14 +1244,7 @@
           })());
         })));
       })()),
-      summary: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        CollapseHeader,
-        {
-          id: "summary",
-          summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
-          title: /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Monthly Summary")
-        },
-        /* @__PURE__ */ React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
+      summary: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-12" }, "Monthly Summary"), /* @__PURE__ */ React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
           ChartToggle,
           {
             value: summaryView,
@@ -1298,7 +1292,7 @@
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
-      ))),
+      ),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {

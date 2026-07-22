@@ -237,13 +237,6 @@
           transition:background 0.15s;}
         .bottomnav-alert-dot{position:absolute;top:-2px;right:-6px;width:8px;height:8px;
           border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
-        .collapse-header-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;
-          width:100%;border:none;background:transparent;padding:0;font:inherit;text-align:left;
-          cursor:pointer;user-select:none;}
-        .collapse-header-title-wrap{display:inline-flex;align-items:center;gap:8px;min-width:0;}
-        .collapse-arrow{font-size:10px;color:var(--textLt);transition:transform 0.15s ease;display:inline-block;}
-        .collapse-summary{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--textLt);
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .oem-card{padding:24px 24px 20px;width:min(460px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
@@ -1026,7 +1019,6 @@
           .cf-footer-link{display:inline-block;padding:10px 4px;}
           .settings-page-pills button{min-height:40px;}
           .settings-quicklinks a{min-height:40px;display:inline-flex;align-items:center;}
-          .collapse-header-btn{min-height:36px;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
         }
         /* Accessible focus ring — keyboard only, consistent everywhere */
@@ -5153,40 +5145,6 @@ document.addEventListener('DOMContentLoaded',function(){
       it.label
     )));
   }
-  function CollapseHeader({ id, title, summary, children, defaultCollapsed = false }) {
-    const [collapsed, setCollapsed] = useState(() => {
-      try {
-        const stored = localStorage.getItem("cf_collapse_" + id);
-        return stored === null ? defaultCollapsed : stored === "1";
-      } catch (e) {
-        return defaultCollapsed;
-      }
-    });
-    const toggle = () => {
-      setCollapsed((v) => {
-        const n = !v;
-        try {
-          localStorage.setItem("cf_collapse_" + id, n ? "1" : "0");
-        } catch (e) {
-        }
-        return n;
-      });
-    };
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: toggle,
-        "aria-expanded": !collapsed,
-        className: "collapse-header-btn",
-        style: { marginBottom: collapsed ? 0 : 2 }
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "collapse-header-title-wrap" }, /* @__PURE__ */ React.createElement("span", { className: "collapse-arrow", style: {
-        transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)"
-      } }, "\u25BC"), title),
-      collapsed && summary && /* @__PURE__ */ React.createElement("span", { className: "collapse-summary" }, summary)
-    ), !collapsed && children);
-  }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
@@ -7968,6 +7926,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       })()),
       upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = /* @__PURE__ */ new Date();
+        today.setHours(0, 0, 0, 0);
         const in7 = new Date(today);
         in7.setDate(today.getDate() + 7);
         const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7 && !completed[ev.id]).sort((a, b) => a.date - b.date).slice(0, 6);
@@ -8234,14 +8193,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           })());
         })));
       })()),
-      summary: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        CollapseHeader,
-        {
-          id: "summary",
-          summary: summaries.length ? `Dec close ${fmt(summaries[11].close)}` : "",
-          title: /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Monthly Summary")
-        },
-        /* @__PURE__ */ React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
+      summary: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-12" }, "Monthly Summary"), /* @__PURE__ */ React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
           ChartToggle,
           {
             value: summaryView,
@@ -8289,7 +8241,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
-      ))),
+      ),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
