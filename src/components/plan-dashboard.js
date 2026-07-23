@@ -487,7 +487,8 @@
       const calcPayoff = (bal, rate, pmt) => {
         if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
         const r = rate / 100 / 12;
-        const m = r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
+        if (r > 0 && pmt <= bal * r) return { monthsLeft: null, totalInterest: null, payoffDate: null };
+        const m = r > 0 ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
         const interest = r > 0 ? roundMoney((pmt * m - bal)) : null;
         const d = /* @__PURE__ */ new Date();
         d.setMonth(d.getMonth() + m);
@@ -1229,7 +1230,7 @@
           const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
           const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
           const r = rate / 100 / 12;
-          const monthsLeft = bal > 0 && pmt > 0 ? r > 0 && pmt > bal * r ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
+          const monthsLeft = bal > 0 && pmt > 0 && !(r > 0 && pmt <= bal * r) ? r > 0 ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
           const totalInterest = monthsLeft && r > 0 ? roundMoney((pmt * monthsLeft - bal)) : null;
           const payoffDate = monthsLeft ? (() => {
             const d = /* @__PURE__ */ new Date();

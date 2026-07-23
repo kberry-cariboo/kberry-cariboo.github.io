@@ -412,7 +412,10 @@
     useEffect(() => {
       if (!household || !initialized.current) return;
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveData(true), 2e3);
+      saveTimer.current = setTimeout(() => {
+        saveTimer.current = null;
+        saveData(true);
+      }, 2e3);
       return () => clearTimeout(saveTimer.current);
     }, [
       values.entries,

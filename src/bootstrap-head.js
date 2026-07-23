@@ -12,10 +12,14 @@ self.addEventListener('fetch',e=>{
 });`;
 try{
   const b=new Blob([sw],{type:'text/javascript'});
+  const hadController=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.register(URL.createObjectURL(b)).then(reg=>{
     reg.update().catch(()=>{});
     let refreshed=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      // The first-ever install also fires controllerchange (no controller -> controlled) —
+      // that's not an update, so only reload when a controller already existed before this.
+      if(!hadController) return;
       if(refreshed) return; refreshed=true; window.location.reload();
     });
   }).catch(()=>{});

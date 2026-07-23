@@ -782,20 +782,25 @@ begin
      cf_int(d->>'schemaVersion'),
      now(),
      auth.uid())
+  -- Every column below falls back to the existing stored value (s.*) when its
+  -- JSON key is absent from the payload — e.g. an older client that predates a
+  -- newer scalar setting — so a partial/stale payload can never null out
+  -- another member's up-to-date setting, matching the "never wipe what a
+  -- payload doesn't know about" guarantee the rest of this function enforces.
   on conflict (household_id) do update set
-     active_year = excluded.active_year,
-     alert_threshold = excluded.alert_threshold,
-     dark_mode = excluded.dark_mode,
-     forecast_horizon = excluded.forecast_horizon,
-     ai_api_key = excluded.ai_api_key,
-     col_order = excluded.col_order,
-     reg_filter = excluded.reg_filter,
-     reg_filter_cats = excluded.reg_filter_cats,
-     reg_filter_scheds = excluded.reg_filter_scheds,
-     reg_filter_status = excluded.reg_filter_status,
-     dash_hidden = excluded.dash_hidden,
-     dash_order = excluded.dash_order,
-     schema_version = excluded.schema_version,
+     active_year = case when d ? 'activeYear' then excluded.active_year else s.active_year end,
+     alert_threshold = case when d ? 'alertThreshold' then excluded.alert_threshold else s.alert_threshold end,
+     dark_mode = case when d ? 'darkMode' then excluded.dark_mode else s.dark_mode end,
+     forecast_horizon = case when d ? 'forecastHorizon' then excluded.forecast_horizon else s.forecast_horizon end,
+     ai_api_key = case when d ? 'aiApiKey' then excluded.ai_api_key else s.ai_api_key end,
+     col_order = case when d ? 'colOrder' then excluded.col_order else s.col_order end,
+     reg_filter = case when d ? 'regFilter' then excluded.reg_filter else s.reg_filter end,
+     reg_filter_cats = case when d ? 'regFilterCats' then excluded.reg_filter_cats else s.reg_filter_cats end,
+     reg_filter_scheds = case when d ? 'regFilterScheds' then excluded.reg_filter_scheds else s.reg_filter_scheds end,
+     reg_filter_status = case when d ? 'regFilterStatus' then excluded.reg_filter_status else s.reg_filter_status end,
+     dash_hidden = case when d ? 'dashHidden' then excluded.dash_hidden else s.dash_hidden end,
+     dash_order = case when d ? 'dashOrder' then excluded.dash_order else s.dash_order end,
+     schema_version = case when d ? 'schemaVersion' then excluded.schema_version else s.schema_version end,
      updated_at = now(),
      updated_by = excluded.updated_by;
 end $$;
