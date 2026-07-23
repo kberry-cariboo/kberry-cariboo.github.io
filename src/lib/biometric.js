@@ -61,6 +61,10 @@
     try {
       localStorage.setItem("cf_webauthn_" + userId, credId);
     } catch (e) {
+      // Surface this instead of returning as if it succeeded — otherwise the
+      // caller shows "enabled" while nothing was actually saved, and the next
+      // unlock attempt fails with a confusing "not set up" error instead.
+      throw new Error("Couldn't save the fingerprint/face credential on this device (storage may be full or blocked).");
     }
     return credId;
   }

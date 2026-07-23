@@ -461,9 +461,13 @@ begin
     raise exception 'Invalid payload: expected a JSON object.';
   end if;
 
-  -- entries -------------------------------------------------------------
+  -- entries ---------------------------------------------------------------
+  -- Upsert + anti-join delete instead of delete-all-then-reinsert-all: a
+  -- save no longer rewrites every row in the household's largest table when
+  -- only one entry changed. The client still sends its full current entries
+  -- array (no wire-format change), so "not in the payload" reliably means
+  -- "deleted client-side" for the anti-join below.
   if jsonb_typeof(d->'entries') = 'array' then
-    delete from entries where household_id = hid;
     insert into entries (household_id, id, sort_order, description, type, amount,
                          start_date, repeats, recur_every, recur_unit, recur_days,
                          recur_end, category, notes, monthly_amounts, created_by)
@@ -487,7 +491,37 @@ begin
                 then (e.value->>'userId')::uuid end
     from jsonb_array_elements(d->'entries') with ordinality e(value, ord)
     where cf_bigint(e.value->>'id') is not null
-    on conflict (household_id, id) do nothing;
+    on conflict (household_id, id) do update set
+      sort_order = excluded.sort_order,
+      description = excluded.description,
+      type = excluded.type,
+      amount = excluded.amount,
+      start_date = excluded.start_date,
+      repeats = excluded.repeats,
+      recur_every = excluded.recur_every,
+      recur_unit = excluded.recur_unit,
+      recur_days = excluded.recur_days,
+      recur_end = excluded.recur_end,
+      category = excluded.category,
+      notes = excluded.notes,
+      monthly_amounts = excluded.monthly_amounts,
+      created_by = excluded.created_by
+    where (entries.sort_order, entries.description, entries.type, entries.amount,
+           entries.start_date, entries.repeats, entries.recur_every, entries.recur_unit,
+           entries.recur_days, entries.recur_end, entries.category, entries.notes,
+           entries.monthly_amounts, entries.created_by)
+      is distinct from
+          (excluded.sort_order, excluded.description, excluded.type, excluded.amount,
+           excluded.start_date, excluded.repeats, excluded.recur_every, excluded.recur_unit,
+           excluded.recur_days, excluded.recur_end, excluded.category, excluded.notes,
+           excluded.monthly_amounts, excluded.created_by);
+
+    delete from entries e
+    where e.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements(d->'entries') x(value)
+        where cf_bigint(x.value->>'id') = e.id
+      );
 
     -- inline receipt images riding on entries (legacy blob / backup import)
     insert into receipts (household_id, owner_key, mime, data)
@@ -508,9 +542,9 @@ begin
                       where e.household_id = hid and r.owner_key = 'entry:' || e.id);
   end if;
 
-  -- per-occurrence overrides -------------------------------------------
+  -- per-occurrence overrides ------------------------------------------------
+  -- Same upsert + anti-join-delete pattern as entries above.
   if jsonb_typeof(d->'overridesByYr') = 'object' then
-    delete from entry_overrides where household_id = hid;
     insert into entry_overrides (household_id, year, occurrence_id, description,
                                  amount, day, notes, saved_at, history)
     select hid,
@@ -527,7 +561,28 @@ begin
          jsonb_each(case when jsonb_typeof(y.value) = 'object'
                          then y.value else '{}'::jsonb end) o(key, value)
     where cf_int(y.key, null) is not null
-    on conflict (household_id, year, occurrence_id) do nothing;
+    on conflict (household_id, year, occurrence_id) do update set
+      description = excluded.description,
+      amount = excluded.amount,
+      day = excluded.day,
+      notes = excluded.notes,
+      saved_at = excluded.saved_at,
+      history = excluded.history
+    where (entry_overrides.description, entry_overrides.amount, entry_overrides.day,
+           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.history)
+      is distinct from
+          (excluded.description, excluded.amount, excluded.day,
+           excluded.notes, excluded.saved_at, excluded.history);
+
+    delete from entry_overrides v
+    where v.household_id = hid
+      and not exists (
+        select 1
+        from jsonb_each(d->'overridesByYr') y(key, value),
+             jsonb_each(case when jsonb_typeof(y.value) = 'object'
+                             then y.value else '{}'::jsonb end) o(key, value)
+        where cf_int(y.key, null) = v.year and o.key = v.occurrence_id
+      );
 
     -- inline receipt images riding on overrides
     insert into receipts (household_id, owner_key, mime, data)
@@ -551,9 +606,8 @@ begin
                         and r.owner_key = 'override:' || v.year || ':' || v.occurrence_id);
   end if;
 
-  -- categories ----------------------------------------------------------
+  -- categories --------------------------------------------------------------
   if jsonb_typeof(d->'categories') = 'array' then
-    delete from categories where household_id = hid;
     insert into categories (household_id, name, color, sort_order)
     select hid, c.v,
            case when jsonb_typeof(d->'categoryColors') = 'object'
@@ -561,22 +615,39 @@ begin
            c.o
     from jsonb_array_elements_text(d->'categories') with ordinality c(v, o)
     where c.v is not null and c.v <> ''
-    on conflict (household_id, name) do nothing;
+    on conflict (household_id, name) do update set
+      color = excluded.color,
+      sort_order = excluded.sort_order
+    where (categories.color, categories.sort_order) is distinct from (excluded.color, excluded.sort_order);
+
+    delete from categories c
+    where c.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements_text(d->'categories') x(v)
+        where x.v = c.name
+      );
   end if;
 
-  -- year configs --------------------------------------------------------
+  -- year configs --------------------------------------------------------------
   if jsonb_typeof(d->'yearConfigs') = 'array' then
-    delete from year_configs where household_id = hid;
     insert into year_configs (household_id, year, opening_balance)
     select hid, cf_int(y.value->>'year', null), coalesce(cf_num(y.value->>'openingBalance'), 0)
     from jsonb_array_elements(d->'yearConfigs') y(value)
     where cf_int(y.value->>'year', null) is not null
-    on conflict (household_id, year) do nothing;
+    on conflict (household_id, year) do update set
+      opening_balance = excluded.opening_balance
+    where year_configs.opening_balance is distinct from excluded.opening_balance;
+
+    delete from year_configs y
+    where y.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements(d->'yearConfigs') x(value)
+        where cf_int(x.value->>'year', null) = y.year
+      );
   end if;
 
-  -- budget targets ("YYYY:M" -> { category: amount }) --------------------
+  -- budget targets ("YYYY:M" -> { category: amount }) -----------------------
   if jsonb_typeof(d->'budgetTargets') = 'object' then
-    delete from budget_targets where household_id = hid;
     insert into budget_targets (household_id, year, month, category, amount)
     select hid,
            split_part(t.key, ':', 1)::int,
@@ -588,10 +659,29 @@ begin
                          then t.value else '{}'::jsonb end) c(key, value)
     where t.key ~ '^\d+:\d+$'
       and split_part(t.key, ':', 2)::int between 0 and 11
-    on conflict (household_id, year, month, category) do nothing;
+    on conflict (household_id, year, month, category) do update set
+      amount = excluded.amount
+    where budget_targets.amount is distinct from excluded.amount;
+
+    delete from budget_targets b
+    where b.household_id = hid
+      and not exists (
+        select 1
+        from jsonb_each(d->'budgetTargets') t(key, value),
+             jsonb_each(case when jsonb_typeof(t.value) = 'object'
+                             then t.value else '{}'::jsonb end) c(key, value)
+        where t.key ~ '^\d+:\d+$'
+          and split_part(t.key, ':', 1)::int = b.year
+          and split_part(t.key, ':', 2)::int = b.month
+          and c.key = b.category
+      );
   end if;
 
   -- templates -----------------------------------------------------------
+  -- Left as delete-all-then-reinsert: templates have no client-assigned
+  -- stable id (the table's `id` is server-generated on every insert), so
+  -- there's nothing to upsert against. Typically a short, rarely-edited
+  -- list, unlike entries/overrides, so this isn't the scaling concern.
   if jsonb_typeof(d->'templates') = 'array' then
     delete from templates where household_id = hid;
     insert into templates (household_id, sort_order, description, type, amount,
@@ -609,19 +699,28 @@ begin
     from jsonb_array_elements(d->'templates') with ordinality t(value, ord);
   end if;
 
-  -- completed occurrences ------------------------------------------------
+  -- completed occurrences -----------------------------------------------------
+  -- "on conflict do nothing" + anti-join delete (rather than delete-all then
+  -- reinsert) also fixes a side effect of the old approach: completed_at
+  -- used to get reset to now() on every autosave for every already-completed
+  -- occurrence, since the row was destroyed and recreated each time.
   if jsonb_typeof(d->'completed') = 'object' then
-    delete from completed_occurrences where household_id = hid;
     insert into completed_occurrences (household_id, occurrence_id)
     select hid, c.key
     from jsonb_each(d->'completed') c(key, value)
     where c.value <> 'false'::jsonb and c.value <> 'null'::jsonb
     on conflict (household_id, occurrence_id) do nothing;
+
+    delete from completed_occurrences co
+    where co.household_id = hid
+      and not exists (
+        select 1 from jsonb_each(d->'completed') c(key, value)
+        where c.key = co.occurrence_id and c.value <> 'false'::jsonb and c.value <> 'null'::jsonb
+      );
   end if;
 
-  -- goals ---------------------------------------------------------------
+  -- goals ---------------------------------------------------------------------
   if jsonb_typeof(d->'goals') = 'array' then
-    delete from goals where household_id = hid;
     insert into goals (household_id, id, sort_order, name, target, saved, monthly,
                        target_date, entry_id, payout_entry_id, created_at)
     select hid,
@@ -637,7 +736,28 @@ begin
            cf_ts(g.value->>'createdAt')
     from jsonb_array_elements(d->'goals') with ordinality g(value, ord)
     where cf_bigint(g.value->>'id') is not null
-    on conflict (household_id, id) do nothing;
+    on conflict (household_id, id) do update set
+      sort_order = excluded.sort_order,
+      name = excluded.name,
+      target = excluded.target,
+      saved = excluded.saved,
+      monthly = excluded.monthly,
+      target_date = excluded.target_date,
+      entry_id = excluded.entry_id,
+      payout_entry_id = excluded.payout_entry_id,
+      created_at = excluded.created_at
+    where (goals.sort_order, goals.name, goals.target, goals.saved, goals.monthly,
+           goals.target_date, goals.entry_id, goals.payout_entry_id, goals.created_at)
+      is distinct from
+          (excluded.sort_order, excluded.name, excluded.target, excluded.saved, excluded.monthly,
+           excluded.target_date, excluded.entry_id, excluded.payout_entry_id, excluded.created_at);
+
+    delete from goals g
+    where g.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements(d->'goals') x(value)
+        where cf_bigint(x.value->>'id') = g.id
+      );
   end if;
 
   -- scalar settings (always upserted; marks the household as migrated) ----

@@ -2023,7 +2023,27 @@ try{
     });
   }).catch(()=>{});
 }catch(e){}}
-function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
+function showError(t,m){
+  // Built with real DOM nodes + textContent (not innerHTML) since `m` is a
+  // caught exception's message/stack — it can embed text this app didn't
+  // author (e.g. from synced data that broke rendering) and must never be
+  // parsed as HTML.
+  const root=document.getElementById('root');
+  root.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto';
+  const title=document.createElement('div');
+  title.style.cssText='color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px';
+  title.textContent='⚠ '+t;
+  const pre=document.createElement('pre');
+  pre.style.cssText='background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap';
+  pre.textContent=m;
+  const hint=document.createElement('p');
+  hint.style.cssText='color:#888;font-size:12px;margin-top:14px';
+  hint.textContent='Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R';
+  wrap.appendChild(title);wrap.appendChild(pre);wrap.appendChild(hint);
+  root.appendChild(wrap);
+}
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof React==='undefined'||typeof ReactDOM==='undefined'){showError('React failed to initialize','Inline React bundle did not load.');return;}
   if(typeof window.Recharts==='undefined'){showError('Chart library failed','Inline Recharts failed to init.');return;}
@@ -2793,6 +2813,10 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       localStorage.setItem("cf_webauthn_" + userId, credId);
     } catch (e) {
+      // Surface this instead of returning as if it succeeded — otherwise the
+      // caller shows "enabled" while nothing was actually saved, and the next
+      // unlock attempt fails with a confusing "not set up" error instead.
+      throw new Error("Couldn't save the fingerprint/face credential on this device (storage may be full or blocked).");
     }
     return credId;
   }
@@ -3567,6 +3591,7 @@ document.addEventListener('DOMContentLoaded',function(){
         payoffOrder
       };
     } catch (err) {
+      console.error("simulateDebtStrategy failed, hiding Payoff Strategy card", err);
       return null;
     }
   }
@@ -7809,6 +7834,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [effectiveFlow]);
+    const catPieData = useMemo(() => catTotals.map(([name, value]) => ({ name, value })), [catTotals]);
+    const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
     const savingsRate = useMemo(() => summaries.map((m) => ({
       month: m.month,
       rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
@@ -7860,6 +7887,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
         return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
       } catch (err) {
+        console.error("dashboard glance computation failed, hiding Balance/Due/Low-point tiles", err);
         return null;
       }
     }, [flow, openBal, activeYear, completed]);
@@ -7927,6 +7955,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         });
         return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
       } catch (e) {
+        console.error("dashboard spending-insight computation failed, hiding the Spending Insight card", e);
         return null;
       }
     }, [flow, activeYear]);
@@ -8070,7 +8099,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
-          data: catTotals.map(([name, value]) => ({ name, value })),
+          data: catPieData,
           cx: "50%",
           cy: "50%",
           outerRadius: 80,
@@ -8096,7 +8125,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
-          data: incTotals.map(([name, value]) => ({ name, value })),
+          data: incPieData,
           cx: "50%",
           cy: "50%",
           outerRadius: 75,
