@@ -450,6 +450,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setLoading(false);
       }
     };
+    const slugifySection = (t) => "ai-sec-" + t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const sectionIcon = {
       "Executive Summary": "chart-bar",
       "Income Analysis": "banknote",
@@ -562,7 +563,23 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "Clear"
     )), err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "\u26A0 ", err)), loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, ["Executive Summary", "Income Analysis", "Spending Analysis", "Debt Management", "Priority Action Items"].map((s) => /* @__PURE__ */ React.createElement(Card, { key: s }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: {
       width: `${w}%`
-    } }))))), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+    } }))))), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks ai-quicklinks" }, (orderedReport || report).map((section) => {
+      const anchorId = slugifySection(section.title);
+      return /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          key: anchorId,
+          href: `#${anchorId}`,
+          onClick: (e) => {
+            e.preventDefault();
+            const el = document.getElementById(anchorId);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          },
+          className: "quicklink-pill"
+        },
+        section.title
+      );
+    })), (() => {
       const match = rawText.match(/\b([1-9]|10)\s*\/\s*10\b|\bscore[:\s]+([1-9]|10)\b/i);
       if (!match) return null;
       const score = parseInt(match[1] || match[2]);
@@ -571,7 +588,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         border: `2px solid ${color}`,
         boxShadow: `0 0 0 4px ${color}22`
       } }, /* @__PURE__ */ React.createElement("div", { className: "ai-score-number", style: { color } }, score, /* @__PURE__ */ React.createElement("span", { className: "ai-score-outof" }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "ai-score-label" }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { className: "txm" }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
-    })(), vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }), /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in \u00B7 ${fmt(vizCtx.totalExpenses)} out` }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, (orderedReport || report).map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, className: "ai-section-card", style: { gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: {
+    })(), vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }), /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in \u00B7 ${fmt(vizCtx.totalExpenses)} out` }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, (orderedReport || report).map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, id: slugifySection(section.title), className: "ai-section-card", style: { gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: {
       color: sectionColor[section.title] || "var(--primary)"
     } }, section.title)), sectionViz(section.title), section.items.map((line, li) => {
       const raw = line.trim();
