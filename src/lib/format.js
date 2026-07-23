@@ -38,7 +38,7 @@
     window.print();
     document.title = prev;
   }
-  const ExportBar = ({ onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
@@ -56,6 +56,14 @@
     },
     /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
     "PDF"
+  ), onAdd && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onAdd,
+      title: "Add Entry",
+      className: "cf-btn cf-btn--primary exportbar-add-btn", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+    },
+    "+ Add"
   ));
   function fmtVarRange(monthlyAmounts) {
     try {

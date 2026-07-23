@@ -60,6 +60,11 @@
       setEditingInitial(orig);
       setShowEntryForm(true);
     };
+    const openAddEntry = () => {
+      setEditingEntry(null);
+      setEditingInitial(null);
+      setShowEntryForm(true);
+    };
     const handleEntrySave = (data) => {
       if (editingEntry) {
         let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
@@ -539,6 +544,7 @@
       ), /* @__PURE__ */ React.createElement(
         ExportBar,
         {
+          onAdd: openAddEntry,
           onCSV: () => {
             const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
@@ -714,6 +720,7 @@
       budgetSub === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
+          onAdd: openAddEntry,
           onCSV: () => {
             const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);

@@ -228,218 +228,37 @@
       toast(`Template "${f.desc || "Untitled"}" saved${templates.some((t) => t.desc === f.desc) ? " (replaced existing)" : ""}`);
     }, className: "ef-save-template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
   }
-  function CSVImporter({ categories, onImport, onClose }) {
-    const [rows, setRows] = useState([]);
-    const [headers, setHeaders] = useState([]);
-    const [map, setMap] = useState({ desc: "", amount: "", date: "", type: "", category: "" });
-    const [preview, setPreview] = useState([]);
-    const [err, setErr] = useState("");
-    const [done, setDone] = useState(false);
-    const todayS = todayStr();
-    const PROFILES_KEY = "cf_csvProfiles";
-    const loadProfiles = () => {
-      try {
-        return JSON.parse(localStorage.getItem(PROFILES_KEY)) || {};
-      } catch (e) {
-        return {};
-      }
-    };
-    const [profiles, setProfiles] = useState(loadProfiles);
-    const [profName, setProfName] = useState("");
-    const [appliedProf, setAppliedProf] = useState("");
-    const persistProfiles = (next) => {
-      setProfiles(next);
-      try {
-        localStorage.setItem(PROFILES_KEY, JSON.stringify(next));
-      } catch (e) {
-      }
-    };
-    const profileFits = (p, h) => {
-      const cols = Object.values(p.map || {}).filter(Boolean);
-      return cols.length > 0 && cols.every((col) => h.includes(col));
-    };
-    const applyProfile = (name, h) => {
-      const p = profiles[name];
-      if (!p || !profileFits(p, h || headers)) return false;
-      setMap({ desc: "", amount: "", date: "", type: "", category: "", ...p.map });
-      setAppliedProf(name);
-      setPreview([]);
-      return true;
-    };
-    const saveProfile = () => {
-      const name = profName.trim();
-      if (!name) return;
-      persistProfiles({ ...profiles, [name]: { map: { ...map }, sig: headers } });
-      setAppliedProf(name);
-      setProfName("");
-    };
-    const deleteProfile = (name) => {
-      const next = { ...profiles };
-      delete next[name];
-      persistProfiles(next);
-      if (appliedProf === name) setAppliedProf("");
-    };
-    const parseCSV = (text) => {
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return { headers: [], rows: [] };
-      const splitLine = (l) => {
-        const out = [];
-        let cur = "", q = false;
-        for (const ch of l) {
-          if (ch === '"') q = !q;
-          else if (ch === "," && !q) {
-            out.push(cur.trim());
-            cur = "";
-          } else cur += ch;
+  // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
+  // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
+  // open a blank entry form.
+  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null }) {
+    if (!show) return null;
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Add entry",
+        onClick: (e) => {
+          if (e.target === e.currentTarget) onClose();
         }
-        out.push(cur.trim());
-        return out;
-      };
-      const hdrs = splitLine(lines[0]);
-      const rws = lines.slice(1).map(splitLine).filter((r) => r.some((c) => c));
-      return { headers: hdrs, rows: rws };
-    };
-    const handleFile = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      setErr("");
-      setDone(false);
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const { headers: h, rows: r } = parseCSV(ev.target.result);
-        if (!h.length) {
-          setErr("Could not parse CSV \u2014 ensure the file has a header row.");
-          return;
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
+        EntryForm,
+        {
+          initial: null,
+          onSave: (data) => {
+            onSave(data);
+            onClose();
+          },
+          onCancel: onClose,
+          categories,
+          templates,
+          onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
-        setHeaders(h);
-        setRows(r);
-        const guess = (name) => h.find((c) => c.toLowerCase().includes(name.toLowerCase())) || "";
-        setMap({
-          desc: guess("desc") || guess("name") || guess("memo") || guess("narr") || "",
-          amount: guess("amount") || guess("debit") || guess("credit") || "",
-          date: guess("date") || guess("time") || "",
-          type: guess("type") || guess("debit") || "",
-          category: guess("categ") || guess("tag") || ""
-        });
-        const saved = Object.entries(loadProfiles());
-        const exact = saved.find(([, p]) => (p.sig || []).join("\x1F") === h.join("\x1F") && profileFits(p, h));
-        const fit = exact || saved.find(([, p]) => profileFits(p, h));
-        if (fit) {
-          setMap({ desc: "", amount: "", date: "", type: "", category: "", ...fit[1].map });
-          setAppliedProf(fit[0]);
-        } else {
-          setAppliedProf("");
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = "";
-    };
-    const buildPreview = () => {
-      if (!map.desc || !map.amount || !map.date) {
-        setErr("Map at minimum: Description, Amount, and Date.");
-        return;
-      }
-      const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
-      const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
-      const ci = headers.indexOf(map.category);
-      const prev = rows.slice(0, 5).map((r) => {
-        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
-        const amt = isNaN(rawAmt) ? 0 : roundMoney(Math.abs(rawAmt));
-        const raw = r[dti] || todayS;
-        const parsed = new Date(raw);
-        const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
-        return {
-          desc: r[di] || "(no description)",
-          amount: amt,
-          startDate: dateStr,
-          type: typeGuess,
-          category: ci > -1 ? r[ci] : "Uncategorized",
-          notes: ""
-        };
-      });
-      setPreview(prev);
-      setErr("");
-    };
-    const doImport = () => {
-      const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
-      const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
-      const ci = headers.indexOf(map.category);
-      const imported = rows.map((r, idx) => {
-        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
-        const amt = isNaN(rawAmt) ? 0 : dollarsToCents(Math.abs(rawAmt));
-        const raw = r[dti] || todayS;
-        const parsed = new Date(raw);
-        const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
-        const cat = ci > -1 ? r[ci] : "Uncategorized";
-        return {
-          id: Date.now() + idx,
-          desc: r[di] || "Imported",
-          amount: amt,
-          startDate: dateStr,
-          type: typeGuess,
-          category: cat,
-          notes: "",
-          repeats: false,
-          recurEvery: 1,
-          recurUnit: "month",
-          recurDays: [],
-          recurEnd: ""
-        };
-      }).filter((e) => e.amount > 0 || e.desc !== "Imported");
-      onImport(imported);
-      setDone(true);
-    };
-    const sel = (field, label, required = false) => /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, className: "csv-sel-label" }, label, required && /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: `csv-map-${field}`,
-        value: map[field],
-        onChange: (e) => setMap((m) => __spreadProps(__spreadValues({}, m), { [field]: e.target.value })),
-        className: "csv-select-input csv-select-input--full"
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 not mapped \u2014"),
-      headers.map((h) => /* @__PURE__ */ React.createElement("option", { key: h, value: h }, h))
-    ));
-    return /* @__PURE__ */ React.createElement("div", { className: "csv-importer-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "csv-title" }, "\u2B06 Import from CSV"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", className: "shortcuts-close" }, "\u2715")), !rows.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "csv-instructions" }, "Upload a CSV file from your bank or spreadsheet. The file must have a header row. Required columns: ", /* @__PURE__ */ React.createElement("strong", null, "Description"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Amount"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Date"), "."), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--primary cf-btn--upload" }, "Choose CSV File", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", className: "hidden", onChange: handleFile }))), rows.length > 0 && !done && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "csv-success-text" }, "\u2713 Loaded ", rows.length, " rows. Map your columns:"), appliedProf && /* @__PURE__ */ React.createElement("div", { className: "csv-applied-text" }, "Applied saved mapping ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, appliedProf), " ", /* @__PURE__ */ React.createElement("button", { onClick: () => deleteProfile(appliedProf), title: "Forget this saved mapping", className: "csv-forget-btn" }, "forget")), /* @__PURE__ */ React.createElement("div", { className: "csv-mapping-row" }, Object.keys(profiles).length > 0 && /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        "aria-label": "Apply saved mapping",
-        value: "",
-        onChange: (e) => {
-          if (e.target.value) applyProfile(e.target.value);
-        },
-        className: "csv-select-input"
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "" }, "Apply saved mapping\u2026"),
-      Object.keys(profiles).sort().map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n, disabled: !profileFits(profiles[n], headers) }, n, profileFits(profiles[n], headers) ? "" : " (columns don't match)"))
-    ), /* @__PURE__ */ React.createElement("input", {
-      value: profName,
-      onChange: (e) => setProfName(e.target.value),
-      onKeyDown: (e) => {
-        if (e.key === "Enter") saveProfile();
-      },
-      placeholder: 'Name this mapping (e.g. "RBC chequing")',
-      "aria-label": "Mapping name",
-      className: "csv-select-input csv-name-input"
-    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary cf-btn--csvsave" }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { className: "csv-field-grid" }, sel("desc", "Description", true), sel("amount", "Amount", true), sel("date", "Date", true), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { className: "csv-error-text" }, err), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-8" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: buildPreview,
-        className: "csv-preview-btn"
-      },
-      "Preview"
-    ), preview.length > 0 && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: doImport,
-        className: "csv-import-btn"
-      },
-      "Import ",
-      rows.length,
-      " Entries"
-    )), preview.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("div", { className: "csv-preview-label" }, "Preview (first ", Math.min(5, rows.length), " rows):"), preview.map((p, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "csv-preview-row" }, /* @__PURE__ */ React.createElement("span", { className: "csv-preview-desc" }, p.desc), /* @__PURE__ */ React.createElement("span", { className: "csv-preview-amt", style: { color: p.type === "income" ? "var(--greenDk)" : "var(--red)" } }, p.type === "income" ? "+" : "-", p.amount.toFixed(2)), /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, p.startDate), /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, p.category))))), done && /* @__PURE__ */ React.createElement("div", { className: "csv-done-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "csv-done-icon" }, "\u2705"), /* @__PURE__ */ React.createElement("div", { className: "csv-done-text" }, "Import complete!"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "cf-btn cf-btn--primary cf-btn--md mt-12" }, "Done")));
+      ))
+    );
   }
   function ContextMenu({ x, y, items, onClose }) {
     const menuRef = useRef(null);

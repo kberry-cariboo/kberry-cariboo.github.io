@@ -311,7 +311,6 @@
       setTab("budget");
       setBudgetSub("monthly");
     }, [globalSearch, tab]);
-    const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
     useEffect(() => {
@@ -561,16 +560,10 @@
     }, []);
     useEffect(() => {
       const h = () => {
-        // Desktop hides the floating quick-add panel; open the register's own
-        // entry form there instead (jumping to Entries first if needed).
-        const fine = window.matchMedia && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
-        if (fine) {
-          setTab("budget");
-          setBudgetSub("entries");
-          setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
-        } else {
-          setFabOpen(true);
-        }
+        // Jump to Entries and open its own "Add Entry" form.
+        setTab("budget");
+        setBudgetSub("entries");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
       };
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
@@ -983,7 +976,7 @@
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`
     } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
@@ -1047,7 +1040,7 @@
         onDeleted: (e) => pushUndo(e),
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,
       {
         entries,
@@ -1056,7 +1049,6 @@
         addEntry,
         categories,
         categoryColors,
-        setCategories,
         activeYear,
         onDeleted: (e) => pushUndo(e),
         templates,
@@ -1179,30 +1171,7 @@
         className: "cf-footer-link"
       },
       "Terms of Use"
-    )), tab === "budget" && !showBackupNudge && /* @__PURE__ */ React.createElement(
-      QuickAddFAB,
-      {
-        categories,
-        templates,
-        setTemplates,
-        open: fabOpen,
-        setOpen: setFabOpen,
-        onSave: (data) => {
-          addEntry(data);
-          setFabOpen(false);
-        },
-        onImportCSV: () => {
-          if (budgetSub === "entries") {
-            window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
-          } else {
-            setBudgetSub("entries");
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
-            }, 0);
-          }
-        }
-      }
-    )));
+    ))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

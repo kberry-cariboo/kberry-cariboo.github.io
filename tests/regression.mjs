@@ -369,16 +369,14 @@ await test('C2 dark: charts render with theme colors', async () => {
     if (await btn.count() > 0) throw new Error('tip still visible');
   });
 
-  await test('D4 FAB opens quick-add panel on mobile', async () => {
+  await test('D4 top-right Add button opens entry form on mobile', async () => {
     await page.locator('.cf-bottomnav').getByRole('button', { name: 'Budget' }).tap({ force: true });
     await page.waitForTimeout(400);
-    await page.locator('.cf-quickfab').tap({ force: true });
-    await page.locator('.cf-quickfab-menu, .cf-quickfab-panel, .fab-panel').first().waitFor(V);
-    const menuAdd = page.locator('.cf-quickfab-menu').getByText('Add Entry');
-    if (await menuAdd.count() > 0) await menuAdd.tap({ force: true });
-    await page.locator('.cf-quickfab-panel, .fab-panel').first().waitFor(V);
+    await page.locator('.exportbar-add-btn').first().tap({ force: true });
     await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
-    await page.locator('.cf-quickfab').tap({ force: true }); // close
+    await page.getByRole('button', { name: 'Cancel' }).first().tap({ force: true });
+    await page.waitForTimeout(300);
+    if (await page.locator('.modal-overlay').count() > 0) throw new Error('add-entry modal did not close');
   });
 
   await test('D5 mobile settings hides biometric on unsupported device', async () => {

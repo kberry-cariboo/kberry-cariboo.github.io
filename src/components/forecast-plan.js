@@ -1,6 +1,7 @@
   function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
-  }, categories = [], categoryColors = {} }) {
+  }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null }) {
     const isMobile = useIsMobile();
+    const [showAddEntry, setShowAddEntry] = useState(false);
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
     const today = useMemo(() => /* @__PURE__ */ new Date(), []);
@@ -20,19 +21,30 @@
     }, [yearFlows, yearConfigs, horizon, today]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
-        onCSV: () => {
+        onAdd: addEntry ? () => setShowAddEntry(true) : null,
+        onCSV: futureEvents.length === 0 ? null : () => {
           const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
             return [dateStr, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
         },
-        onPrint: () => printView(`CashFlow Forecast - ${horizon} Days`)
+        onPrint: futureEvents.length === 0 ? null : () => printView(`CashFlow Forecast - ${horizon} Days`)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
+    )), /* @__PURE__ */ React.createElement(
+      AddEntryModal,
+      {
+        show: showAddEntry,
+        onClose: () => setShowAddEntry(false),
+        onSave: addEntry || (() => {}),
+        categories,
+        templates,
+        setTemplates
+      }
+    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
@@ -53,7 +65,7 @@
         const color = conf >= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
-    })))))));
+    }))))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
