@@ -286,7 +286,7 @@ await test('A1 built-in self-test suite passes', async () => {
   });
 
   await test('B15 plan: goal modal opens', async () => {
-    await page.goto(BASE + '#/plan', { waitUntil: 'load' });
+    await page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Goal' }).click();
     await page.locator('.modal-card, .fab-panel').first().waitFor(V);
