@@ -244,7 +244,7 @@ stable
 as $$
   select exists(
     select 1 from household_members m
-    where m.household_id = hid and m.user_id = auth.uid()
+    where m.household_id = hid and m.user_id = auth.uid() and not m.disabled
   );
 $$;
 
@@ -257,7 +257,7 @@ stable
 as $$
   select exists(
     select 1 from household_members m
-    where m.household_id = hid and m.user_id = auth.uid() and m.role = 'owner'
+    where m.household_id = hid and m.user_id = auth.uid() and m.role = 'owner' and not m.disabled
   );
 $$;
 
@@ -276,6 +276,32 @@ create policy "update own member row" on household_members
 drop policy if exists "owner can update any member" on household_members;
 create policy "owner can update any member" on household_members
   for update using (is_household_owner(household_id)) with check (is_household_owner(household_id));
+
+-- "update own member row" above lets a member update their own row's columns
+-- with no restriction, which would otherwise let a disabled member simply
+-- flip their own `disabled` flag back to false (or self-promote `role` to
+-- 'owner') via a direct client update. RLS policies can't compare a row's
+-- old vs. new values on their own, so a trigger enforces it: only an owner
+-- (already permitted via the sibling policy above) may change these columns.
+create or replace function enforce_member_self_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not is_household_owner(new.household_id)
+     and (new.disabled is distinct from old.disabled or new.role is distinct from old.role) then
+    raise exception 'Only a household owner can change role or disabled status.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_member_self_update on household_members;
+create trigger trg_enforce_member_self_update
+  before update on household_members
+  for each row execute function enforce_member_self_update();
 
 -- Legacy blob: readable (so you can inspect the pre-migration backup) but no
 -- longer writable — the app now writes only to the normalized tables.
@@ -679,7 +705,7 @@ as $$
 declare
   hid uuid;
 begin
-  select household_id into hid from household_members where user_id = auth.uid() limit 1;
+  select household_id into hid from household_members where user_id = auth.uid() and not disabled limit 1;
   if hid is null then
     raise exception 'You must belong to a household first.';
   end if;
@@ -940,7 +966,7 @@ declare
   hid uuid;
   code text;
 begin
-  select household_id into hid from household_members where user_id = auth.uid() limit 1;
+  select household_id into hid from household_members where user_id = auth.uid() and not disabled limit 1;
   if hid is null then
     raise exception 'You must belong to a household first.';
   end if;
