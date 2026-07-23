@@ -226,7 +226,7 @@
     };
     useEffect(() => {
       clearSel();
-    }, [monthIdx, budgetSub]);
+    }, [monthIdx, budgetSub, activeYear]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);

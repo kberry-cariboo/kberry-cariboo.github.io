@@ -174,7 +174,7 @@
         .tab-alert-dot{margin-left:6px;color:#fff;border-radius:10px;padding:1px 6px;
           font-size:10px;font-weight:700;}
         .tab-search-dot{margin-left:5px;display:inline-flex;}
-        .backup-nudge{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:1450;
+        .backup-nudge{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;z-index:1450;
           background:var(--bgCard);border:1px solid var(--amber);border-radius:14px;padding:16px 20px;
           max-width:340px;width:calc(100vw - 32px);box-shadow:var(--shadowLg);}
         .backup-nudge-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;
@@ -1279,6 +1279,10 @@
           .fab-panel{left:12px!important;right:12px!important;
             bottom:calc(128px + env(safe-area-inset-bottom))!important;
             width:auto!important;padding:16px!important;max-height:70vh!important;}
+          /* Backup nudge: clear of the FAB button above the bottom nav, same as fab-panel */
+          .backup-nudge{left:12px!important;right:12px!important;
+            bottom:calc(128px + env(safe-area-inset-bottom))!important;
+            width:auto!important;max-width:none!important;}
           /* Budget: hide daily toggle, add button; show mobile-only label */
           /* Register: hide add/import buttons — FAB handles these on mobile */
         }

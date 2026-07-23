@@ -147,7 +147,12 @@
         max: "99",
         className: inpCls(errors.recurEvery),
         value: f.recurEvery,
-        onChange: (e) => set({ recurEvery: parseInt(e.target.value) || 1 })
+        onChange: (e) => {
+          const every = parseInt(e.target.value) || 1;
+          set(
+            f.recurUnit === "week" && every > 1 ? { recurEvery: every, recurDays: startWD !== null ? [startWD] : [] } : { recurEvery: every }
+          );
+        }
       }
     )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { className: "weekday-btn-row" }, WEEKDAYS.map((wd, i) => {
       const isAnch = i === startWD, isSel = f.recurDays.includes(i) || isAnch, isLock = isAnch || f.recurEvery > 1;

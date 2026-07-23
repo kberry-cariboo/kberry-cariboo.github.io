@@ -687,10 +687,10 @@
             Array.isArray(d.entries) ? d.entries : [],
             d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
           );
-          if (d.entries) setEntries(fixed.entries);
+          if (Array.isArray(d.entries)) setEntries(fixed.entries);
           if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
-          if (d.yearConfigs) setYearConfigs(d.yearConfigs);
-          if (d.categories) setCategories(d.categories);
+          if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
+          if (Array.isArray(d.categories)) setCategories(d.categories);
           if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
           if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
           if (Array.isArray(d.templates)) setTemplates(d.templates);
