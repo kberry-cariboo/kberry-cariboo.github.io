@@ -830,6 +830,8 @@
       });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
     }, [effectiveFlow]);
+    const catPieData = useMemo(() => catTotals.map(([name, value]) => ({ name, value })), [catTotals]);
+    const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
     const savingsRate = useMemo(() => summaries.map((m) => ({
       month: m.month,
       rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
@@ -1093,7 +1095,7 @@
       })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
-          data: catTotals.map(([name, value]) => ({ name, value })),
+          data: catPieData,
           cx: "50%",
           cy: "50%",
           outerRadius: 80,
@@ -1119,7 +1121,7 @@
       })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
         Pie,
         {
-          data: incTotals.map(([name, value]) => ({ name, value })),
+          data: incPieData,
           cx: "50%",
           cy: "50%",
           outerRadius: 75,
