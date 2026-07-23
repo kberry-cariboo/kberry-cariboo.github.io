@@ -1302,16 +1302,30 @@
         .hscroll>table>thead>tr>th{position:sticky;top:0;z-index:5;background:var(--navy);}
         /* Stripe-headed tables (e.g. income sources) keep their stripe when sticky */
         .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
-        /* Register wrap is now just an alias of the shared utility */
-        .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
-          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
-        .reg-table-wrap::-webkit-scrollbar{display:none;}
+        /* Paginated grids (Monthly, Forecast): row count per page is bounded,
+           so no internal vertical scrollport is needed — only horizontal
+           overflow for narrow viewports. */
+        .hscroll--paged{max-height:none;overflow-y:visible;}
+        /* Register wrap: horizontal overflow only — paginated, so no vertical scrollport */
+        .reg-table-wrap{display:block;overflow-x:auto;}
         .reg-table thead .reg-th{position:sticky;top:0;z-index:5;}
         .reg-table{width:100%;border-collapse:collapse;min-width:540px;}
         /* Register desc: fill available space, truncate */
         .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;padding:10px 12px;width:40%;min-width:120px;}
         /* Budget totals row sticky */
         .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
+        /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
+        .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+          gap:10px;padding:12px 16px;border-top:1px solid var(--border);}
+        .grid-pagination-info{font-size:12px;color:var(--textLt);}
+        .grid-pagination-controls{display:flex;align-items:center;gap:10px;}
+        .grid-pagination-size{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);}
+        .grid-pagination-size select{font-size:12px;padding:4px 8px;border:1px solid var(--border);
+          border-radius:6px;background:var(--inputBg);color:var(--text);}
+        .grid-pagination-page{font-size:12px;color:var(--textMid);white-space:nowrap;}
+        .grid-pagination-nav{font-size:14px;padding:2px 9px;border-radius:6px;border:1px solid var(--border);
+          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
+        .grid-pagination-nav:disabled{cursor:default;color:var(--border);}
 
         /* ── 44px minimum tap targets ──────────────────────────────────── */
         .reg-actions button{min-height:36px;min-width:36px;}
@@ -3600,6 +3614,56 @@ document.addEventListener('DOMContentLoaded',function(){
     const lastPt = pts[pts.length - 1];
     return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
+  // Shared row-pagination for grids that used to be internally-scrolling
+  // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
+  // deriving any grouped/sectioned subsets (e.g. period headers) from the
+  // returned `rows`. `page` is clamped into range here so callers never need
+  // a separate "reset page on filter change" effect — a page that no longer
+  // exists just clamps back into range on the next render.
+  const PAGE_SIZE_OPTIONS = [10, 20, 50, "all"];
+  function paginateRows(rows, page, pageSize) {
+    const total = rows.length;
+    const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(Math.max(0, page), totalPages - 1);
+    const start = pageSize === "all" ? 0 : safePage * pageSize;
+    const end = pageSize === "all" ? total : Math.min(total, start + pageSize);
+    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end };
+  }
+  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows" }) => {
+    const { total, totalPages, safePage, start, end } = pageInfo;
+    if (total === 0) return null;
+    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        value: pageSize,
+        "aria-label": "Rows per page",
+        onChange: (e) => {
+          const v = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
+          setPageSize(v);
+          setPage(0);
+        }
+      },
+      PAGE_SIZE_OPTIONS.map((v) => /* @__PURE__ */ React.createElement("option", { key: v, value: v }, v === "all" ? "All" : v))
+    )), totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "grid-pagination-nav",
+        onClick: () => setPage((p) => Math.max(0, p - 1)),
+        disabled: safePage === 0,
+        "aria-label": "Previous page"
+      },
+      "‹"
+    ), /* @__PURE__ */ React.createElement("span", { className: "grid-pagination-page" }, `Page ${safePage + 1} of ${totalPages}`), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "grid-pagination-nav",
+        onClick: () => setPage((p) => Math.min(totalPages - 1, p + 1)),
+        disabled: safePage >= totalPages - 1,
+        "aria-label": "Next page"
+      },
+      "›"
+    ))));
+  };
   function TemplatePicker({ templates = [], onSelect }) {
     const [open, setOpen] = useState(false);
     if (!templates.length) return null;
@@ -4259,6 +4323,8 @@ document.addEventListener('DOMContentLoaded',function(){
     const [searchAllYears, setSearchAllYears] = useState(false);
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
+    const [pgPage, setPgPage] = useState(0);
+    const [pgSize, setPgSize] = useState(20);
     const toggleSort = (col) => {
       if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
       else {
@@ -4355,6 +4421,8 @@ document.addEventListener('DOMContentLoaded',function(){
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
     });
+    const pgInfo = paginateRows(filtered, pgPage, pgSize);
+    const paged = pgInfo.rows;
     const recurLabel = (e) => {
       var _a;
       if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { className: "recur-onetime" }, "One-time");
@@ -4589,12 +4657,12 @@ document.addEventListener('DOMContentLoaded',function(){
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "reg-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    )))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    })))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
+    })))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, paged.map((e, i) => {
       const archived = isArchived(e, activeYear);
       const arcStyle = {
         color: archived ? "var(--textLt)" : "var(--text)",
@@ -4630,7 +4698,7 @@ document.addEventListener('DOMContentLoaded',function(){
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    })))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "entries" })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -5269,6 +5337,8 @@ document.addEventListener('DOMContentLoaded',function(){
     const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
+    const [pgPage, setPgPage] = useState(0);
+    const [pgSize, setPgSize] = useState(20);
     const bCols = Array.isArray(budgetColOrder) && budgetColOrder.length ? budgetColOrder : DEFAULT_BUDGET_COLS;
     const [dragBCol, setDragBCol] = useState(null);
     const [dragOverBCol, setDragOverBCol] = useState(null);
@@ -5327,6 +5397,14 @@ document.addEventListener('DOMContentLoaded',function(){
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
+    // Monthly grid is paginated (bounded rows-per-page) rather than internally
+    // scrolling — period1/period2 above stay as the "does this month have any
+    // events at all" source of truth; the paged-* variants below are what
+    // actually get rendered, re-split by period so the "Jan 1–14" / "15–31"
+    // section headers only show when the current page has rows in them.
+    const monthPg = paginateRows(monthEvents, pgPage, pgSize);
+    const pagedPeriod1 = monthPg.rows.filter((ev) => ev.day <= 14);
+    const pagedPeriod2 = monthPg.rows.filter((ev) => ev.day > 14);
     const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
@@ -5494,7 +5572,7 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)"
-    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), period1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), period2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))));
+    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "events" }));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
       return Array.from({ length: daysInMonth(monthIdx, activeYear) }, (_, i) => {
@@ -5641,8 +5719,8 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
         }
-      )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly budget table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
-        const allIds = [...period1, ...period2].map((e) => e.id);
+      )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Monthly budget table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
+        const allIds = [...pagedPeriod1, ...pagedPeriod2].map((e) => e.id);
         return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "budget-col-checkbox budget-th-checkbox", "aria-label": "Select all rows" }, (() => {
           const allSel = allIds.length > 0 && allIds.every((id) => selIds.has(id));
           const someSel = allIds.some((id) => selIds.has(id));
@@ -5700,7 +5778,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-label-cell" }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
         return /* @__PURE__ */ React.createElement("td", { key: col, className: `${cls} pad-8-14` });
-      })), period1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), period1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, activeYear)}`), period2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
+      })), pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), pagedPeriod1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
         background: "var(--navy)"
       } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td", style: { background: "var(--navy)" } }), bCols.map((col) => {
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-totals-label" }, "Monthly Totals");
@@ -5709,7 +5787,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense));
         if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true));
         return null;
-      })))))), showEntryForm && /* @__PURE__ */ React.createElement(
+      })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "events" }))), showEntryForm && /* @__PURE__ */ React.createElement(
         "div",
         {
           className: "modal-overlay",
@@ -6036,6 +6114,8 @@ document.addEventListener('DOMContentLoaded',function(){
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
+    const [pgPage, setPgPage] = useState(0);
+    const [pgSize, setPgSize] = useState(20);
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
     const today = useMemo(() => /* @__PURE__ */ new Date(), []);
@@ -6055,12 +6135,15 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [yearFlows, yearConfigs, horizon, today]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
+    const searchedEvents = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2));
+    const pgInfo = paginateRows(searchedEvents, pgPage, pgSize);
+    const pagedEvents = pgInfo.rows;
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onAdd: addEntry ? () => setShowAddEntry(true) : null,
         onCSV: futureEvents.length === 0 ? null : () => {
-          const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
+          const rows = searchedEvents.map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
             return [dateStr, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
@@ -6078,9 +6161,9 @@ document.addEventListener('DOMContentLoaded',function(){
         templates,
         setTemplates
       }
-    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
+    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
+    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
       return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-amount-mobile", style: { color: ev.type === "income" ? "var(--greenDk)" : "var(--text)" } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)",
@@ -6099,7 +6182,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const color = conf >= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
-    }))))));
+    })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "events" })));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);

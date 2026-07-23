@@ -33,6 +33,56 @@
     const lastPt = pts[pts.length - 1];
     return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
+  // Shared row-pagination for grids that used to be internally-scrolling
+  // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
+  // deriving any grouped/sectioned subsets (e.g. period headers) from the
+  // returned `rows`. `page` is clamped into range here so callers never need
+  // a separate "reset page on filter change" effect — a page that no longer
+  // exists just clamps back into range on the next render.
+  const PAGE_SIZE_OPTIONS = [10, 20, 50, "all"];
+  function paginateRows(rows, page, pageSize) {
+    const total = rows.length;
+    const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(Math.max(0, page), totalPages - 1);
+    const start = pageSize === "all" ? 0 : safePage * pageSize;
+    const end = pageSize === "all" ? total : Math.min(total, start + pageSize);
+    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end };
+  }
+  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows" }) => {
+    const { total, totalPages, safePage, start, end } = pageInfo;
+    if (total === 0) return null;
+    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        value: pageSize,
+        "aria-label": "Rows per page",
+        onChange: (e) => {
+          const v = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
+          setPageSize(v);
+          setPage(0);
+        }
+      },
+      PAGE_SIZE_OPTIONS.map((v) => /* @__PURE__ */ React.createElement("option", { key: v, value: v }, v === "all" ? "All" : v))
+    )), totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "grid-pagination-nav",
+        onClick: () => setPage((p) => Math.max(0, p - 1)),
+        disabled: safePage === 0,
+        "aria-label": "Previous page"
+      },
+      "‹"
+    ), /* @__PURE__ */ React.createElement("span", { className: "grid-pagination-page" }, `Page ${safePage + 1} of ${totalPages}`), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "grid-pagination-nav",
+        onClick: () => setPage((p) => Math.min(totalPages - 1, p + 1)),
+        disabled: safePage >= totalPages - 1,
+        "aria-label": "Next page"
+      },
+      "›"
+    ))));
+  };
   function TemplatePicker({ templates = [], onSelect }) {
     const [open, setOpen] = useState(false);
     if (!templates.length) return null;
