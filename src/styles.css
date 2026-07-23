@@ -981,7 +981,7 @@
         @media (pointer:coarse){
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
-          .content-area{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
+          .content-area{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;}
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
         }
@@ -1146,8 +1146,11 @@
             padding-bottom:0!important;scrollbar-width:none;}
           .tab-bar::-webkit-scrollbar{display:none;}
           .tab-bar button{padding:10px 10px!important;font-size:11px!important;white-space:nowrap;}
-          /* Content padding */
-          .content-area{padding:12px 8px!important;margin-top:0!important;}
+          /* Content padding — top/sides only; bottom stays the nav-clearance
+             value set above (a padding-bottom set here as part of the
+             shorthand would silently win over it and re-collapse the gap
+             above the fixed bottom nav). */
+          .content-area{padding-top:12px!important;padding-left:8px!important;padding-right:8px!important;margin-top:0!important;}
           /* Kill any residual navy gap between tab-bar and content on mobile */
           .tab-bar-outer{padding-bottom:0!important;overflow:hidden!important;}
           /* KPI grids: 2-column on tablet/mobile */
@@ -1210,7 +1213,7 @@
           .month-today-pill{display:none!important;}
           .daily-card{grid-template-columns:36px 1fr 76px!important;}
           .daily-balance{min-width:72px!important;}
-          .content-area{padding:10px 6px!important;margin-top:0!important;}
+          .content-area{padding-top:10px!important;padding-left:6px!important;padding-right:6px!important;margin-top:0!important;}
           .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;padding-bottom:0!important;overflow:hidden!important;}
           .tab-bar{margin:0!important;padding:0!important;}
           .tab-bar button{padding:10px 8px!important;font-size:10px!important;}
@@ -1289,6 +1292,12 @@
         /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
         .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
           gap:10px;padding:12px 16px;border-top:1px solid var(--border);}
+        /* Mobile: no Prev/Next (infinite-scroll instead) — extra bottom padding
+           so this last-in-card footer clears the fixed bottom nav with room
+           to spare, since it's the very last thing in the scrollable page. */
+        @media (pointer:coarse){
+          .grid-pagination--mobile{padding-bottom:28px;}
+        }
         .grid-pagination-info{font-size:12px;color:var(--textLt);}
         .grid-pagination-controls{display:flex;align-items:center;gap:10px;}
         .grid-pagination-size{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);}
