@@ -271,6 +271,9 @@
       const sortFn = order === "avalanche" ? (a, b) => b.rate - a.rate || a.bal - b.bal : (a, b) => a.bal - b.bal || b.rate - a.rate;
       let months = 0, totalInterest = 0;
       const payoffOrder = [];
+      // Total-balance-remaining series, sampled once per month (month 0 is the
+      // starting balance) — feeds the Avalanche-vs-Snowball comparison chart.
+      const timeline = [roundMoney(ds.reduce((s, d2) => s + d2.bal, 0))];
       while (ds.length && months < 600) {
         months++;
         ds.forEach((d2) => {
@@ -296,6 +299,7 @@
           }
           return true;
         });
+        timeline.push(roundMoney(ds.reduce((s, d2) => s + d2.bal, 0)));
       }
       if (months >= 600) return null;
       const d = /* @__PURE__ */ new Date();
@@ -304,7 +308,8 @@
         months,
         totalInterest: roundMoney(totalInterest),
         debtFreeDate: MONTHS[d.getMonth()] + " " + d.getFullYear(),
-        payoffOrder
+        payoffOrder,
+        timeline
       };
     } catch (err) {
       console.error("simulateDebtStrategy failed, hiding Payoff Strategy card", err);

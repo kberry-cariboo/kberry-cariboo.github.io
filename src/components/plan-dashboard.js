@@ -5,7 +5,7 @@
   // of its ~6 chart call sites.
   const DASH_AXIS_TICK_X = { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" };
   const DASH_AXIS_TICK_Y = { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" };
-  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
+  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
   const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   // Projected balance trajectory for a debt payoff sparkline — same
   // amortization step (accrue interest, then apply payment capped at the
@@ -33,6 +33,7 @@
     const archivedGoalsCount = goals.length - activeGoals.length;
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
+    const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
@@ -568,31 +569,104 @@
       };
       const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
       return /* @__PURE__ */ React.createElement(React.Fragment, null, planSub === "strategy" && (() => {
-        const simDebts = allRows.map((row) => {
+        const simDebtsAll = allRows.map((row) => {
           var _a, _b;
           return {
+            key: row.key,
             label: row.label,
             bal: parseFloat((_a = debtData[row.key]) == null ? void 0 : _a.balance) || 0,
             rate: parseFloat((_b = debtData[row.key]) == null ? void 0 : _b.rate) || 0,
             pmt: row.monthlyPmt
           };
         }).filter((d) => d.bal > 0 && d.pmt > 0);
-        if (simDebts.length < 1) return null;
+        if (simDebtsAll.length < 1) return null;
+        const toggleSimDebt = (key) => {
+          setDebtSimExcluded((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
+        };
+        const checklist = simDebtsAll.length > 1 && /* @__PURE__ */ React.createElement(
+          "div",
+          { className: "strat-debt-toggles" },
+          simDebtsAll.map((d) => /* @__PURE__ */ React.createElement(
+            "label",
+            { key: d.key, className: "strat-debt-toggle" },
+            /* @__PURE__ */ React.createElement("input", {
+              type: "checkbox",
+              checked: !debtSimExcluded.includes(d.key),
+              onChange: () => toggleSimDebt(d.key)
+            }),
+            d.label
+          ))
+        );
         // debtExtra is entered/displayed in dollars; simDebts' bal/pmt are
         // cents, so this needs the same conversion before it's mixed in.
-        const extra = dollarsToCents(Math.max(0, parseFloat(debtExtra) || 0));
-        const av = simulateDebtStrategy(simDebts, extra, "avalanche");
-        const sn = simulateDebtStrategy(simDebts, extra, "snowball");
-        const base = simulateDebtStrategy(simDebts, 0, "avalanche");
-        if (!av || !sn) return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "strat-error" }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes. Increase payments to see strategies."));
-        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement("label", { className: "strat-extra-label" }, "Extra $/month", /* @__PURE__ */ React.createElement(
+        const extraDollars = Math.max(0, parseFloat(debtExtra) || 0);
+        const extra = dollarsToCents(extraDollars);
+        const sliderMax = Math.max(2e3, Math.ceil(extraDollars / 100) * 100);
+        const extraControl = /* @__PURE__ */ React.createElement("label", { className: "strat-extra-label" }, "Extra $/month", /* @__PURE__ */ React.createElement("input", {
+          type: "range",
+          min: 0,
+          max: sliderMax,
+          step: 25,
+          value: extraDollars,
+          onChange: (e) => setDebtExtra(e.target.value),
+          className: "strat-extra-slider",
+          "aria-label": "Extra monthly payment slider"
+        }), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             value: debtExtra,
             onChange: (v) => setDebtExtra(v),
             className: "strat-extra-input cf-text-mono-13"
           }
-        )) }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
+        ));
+        const simDebts = simDebtsAll.filter((d) => !debtSimExcluded.includes(d.key));
+        if (simDebts.length < 1) return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-0" }, "Payoff Strategy"), checklist, /* @__PURE__ */ React.createElement("div", { className: "strat-error" }, "All debts are excluded from the simulation \u2014 include at least one above to see a strategy."));
+        const av = simulateDebtStrategy(simDebts, extra, "avalanche");
+        const sn = simulateDebtStrategy(simDebts, extra, "snowball");
+        const base = simulateDebtStrategy(simDebts, 0, "avalanche");
+        if (!av || !sn) {
+          const minExtraCents = Math.max(0, ...simDebts.map((d) => d.bal * (d.rate / 100 / 12) - d.pmt));
+          const suggested = Math.ceil(centsToDollars(minExtraCents)) + 1;
+          return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-0" }, "Payoff Strategy"), checklist, /* @__PURE__ */ React.createElement("div", { className: "strat-error" }, "\u26A0 Payments don't cover interest on at least one debt \u2014 payoff never completes.", minExtraCents > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, " Try at least ", /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              className: "strat-suggest-btn",
+              onClick: () => setDebtExtra(String(suggested))
+            },
+            "$",
+            suggested,
+            "/mo extra"
+          ), ".")));
+        }
+        const maxLen = Math.max(av.timeline.length, sn.timeline.length);
+        const chartData = Array.from({ length: maxLen }, (_, i) => ({
+          month: i,
+          Avalanche: i < av.timeline.length ? av.timeline[i] : 0,
+          Snowball: i < sn.timeline.length ? sn.timeline[i] : 0
+        }));
+        const interestDelta = sn.totalInterest - av.totalInterest;
+        const monthsDelta = sn.months - av.months;
+        const deltaCallout = simDebts.length > 1 && (interestDelta > 0 || monthsDelta !== 0) && /* @__PURE__ */ React.createElement(
+          "div",
+          { className: "strat-delta-banner" },
+          /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 14 }),
+          " Avalanche saves you",
+          interestDelta > 0 && ` ${fmt(interestDelta)}`,
+          interestDelta > 0 && monthsDelta > 0 && " and",
+          monthsDelta > 0 && ` ${monthsDelta} ${monthsDelta === 1 ? "month" : "months"}`,
+          " over Snowball on this debt load."
+        );
+        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-0" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amber)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."), /* @__PURE__ */ React.createElement(ExportBar, {
+          onCSV: () => downloadCSV(
+            "CashFlow_PayoffStrategy.csv",
+            [
+              ["Avalanche", av.debtFreeDate, centsToDollars(av.totalInterest), av.months, av.payoffOrder.join(" -> ")],
+              ["Snowball", sn.debtFreeDate, centsToDollars(sn.totalInterest), sn.months, sn.payoffOrder.join(" -> ")]
+            ],
+            ["Strategy", "Debt-Free Date", "Total Interest", "Months", "Payoff Order"]
+          ),
+          onPrint: () => printView("CashFlow Payoff Strategy")
+        })));
       })(), planSub === "debt" && debtCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
