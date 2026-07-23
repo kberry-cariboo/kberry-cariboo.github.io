@@ -27,7 +27,8 @@
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
   }, setDeletedCopyIds = () => {
-  }, planSub = "debt" }) {
+  }, planSub = "debt", setPlanSub = () => {
+  } }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
@@ -579,7 +580,12 @@
             pmt: row.monthlyPmt
           };
         }).filter((d) => d.bal > 0 && d.pmt > 0);
-        if (simDebtsAll.length < 1) return null;
+        if (simDebtsAll.length < 1) return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-12" }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+          icon: /* @__PURE__ */ React.createElement(Icon, { name: "mountain", size: 26, className: "c-textLt" }),
+          message: "Add a balance and payment for at least one debt in Debt Payoff to see Avalanche vs Snowball strategies here.",
+          actionLabel: "Go to Debt Payoff",
+          onAction: () => setPlanSub("debt")
+        })));
         const toggleSimDebt = (key) => {
           setDebtSimExcluded((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
         };
