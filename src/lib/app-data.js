@@ -244,6 +244,7 @@
   };
   const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
   const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
+  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt"];
   function parseTabHash() {
     let raw = "";
     try {
@@ -253,7 +254,8 @@
     const [t, s] = raw.split("/");
     return {
       tab: ROUTE_TABS.includes(t) ? t : null,
-      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null
+      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null,
+      planSub: ROUTE_PLAN_SUBS.includes(s) ? s : null
     };
   }
   function haptic() {

@@ -74,6 +74,7 @@
         .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
         .cf-btn--sm{font-size:11px;padding:6px 12px;}
         /* Layout helpers */
+        .cf-hidden{display:none!important;}
         .cf-row{display:flex;align-items:center;}
         .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
         .cf-col{display:flex;flex-direction:column;}
@@ -3480,6 +3481,7 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
   const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
+  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt"];
   function parseTabHash() {
     let raw = "";
     try {
@@ -3489,7 +3491,8 @@ document.addEventListener('DOMContentLoaded',function(){
     const [t, s] = raw.split("/");
     return {
       tab: ROUTE_TABS.includes(t) ? t : null,
-      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null
+      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null,
+      planSub: ROUTE_PLAN_SUBS.includes(s) ? s : null
     };
   }
   function haptic() {
@@ -6622,6 +6625,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setLoading(false);
       }
     };
+    const slugifySection = (t) => "ai-sec-" + t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const sectionIcon = {
       "Executive Summary": "chart-bar",
       "Income Analysis": "banknote",
@@ -6734,7 +6738,23 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "Clear"
     )), err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "\u26A0 ", err)), loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, ["Executive Summary", "Income Analysis", "Spending Analysis", "Debt Management", "Priority Action Items"].map((s) => /* @__PURE__ */ React.createElement(Card, { key: s }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: {
       width: `${w}%`
-    } }))))), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+    } }))))), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks ai-quicklinks" }, (orderedReport || report).map((section) => {
+      const anchorId = slugifySection(section.title);
+      return /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          key: anchorId,
+          href: `#${anchorId}`,
+          onClick: (e) => {
+            e.preventDefault();
+            const el = document.getElementById(anchorId);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          },
+          className: "quicklink-pill"
+        },
+        section.title
+      );
+    })), (() => {
       const match = rawText.match(/\b([1-9]|10)\s*\/\s*10\b|\bscore[:\s]+([1-9]|10)\b/i);
       if (!match) return null;
       const score = parseInt(match[1] || match[2]);
@@ -6743,7 +6763,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         border: `2px solid ${color}`,
         boxShadow: `0 0 0 4px ${color}22`
       } }, /* @__PURE__ */ React.createElement("div", { className: "ai-score-number", style: { color } }, score, /* @__PURE__ */ React.createElement("span", { className: "ai-score-outof" }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "ai-score-label" }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { className: "txm" }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
-    })(), vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }), /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in \u00B7 ${fmt(vizCtx.totalExpenses)} out` }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, (orderedReport || report).map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, className: "ai-section-card", style: { gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: {
+    })(), vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }), /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in \u00B7 ${fmt(vizCtx.totalExpenses)} out` }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, (orderedReport || report).map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, id: slugifySection(section.title), className: "ai-section-card", style: { gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: {
       color: sectionColor[section.title] || "var(--primary)"
     } }, section.title)), sectionViz(section.title), section.items.map((line, li) => {
       const raw = line.trim();
@@ -6814,7 +6834,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
   }, setDeletedCopyIds = () => {
-  } }) {
+  }, planSub = "debt" }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
@@ -6920,7 +6940,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setGoalErrors({});
         setShowGoalForm(true);
       };
-      return /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: { marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, archivedGoalsCount > 0 && /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement(Card, { className: "mb-20" + (planSub === "goals" ? "" : " cf-hidden") }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: { marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, archivedGoalsCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreArchivedGoals,
@@ -7354,7 +7374,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         });
       };
       const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, planSub === "strategy" && (() => {
         const simDebts = allRows.map((row) => {
           var _a, _b;
           return {
@@ -7380,7 +7400,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             className: "strat-extra-input cf-text-mono-13"
           }
         )) }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
-      })(), debtCtx && /* @__PURE__ */ React.createElement(
+      })(), planSub === "debt" && debtCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
           x: debtCtx.x,
@@ -7397,7 +7417,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             }
           ]
         }
-      ), showDebtForm && /* @__PURE__ */ React.createElement(
+      ), planSub === "debt" && showDebtForm && /* @__PURE__ */ React.createElement(
         "div",
         {
           className: "modal-overlay",
@@ -7491,7 +7511,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           },
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
-      ), /* @__PURE__ */ React.createElement(Card, { className: "mb-20 mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
+      ), /* @__PURE__ */ React.createElement(Card, { className: "mb-20 mt-16" + (planSub === "debt" ? "" : " cf-hidden") }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
         marginBottom: 12
       } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Debt Payoff Tracker")), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid mt-16" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Balance", value: fmt(debtKpiTotals.balance), color: "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Monthly Payment", value: fmt(debtKpiTotals.payment) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Interest Remaining", value: fmt(debtKpiTotals.interest) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Debt-Free By", value: debtKpiTotals.latestPayoff || "\u2014", color: debtKpiTotals.latestPayoff ? "var(--greenDk)" : void 0 })), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
         ExportBar,
@@ -9862,6 +9882,40 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
     )));
   }
+  function PlanSubTabs({ value, onChange }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el || el.scrollWidth <= el.clientWidth) return;
+      const btn = el.querySelector('[data-active="true"]');
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }, [value]);
+    const tabs = [
+      { id: "debt", label: "Debt Payoff", icon: "credit-card" },
+      { id: "strategy", label: "Payoff Strategy", icon: "mountain" },
+      { id: "goals", label: "Savings Goals", icon: "target" }
+    ];
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: s.id,
+        "data-active": value === s.id,
+        className: "budget-subtab-pill budget-subtab-btn",
+        onClick: () => {
+          haptic();
+          onChange(s.id);
+        },
+        "aria-label": s.label,
+        title: s.label,
+        style: {
+          background: value === s.id ? "var(--primary)" : "var(--stripe)",
+          color: value === s.id ? "#fff" : "var(--textMid)"
+        }
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
+    )));
+  }
   function App() {
     var _a;
     if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SelfTestView, null));
@@ -10038,11 +10092,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
+    const [planSub, setPlanSub] = useLS("cf_plan_subtab", "debt");
     const hashSyncGuard = useRef(false);
     const hashInitialized = useRef(false);
     useEffect(() => {
-      const fromHash = parseTabHash().budgetSub;
-      if (fromHash) setBudgetSub(fromHash);
+      const fromHash = parseTabHash();
+      if (fromHash.budgetSub) setBudgetSub(fromHash.budgetSub);
+      if (fromHash.planSub) setPlanSub(fromHash.planSub);
     }, []);
     useEffect(() => {
       if (hashSyncGuard.current) {
@@ -10051,7 +10107,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
       let newHash;
       try {
-        newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "");
+        newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "") + (tab === "plan" && planSub ? "/" + planSub : "");
         if (location.hash !== newHash) {
           // First sync on a hashless load replaces the entry instead of
           // pushing — otherwise the first Back press appears to do nothing.
@@ -10061,13 +10117,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         hashInitialized.current = true;
       } catch (e) {
       }
-    }, [tab, budgetSub]);
+    }, [tab, budgetSub, planSub]);
     useEffect(() => {
       const onPopState = () => {
         const parsed = parseTabHash();
         hashSyncGuard.current = true;
         if (parsed.tab) setTab(parsed.tab);
         if (parsed.tab === "budget" && parsed.budgetSub) setBudgetSub(parsed.budgetSub);
+        if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
       };
       window.addEventListener("popstate", onPopState);
       return () => window.removeEventListener("popstate", onPopState);
@@ -10096,7 +10153,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         window.scrollTo(0, 0);
       } catch (e) {
       }
-    }, [tab, budgetSub]);
+    }, [tab, budgetSub, planSub]);
     useEffect(() => {
       const trap = (e) => {
         if (e.key !== "Tab") return;
@@ -10932,7 +10989,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
       setTab("budget");
       setBudgetSub("forecast");
-    } }), tab === "plan" && /* @__PURE__ */ React.createElement(
+    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
       PlanView,
       {
         flow: activeFlow,
@@ -10949,9 +11006,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         globalSearch,
         yearConfigs: sortedConfigs,
         setActiveYear,
-        setDeletedCopyIds
+        setDeletedCopyIds,
+        planSub
       }
-    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,

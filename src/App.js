@@ -174,11 +174,13 @@
       }
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
+    const [planSub, setPlanSub] = useLS("cf_plan_subtab", "debt");
     const hashSyncGuard = useRef(false);
     const hashInitialized = useRef(false);
     useEffect(() => {
-      const fromHash = parseTabHash().budgetSub;
-      if (fromHash) setBudgetSub(fromHash);
+      const fromHash = parseTabHash();
+      if (fromHash.budgetSub) setBudgetSub(fromHash.budgetSub);
+      if (fromHash.planSub) setPlanSub(fromHash.planSub);
     }, []);
     useEffect(() => {
       if (hashSyncGuard.current) {
@@ -187,7 +189,7 @@
       }
       let newHash;
       try {
-        newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "");
+        newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "") + (tab === "plan" && planSub ? "/" + planSub : "");
         if (location.hash !== newHash) {
           // First sync on a hashless load replaces the entry instead of
           // pushing — otherwise the first Back press appears to do nothing.
@@ -197,13 +199,14 @@
         hashInitialized.current = true;
       } catch (e) {
       }
-    }, [tab, budgetSub]);
+    }, [tab, budgetSub, planSub]);
     useEffect(() => {
       const onPopState = () => {
         const parsed = parseTabHash();
         hashSyncGuard.current = true;
         if (parsed.tab) setTab(parsed.tab);
         if (parsed.tab === "budget" && parsed.budgetSub) setBudgetSub(parsed.budgetSub);
+        if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
       };
       window.addEventListener("popstate", onPopState);
       return () => window.removeEventListener("popstate", onPopState);
@@ -232,7 +235,7 @@
         window.scrollTo(0, 0);
       } catch (e) {
       }
-    }, [tab, budgetSub]);
+    }, [tab, budgetSub, planSub]);
     useEffect(() => {
       const trap = (e) => {
         if (e.key !== "Tab") return;
@@ -1068,7 +1071,7 @@
     )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
       setTab("budget");
       setBudgetSub("forecast");
-    } }), tab === "plan" && /* @__PURE__ */ React.createElement(
+    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
       PlanView,
       {
         flow: activeFlow,
@@ -1085,9 +1088,10 @@
         globalSearch,
         yearConfigs: sortedConfigs,
         setActiveYear,
-        setDeletedCopyIds
+        setDeletedCopyIds,
+        planSub
       }
-    ), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,

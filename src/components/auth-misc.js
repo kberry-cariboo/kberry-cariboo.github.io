@@ -593,3 +593,37 @@
       /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
     )));
   }
+  function PlanSubTabs({ value, onChange }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el || el.scrollWidth <= el.clientWidth) return;
+      const btn = el.querySelector('[data-active="true"]');
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }, [value]);
+    const tabs = [
+      { id: "debt", label: "Debt Payoff", icon: "credit-card" },
+      { id: "strategy", label: "Payoff Strategy", icon: "mountain" },
+      { id: "goals", label: "Savings Goals", icon: "target" }
+    ];
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: s.id,
+        "data-active": value === s.id,
+        className: "budget-subtab-pill budget-subtab-btn",
+        onClick: () => {
+          haptic();
+          onChange(s.id);
+        },
+        "aria-label": s.label,
+        title: s.label,
+        style: {
+          background: value === s.id ? "var(--primary)" : "var(--stripe)",
+          color: value === s.id ? "#fff" : "var(--textMid)"
+        }
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
+    )));
+  }

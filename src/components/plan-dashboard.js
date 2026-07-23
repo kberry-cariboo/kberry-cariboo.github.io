@@ -27,7 +27,7 @@
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
   }, setDeletedCopyIds = () => {
-  } }) {
+  }, planSub = "debt" }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
@@ -133,7 +133,7 @@
         setGoalErrors({});
         setShowGoalForm(true);
       };
-      return /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: { marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, archivedGoalsCount > 0 && /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement(Card, { className: "mb-20" + (planSub === "goals" ? "" : " cf-hidden") }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: { marginBottom: goals.length ? 14 : 0 } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Savings Goals"), goals.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, archivedGoalsCount > 0 && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: restoreArchivedGoals,
@@ -567,7 +567,7 @@
         });
       };
       const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, planSub === "strategy" && (() => {
         const simDebts = allRows.map((row) => {
           var _a, _b;
           return {
@@ -593,7 +593,7 @@
             className: "strat-extra-input cf-text-mono-13"
           }
         )) }, "Payoff Strategy"), /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."));
-      })(), debtCtx && /* @__PURE__ */ React.createElement(
+      })(), planSub === "debt" && debtCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
           x: debtCtx.x,
@@ -610,7 +610,7 @@
             }
           ]
         }
-      ), showDebtForm && /* @__PURE__ */ React.createElement(
+      ), planSub === "debt" && showDebtForm && /* @__PURE__ */ React.createElement(
         "div",
         {
           className: "modal-overlay",
@@ -704,7 +704,7 @@
           },
           debtFormData.editKey ? "Save Changes" : "Add Debt"
         )))
-      ), /* @__PURE__ */ React.createElement(Card, { className: "mb-20 mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
+      ), /* @__PURE__ */ React.createElement(Card, { className: "mb-20 mt-16" + (planSub === "debt" ? "" : " cf-hidden") }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
         marginBottom: 12
       } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Debt Payoff Tracker")), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid mt-16" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Balance", value: fmt(debtKpiTotals.balance), color: "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Monthly Payment", value: fmt(debtKpiTotals.payment) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Interest Remaining", value: fmt(debtKpiTotals.interest) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Debt-Free By", value: debtKpiTotals.latestPayoff || "\u2014", color: debtKpiTotals.latestPayoff ? "var(--greenDk)" : void 0 })), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
         ExportBar,
