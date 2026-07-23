@@ -737,7 +737,7 @@
         .debt-row-meta{font-size:11px;color:var(--textLt);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
         .debt-row-bal-wrap{text-align:right;}
         .debt-row-bal-amt{font-weight:700;color:var(--red);}
-        .debt-row-paid{color:var(--greenDk);font-weight:600;}
+        .debt-row-paid{color:var(--greenDk);font-weight:600;font-size:11px;}
         .debt-row-interest{font-size:11px;color:var(--textLt);}
         .debt-stats-row{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;}
         .debt-stat-label{font-size:10px;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;}
