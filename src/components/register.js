@@ -11,6 +11,8 @@
     const [searchAllYears, setSearchAllYears] = useState(false);
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
+    const [pgPage, setPgPage] = useState(0);
+    const [pgSize, setPgSize] = useState(20);
     const toggleSort = (col) => {
       if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
       else {
@@ -107,6 +109,8 @@
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
     });
+    const pgInfo = paginateRows(filtered, pgPage, pgSize);
+    const paged = pgInfo.rows;
     const recurLabel = (e) => {
       var _a;
       if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { className: "recur-onetime" }, "One-time");
@@ -341,12 +345,12 @@
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "reg-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    )))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    })))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, filtered.map((e, i) => {
+    })))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, paged.map((e, i) => {
       const archived = isArchived(e, activeYear);
       const arcStyle = {
         color: archived ? "var(--textLt)" : "var(--text)",
@@ -382,7 +386,7 @@
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    })))), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "entries" })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",

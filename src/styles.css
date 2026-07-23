@@ -1274,16 +1274,30 @@
         .hscroll>table>thead>tr>th{position:sticky;top:0;z-index:5;background:var(--navy);}
         /* Stripe-headed tables (e.g. income sources) keep their stripe when sticky */
         .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
-        /* Register wrap is now just an alias of the shared utility */
-        .reg-table-wrap{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
-          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
-        .reg-table-wrap::-webkit-scrollbar{display:none;}
+        /* Paginated grids (Monthly, Forecast): row count per page is bounded,
+           so no internal vertical scrollport is needed — only horizontal
+           overflow for narrow viewports. */
+        .hscroll--paged{max-height:none;overflow-y:visible;}
+        /* Register wrap: horizontal overflow only — paginated, so no vertical scrollport */
+        .reg-table-wrap{display:block;overflow-x:auto;}
         .reg-table thead .reg-th{position:sticky;top:0;z-index:5;}
         .reg-table{width:100%;border-collapse:collapse;min-width:540px;}
         /* Register desc: fill available space, truncate */
         .reg-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;padding:10px 12px;width:40%;min-width:120px;}
         /* Budget totals row sticky */
         .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
+        /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
+        .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+          gap:10px;padding:12px 16px;border-top:1px solid var(--border);}
+        .grid-pagination-info{font-size:12px;color:var(--textLt);}
+        .grid-pagination-controls{display:flex;align-items:center;gap:10px;}
+        .grid-pagination-size{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);}
+        .grid-pagination-size select{font-size:12px;padding:4px 8px;border:1px solid var(--border);
+          border-radius:6px;background:var(--inputBg);color:var(--text);}
+        .grid-pagination-page{font-size:12px;color:var(--textMid);white-space:nowrap;}
+        .grid-pagination-nav{font-size:14px;padding:2px 9px;border-radius:6px;border:1px solid var(--border);
+          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
+        .grid-pagination-nav:disabled{cursor:default;color:var(--border);}
 
         /* ── 44px minimum tap targets ──────────────────────────────────── */
         .reg-actions button{min-height:36px;min-width:36px;}
