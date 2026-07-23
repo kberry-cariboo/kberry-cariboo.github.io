@@ -90,8 +90,15 @@
     try {
       storedVersion = parseInt(localStorage.getItem("cf_schema_version") || "0");
     } catch (e) {
+      console.error("migrateData: couldn't read cf_schema_version, assuming 0", e);
     }
     if (storedVersion >= SCHEMA_VERSION) return;
+    // Set by write() below on any localStorage failure. When true we must not
+    // stamp cf_schema_version at the end — otherwise a step that silently
+    // failed (e.g. quota exceeded partway through the v8 dollars->cents pass)
+    // would be recorded as done, and later code would treat untouched
+    // dollar-amounts as cents.
+    let migrationFailed = false;
     // Fresh install: nothing to migrate — just stamp the schema version.
     // Running the steps anyway persists empty arrays (cf_categories = []),
     // which shadows the useLS defaults forever: a new user would get an empty
@@ -100,11 +107,13 @@
     try {
       isFresh = storedVersion === 0 && localStorage.getItem("cf_entries") == null && localStorage.getItem("cf_categories") == null;
     } catch (e) {
+      console.error("migrateData: couldn't check for a fresh install, assuming not fresh", e);
     }
     if (isFresh) {
       try {
         localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
       } catch (e) {
+        console.error("migrateData: fresh install but couldn't stamp cf_schema_version — will re-check next load", e);
       }
       return;
     }
@@ -113,6 +122,7 @@
         const s = localStorage.getItem(key);
         return s ? JSON.parse(s) : fallback;
       } catch (e) {
+        console.error(`migrateData: couldn't read/parse ${key}, using fallback`, e);
         return fallback;
       }
     };
@@ -120,6 +130,8 @@
       try {
         localStorage.setItem(key, JSON.stringify(val));
       } catch (e) {
+        console.error(`migrateData: failed writing ${key} — migration incomplete`, e);
+        migrationFailed = true;
       }
     };
     if (storedVersion < 1) {
@@ -307,9 +319,16 @@
         write("cf_debt_data", next);
       }
     }
+    if (migrationFailed) {
+      console.error(
+        `migrateData: schema v${SCHEMA_VERSION} migration did not complete — leaving cf_schema_version at ${storedVersion} so it retries next load.`
+      );
+      return;
+    }
     try {
       localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
     } catch (e) {
+      console.error("migrateData: migration steps succeeded but couldn't stamp cf_schema_version — will retry next load", e);
     }
   }
   migrateData();

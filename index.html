@@ -2156,8 +2156,15 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       storedVersion = parseInt(localStorage.getItem("cf_schema_version") || "0");
     } catch (e) {
+      console.error("migrateData: couldn't read cf_schema_version, assuming 0", e);
     }
     if (storedVersion >= SCHEMA_VERSION) return;
+    // Set by write() below on any localStorage failure. When true we must not
+    // stamp cf_schema_version at the end — otherwise a step that silently
+    // failed (e.g. quota exceeded partway through the v8 dollars->cents pass)
+    // would be recorded as done, and later code would treat untouched
+    // dollar-amounts as cents.
+    let migrationFailed = false;
     // Fresh install: nothing to migrate — just stamp the schema version.
     // Running the steps anyway persists empty arrays (cf_categories = []),
     // which shadows the useLS defaults forever: a new user would get an empty
@@ -2166,11 +2173,13 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       isFresh = storedVersion === 0 && localStorage.getItem("cf_entries") == null && localStorage.getItem("cf_categories") == null;
     } catch (e) {
+      console.error("migrateData: couldn't check for a fresh install, assuming not fresh", e);
     }
     if (isFresh) {
       try {
         localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
       } catch (e) {
+        console.error("migrateData: fresh install but couldn't stamp cf_schema_version — will re-check next load", e);
       }
       return;
     }
@@ -2179,6 +2188,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const s = localStorage.getItem(key);
         return s ? JSON.parse(s) : fallback;
       } catch (e) {
+        console.error(`migrateData: couldn't read/parse ${key}, using fallback`, e);
         return fallback;
       }
     };
@@ -2186,6 +2196,8 @@ document.addEventListener('DOMContentLoaded',function(){
       try {
         localStorage.setItem(key, JSON.stringify(val));
       } catch (e) {
+        console.error(`migrateData: failed writing ${key} — migration incomplete`, e);
+        migrationFailed = true;
       }
     };
     if (storedVersion < 1) {
@@ -2373,9 +2385,16 @@ document.addEventListener('DOMContentLoaded',function(){
         write("cf_debt_data", next);
       }
     }
+    if (migrationFailed) {
+      console.error(
+        `migrateData: schema v${SCHEMA_VERSION} migration did not complete — leaving cf_schema_version at ${storedVersion} so it retries next load.`
+      );
+      return;
+    }
     try {
       localStorage.setItem("cf_schema_version", String(SCHEMA_VERSION));
     } catch (e) {
+      console.error("migrateData: migration steps succeeded but couldn't stamp cf_schema_version — will retry next load", e);
     }
   }
   migrateData();
@@ -2395,6 +2414,11 @@ document.addEventListener('DOMContentLoaded',function(){
   function todayStr() {
     const t = /* @__PURE__ */ new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  }
+  function startOfToday() {
+    const d = /* @__PURE__ */ new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
   function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -2479,15 +2503,21 @@ document.addEventListener('DOMContentLoaded',function(){
         while (cur < yearStart) cur.setDate(cur.getDate() + every * 7);
         cur.setDate(cur.getDate() - every * 7);
         while (cur <= yearEnd) {
-          if (cur >= yearStart) {
-            if (every === 1 && wdays.length > 1) {
-              for (const wd of wdays) {
-                const diff = (wd - cur.getDay() + 7) % 7;
-                const c2 = new Date(cur);
-                c2.setDate(c2.getDate() + diff);
-                addEv(c2);
-              }
-            } else addEv(new Date(cur));
+          // Gate on each emitted date, not the anchor `cur` — the anchor's
+          // week can start before yearStart while a weekday offset within
+          // that same week (e.g. a Friday following a Monday anchor) still
+          // falls inside the year. addEv() re-checks year/range anyway, but
+          // skipping the whole offset loop here would drop that date before
+          // addEv ever saw it.
+          if (every === 1 && wdays.length > 1) {
+            for (const wd of wdays) {
+              const diff = (wd - cur.getDay() + 7) % 7;
+              const c2 = new Date(cur);
+              c2.setDate(c2.getDate() + diff);
+              addEv(c2);
+            }
+          } else if (cur >= yearStart) {
+            addEv(new Date(cur));
           }
           cur.setDate(cur.getDate() + every * 7);
         }
@@ -6949,6 +6979,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   }
   // Hoisted out of PlanView/DashboardView render bodies — inline component
   // definitions create a new type each render and force React to remount.
+  // DASH_AXIS_TICK_X/Y are hoisted the same way: they were previously
+  // recreated as new object literals on every DashboardView render at each
+  // of its ~6 chart call sites.
+  const DASH_AXIS_TICK_X = { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" };
+  const DASH_AXIS_TICK_Y = { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" };
   const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
   const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   // Projected balance trajectory for a debt payoff sparkline — same
@@ -7904,8 +7939,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
       dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { className: "glance-value c-text" }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
-        const today = /* @__PURE__ */ new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfToday();
         const horizon = new Date(today);
         horizon.setDate(horizon.getDate() + 60);
         const ending = entries.filter((e) => {
@@ -7925,8 +7959,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         } }, /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", display: "inline-flex" } }, e.type === "expense" ? /* @__PURE__ */ React.createElement(Icon, { name: "party", size: 15 }) : /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 15 })), /* @__PURE__ */ React.createElement("span", { className: "c-text" }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amber)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
       })()),
       upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
-        const today = /* @__PURE__ */ new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfToday();
         const in7 = new Date(today);
         in7.setDate(today.getDate() + 7);
         const upcoming = flow.filter((ev) => ev.date >= today && ev.date <= in7 && !completed[ev.id]).sort((a, b) => a.date - b.date).slice(0, 6);
@@ -7986,7 +8019,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onChange: setBalView,
           options: [{ id: "area", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-area", size: 15 }), label: "Area" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }, { id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }]
         }
-      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
+      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amber)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
       surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -7994,7 +8027,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onChange: setSurplusView,
           options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
-      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
+      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
         Line,
         {
           type: "monotone",
@@ -8005,7 +8038,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           dot: ({ cx, cy, payload }) => /* @__PURE__ */ React.createElement("circle", { key: cx, cx, cy, r: 4, fill: payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)", stroke: "none" }),
           activeDot: { r: 6 }
         }
-      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
+      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
       incExpChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -8013,7 +8046,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onChange: setIncExpView,
           options: [{ id: "grouped", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 15 }), label: "Grouped" }, { id: "stacked", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-stacked", size: 15 }), label: "Stacked" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
-      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
+      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
         BarChart,
         {
           data: summaries,
@@ -8021,8 +8054,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           barCategoryGap: incExpView === "stacked" ? "20%" : "10%"
         },
         /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
-        /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }),
-        /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }),
+        /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
+        /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }),
         /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
         /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }),
         /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
@@ -8242,7 +8275,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
       ),
-      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" }, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
           key: yc.year,

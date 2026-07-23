@@ -15,6 +15,11 @@
     const t = /* @__PURE__ */ new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
   }
+  function startOfToday() {
+    const d = /* @__PURE__ */ new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
   function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
@@ -98,15 +103,21 @@
         while (cur < yearStart) cur.setDate(cur.getDate() + every * 7);
         cur.setDate(cur.getDate() - every * 7);
         while (cur <= yearEnd) {
-          if (cur >= yearStart) {
-            if (every === 1 && wdays.length > 1) {
-              for (const wd of wdays) {
-                const diff = (wd - cur.getDay() + 7) % 7;
-                const c2 = new Date(cur);
-                c2.setDate(c2.getDate() + diff);
-                addEv(c2);
-              }
-            } else addEv(new Date(cur));
+          // Gate on each emitted date, not the anchor `cur` — the anchor's
+          // week can start before yearStart while a weekday offset within
+          // that same week (e.g. a Friday following a Monday anchor) still
+          // falls inside the year. addEv() re-checks year/range anyway, but
+          // skipping the whole offset loop here would drop that date before
+          // addEv ever saw it.
+          if (every === 1 && wdays.length > 1) {
+            for (const wd of wdays) {
+              const diff = (wd - cur.getDay() + 7) % 7;
+              const c2 = new Date(cur);
+              c2.setDate(c2.getDate() + diff);
+              addEv(c2);
+            }
+          } else if (cur >= yearStart) {
+            addEv(new Date(cur));
           }
           cur.setDate(cur.getDate() + every * 7);
         }
