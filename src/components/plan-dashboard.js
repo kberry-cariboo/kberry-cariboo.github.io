@@ -881,6 +881,7 @@
         const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
         return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
       } catch (err) {
+        console.error("dashboard glance computation failed, hiding Balance/Due/Low-point tiles", err);
         return null;
       }
     }, [flow, openBal, activeYear, completed]);
@@ -948,6 +949,7 @@
         });
         return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
       } catch (e) {
+        console.error("dashboard spending-insight computation failed, hiding the Spending Insight card", e);
         return null;
       }
     }, [flow, activeYear]);

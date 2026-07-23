@@ -20,7 +20,27 @@ try{
     });
   }).catch(()=>{});
 }catch(e){}}
-function showError(t,m){document.getElementById('root').innerHTML='<div style="font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto"><div style="color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px">⚠ '+t+'</div><pre style="background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap">'+m+'</pre><p style="color:#888;font-size:12px;margin-top:14px">Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R</p></div>';}
+function showError(t,m){
+  // Built with real DOM nodes + textContent (not innerHTML) since `m` is a
+  // caught exception's message/stack — it can embed text this app didn't
+  // author (e.g. from synced data that broke rendering) and must never be
+  // parsed as HTML.
+  const root=document.getElementById('root');
+  root.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='font-family:sans-serif;padding:40px 20px;max-width:540px;margin:0 auto';
+  const title=document.createElement('div');
+  title.style.cssText='color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:10px';
+  title.textContent='⚠ '+t;
+  const pre=document.createElement('pre');
+  pre.style.cssText='background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:12px;font-size:10px;overflow-x:auto;color:#555;white-space:pre-wrap';
+  pre.textContent=m;
+  const hint=document.createElement('p');
+  hint.style.cssText='color:#888;font-size:12px;margin-top:14px';
+  hint.textContent='Hard-refresh: Ctrl+Shift+R / Cmd+Shift+R';
+  wrap.appendChild(title);wrap.appendChild(pre);wrap.appendChild(hint);
+  root.appendChild(wrap);
+}
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof React==='undefined'||typeof ReactDOM==='undefined'){showError('React failed to initialize','Inline React bundle did not load.');return;}
   if(typeof window.Recharts==='undefined'){showError('Chart library failed','Inline Recharts failed to init.');return;}

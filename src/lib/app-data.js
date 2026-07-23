@@ -306,6 +306,7 @@
         payoffOrder
       };
     } catch (err) {
+      console.error("simulateDebtStrategy failed, hiding Payoff Strategy card", err);
       return null;
     }
   }
