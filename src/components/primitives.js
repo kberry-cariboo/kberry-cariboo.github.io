@@ -46,12 +46,50 @@
     const safePage = Math.min(Math.max(0, page), totalPages - 1);
     const start = pageSize === "all" ? 0 : safePage * pageSize;
     const end = pageSize === "all" ? total : Math.min(total, start + pageSize);
-    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end };
+    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end, hasMore: end < total };
   }
-  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows" }) => {
+  // Mobile counterpart of paginateRows: instead of a single windowed page,
+  // shows everything loaded so far (page 1..loadedPages worth), so scrolling
+  // to the bottom can just load the next batch on top of what's visible
+  // rather than replacing it.
+  function cumulativeRows(rows, loadedPages, pageSize) {
+    const total = rows.length;
+    const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    const safeLoaded = Math.min(Math.max(1, loadedPages), totalPages);
+    const end = pageSize === "all" ? total : Math.min(total, safeLoaded * pageSize);
+    return { rows: rows.slice(0, end), total, totalPages, safePage: safeLoaded - 1, start: 0, end, hasMore: end < total };
+  }
+  // Fires onLoadMore (repeatedly, harmlessly — callers clamp) whenever
+  // scrolling comes within reach of the bottom of the whole page. Touch
+  // devices scroll `.app-scroll` internally rather than the window/body (see
+  // its CSS: mobile keeps body fixed so the browser chrome/URL bar never
+  // animates the bottom nav), so this checks both — whichever one is
+  // actually the scrolling context reports real overflow, the other reports
+  // none and is a harmless no-op.
+  function useInfiniteScroll(active, onLoadMore) {
+    const cbRef = useRef(onLoadMore);
+    cbRef.current = onLoadMore;
+    useEffect(() => {
+      if (!active) return;
+      const shell = document.querySelector(".app-scroll");
+      const check = () => {
+        const winRemaining = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+        const shellRemaining = shell ? shell.scrollHeight - shell.clientHeight - shell.scrollTop : Infinity;
+        if (Math.min(winRemaining, shellRemaining) < 400) cbRef.current();
+      };
+      window.addEventListener("scroll", check, { passive: true });
+      if (shell) shell.addEventListener("scroll", check, { passive: true });
+      check();
+      return () => {
+        window.removeEventListener("scroll", check);
+        if (shell) shell.removeEventListener("scroll", check);
+      };
+    }, [active]);
+  }
+  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }) => {
     const { total, totalPages, safePage, start, end } = pageInfo;
     if (total === 0) return null;
-    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination" + (isMobile ? " grid-pagination--mobile" : ""), "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
       "select",
       {
         value: pageSize,
@@ -59,11 +97,10 @@
         onChange: (e) => {
           const v = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
           setPageSize(v);
-          setPage(0);
         }
       },
       PAGE_SIZE_OPTIONS.map((v) => /* @__PURE__ */ React.createElement("option", { key: v, value: v }, v === "all" ? "All" : v))
-    )), totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    )), !isMobile && totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "grid-pagination-nav",
