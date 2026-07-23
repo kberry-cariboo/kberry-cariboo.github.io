@@ -13,6 +13,12 @@
     const [sortDir, setSortDir] = useState("asc");
     const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useState(20);
+    const [mobileLoaded, setMobileLoaded] = useState(1);
+    const changePageSize = (v) => {
+      setPgSize(v);
+      setPgPage(0);
+      setMobileLoaded(1);
+    };
     const toggleSort = (col) => {
       if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
       else {
@@ -109,7 +115,8 @@
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
     });
-    const pgInfo = paginateRows(filtered, pgPage, pgSize);
+    const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
+    useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
     const recurLabel = (e) => {
       var _a;
@@ -386,7 +393,7 @@
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "entries" })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "entries", isMobile })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",

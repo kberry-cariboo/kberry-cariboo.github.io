@@ -3627,12 +3627,50 @@ document.addEventListener('DOMContentLoaded',function(){
     const safePage = Math.min(Math.max(0, page), totalPages - 1);
     const start = pageSize === "all" ? 0 : safePage * pageSize;
     const end = pageSize === "all" ? total : Math.min(total, start + pageSize);
-    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end };
+    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end, hasMore: end < total };
   }
-  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows" }) => {
+  // Mobile counterpart of paginateRows: instead of a single windowed page,
+  // shows everything loaded so far (page 1..loadedPages worth), so scrolling
+  // to the bottom can just load the next batch on top of what's visible
+  // rather than replacing it.
+  function cumulativeRows(rows, loadedPages, pageSize) {
+    const total = rows.length;
+    const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    const safeLoaded = Math.min(Math.max(1, loadedPages), totalPages);
+    const end = pageSize === "all" ? total : Math.min(total, safeLoaded * pageSize);
+    return { rows: rows.slice(0, end), total, totalPages, safePage: safeLoaded - 1, start: 0, end, hasMore: end < total };
+  }
+  // Fires onLoadMore (repeatedly, harmlessly — callers clamp) whenever
+  // scrolling comes within reach of the bottom of the whole page. Touch
+  // devices scroll `.app-scroll` internally rather than the window/body (see
+  // its CSS: mobile keeps body fixed so the browser chrome/URL bar never
+  // animates the bottom nav), so this checks both — whichever one is
+  // actually the scrolling context reports real overflow, the other reports
+  // none and is a harmless no-op.
+  function useInfiniteScroll(active, onLoadMore) {
+    const cbRef = useRef(onLoadMore);
+    cbRef.current = onLoadMore;
+    useEffect(() => {
+      if (!active) return;
+      const shell = document.querySelector(".app-scroll");
+      const check = () => {
+        const winRemaining = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+        const shellRemaining = shell ? shell.scrollHeight - shell.clientHeight - shell.scrollTop : Infinity;
+        if (Math.min(winRemaining, shellRemaining) < 400) cbRef.current();
+      };
+      window.addEventListener("scroll", check, { passive: true });
+      if (shell) shell.addEventListener("scroll", check, { passive: true });
+      check();
+      return () => {
+        window.removeEventListener("scroll", check);
+        if (shell) shell.removeEventListener("scroll", check);
+      };
+    }, [active]);
+  }
+  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }) => {
     const { total, totalPages, safePage, start, end } = pageInfo;
     if (total === 0) return null;
-    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination" + (isMobile ? " grid-pagination--mobile" : ""), "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
       "select",
       {
         value: pageSize,
@@ -3640,11 +3678,10 @@ document.addEventListener('DOMContentLoaded',function(){
         onChange: (e) => {
           const v = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
           setPageSize(v);
-          setPage(0);
         }
       },
       PAGE_SIZE_OPTIONS.map((v) => /* @__PURE__ */ React.createElement("option", { key: v, value: v }, v === "all" ? "All" : v))
-    )), totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    )), !isMobile && totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "button",
       {
         className: "grid-pagination-nav",
@@ -4325,6 +4362,12 @@ document.addEventListener('DOMContentLoaded',function(){
     const [sortDir, setSortDir] = useState("asc");
     const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useState(20);
+    const [mobileLoaded, setMobileLoaded] = useState(1);
+    const changePageSize = (v) => {
+      setPgSize(v);
+      setPgPage(0);
+      setMobileLoaded(1);
+    };
     const toggleSort = (col) => {
       if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
       else {
@@ -4421,7 +4464,8 @@ document.addEventListener('DOMContentLoaded',function(){
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
     });
-    const pgInfo = paginateRows(filtered, pgPage, pgSize);
+    const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
+    useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
     const recurLabel = (e) => {
       var _a;
@@ -4698,7 +4742,7 @@ document.addEventListener('DOMContentLoaded',function(){
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "entries" })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
+    }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "entries", isMobile })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Delete Entry?",
@@ -5338,7 +5382,13 @@ document.addEventListener('DOMContentLoaded',function(){
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
-    const [pgSize, setPgSize] = useState(20);
+    const [pgSize, setPgSize] = useState("all");
+    const [mobileLoaded, setMobileLoaded] = useState(1);
+    const changePageSize = (v) => {
+      setPgSize(v);
+      setPgPage(0);
+      setMobileLoaded(1);
+    };
     const bCols = Array.isArray(budgetColOrder) && budgetColOrder.length ? budgetColOrder : DEFAULT_BUDGET_COLS;
     const [dragBCol, setDragBCol] = useState(null);
     const [dragOverBCol, setDragOverBCol] = useState(null);
@@ -5402,7 +5452,8 @@ document.addEventListener('DOMContentLoaded',function(){
     // events at all" source of truth; the paged-* variants below are what
     // actually get rendered, re-split by period so the "Jan 1–14" / "15–31"
     // section headers only show when the current page has rows in them.
-    const monthPg = paginateRows(monthEvents, pgPage, pgSize);
+    const monthPg = isMobile ? cumulativeRows(monthEvents, mobileLoaded, pgSize) : paginateRows(monthEvents, pgPage, pgSize);
+    useInfiniteScroll(isMobile && monthPg.hasMore, () => setMobileLoaded((l) => l + 1));
     const pagedPeriod1 = monthPg.rows.filter((ev) => ev.day <= 14);
     const pagedPeriod2 = monthPg.rows.filter((ev) => ev.day > 14);
     const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
@@ -5572,7 +5623,7 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)"
-    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "events" }));
+    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
       return Array.from({ length: daysInMonth(monthIdx, activeYear) }, (_, i) => {
@@ -5787,7 +5838,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense));
         if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true));
         return null;
-      })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "events" }))), showEntryForm && /* @__PURE__ */ React.createElement(
+      })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events" }))), showEntryForm && /* @__PURE__ */ React.createElement(
         "div",
         {
           className: "modal-overlay",
@@ -6116,6 +6167,12 @@ document.addEventListener('DOMContentLoaded',function(){
     const [showAddEntry, setShowAddEntry] = useState(false);
     const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useState(20);
+    const [mobileLoaded, setMobileLoaded] = useState(1);
+    const changePageSize = (v) => {
+      setPgSize(v);
+      setPgPage(0);
+      setMobileLoaded(1);
+    };
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
     const today = useMemo(() => /* @__PURE__ */ new Date(), []);
@@ -6136,7 +6193,8 @@ document.addEventListener('DOMContentLoaded',function(){
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
     const searchedEvents = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2));
-    const pgInfo = paginateRows(searchedEvents, pgPage, pgSize);
+    const pgInfo = isMobile ? cumulativeRows(searchedEvents, mobileLoaded, pgSize) : paginateRows(searchedEvents, pgPage, pgSize);
+    useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const pagedEvents = pgInfo.rows;
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
@@ -6182,7 +6240,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const color = conf >= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
-    })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: setPgSize, label: "events" })));
+    })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile })));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
