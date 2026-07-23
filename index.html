@@ -134,8 +134,6 @@
         .cat-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
           padding:2px 7px;border-radius:10px;white-space:nowrap;}
         .sparkline-svg{display:block;overflow:visible;}
-        .fab-panel-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;}
-        .fab-menu-backdrop{position:fixed;inset:0;z-index:-1;}
         .template-picker-btn{font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px;}
         .template-item{display:block;font-size:12px;}
         .template-item-amount{color:var(--textLt);margin-left:8px;}
@@ -365,30 +363,7 @@
         .month-amt-input{font-size:12px;padding:6px 6px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);width:100%;box-sizing:border-box;outline:none;}
         .entry-form-save-btn{padding:9px 22px;}
         .ef-save-template{font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;margin-right:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:6px;}
-        .csv-importer-card{background:var(--bgCard);border-radius:14px;padding:20px;margin-bottom:16px;border:1px solid var(--border);max-width:600px;}
         .csv-title{font-size:15px;font-weight:700;color:var(--text);}
-        .csv-instructions{font-size:13px;color:var(--textLt);margin-bottom:12px;line-height:1.5;}
-        .cf-btn--upload{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;}
-        .csv-success-text{font-size:12px;color:var(--greenDk);margin-bottom:8px;}
-        .csv-applied-text{font-size:12px;color:var(--textMid);margin-bottom:8px;}
-        .csv-forget-btn{font-size:11px;background:transparent;border:none;color:var(--red);cursor:pointer;padding:0 4px;}
-        .csv-mapping-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
-        .csv-select-input{font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;}
-        .csv-select-input--full{width:100%;}
-        .csv-name-input{flex:1 1 180px;min-width:140px;}
-        .cf-btn--csvsave{font-size:12px;padding:6px 12px;}
-        .csv-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
-        .csv-error-text{font-size:12px;color:var(--red);margin-bottom:8px;}
-        .csv-preview-btn{font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;border:none;cursor:pointer;background:var(--navyMid);color:#fff;}
-        .csv-import-btn{font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;border:none;cursor:pointer;color:#fff;background:var(--greenDk);}
-        .csv-preview-label{font-size:11px;color:var(--textLt);margin-bottom:6px;}
-        .csv-preview-row{font-size:11px;padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;}
-        .csv-preview-desc{flex:1;font-weight:600;color:var(--text);}
-        .csv-preview-amt{font-family:IBM Plex Mono,monospace;}
-        .csv-done-wrap{text-align:center;padding:20px 0;}
-        .csv-done-icon{font-size:32px;margin-bottom:8px;}
-        .csv-done-text{font-size:14px;font-weight:600;color:var(--text);}
-        .csv-sel-label{font-size:11px;color:var(--textLt);margin-bottom:4px;display:block;}
         .ctx-menu-backdrop{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.35);}
         .ctx-menu-sheet{position:fixed;left:0;right:0;bottom:0;border-radius:20px 20px 0 0;padding:10px 0 calc(10px + env(safe-area-inset-bottom));box-shadow:0 -8px 32px rgba(0,0,0,0.25);user-select:none;}
         .ctx-menu-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:2px auto 8px;}
@@ -433,10 +408,6 @@
         .reg-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         .reg-mobilefilters-stack{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
         .reg-showresults-btn{width:100%;margin-top:18px;padding:12px;}
-        .fab-panel-backdrop{position:fixed;inset:0;z-index:1499;background:rgba(0,0,0,0.25);}
-        .fab-panel--sm{width:min(400px,calc(100vw - 32px));}
-        .fab-panel--lg{width:min(680px,calc(100vw - 32px));}
-        .fab-panel-title-sm{font-size:14px;font-weight:700;color:var(--text);}
         .fab-panel-close{background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--textLt);padding:4px;line-height:1;}
         .reg-selectall-btn{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;}
         .reg-th--col{font-size:11px;font-weight:700;color:#fff;padding:10px 12px;text-align:left;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -457,7 +428,6 @@
         .reg-bulkbar-total{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff;opacity:0.9;white-space:nowrap;}
         .reg-bulk-markpaid-btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:18px;border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:#fff;}
         .reg-bulk-clear-btn{font-size:12px;font-weight:600;padding:8px 12px;border-radius:18px;border:1px solid rgba(255,255,255,0.35);cursor:pointer;background:transparent;color:#fff;}
-        .fab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;box-shadow:var(--shadowXl);border:1px solid var(--border);max-height:80vh;overflow-y:auto;}
         /* ── forecast-plan.js ── */
         .forecast-table{width:100%;border-collapse:collapse;min-width:360px;}
         .forecast-desc-cell{font-size:13px;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1040,54 +1010,8 @@
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
           .content-area{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
-          .content-area.content-area--fab{padding-bottom:calc(132px + env(safe-area-inset-bottom))!important;}
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
-          .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
-          .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
-        }
-        /* QuickAdd FAB + its panel/menu (base look; placement tweaks live in the
-           pointer-specific blocks below) */
-        .cf-quickfab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
-          z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;
-          box-shadow:var(--shadowXl);border:1px solid var(--border);
-          width:min(680px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
-        .cf-quickfab-menu{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
-          z-index:1500;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
-        .cf-fab-menu-btn{font-size:12px;font-weight:600;padding:10px 18px;border-radius:20px;
-          border:1px solid var(--border);cursor:pointer;background:var(--bgCard);color:var(--text);
-          box-shadow:var(--shadowMd);white-space:nowrap;display:flex;align-items:center;gap:8px;}
-        /* z-index above the panel/menu (1500) so the close "✕" stays tappable
-           while they're open — the menu's backdrop otherwise swallows the tap. */
-        .cf-quickfab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));right:16px;
-          z-index:1501;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
-          background:var(--primary);color:#fff;font-size:24px;font-weight:300;line-height:1;
-          box-shadow:var(--shadowLg);display:flex;align-items:center;justify-content:center;
-          transition:background 0.2s,transform 0.2s,opacity 0.2s;}
-        .cf-quickfab[data-active="true"]{background:var(--red);transform:rotate(45deg);}
-        .cf-quickfab[data-scrolling="true"]:not([data-active="true"]){opacity:0.4;}
-        /* QuickAdd FAB is a thumb-reach control: hide it on fine-pointer desktops,
-           where the header and per-view buttons already cover add/import. */
-        @media (hover:hover) and (pointer:fine){
-          .cf-quickfab{display:none!important;}
-          .cf-quickfab-panel{display:none!important;}
-          .cf-quickfab-menu{display:none!important;}
-        }
-        /* Landscape phones: width-based breakpoints (≤768px) don't fire on a
-           landscape phone (~740-900px wide), so KPI grids etc. keep their
-           wide-layout column count — correctly, they fit. But the FAB is
-           anchored to the viewport bottom by fixed pixels, and a ~390px-tall
-           viewport is short enough that unscrolled content already reaches
-           down to where it sits, permanently covering whatever's there (e.g.
-           the last KPI card). Shrink + dim it so covered content stays
-           legible; full opacity returns the moment it's opened. */
-        @media (max-height:480px) and (pointer:coarse){
-          /* Size/opacity only — leave the bottom-nav-clearance offset (set in
-             the pointer:coarse block above) alone, or the FAB collides with
-             the nav bar instead of just page content. */
-          .cf-quickfab{width:44px!important;height:44px!important;font-size:20px!important;
-            opacity:0.55;}
-          .cf-quickfab[data-active="true"]{opacity:1;}
         }
         /* FAB: touch devices only, thumb-reach primary action */
         .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
@@ -1220,9 +1144,8 @@
         /* ── Mobile layout ─────────────────────────────────────────── */
         @media(max-width:768px){
           /* Prevent iOS/Android auto-zoom on input focus (fires when font-size < 16px).
-             Targets the entry/CSV form panels and search boxes. Narrow tabular inputs
+             Targets the entry form panels and search boxes. Narrow tabular inputs
              (monthly-amounts grid, budget targets) keep their compact size. */
-          .fab-panel input:not([type=checkbox]), .fab-panel select,
           .search-box input, .header-search input { font-size: 16px !important; }
           /* Bottom-sheet modals — slide up from bottom edge, flush with it
              (the desktop overlay padding left a floating 16px gap under the
@@ -1301,18 +1224,8 @@
           .reg-actions button{padding:6px 8px!important;font-size:12px!important;}
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          /* FAB quick-add panel: near full-width, clear of the FAB close button
-             (84px used to half-cover the 52px FAB above the bottom nav; the old
-             rule also misspelled max-height so 78vh never applied) */
-          .fab-panel{left:12px!important;right:12px!important;
-            bottom:calc(128px + env(safe-area-inset-bottom))!important;
-            width:auto!important;padding:16px!important;max-height:70vh!important;}
-          /* Backup nudge: clear of the FAB button above the bottom nav, same as fab-panel */
           .backup-nudge{left:12px!important;right:12px!important;
-            bottom:calc(128px + env(safe-area-inset-bottom))!important;
             width:auto!important;max-width:none!important;}
-          /* Budget: hide daily toggle, add button; show mobile-only label */
-          /* Register: hide add/import buttons — FAB handles these on mobile */
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
@@ -1370,10 +1283,6 @@
         @keyframes spin{to{transform:rotate(360deg)}}
         .modal-card{background:var(--bgCard);border-radius:14px;box-shadow:var(--shadowXl);animation:slideUp 0.2s ease-out;}
         @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}
-        /* CSV importer hosted in a modal: the importer brings its own card
-           chrome, so strip it and let .modal-card provide the surface. */
-        .csv-modal-card{padding:20px;width:min(600px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
-        .csv-modal-card .csv-importer-card{margin-bottom:0;border:none;padding:0;max-width:none;background:transparent;}
 
         /* ── Two-column dashboard at ≥1400px ───────────────────────────── */
         @media(min-width:1400px){
@@ -2728,7 +2637,15 @@ document.addEventListener('DOMContentLoaded',function(){
     window.print();
     document.title = prev;
   }
-  const ExportBar = ({ onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onAdd && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onAdd,
+      title: "Add Entry",
+      className: "cf-btn cf-btn--primary exportbar-add-btn", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+    },
+    "+ Add"
+  ), onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
@@ -3683,109 +3600,6 @@ document.addEventListener('DOMContentLoaded',function(){
     const lastPt = pts[pts.length - 1];
     return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
-  function QuickAddFAB({ categories, templates = [], setTemplates, onSave, open = false, setOpen = () => {
-  }, onImportCSV = null }) {
-    const [menu, setMenu] = useState(false);
-    const [form, setForm] = useState(false);
-    const [scrolling, setScrolling] = useState(false);
-    useEffect(() => {
-      if (open) {
-        setForm(true);
-        setMenu(false);
-      }
-    }, [open]);
-    // Esc closes the quick-add panel/menu — same contract as the modal system.
-    useEffect(() => {
-      if (!form && !menu) return;
-      const h = (e) => {
-        if (e.key === "Escape") {
-          setMenu(false);
-          setForm(false);
-          setOpen(false);
-        }
-      };
-      window.addEventListener("keydown", h);
-      return () => window.removeEventListener("keydown", h);
-    }, [form, menu]);
-    useEffect(() => {
-      let idleTimer = null;
-      const onScroll = () => {
-        setScrolling(true);
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => setScrolling(false), 400);
-      };
-      window.addEventListener("scroll", onScroll, { passive: true, capture: true });
-      return () => {
-        window.removeEventListener("scroll", onScroll, { capture: true });
-        clearTimeout(idleTimer);
-      };
-    }, []);
-    const closeForm = () => {
-      setForm(false);
-      setOpen(false);
-    };
-    const openAdd = () => {
-      setMenu(false);
-      setForm(true);
-    };
-    const fabActive = menu || form;
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, form && /* @__PURE__ */ React.createElement("div", { className: "fab-panel cf-quickfab-panel", role: "dialog", "aria-label": "Add entry", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "fab-panel-title" }, "Add Entry"), /* @__PURE__ */ React.createElement(
-      EntryForm,
-      {
-        initial: null,
-        onSave: (data) => {
-          onSave(data);
-          closeForm();
-        },
-        onCancel: closeForm,
-        categories,
-        templates: templates || [],
-        onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
-      }
-    )), onImportCSV && menu && !form && /* @__PURE__ */ React.createElement("div", { className: "cf-quickfab-menu", role: "menu", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenu(false), className: "fab-menu-backdrop" }), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setMenu(false);
-          onImportCSV();
-        },
-        className: "cf-fab-menu-btn",
-        role: "menuitem"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }),
-      "Import CSV"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: openAdd,
-        className: "cf-fab-menu-btn",
-        role: "menuitem"
-      },
-      /* @__PURE__ */ React.createElement("span", null, "+"),
-      " Add Entry"
-    )), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "cf-quickfab",
-        "data-noprint": true,
-        onClick: () => {
-          if (form) {
-            closeForm();
-            return;
-          }
-          if (onImportCSV) {
-            setMenu((v) => !v);
-          } else setForm(true);
-        },
-        "aria-label": fabActive ? "Close" : "Add entry",
-        "aria-expanded": fabActive,
-        title: fabActive ? "Close (Esc)" : onImportCSV ? "Entry actions" : "Add Entry (N)",
-        "data-active": fabActive ? "true" : "false",
-        "data-scrolling": scrolling ? "true" : "false"
-      },
-      "+"
-    ));
-  }
   function TemplatePicker({ templates = [], onSelect }) {
     const [open, setOpen] = useState(false);
     if (!templates.length) return null;
@@ -4252,218 +4066,37 @@ document.addEventListener('DOMContentLoaded',function(){
       toast(`Template "${f.desc || "Untitled"}" saved${templates.some((t) => t.desc === f.desc) ? " (replaced existing)" : ""}`);
     }, className: "ef-save-template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
   }
-  function CSVImporter({ categories, onImport, onClose }) {
-    const [rows, setRows] = useState([]);
-    const [headers, setHeaders] = useState([]);
-    const [map, setMap] = useState({ desc: "", amount: "", date: "", type: "", category: "" });
-    const [preview, setPreview] = useState([]);
-    const [err, setErr] = useState("");
-    const [done, setDone] = useState(false);
-    const todayS = todayStr();
-    const PROFILES_KEY = "cf_csvProfiles";
-    const loadProfiles = () => {
-      try {
-        return JSON.parse(localStorage.getItem(PROFILES_KEY)) || {};
-      } catch (e) {
-        return {};
-      }
-    };
-    const [profiles, setProfiles] = useState(loadProfiles);
-    const [profName, setProfName] = useState("");
-    const [appliedProf, setAppliedProf] = useState("");
-    const persistProfiles = (next) => {
-      setProfiles(next);
-      try {
-        localStorage.setItem(PROFILES_KEY, JSON.stringify(next));
-      } catch (e) {
-      }
-    };
-    const profileFits = (p, h) => {
-      const cols = Object.values(p.map || {}).filter(Boolean);
-      return cols.length > 0 && cols.every((col) => h.includes(col));
-    };
-    const applyProfile = (name, h) => {
-      const p = profiles[name];
-      if (!p || !profileFits(p, h || headers)) return false;
-      setMap({ desc: "", amount: "", date: "", type: "", category: "", ...p.map });
-      setAppliedProf(name);
-      setPreview([]);
-      return true;
-    };
-    const saveProfile = () => {
-      const name = profName.trim();
-      if (!name) return;
-      persistProfiles({ ...profiles, [name]: { map: { ...map }, sig: headers } });
-      setAppliedProf(name);
-      setProfName("");
-    };
-    const deleteProfile = (name) => {
-      const next = { ...profiles };
-      delete next[name];
-      persistProfiles(next);
-      if (appliedProf === name) setAppliedProf("");
-    };
-    const parseCSV = (text) => {
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return { headers: [], rows: [] };
-      const splitLine = (l) => {
-        const out = [];
-        let cur = "", q = false;
-        for (const ch of l) {
-          if (ch === '"') q = !q;
-          else if (ch === "," && !q) {
-            out.push(cur.trim());
-            cur = "";
-          } else cur += ch;
+  // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
+  // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
+  // open a blank entry form.
+  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null }) {
+    if (!show) return null;
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Add entry",
+        onClick: (e) => {
+          if (e.target === e.currentTarget) onClose();
         }
-        out.push(cur.trim());
-        return out;
-      };
-      const hdrs = splitLine(lines[0]);
-      const rws = lines.slice(1).map(splitLine).filter((r) => r.some((c) => c));
-      return { headers: hdrs, rows: rws };
-    };
-    const handleFile = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      setErr("");
-      setDone(false);
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const { headers: h, rows: r } = parseCSV(ev.target.result);
-        if (!h.length) {
-          setErr("Could not parse CSV \u2014 ensure the file has a header row.");
-          return;
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
+        EntryForm,
+        {
+          initial: null,
+          onSave: (data) => {
+            onSave(data);
+            onClose();
+          },
+          onCancel: onClose,
+          categories,
+          templates,
+          onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
-        setHeaders(h);
-        setRows(r);
-        const guess = (name) => h.find((c) => c.toLowerCase().includes(name.toLowerCase())) || "";
-        setMap({
-          desc: guess("desc") || guess("name") || guess("memo") || guess("narr") || "",
-          amount: guess("amount") || guess("debit") || guess("credit") || "",
-          date: guess("date") || guess("time") || "",
-          type: guess("type") || guess("debit") || "",
-          category: guess("categ") || guess("tag") || ""
-        });
-        const saved = Object.entries(loadProfiles());
-        const exact = saved.find(([, p]) => (p.sig || []).join("\x1F") === h.join("\x1F") && profileFits(p, h));
-        const fit = exact || saved.find(([, p]) => profileFits(p, h));
-        if (fit) {
-          setMap({ desc: "", amount: "", date: "", type: "", category: "", ...fit[1].map });
-          setAppliedProf(fit[0]);
-        } else {
-          setAppliedProf("");
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = "";
-    };
-    const buildPreview = () => {
-      if (!map.desc || !map.amount || !map.date) {
-        setErr("Map at minimum: Description, Amount, and Date.");
-        return;
-      }
-      const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
-      const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
-      const ci = headers.indexOf(map.category);
-      const prev = rows.slice(0, 5).map((r) => {
-        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
-        const amt = isNaN(rawAmt) ? 0 : roundMoney(Math.abs(rawAmt));
-        const raw = r[dti] || todayS;
-        const parsed = new Date(raw);
-        const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
-        return {
-          desc: r[di] || "(no description)",
-          amount: amt,
-          startDate: dateStr,
-          type: typeGuess,
-          category: ci > -1 ? r[ci] : "Uncategorized",
-          notes: ""
-        };
-      });
-      setPreview(prev);
-      setErr("");
-    };
-    const doImport = () => {
-      const di = headers.indexOf(map.desc), ai = headers.indexOf(map.amount);
-      const dti = headers.indexOf(map.date), ti = headers.indexOf(map.type);
-      const ci = headers.indexOf(map.category);
-      const imported = rows.map((r, idx) => {
-        const rawAmt = parseFloat((r[ai] || "").replace(/[$,]/g, ""));
-        const amt = isNaN(rawAmt) ? 0 : dollarsToCents(Math.abs(rawAmt));
-        const raw = r[dti] || todayS;
-        const parsed = new Date(raw);
-        const dateStr = isNaN(parsed) ? todayS : localDateStr(parsed);
-        const typeGuess = ti > -1 ? (r[ti] || "").toLowerCase().includes("credit") || rawAmt > 0 ? "income" : "expense" : rawAmt >= 0 ? "income" : "expense";
-        const cat = ci > -1 ? r[ci] : "Uncategorized";
-        return {
-          id: Date.now() + idx,
-          desc: r[di] || "Imported",
-          amount: amt,
-          startDate: dateStr,
-          type: typeGuess,
-          category: cat,
-          notes: "",
-          repeats: false,
-          recurEvery: 1,
-          recurUnit: "month",
-          recurDays: [],
-          recurEnd: ""
-        };
-      }).filter((e) => e.amount > 0 || e.desc !== "Imported");
-      onImport(imported);
-      setDone(true);
-    };
-    const sel = (field, label, required = false) => /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `csv-map-${field}`, className: "csv-sel-label" }, label, required && /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: `csv-map-${field}`,
-        value: map[field],
-        onChange: (e) => setMap((m) => __spreadProps(__spreadValues({}, m), { [field]: e.target.value })),
-        className: "csv-select-input csv-select-input--full"
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 not mapped \u2014"),
-      headers.map((h) => /* @__PURE__ */ React.createElement("option", { key: h, value: h }, h))
-    ));
-    return /* @__PURE__ */ React.createElement("div", { className: "csv-importer-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "csv-title" }, "\u2B06 Import from CSV"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", className: "shortcuts-close" }, "\u2715")), !rows.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "csv-instructions" }, "Upload a CSV file from your bank or spreadsheet. The file must have a header row. Required columns: ", /* @__PURE__ */ React.createElement("strong", null, "Description"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Amount"), ", ", /* @__PURE__ */ React.createElement("strong", null, "Date"), "."), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--primary cf-btn--upload" }, "Choose CSV File", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", className: "hidden", onChange: handleFile }))), rows.length > 0 && !done && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "csv-success-text" }, "\u2713 Loaded ", rows.length, " rows. Map your columns:"), appliedProf && /* @__PURE__ */ React.createElement("div", { className: "csv-applied-text" }, "Applied saved mapping ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, appliedProf), " ", /* @__PURE__ */ React.createElement("button", { onClick: () => deleteProfile(appliedProf), title: "Forget this saved mapping", className: "csv-forget-btn" }, "forget")), /* @__PURE__ */ React.createElement("div", { className: "csv-mapping-row" }, Object.keys(profiles).length > 0 && /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        "aria-label": "Apply saved mapping",
-        value: "",
-        onChange: (e) => {
-          if (e.target.value) applyProfile(e.target.value);
-        },
-        className: "csv-select-input"
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "" }, "Apply saved mapping\u2026"),
-      Object.keys(profiles).sort().map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n, disabled: !profileFits(profiles[n], headers) }, n, profileFits(profiles[n], headers) ? "" : " (columns don't match)"))
-    ), /* @__PURE__ */ React.createElement("input", {
-      value: profName,
-      onChange: (e) => setProfName(e.target.value),
-      onKeyDown: (e) => {
-        if (e.key === "Enter") saveProfile();
-      },
-      placeholder: 'Name this mapping (e.g. "RBC chequing")',
-      "aria-label": "Mapping name",
-      className: "csv-select-input csv-name-input"
-    }), /* @__PURE__ */ React.createElement("button", { onClick: saveProfile, disabled: !profName.trim(), className: "cf-btn cf-btn--secondary cf-btn--csvsave" }, "Save mapping")),/* @__PURE__ */ React.createElement("div", { className: "csv-field-grid" }, sel("desc", "Description", true), sel("amount", "Amount", true), sel("date", "Date", true), sel("type", "Type (income/expense)"), sel("category", "Category")), err && /* @__PURE__ */ React.createElement("div", { className: "csv-error-text" }, err), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-8" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: buildPreview,
-        className: "csv-preview-btn"
-      },
-      "Preview"
-    ), preview.length > 0 && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: doImport,
-        className: "csv-import-btn"
-      },
-      "Import ",
-      rows.length,
-      " Entries"
-    )), preview.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("div", { className: "csv-preview-label" }, "Preview (first ", Math.min(5, rows.length), " rows):"), preview.map((p, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "csv-preview-row" }, /* @__PURE__ */ React.createElement("span", { className: "csv-preview-desc" }, p.desc), /* @__PURE__ */ React.createElement("span", { className: "csv-preview-amt", style: { color: p.type === "income" ? "var(--greenDk)" : "var(--red)" } }, p.type === "income" ? "+" : "-", p.amount.toFixed(2)), /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, p.startDate), /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, p.category))))), done && /* @__PURE__ */ React.createElement("div", { className: "csv-done-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "csv-done-icon" }, "\u2705"), /* @__PURE__ */ React.createElement("div", { className: "csv-done-text" }, "Import complete!"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "cf-btn cf-btn--primary cf-btn--md mt-12" }, "Done")));
+      ))
+    );
   }
   function ContextMenu({ x, y, items, onClose }) {
     const menuRef = useRef(null);
@@ -4613,8 +4246,7 @@ document.addEventListener('DOMContentLoaded',function(){
       );
     })));
   }
-  function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, setCategories = () => {
-  }, categoryColors = {}, activeYear, onDeleted = () => {
+  function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
@@ -4645,7 +4277,6 @@ document.addEventListener('DOMContentLoaded',function(){
     const [search, setSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
-    const [showCSV, setShowCSV] = useState(false);
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
     const openNew = () => {
@@ -4662,26 +4293,22 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     useEffect(() => {
       const onNew = () => openNew();
-      const onCSV = () => setShowCSV((v) => !v);
       window.addEventListener("cf:reg-open-new", onNew);
-      window.addEventListener("cf:reg-open-csv", onCSV);
       return () => {
         window.removeEventListener("cf:reg-open-new", onNew);
-        window.removeEventListener("cf:reg-open-csv", onCSV);
       };
     }, []);
     useEffect(() => {
-      if (!showForm && !showCSV) return;
+      if (!showForm) return;
       const h = (e) => {
         if (e.key === "Escape") {
           setShowForm(false);
           setEditing(null);
-          setShowCSV(false);
         }
       };
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
-    }, [showForm, showCSV]);
+    }, [showForm]);
     const doCopy = (e) => {
       const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
@@ -4868,14 +4495,10 @@ document.addEventListener('DOMContentLoaded',function(){
         onChange: (e) => setSearch(e.target.value),
         className: "reg-search-input"
       }
-    ), !isMobile && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(
       "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
-    ), !isMobile && /* @__PURE__ */ React.createElement(
-      "button",
-      { onClick: () => setShowCSV((v) => !v), className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--nowrap" },
-      "Import CSV"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "reg-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -4894,30 +4517,6 @@ document.addEventListener('DOMContentLoaded',function(){
           className: "cf-btn cf-btn--primary reg-showresults-btn"
         },
         "Show results"
-      ))
-    ), showCSV && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": "Import CSV",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowCSV(false);
-        }
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card csv-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(
-        CSVImporter,
-        {
-          categories,
-          onImport: (imported) => {
-            const newCats = [...new Set(imported.map((e) => e.category).filter(Boolean))];
-            setCategories((prev) => [.../* @__PURE__ */ new Set([...prev, ...newCats])]);
-            setEntries((prev) => [...prev, ...imported]);
-            setShowCSV(false);
-          },
-          onClose: () => setShowCSV(false)
-        }
       ))
     ), showForm && /* @__PURE__ */ React.createElement(
       "div",
@@ -5551,6 +5150,11 @@ document.addEventListener('DOMContentLoaded',function(){
       setEditingInitial(orig);
       setShowEntryForm(true);
     };
+    const openAddEntry = () => {
+      setEditingEntry(null);
+      setEditingInitial(null);
+      setShowEntryForm(true);
+    };
     const handleEntrySave = (data) => {
       if (editingEntry) {
         let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
@@ -6030,6 +5634,7 @@ document.addEventListener('DOMContentLoaded',function(){
       ), /* @__PURE__ */ React.createElement(
         ExportBar,
         {
+          onAdd: openAddEntry,
           onCSV: () => {
             const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
@@ -6205,6 +5810,7 @@ document.addEventListener('DOMContentLoaded',function(){
       budgetSub === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
+          onAdd: openAddEntry,
           onCSV: () => {
             const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
@@ -6427,8 +6033,9 @@ document.addEventListener('DOMContentLoaded',function(){
     );
   }
   function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
-  }, categories = [], categoryColors = {} }) {
+  }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null }) {
     const isMobile = useIsMobile();
+    const [showAddEntry, setShowAddEntry] = useState(false);
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
     const today = useMemo(() => /* @__PURE__ */ new Date(), []);
@@ -6448,19 +6055,30 @@ document.addEventListener('DOMContentLoaded',function(){
     }, [yearFlows, yearConfigs, horizon, today]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
-        onCSV: () => {
+        onAdd: addEntry ? () => setShowAddEntry(true) : null,
+        onCSV: futureEvents.length === 0 ? null : () => {
           const rows = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
             return [dateStr, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
         },
-        onPrint: () => printView(`CashFlow Forecast - ${horizon} Days`)
+        onPrint: futureEvents.length === 0 ? null : () => printView(`CashFlow Forecast - ${horizon} Days`)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
+    )), /* @__PURE__ */ React.createElement(
+      AddEntryModal,
+      {
+        show: showAddEntry,
+        onClose: () => setShowAddEntry(false),
+        onSave: addEntry || (() => {}),
+        categories,
+        templates,
+        setTemplates
+      }
+    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, (isMobile ? ["Date", "Description", "Amount", "Balance"] : ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"]).map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, futureEvents.filter((ev) => eventMatchesSearch(ev, gq2)).map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
@@ -6481,7 +6099,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const color = conf >= 50 ? "var(--amber)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
-    })))))));
+    }))))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
@@ -10407,7 +10025,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       setTab("budget");
       setBudgetSub("monthly");
     }, [globalSearch, tab]);
-    const [fabOpen, setFabOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
     useEffect(() => {
@@ -10657,16 +10274,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }, []);
     useEffect(() => {
       const h = () => {
-        // Desktop hides the floating quick-add panel; open the register's own
-        // entry form there instead (jumping to Entries first if needed).
-        const fine = window.matchMedia && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
-        if (fine) {
-          setTab("budget");
-          setBudgetSub("entries");
-          setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
-        } else {
-          setFabOpen(true);
-        }
+        // Jump to Entries and open its own "Add Entry" form.
+        setTab("budget");
+        setBudgetSub("entries");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
       };
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
@@ -11079,7 +10690,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (tab === "budget" ? " content-area--fab" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`
     } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
@@ -11143,7 +10754,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onDeleted: (e) => pushUndo(e),
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,
       {
         entries,
@@ -11152,7 +10763,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         addEntry,
         categories,
         categoryColors,
-        setCategories,
         activeYear,
         onDeleted: (e) => pushUndo(e),
         templates,
@@ -11275,30 +10885,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "cf-footer-link"
       },
       "Terms of Use"
-    )), tab === "budget" && !showBackupNudge && /* @__PURE__ */ React.createElement(
-      QuickAddFAB,
-      {
-        categories,
-        templates,
-        setTemplates,
-        open: fabOpen,
-        setOpen: setFabOpen,
-        onSave: (data) => {
-          addEntry(data);
-          setFabOpen(false);
-        },
-        onImportCSV: () => {
-          if (budgetSub === "entries") {
-            window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
-          } else {
-            setBudgetSub("entries");
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent("cf:reg-open-csv"));
-            }, 0);
-          }
-        }
-      }
-    )));
+    ))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

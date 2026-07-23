@@ -106,8 +106,6 @@
         .cat-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
           padding:2px 7px;border-radius:10px;white-space:nowrap;}
         .sparkline-svg{display:block;overflow:visible;}
-        .fab-panel-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;}
-        .fab-menu-backdrop{position:fixed;inset:0;z-index:-1;}
         .template-picker-btn{font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px;}
         .template-item{display:block;font-size:12px;}
         .template-item-amount{color:var(--textLt);margin-left:8px;}
@@ -337,30 +335,7 @@
         .month-amt-input{font-size:12px;padding:6px 6px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);width:100%;box-sizing:border-box;outline:none;}
         .entry-form-save-btn{padding:9px 22px;}
         .ef-save-template{font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;margin-right:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:6px;}
-        .csv-importer-card{background:var(--bgCard);border-radius:14px;padding:20px;margin-bottom:16px;border:1px solid var(--border);max-width:600px;}
         .csv-title{font-size:15px;font-weight:700;color:var(--text);}
-        .csv-instructions{font-size:13px;color:var(--textLt);margin-bottom:12px;line-height:1.5;}
-        .cf-btn--upload{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;}
-        .csv-success-text{font-size:12px;color:var(--greenDk);margin-bottom:8px;}
-        .csv-applied-text{font-size:12px;color:var(--textMid);margin-bottom:8px;}
-        .csv-forget-btn{font-size:11px;background:transparent;border:none;color:var(--red);cursor:pointer;padding:0 4px;}
-        .csv-mapping-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
-        .csv-select-input{font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;}
-        .csv-select-input--full{width:100%;}
-        .csv-name-input{flex:1 1 180px;min-width:140px;}
-        .cf-btn--csvsave{font-size:12px;padding:6px 12px;}
-        .csv-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
-        .csv-error-text{font-size:12px;color:var(--red);margin-bottom:8px;}
-        .csv-preview-btn{font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;border:none;cursor:pointer;background:var(--navyMid);color:#fff;}
-        .csv-import-btn{font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;border:none;cursor:pointer;color:#fff;background:var(--greenDk);}
-        .csv-preview-label{font-size:11px;color:var(--textLt);margin-bottom:6px;}
-        .csv-preview-row{font-size:11px;padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;}
-        .csv-preview-desc{flex:1;font-weight:600;color:var(--text);}
-        .csv-preview-amt{font-family:IBM Plex Mono,monospace;}
-        .csv-done-wrap{text-align:center;padding:20px 0;}
-        .csv-done-icon{font-size:32px;margin-bottom:8px;}
-        .csv-done-text{font-size:14px;font-weight:600;color:var(--text);}
-        .csv-sel-label{font-size:11px;color:var(--textLt);margin-bottom:4px;display:block;}
         .ctx-menu-backdrop{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.35);}
         .ctx-menu-sheet{position:fixed;left:0;right:0;bottom:0;border-radius:20px 20px 0 0;padding:10px 0 calc(10px + env(safe-area-inset-bottom));box-shadow:0 -8px 32px rgba(0,0,0,0.25);user-select:none;}
         .ctx-menu-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:2px auto 8px;}
@@ -405,10 +380,6 @@
         .reg-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         .reg-mobilefilters-stack{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
         .reg-showresults-btn{width:100%;margin-top:18px;padding:12px;}
-        .fab-panel-backdrop{position:fixed;inset:0;z-index:1499;background:rgba(0,0,0,0.25);}
-        .fab-panel--sm{width:min(400px,calc(100vw - 32px));}
-        .fab-panel--lg{width:min(680px,calc(100vw - 32px));}
-        .fab-panel-title-sm{font-size:14px;font-weight:700;color:var(--text);}
         .fab-panel-close{background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--textLt);padding:4px;line-height:1;}
         .reg-selectall-btn{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;}
         .reg-th--col{font-size:11px;font-weight:700;color:#fff;padding:10px 12px;text-align:left;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -429,7 +400,6 @@
         .reg-bulkbar-total{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff;opacity:0.9;white-space:nowrap;}
         .reg-bulk-markpaid-btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:18px;border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:#fff;}
         .reg-bulk-clear-btn{font-size:12px;font-weight:600;padding:8px 12px;border-radius:18px;border:1px solid rgba(255,255,255,0.35);cursor:pointer;background:transparent;color:#fff;}
-        .fab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;box-shadow:var(--shadowXl);border:1px solid var(--border);max-height:80vh;overflow-y:auto;}
         /* ── forecast-plan.js ── */
         .forecast-table{width:100%;border-collapse:collapse;min-width:360px;}
         .forecast-desc-cell{font-size:13px;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1012,54 +982,8 @@
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
           .content-area{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
-          .content-area.content-area--fab{padding-bottom:calc(132px + env(safe-area-inset-bottom))!important;}
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
-          .cf-quickfab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .reg-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
-          .cf-quickfab-panel{bottom:calc(128px + env(safe-area-inset-bottom))!important;max-height:70vh!important;}
-        }
-        /* QuickAdd FAB + its panel/menu (base look; placement tweaks live in the
-           pointer-specific blocks below) */
-        .cf-quickfab-panel{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
-          z-index:1500;background:var(--bgCard);border-radius:16px;padding:20px;
-          box-shadow:var(--shadowXl);border:1px solid var(--border);
-          width:min(680px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
-        .cf-quickfab-menu{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;
-          z-index:1500;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
-        .cf-fab-menu-btn{font-size:12px;font-weight:600;padding:10px 18px;border-radius:20px;
-          border:1px solid var(--border);cursor:pointer;background:var(--bgCard);color:var(--text);
-          box-shadow:var(--shadowMd);white-space:nowrap;display:flex;align-items:center;gap:8px;}
-        /* z-index above the panel/menu (1500) so the close "✕" stays tappable
-           while they're open — the menu's backdrop otherwise swallows the tap. */
-        .cf-quickfab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));right:16px;
-          z-index:1501;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
-          background:var(--primary);color:#fff;font-size:24px;font-weight:300;line-height:1;
-          box-shadow:var(--shadowLg);display:flex;align-items:center;justify-content:center;
-          transition:background 0.2s,transform 0.2s,opacity 0.2s;}
-        .cf-quickfab[data-active="true"]{background:var(--red);transform:rotate(45deg);}
-        .cf-quickfab[data-scrolling="true"]:not([data-active="true"]){opacity:0.4;}
-        /* QuickAdd FAB is a thumb-reach control: hide it on fine-pointer desktops,
-           where the header and per-view buttons already cover add/import. */
-        @media (hover:hover) and (pointer:fine){
-          .cf-quickfab{display:none!important;}
-          .cf-quickfab-panel{display:none!important;}
-          .cf-quickfab-menu{display:none!important;}
-        }
-        /* Landscape phones: width-based breakpoints (≤768px) don't fire on a
-           landscape phone (~740-900px wide), so KPI grids etc. keep their
-           wide-layout column count — correctly, they fit. But the FAB is
-           anchored to the viewport bottom by fixed pixels, and a ~390px-tall
-           viewport is short enough that unscrolled content already reaches
-           down to where it sits, permanently covering whatever's there (e.g.
-           the last KPI card). Shrink + dim it so covered content stays
-           legible; full opacity returns the moment it's opened. */
-        @media (max-height:480px) and (pointer:coarse){
-          /* Size/opacity only — leave the bottom-nav-clearance offset (set in
-             the pointer:coarse block above) alone, or the FAB collides with
-             the nav bar instead of just page content. */
-          .cf-quickfab{width:44px!important;height:44px!important;font-size:20px!important;
-            opacity:0.55;}
-          .cf-quickfab[data-active="true"]{opacity:1;}
         }
         /* FAB: touch devices only, thumb-reach primary action */
         .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
@@ -1192,9 +1116,8 @@
         /* ── Mobile layout ─────────────────────────────────────────── */
         @media(max-width:768px){
           /* Prevent iOS/Android auto-zoom on input focus (fires when font-size < 16px).
-             Targets the entry/CSV form panels and search boxes. Narrow tabular inputs
+             Targets the entry form panels and search boxes. Narrow tabular inputs
              (monthly-amounts grid, budget targets) keep their compact size. */
-          .fab-panel input:not([type=checkbox]), .fab-panel select,
           .search-box input, .header-search input { font-size: 16px !important; }
           /* Bottom-sheet modals — slide up from bottom edge, flush with it
              (the desktop overlay padding left a floating 16px gap under the
@@ -1273,18 +1196,8 @@
           .reg-actions button{padding:6px 8px!important;font-size:12px!important;}
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          /* FAB quick-add panel: near full-width, clear of the FAB close button
-             (84px used to half-cover the 52px FAB above the bottom nav; the old
-             rule also misspelled max-height so 78vh never applied) */
-          .fab-panel{left:12px!important;right:12px!important;
-            bottom:calc(128px + env(safe-area-inset-bottom))!important;
-            width:auto!important;padding:16px!important;max-height:70vh!important;}
-          /* Backup nudge: clear of the FAB button above the bottom nav, same as fab-panel */
           .backup-nudge{left:12px!important;right:12px!important;
-            bottom:calc(128px + env(safe-area-inset-bottom))!important;
             width:auto!important;max-width:none!important;}
-          /* Budget: hide daily toggle, add button; show mobile-only label */
-          /* Register: hide add/import buttons — FAB handles these on mobile */
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
@@ -1342,10 +1255,6 @@
         @keyframes spin{to{transform:rotate(360deg)}}
         .modal-card{background:var(--bgCard);border-radius:14px;box-shadow:var(--shadowXl);animation:slideUp 0.2s ease-out;}
         @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}
-        /* CSV importer hosted in a modal: the importer brings its own card
-           chrome, so strip it and let .modal-card provide the surface. */
-        .csv-modal-card{padding:20px;width:min(600px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
-        .csv-modal-card .csv-importer-card{margin-bottom:0;border:none;padding:0;max-width:none;background:transparent;}
 
         /* ── Two-column dashboard at ≥1400px ───────────────────────────── */
         @media(min-width:1400px){

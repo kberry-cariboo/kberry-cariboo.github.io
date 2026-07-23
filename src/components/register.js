@@ -1,5 +1,4 @@
-  function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, setCategories = () => {
-  }, categoryColors = {}, activeYear, onDeleted = () => {
+  function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
@@ -30,7 +29,6 @@
     const [search, setSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
-    const [showCSV, setShowCSV] = useState(false);
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
     const openNew = () => {
@@ -47,26 +45,22 @@
     };
     useEffect(() => {
       const onNew = () => openNew();
-      const onCSV = () => setShowCSV((v) => !v);
       window.addEventListener("cf:reg-open-new", onNew);
-      window.addEventListener("cf:reg-open-csv", onCSV);
       return () => {
         window.removeEventListener("cf:reg-open-new", onNew);
-        window.removeEventListener("cf:reg-open-csv", onCSV);
       };
     }, []);
     useEffect(() => {
-      if (!showForm && !showCSV) return;
+      if (!showForm) return;
       const h = (e) => {
         if (e.key === "Escape") {
           setShowForm(false);
           setEditing(null);
-          setShowCSV(false);
         }
       };
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
-    }, [showForm, showCSV]);
+    }, [showForm]);
     const doCopy = (e) => {
       const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
@@ -253,14 +247,10 @@
         onChange: (e) => setSearch(e.target.value),
         className: "reg-search-input"
       }
-    ), !isMobile && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(
       "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
-    ), !isMobile && /* @__PURE__ */ React.createElement(
-      "button",
-      { onClick: () => setShowCSV((v) => !v), className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--nowrap" },
-      "Import CSV"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "reg-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -279,30 +269,6 @@
           className: "cf-btn cf-btn--primary reg-showresults-btn"
         },
         "Show results"
-      ))
-    ), showCSV && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": "Import CSV",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowCSV(false);
-        }
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card csv-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(
-        CSVImporter,
-        {
-          categories,
-          onImport: (imported) => {
-            const newCats = [...new Set(imported.map((e) => e.category).filter(Boolean))];
-            setCategories((prev) => [.../* @__PURE__ */ new Set([...prev, ...newCats])]);
-            setEntries((prev) => [...prev, ...imported]);
-            setShowCSV(false);
-          },
-          onClose: () => setShowCSV(false)
-        }
       ))
     ), showForm && /* @__PURE__ */ React.createElement(
       "div",
