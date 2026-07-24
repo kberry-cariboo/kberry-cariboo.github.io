@@ -7267,16 +7267,31 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       // bi-weekly payment starting in June only has ~13 of its 26 yearly
       // occurrences this year). One-off (non-repeating) matches keep the old
       // sum-and-divide behavior, which is the correct spread for those.
+      //
+      // A single description can also cover more than one underlying entry
+      // (e.g. a "Mortgage" 1st-of-month entry and a separate "Mortgage"
+      // 15th-of-month entry, both monthly) — `evs` mixes both entries'
+      // occurrences together. Using only evs[0]'s recurrence rule would have
+      // seen just one of the two entries and missed the other payment
+      // entirely, so each distinct entryId is annualized separately and the
+      // per-entry contributions are summed.
       const toMonthlyFromEvs = (evs) => {
         if (!evs || !evs.length) return 0;
-        const ev = evs[0];
-        if (ev.repeats) {
-          const every = ev.recurEvery || 1;
-          const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"] ?? 12;
-          return roundMoney((ev.amount || 0) * (ppy / 12));
-        }
-        const annual = evs.reduce((s, e) => s + (e.amount || 0), 0);
-        return roundMoney(annual / 12);
+        const byEntry = {};
+        evs.forEach((ev) => {
+          const eid = ev.entryId != null ? ev.entryId : ev.id;
+          (byEntry[eid] || (byEntry[eid] = [])).push(ev);
+        });
+        const total = Object.values(byEntry).reduce((sum, occs) => {
+          const ev = occs[0];
+          if (ev.repeats) {
+            const every = ev.recurEvery || 1;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"] ?? 12;
+            return sum + (ev.amount || 0) * (ppy / 12);
+          }
+          return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
+        }, 0);
+        return roundMoney(total);
       };
       const autoRows = Object.entries(autoGroups).filter(([desc]) => {
         var _a;
@@ -7294,13 +7309,20 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             const ev = evs[0];
             if (!ev) return "";
             const count = evs.length;
-            const u = ev.recurUnit || "month";
-            const e = ev.recurEvery || 1;
-            if (u === "semimonth") return `2\xD7/mo`;
-            if (u === "week" && e === 2) return "Bi-weekly";
-            if (u === "week") return `Every ${e} wk`;
-            if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
-            if (u === "year") return "Yearly";
+            // Multiple distinct entries sharing one description (e.g. separate
+            // 1st-of-month and 15th-of-month entries both called "Mortgage")
+            // don't share a single recurrence rule to describe — fall back to
+            // the combined occurrence count instead of evs[0]'s own pattern.
+            const distinctEntries = new Set(evs.map((e2) => e2.entryId != null ? e2.entryId : e2.id)).size;
+            if (distinctEntries === 1) {
+              const u = ev.recurUnit || "month";
+              const e = ev.recurEvery || 1;
+              if (u === "semimonth") return `2\xD7/mo`;
+              if (u === "week" && e === 2) return "Bi-weekly";
+              if (u === "week") return `Every ${e} wk`;
+              if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
+              if (u === "year") return "Yearly";
+            }
             if (count === 24) return "2\xD7/mo";
             if (count === 26) return "Bi-weekly";
             return `${count}\xD7/yr`;
