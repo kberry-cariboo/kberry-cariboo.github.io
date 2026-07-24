@@ -193,10 +193,18 @@ create table if not exists household_settings (
   reg_filter_status text[] not null default '{}',
   dash_hidden jsonb not null default '{}'::jsonb,
   dash_order text[] not null default '{}',
+  debt_data jsonb not null default '{}'::jsonb,
+  deleted_copy_ids jsonb not null default '{}'::jsonb,
   schema_version int,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id)
 );
+
+-- debt_data/deleted_copy_ids were added after this table's initial release —
+-- `create table if not exists` above is a no-op on an already-migrated
+-- database, so existing installs need these columns added explicitly.
+alter table household_settings add column if not exists debt_data jsonb not null default '{}'::jsonb;
+alter table household_settings add column if not exists deleted_copy_ids jsonb not null default '{}'::jsonb;
 
 -- Receipt images, stored as binary blobs in the database. Receipts are strictly
 -- per-occurrence — each dated instance of a (possibly repeating) entry has its
@@ -764,7 +772,8 @@ begin
   insert into household_settings as s
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
-     reg_filter_status, dash_hidden, dash_order, schema_version, updated_at, updated_by)
+     reg_filter_status, dash_hidden, dash_order, debt_data, deleted_copy_ids,
+     schema_version, updated_at, updated_by)
   values
     (hid,
      cf_int(d->>'activeYear'),
@@ -779,6 +788,8 @@ begin
      cf_text_array(d->'regFilterStatus'),
      case when jsonb_typeof(d->'dashHidden') = 'object' then d->'dashHidden' else '{}'::jsonb end,
      cf_text_array(d->'dashOrder'),
+     case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
+     case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
      cf_int(d->>'schemaVersion'),
      now(),
      auth.uid())
@@ -800,6 +811,8 @@ begin
      reg_filter_status = case when d ? 'regFilterStatus' then excluded.reg_filter_status else s.reg_filter_status end,
      dash_hidden = case when d ? 'dashHidden' then excluded.dash_hidden else s.dash_hidden end,
      dash_order = case when d ? 'dashOrder' then excluded.dash_order else s.dash_order end,
+     debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
+     deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
      schema_version = case when d ? 'schemaVersion' then excluded.schema_version else s.schema_version end,
      updated_at = now(),
      updated_by = excluded.updated_by;
@@ -1005,6 +1018,8 @@ begin
       'regFilterStatus', to_jsonb(s.reg_filter_status),
       'dashHidden', s.dash_hidden,
       'dashOrder', to_jsonb(s.dash_order),
+      'debtData', s.debt_data,
+      'deletedCopyIds', s.deleted_copy_ids,
       'schemaVersion', s.schema_version,
       'savedAt', s.updated_at
     ))
