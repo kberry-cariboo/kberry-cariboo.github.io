@@ -436,9 +436,23 @@
         var _a;
         return k.startsWith("manual_") && !((_a = debtData[k]) == null ? void 0 : _a.hidden);
       });
+      // Recurring series get their monthly-equivalent from the recurrence rule
+      // itself (periods/year * amount, annualized) rather than from summing
+      // this calendar year's actual occurrences — a series that started or
+      // ends mid-year only has a partial year's worth in `evs`, and dividing
+      // that partial total by 12 understated the true monthly payment (e.g. a
+      // bi-weekly payment starting in June only has ~13 of its 26 yearly
+      // occurrences this year). One-off (non-repeating) matches keep the old
+      // sum-and-divide behavior, which is the correct spread for those.
       const toMonthlyFromEvs = (evs) => {
         if (!evs || !evs.length) return 0;
-        const annual = evs.reduce((s, ev) => s + (ev.amount || 0), 0);
+        const ev = evs[0];
+        if (ev.repeats) {
+          const every = ev.recurEvery || 1;
+          const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"] ?? 12;
+          return roundMoney((ev.amount || 0) * (ppy / 12));
+        }
+        const annual = evs.reduce((s, e) => s + (e.amount || 0), 0);
         return roundMoney(annual / 12);
       };
       const autoRows = Object.entries(autoGroups).filter(([desc]) => {
