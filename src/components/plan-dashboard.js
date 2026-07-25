@@ -783,13 +783,28 @@
           // anything else (e.g. "Costco Mastercard") is silently missed. This
           // lets a user fill the payment from any recurring expense directly,
           // without depending on that guess.
-          const recurExpenses = entries.filter((e) => e.type === "expense" && e.repeats).sort((a, b) => (a.desc || "").localeCompare(b.desc || ""));
+          const recurExpenses = entries.filter((e) => e.type === "expense" && e.repeats);
           if (!recurExpenses.length) return null;
           const entryToMonthly = (e) => {
             const every = e.recurEvery || 1;
             const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[e.recurUnit || "month"] ?? 12;
             return roundMoney((e.amount || 0) * (ppy / 12));
           };
+          // Group by description so multiple entries sharing one name (e.g.
+          // separate 1st-of-month and 15th-of-month "Mortgage" entries)
+          // autofill their combined monthly total — selecting just one of
+          // several same-named entries previously loaded only its own share
+          // of the payment, same bug the Debt Payoff Tracker's own monthly
+          // total had.
+          const groupedByDesc = {};
+          recurExpenses.forEach((e) => {
+            const k = e.desc || "";
+            (groupedByDesc[k] || (groupedByDesc[k] = [])).push(e);
+          });
+          const recurGroups = Object.entries(groupedByDesc).map(([desc, evs]) => ({
+            desc,
+            monthly: roundMoney(evs.reduce((s, e) => s + entryToMonthly(e), 0))
+          })).sort((a, b) => a.desc.localeCompare(b.desc));
           return /* @__PURE__ */ React.createElement("div", { className: "mt-8" }, /* @__PURE__ */ React.createElement("div", { className: "debtform-hint mb-6" }, "Or autofill from a recurring expense:"), /* @__PURE__ */ React.createElement(
             "select",
             {
@@ -797,12 +812,12 @@
               value: "",
               className: "field-input",
               onChange: (e) => {
-                const ent = recurExpenses.find((x) => String(x.id) === e.target.value);
-                if (ent) setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: String(centsToDollars(entryToMonthly(ent))) }));
+                const grp = recurGroups.find((g) => g.desc === e.target.value);
+                if (grp) setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: String(centsToDollars(grp.monthly)) }));
               }
             },
             /* @__PURE__ */ React.createElement("option", { value: "" }, "— choose an entry —"),
-            recurExpenses.map((e) => /* @__PURE__ */ React.createElement("option", { key: e.id, value: e.id }, e.desc, " (", fmt(entryToMonthly(e)), "/mo)"))
+            recurGroups.map((g) => /* @__PURE__ */ React.createElement("option", { key: g.desc, value: g.desc }, g.desc, " (", fmt(g.monthly), "/mo)"))
           ));
         })())), /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement(
           "button",
