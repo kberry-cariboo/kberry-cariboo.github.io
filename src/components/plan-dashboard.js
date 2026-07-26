@@ -463,7 +463,12 @@
           const ev = occs[0];
           if (ev.repeats) {
             const every = ev.recurEvery || 1;
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"] ?? 12;
+            // expandEntries' semimonth branch always emits exactly 2
+            // occurrences/month (24/yr) — it never reads recurEvery — so
+            // dividing by `every` here (as every other unit correctly does)
+            // silently halved this to 12/yr for any semimonth entry that
+            // happened to carry a stale/leftover recurEvery of 2.
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
             return sum + (ev.amount || 0) * (ppy / 12);
           }
           return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
@@ -787,7 +792,7 @@
           if (!recurExpenses.length) return null;
           const entryToMonthly = (e) => {
             const every = e.recurEvery || 1;
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[e.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
             return roundMoney((e.amount || 0) * (ppy / 12));
           };
           // Group by description so multiple entries sharing one name (e.g.
@@ -1328,13 +1333,6 @@
       })())),
       debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const dData = debtData && typeof debtData === "object" ? debtData : {};
-        const toMo = (ev) => {
-          var _a2;
-          if (!ev) return 0;
-          const amt = ev.amount || 0, every = ev.recurEvery || 1;
-          const ppy = (_a2 = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 / every }[ev.recurUnit || "month"]) != null ? _a2 : 12;
-          return roundMoney(amt * (ppy / 12));
-        };
         const dkw = [
           "debt",
           "credit",
@@ -1358,10 +1356,28 @@
           const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
           (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
         });
+        // Same recurrence-rule annualization as the Debt Payoff Tracker's own
+        // monthly total (see toMonthlyFromEvs in PlanView) — grouped by the
+        // underlying entry so a description covered by more than one entry
+        // sums each entry's own contribution instead of just the first found.
         const autoMonthly = (key) => {
           const evs = autoAllEvs[key] || [];
           if (!evs.length) return 0;
-          return roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12);
+          const byEntry = {};
+          evs.forEach((ev) => {
+            const eid = ev.entryId != null ? ev.entryId : ev.id;
+            (byEntry[eid] || (byEntry[eid] = [])).push(ev);
+          });
+          const total = Object.values(byEntry).reduce((sum, occs) => {
+            const ev = occs[0];
+            if (ev.repeats) {
+              const every = ev.recurEvery || 1;
+              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+              return sum + (ev.amount || 0) * (ppy / 12);
+            }
+            return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
+          }, 0);
+          return roundMoney(total);
         };
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
