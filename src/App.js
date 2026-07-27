@@ -844,7 +844,7 @@
       {
         id: "global-search",
         "aria-label": "Search",
-        placeholder: "Search\u2026 try >100",
+        placeholder: "",
         autoComplete: "off",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),

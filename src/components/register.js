@@ -88,7 +88,6 @@
       close();
     };
     const [confirmDelEntry, setConfirmDelEntry] = useState(null);
-    const del = (id) => setConfirmDelEntry(id);
     const confirmDelete = () => {
       const deleted = entries.find((e) => e.id === confirmDelEntry);
       setEntries((prev) => prev.filter((e) => e.id !== confirmDelEntry));
@@ -186,8 +185,6 @@
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-cat", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }));
         case "notes":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-notes", style: arcMeta }, e.notes);
-        case "actions":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-actions" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-4" }, /* @__PURE__ */ React.createElement("button", { onClick: () => openEdit(e), title: "Edit", "aria-label": "Edit entry", className: "cf-btn cf-btn--secondary reg-action-btn" }, "\u270E"), /* @__PURE__ */ React.createElement("button", { onClick: () => doCopy(e), title: "Copy", "aria-label": "Duplicate entry", className: "cf-btn cf-btn--secondary reg-action-btn" }, "\u2398"), /* @__PURE__ */ React.createElement("button", { onClick: () => del(e.id), title: "Delete", "aria-label": "Delete entry", className: "cf-btn cf-btn--danger reg-action-btn" }, "\u2715")));
         default:
           return /* @__PURE__ */ React.createElement("td", { key: col });
       }
@@ -261,7 +258,7 @@
     ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "reg-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement(
       "input",
       {
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search\u2026 try >100",
+        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "",
         value: search,
         onChange: (e) => setSearch(e.target.value),
         className: "reg-search-input"
@@ -358,7 +355,7 @@
         REG_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "reg-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "reg-th reg-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "reg-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
@@ -388,7 +385,7 @@
               openCtx(ev, e);
             },
             "aria-label": "Entry actions",
-            className: "cf-checkbtn reg-mobile-actions-btn"
+            className: "cf-checkbtn row-menu-btn"
           },
           "⋮"
         )),

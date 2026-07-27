@@ -278,11 +278,11 @@ await test('A1 built-in self-test suite passes', async () => {
   });
 
   await test('B14 entries search filters rows', async () => {
-    await page.getByPlaceholder(/Search/).first().fill('Rent');
+    await page.locator('#global-search').fill('Rent');
     await page.waitForTimeout(400);
     await page.getByText('Rent', { exact: true }).first().waitFor(V);
     if (await page.getByText('Groceries', { exact: true }).count() > 0) throw new Error('search did not filter');
-    await page.getByPlaceholder(/Search/).first().fill('');
+    await page.locator('#global-search').fill('');
   });
 
   await test('B15 plan: goal modal opens', async () => {
@@ -358,7 +358,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.locator('.modal-overlay').count().then((n) => {
       if (n > 0) throw new Error('import modal did not close after importing');
     });
-    await page.getByPlaceholder(/Search/).first().fill('CSV Coffee Shop');
+    await page.locator('#global-search').fill('CSV Coffee Shop');
     await page.waitForTimeout(300);
     await page.getByText('CSV Coffee Shop', { exact: false }).first().waitFor(V);
   });
@@ -370,7 +370,7 @@ await test('A1 built-in self-test suite passes', async () => {
 
     await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
     await page.waitForTimeout(800);
-    await page.getByPlaceholder(/Search/).first().fill('');
+    await page.locator('#global-search').fill('');
     await page.getByRole('button', { name: '+ Add Entry' }).first().click();
     await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
     await page.getByPlaceholder('e.g. Mortgage payment').fill('QA Transfer In');
@@ -593,7 +593,7 @@ await test('C2 dark: charts render with theme colors', async () => {
   await test('D4 top-right Add button opens entry form on mobile', async () => {
     await page.locator('.cf-bottomnav').getByRole('button', { name: 'Budget' }).tap({ force: true });
     await page.waitForTimeout(400);
-    await page.locator('.exportbar-add-btn').first().tap({ force: true });
+    await page.locator('button[title="Add Entry"]').first().tap({ force: true });
     await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
     await page.getByRole('button', { name: 'Cancel' }).first().tap({ force: true });
     await page.waitForTimeout(300);

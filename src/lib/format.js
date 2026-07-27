@@ -61,7 +61,7 @@
     {
       onClick: onAdd,
       title: "Add Entry",
-      className: "cf-btn cf-btn--primary exportbar-add-btn", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+      className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
     },
     "+ Add"
   ));
