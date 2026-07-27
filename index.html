@@ -1216,12 +1216,17 @@
             padding-left:6px!important;padding-right:6px!important;}
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:6px!important;}
-          .bp-daily{display:none!important;}
           .ef-save-template{display:none!important;}
           .budget-subtab-pill .bp-label-full{display:none!important;}
           .budget-subtab-pill{width:40px!important;height:40px!important;padding:0!important;
             display:inline-flex!important;align-items:center!important;justify-content:center!important;
             flex-shrink:0!important;font-size:16px!important;}
+          /* Daily is basically a per-day breakdown of the same data Monthly
+             already shows — on mobile's cramped subtab row it's redundant.
+             Compound selector (not bare .bp-daily) so this reliably beats
+             the .budget-subtab-pill display:inline-flex!important above,
+             regardless of which rule the cascade would otherwise favor. */
+          .budget-subtab-pill.bp-daily{display:none!important;}
           .budget-subtabs{margin-left:-4px!important;margin-right:-4px!important;padding-left:4px!important;padding-right:4px!important;}
           .year-openbal{flex-basis:100%!important;order:5;}
           .year-openbal input{flex:1 1 auto!important;width:auto!important;}

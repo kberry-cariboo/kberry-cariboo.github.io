@@ -622,6 +622,17 @@ await test('D6 mobile dark: active nav item is highlighted, not dimmed', async (
   await ctx.close();
 });
 
+await test('D7 mobile: Daily subtab hidden (redundant with Monthly cards)', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(800);
+  if (await page.locator('.bp-daily').isVisible().catch(() => false)) {
+    throw new Error('Daily subtab is visible on a mobile viewport');
+  }
+  await page.getByRole('button', { name: 'Monthly' }).waitFor(V);
+  await ctx.close();
+});
+
 // ── E. Auth surfaces ────────────────────────────────────────────────────────
 await test('E1 login screen renders when signed out', async () => {
   const { ctx, page } = await ctxPage({ loggedIn: false });
