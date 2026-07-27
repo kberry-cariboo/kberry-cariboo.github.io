@@ -464,29 +464,32 @@ await test('A1 built-in self-test suite passes', async () => {
     // expose it, and the app already handles that by showing a "not
     // supported" message instead of a broken toggle (see notifSupported in
     // settings.js). So branch on which case we're in rather than assuming.
-    const errsBefore = pageErrors.length;
-    await ctx.grantPermissions(['notifications']).catch(() => {});
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    const step = async (label, fn) => {
+      try {
+        return await fn();
+      } catch (e) {
+        throw new Error(`[${label}] ` + String(e.message || e).split('\n')[0].slice(0, 90));
+      }
+    };
+    await step('grant', () => ctx.grantPermissions(['notifications']).catch(() => {}));
+    await step('goto', () => page.goto(BASE + '#/settings', { waitUntil: 'load' }));
     await page.waitForTimeout(800);
-    await page.getByText('Local Notifications', { exact: false }).first().waitFor(V);
+    await step('heading', () => page.getByText('Local Notifications', { exact: false }).first().waitFor(V));
     const notifSupported = await page.evaluate(() => typeof Notification !== 'undefined');
-    const secText = await page.locator('#sec-notifications').innerText().catch((e) => 'ERR:' + e.message);
-    const diag = () => ` [sup=${notifSupported} err=${JSON.stringify((pageErrors[errsBefore] || '').slice(0, 30))} sec=${JSON.stringify(secText.slice(0, 40))}]`;
     if (!notifSupported) {
-      if (!secText.includes("doesn't support notifications")) throw new Error('unsupported branch, wrong text' + diag());
+      await step('unsupported-msg', () => page.getByText("doesn't support notifications", { exact: false }).first().waitFor(V));
       return;
     }
     const toggle = page.getByRole('switch', { name: 'Enable local notifications' });
-    if (await toggle.count() === 0) throw new Error('switch not found though supported=true' + diag());
-    await toggle.waitFor(V);
-    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('expected notifications to start off' + diag());
-    await toggle.click();
+    await step('toggle-visible', () => toggle.waitFor(V));
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('expected notifications to start off');
+    await step('click-on', () => toggle.click());
     await page.waitForTimeout(400);
-    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('toggle did not turn on once permission was granted' + diag());
-    await page.getByText('On', { exact: true }).first().waitFor(V);
-    await toggle.click();
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('toggle did not turn on once permission was granted');
+    await step('on-text', () => page.getByText('On', { exact: true }).first().waitFor(V));
+    await step('click-off', () => toggle.click());
     await page.waitForTimeout(200);
-    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off' + diag());
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off');
   });
 
   await test('B24 modal: backdrop click no longer dismisses, only X/Cancel do', async () => {
