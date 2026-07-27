@@ -282,7 +282,12 @@
       } catch (e) {
       }
       if (doExport) {
-        const blob = new Blob([JSON.stringify({ entries, budgetTargets, yearConfigs, categories, templates, activeYear }, null, 2)], { type: "application/json" });
+        // Same full field set (and schemaVersion stamp) as Settings' Export
+        // Backup — a partial payload here would restore with fields silently
+        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
+        // data and re-centsified (100x-inflated) on import.
+        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
@@ -290,8 +295,6 @@
         URL.revokeObjectURL(a.href);
       }
     };
-    const searchRef = useRef(null);
-    const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
@@ -366,7 +369,6 @@
       return flows;
     }, [entries, yearConfigs, overridesByYr]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
-    const isFirstYear = ((_a = sortedConfigs[0]) == null ? void 0 : _a.year) === activeYear;
     const activeOpenBal = useMemo(() => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
@@ -415,7 +417,6 @@
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
-    const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     // Rebuilt fresh every render (cheap — plain values, no computation), so
     // buildPayload/applyPayload can never close over a stale field.
     const houseValues = {
@@ -712,7 +713,6 @@
         return next;
       });
     };
-    const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const latestYear = yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : activeYear;
     const addNextYearInline = () => {
       const y = latestYear + 1;

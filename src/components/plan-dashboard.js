@@ -35,7 +35,6 @@
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
-    const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
@@ -85,7 +84,7 @@
             recurUnit: "month",
             recurDays: [],
             recurEnd: goalForm.targetDate || "",
-            category: "Savings",
+            category: "Savings / RRSP",
             notes: "Savings goal contribution"
           }]);
         }
@@ -103,7 +102,7 @@
             recurUnit: "month",
             recurDays: [],
             recurEnd: "",
-            category: "Savings",
+            category: "Savings / RRSP",
             notes: "Planned goal spending"
           }]);
         }
@@ -981,12 +980,6 @@
     }, [effectiveFlow]);
     const catPieData = useMemo(() => catTotals.map(([name, value]) => ({ name, value })), [catTotals]);
     const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
-    const savingsRate = useMemo(() => summaries.map((m) => ({
-      month: m.month,
-      rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
-      surplus: m.surplus,
-      income: m.income
-    })), [summaries]);
     const totalIncome = summaries.reduce((s, m) => s + m.income, 0);
     const totalExpense = summaries.reduce((s, m) => s + m.expense, 0);
     const netSurplus = totalIncome - totalExpense;

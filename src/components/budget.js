@@ -10,7 +10,6 @@
   }, onAddNextYear = null }) {
     var _a, _b;
     const isMobile = useIsMobile();
-    const [editingId, setEditingId] = useState(null);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -176,7 +175,6 @@
       if (target !== monthIdx) setMonthIdx(target);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
-    const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
@@ -259,11 +257,6 @@
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
-    const handleAdd = (data) => {
-      if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
-      setShowAddForm(false);
-    };
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -488,7 +481,6 @@
       const dir = dx < 0 ? 1 : -1;
       haptic();
       setMonthIdx((v) => Math.max(0, Math.min(11, v + dir)));
-      setEditingId(null);
       setShowOccurrenceForm(false);
       setEditingEv(null);
       setShowEntryForm(false);
@@ -526,7 +518,6 @@
           value: monthIdx,
           onChange: (v) => {
             setMonthIdx(v);
-            setEditingId(null);
           },
           noMargin: false,
           matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null,
@@ -948,7 +939,7 @@
           );
         }), cats.length > 0 && (() => {
           const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
-          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
+          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0) + carryFor(c), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
