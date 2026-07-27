@@ -160,7 +160,6 @@
       const archived = isArchived(e, activeYear);
       const arcText = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       const arcMeta = { color: archived ? "var(--textLt)" : "var(--textMid)", textDecoration: archived ? "line-through" : "none" };
-      const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));

@@ -32,10 +32,25 @@ jobs:
       - name: Build index.html
         run: node build.js
 
-      # Correctness-only lint (no-dupe-keys etc.) — style rules stay off since
-      # src/ is transpiled-style output. See eslint.config.mjs.
+      # Correctness-only lint (no-dupe-keys etc.) on the split source, plus
+      # no-undef/no-unused-vars on the concatenated bundle (the shared scope
+      # the app actually runs in — see eslint.config.mjs and
+      # scripts/lint-bundle.js for why those two rules can't run per-file).
       - name: Lint source
-        run: npx --yes eslint@9 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js
+        run: |
+          node scripts/lint-bundle.js
+          npx --yes eslint@9 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js .eslint-bundle.js
+
+      # Global install (not a package.json dependency) matches how the rest of
+      # this repo has no node_modules — tests/regression.mjs resolves it via
+      # `npm root -g` when no local install is present.
+      - name: Install Playwright
+        run: |
+          npm install -g playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run UI regression suite
+        run: node tests/regression.mjs
 
       - name: Check for changes
         id: diff

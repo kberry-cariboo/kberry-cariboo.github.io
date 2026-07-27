@@ -63,4 +63,8 @@ function build() {
   console.log(`build.js: wrote index.html (${output.length.toLocaleString()} bytes)`);
 }
 
-build();
+module.exports = { APP_MODULES, ROOT, read };
+// Only build when run directly (`node build.js`) — scripts/lint-bundle.js
+// requires this module purely for APP_MODULES/read and must not trigger a
+// build as a side effect of `require`.
+if (require.main === module) build();
