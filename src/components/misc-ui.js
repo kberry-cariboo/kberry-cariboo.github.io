@@ -229,11 +229,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Edit occurrence",
-        onClick: (e) => {
-          e.stopPropagation();
-          if (e.target === e.currentTarget) onCancel();
-        }
+        "aria-label": "Edit occurrence"
       },
       /* @__PURE__ */ React.createElement(
         "div",

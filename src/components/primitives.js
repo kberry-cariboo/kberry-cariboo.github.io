@@ -336,14 +336,14 @@
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
-    // Backdrop click dismisses (matching every other overlay) and initial
-    // focus lands on Cancel — Enter must not trigger the primary action by
-    // default. confirmVariant "danger" (the default) is for destructive
-    // actions (delete/reset); "primary" is for a plain yes/no confirmation
-    // of a safe, additive action, where a red button would misrepresent risk.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
-      if (e.target === e.currentTarget) onCancel();
-    } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    // Backdrop clicks no longer dismiss — only Cancel/the primary action do
+    // (matching every other overlay) — so a slightly-off click doesn't lose
+    // the user's place. Initial focus lands on Cancel — Enter must not
+    // trigger the primary action by default. confirmVariant "danger" (the
+    // default) is for destructive actions (delete/reset); "primary" is for
+    // a plain yes/no confirmation of a safe, additive action, where a red
+    // button would misrepresent risk.
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));

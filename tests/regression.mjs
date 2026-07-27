@@ -474,6 +474,29 @@ await test('A1 built-in self-test suite passes', async () => {
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off');
   });
 
+  await test('B24 modal: backdrop click no longer dismisses, only X/Cancel do', async () => {
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+    await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+    await page.getByPlaceholder('e.g. Mortgage payment').fill('QA Backdrop Click Test');
+
+    // Click the backdrop itself, well clear of the centered modal-card.
+    await page.locator('.modal-overlay').first().click({ position: { x: 5, y: 5 } });
+    await page.waitForTimeout(300);
+    if (await page.getByPlaceholder('e.g. Mortgage payment').count() === 0) {
+      throw new Error('modal closed on backdrop click — should only close via X/Cancel');
+    }
+    const stillThere = await page.getByPlaceholder('e.g. Mortgage payment').inputValue();
+    if (stillThere !== 'QA Backdrop Click Test') throw new Error('form contents were lost: ' + stillThere);
+
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.waitForTimeout(300);
+    if (await page.getByPlaceholder('e.g. Mortgage payment').count() > 0) {
+      throw new Error('modal did not close via Cancel button');
+    }
+  });
+
   await ctx.close();
 }
 

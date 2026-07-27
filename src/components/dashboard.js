@@ -596,10 +596,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Customize dashboard",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowCustomize(false);
-        }
+        "aria-label": "Customize dashboard"
       },
       /* @__PURE__ */ React.createElement(
         "div",

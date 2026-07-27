@@ -220,10 +220,7 @@
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Goal form",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowGoalForm(false);
-          }
+          "aria-label": "Goal form"
         },
         /* @__PURE__ */ React.createElement(
           "div",
@@ -319,10 +316,7 @@
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Add funds",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowFundForm(false);
-          }
+          "aria-label": "Add funds"
         },
         /* @__PURE__ */ React.createElement(
           "div",
@@ -715,10 +709,7 @@
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Debt form",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowDebtForm(false);
-          }
+          "aria-label": "Debt form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",

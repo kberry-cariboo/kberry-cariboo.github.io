@@ -244,10 +244,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Import CSV",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) close();
-        }
+        "aria-label": "Import CSV"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card csvimport-modal-card", onClick: (e) => e.stopPropagation() },
         /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, "Import CSV"), /* @__PURE__ */ React.createElement("button", { onClick: close, "aria-label": "Close", className: "fab-panel-close" }, "✕")),

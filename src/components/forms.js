@@ -241,10 +241,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) onClose();
-        }
+        "aria-label": "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
         EntryForm,

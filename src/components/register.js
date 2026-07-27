@@ -280,10 +280,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Filters",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowMobileFilters(false);
-        }
+        "aria-label": "Filters"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card reg-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "reg-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
@@ -299,10 +296,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": editing ? "Edit entry" : "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) close();
-        }
+        "aria-label": editing ? "Edit entry" : "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
         "button",

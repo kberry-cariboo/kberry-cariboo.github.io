@@ -693,14 +693,7 @@
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Entry form",
-          onClick: (e) => {
-            e.stopPropagation();
-            if (e.target === e.currentTarget) {
-              setShowEntryForm(false);
-              setEditingEntry(null);
-            }
-          }
+          "aria-label": "Entry form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
@@ -873,11 +866,7 @@
             className: "modal-overlay",
             role: "dialog",
             "aria-modal": "true",
-            "aria-label": "Budget target",
-            onClick: (e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setShowBvaModal(false);
-            }
+            "aria-label": "Budget target"
           },
           /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",

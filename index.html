@@ -50,7 +50,7 @@
         .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
           box-shadow:var(--shadowSm);padding:20px 24px;transition:box-shadow 0.2s ease, transform 0.2s ease;}
         .cf-card--flush{padding:0;overflow:hidden;}
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
+        .modal-overlay{position:fixed;inset:0;background:rgba(90,90,97,0.4);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:16px;}
         .skip-link{position:absolute;left:-9999px;top:0;z-index:3000;
           background:var(--primary);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
@@ -4040,14 +4040,14 @@ document.addEventListener('DOMContentLoaded',function(){
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
-    // Backdrop click dismisses (matching every other overlay) and initial
-    // focus lands on Cancel — Enter must not trigger the primary action by
-    // default. confirmVariant "danger" (the default) is for destructive
-    // actions (delete/reset); "primary" is for a plain yes/no confirmation
-    // of a safe, additive action, where a red button would misrepresent risk.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
-      if (e.target === e.currentTarget) onCancel();
-    } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    // Backdrop clicks no longer dismiss — only Cancel/the primary action do
+    // (matching every other overlay) — so a slightly-off click doesn't lose
+    // the user's place. Initial focus lands on Cancel — Enter must not
+    // trigger the primary action by default. confirmVariant "danger" (the
+    // default) is for destructive actions (delete/reset); "primary" is for
+    // a plain yes/no confirmation of a safe, additive action, where a red
+    // button would misrepresent risk.
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
@@ -4303,10 +4303,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) onClose();
-        }
+        "aria-label": "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
         EntryForm,
@@ -4718,10 +4715,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Import CSV",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) close();
-        }
+        "aria-label": "Import CSV"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card csvimport-modal-card", onClick: (e) => e.stopPropagation() },
         /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, "Import CSV"), /* @__PURE__ */ React.createElement("button", { onClick: close, "aria-label": "Close", className: "fab-panel-close" }, "✕")),
@@ -5085,10 +5079,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Filters",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowMobileFilters(false);
-        }
+        "aria-label": "Filters"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card reg-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "reg-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
@@ -5104,10 +5095,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": editing ? "Edit entry" : "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) close();
-        }
+        "aria-label": editing ? "Edit entry" : "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
         "button",
@@ -5472,11 +5460,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Edit occurrence",
-        onClick: (e) => {
-          e.stopPropagation();
-          if (e.target === e.currentTarget) onCancel();
-        }
+        "aria-label": "Edit occurrence"
       },
       /* @__PURE__ */ React.createElement(
         "div",
@@ -6428,14 +6412,7 @@ document.addEventListener('DOMContentLoaded',function(){
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Entry form",
-          onClick: (e) => {
-            e.stopPropagation();
-            if (e.target === e.currentTarget) {
-              setShowEntryForm(false);
-              setEditingEntry(null);
-            }
-          }
+          "aria-label": "Entry form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
@@ -6608,11 +6585,7 @@ document.addEventListener('DOMContentLoaded',function(){
             className: "modal-overlay",
             role: "dialog",
             "aria-modal": "true",
-            "aria-label": "Budget target",
-            onClick: (e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setShowBvaModal(false);
-            }
+            "aria-label": "Budget target"
           },
           /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",
@@ -7628,10 +7601,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Goal form",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowGoalForm(false);
-          }
+          "aria-label": "Goal form"
         },
         /* @__PURE__ */ React.createElement(
           "div",
@@ -7727,10 +7697,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Add funds",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowFundForm(false);
-          }
+          "aria-label": "Add funds"
         },
         /* @__PURE__ */ React.createElement(
           "div",
@@ -8123,10 +8090,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Debt form",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowDebtForm(false);
-          }
+          "aria-label": "Debt form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
@@ -8899,10 +8863,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Customize dashboard",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowCustomize(false);
-        }
+        "aria-label": "Customize dashboard"
       },
       /* @__PURE__ */ React.createElement(
         "div",
