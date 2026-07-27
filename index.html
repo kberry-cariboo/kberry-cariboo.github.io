@@ -9165,7 +9165,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
   }, enableNotifications = async () => {
-  }, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, notifPerm = "unsupported", yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
@@ -9221,10 +9221,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
     const notifSupported = typeof Notification !== "undefined";
-    const [notifPerm, setNotifPerm] = useState(() => notifSupported ? Notification.permission : "unsupported");
-    useEffect(() => {
-      if (notifSupported) setNotifPerm(Notification.permission);
-    }, [notifSupported, notifyEnabled]);
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
     // devices. If it's already enabled (e.g. legacy desktop setup), keep the block
@@ -10844,6 +10840,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
     const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
+    // Sourced only from Notification.requestPermission()'s resolved value,
+    // never re-read from the Notification.permission property afterward —
+    // some browsers (observed under CDP-driven permission grants) don't
+    // keep that property perfectly in sync with the promise's result in
+    // the same tick, which showed the Settings toggle as "granted" while
+    // the status text still read the stale "denied" default.
+    const [notifPerm, setNotifPerm] = useState(() => {
+      try {
+        return typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+      } catch (e) {
+        return "unsupported";
+      }
+    });
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
@@ -11394,6 +11403,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       try {
         if (typeof Notification === "undefined") return;
         const perm = await Notification.requestPermission();
+        setNotifPerm(perm);
         setNotifyEnabled(perm === "granted");
       } catch (e) {
         setNotifyEnabled(false);
@@ -11401,7 +11411,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     useEffect(() => {
       if (!notifyEnabled) return;
-      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      if (typeof Notification === "undefined" || notifPerm !== "granted") return;
       if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
       try {
         if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
@@ -11428,7 +11438,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       } catch (e) {
       }
-    }, [notifyEnabled, navLowInfo, activeFlow, completed, activeYear, todayKey]);
+    }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -11857,6 +11867,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         notifyEnabled,
         setNotifyEnabled,
         enableNotifications,
+        notifPerm,
         yearConfigs,
         setYearConfigs,
         activeYear,

@@ -159,6 +159,19 @@
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
     const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
+    // Sourced only from Notification.requestPermission()'s resolved value,
+    // never re-read from the Notification.permission property afterward —
+    // some browsers (observed under CDP-driven permission grants) don't
+    // keep that property perfectly in sync with the promise's result in
+    // the same tick, which showed the Settings toggle as "granted" while
+    // the status text still read the stale "denied" default.
+    const [notifPerm, setNotifPerm] = useState(() => {
+      try {
+        return typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+      } catch (e) {
+        return "unsupported";
+      }
+    });
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
@@ -709,6 +722,7 @@
       try {
         if (typeof Notification === "undefined") return;
         const perm = await Notification.requestPermission();
+        setNotifPerm(perm);
         setNotifyEnabled(perm === "granted");
       } catch (e) {
         setNotifyEnabled(false);
@@ -716,7 +730,7 @@
     };
     useEffect(() => {
       if (!notifyEnabled) return;
-      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      if (typeof Notification === "undefined" || notifPerm !== "granted") return;
       if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
       try {
         if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
@@ -743,7 +757,7 @@
         }
       } catch (e) {
       }
-    }, [notifyEnabled, navLowInfo, activeFlow, completed, activeYear, todayKey]);
+    }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -1172,6 +1186,7 @@
         notifyEnabled,
         setNotifyEnabled,
         enableNotifications,
+        notifPerm,
         yearConfigs,
         setYearConfigs,
         activeYear,
