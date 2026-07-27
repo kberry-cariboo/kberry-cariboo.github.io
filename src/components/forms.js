@@ -13,7 +13,8 @@
       recurUnit: "month",
       recurDays: [],
       recurEnd: "",
-      monthlyAmounts: null
+      monthlyAmounts: null,
+      transferDirection: "out"
     };
     const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
       // Money is cents at rest; this form's fields are plain dollar text the
@@ -24,7 +25,8 @@
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
-      repeats: (_e = initial.repeats) != null ? _e : false
+      repeats: (_e = initial.repeats) != null ? _e : false,
+      transferDirection: initial.transferDirection || "out"
     }) : blank);
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
@@ -106,7 +108,7 @@
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-amount",

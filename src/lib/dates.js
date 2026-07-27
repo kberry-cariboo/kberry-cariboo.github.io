@@ -71,6 +71,10 @@
           entryId: e.id,
           desc: ov.desc !== void 0 ? ov.desc : e.desc,
           type: e.type,
+          // Only meaningful when type is "transfer" — money moving out of
+          // this tracked account (default) vs into it. Income/expense
+          // entries ignore this entirely.
+          transferDirection: e.transferDirection || "out",
           amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
@@ -241,10 +245,21 @@
     });
     return out;
   }
+  // Cents, signed by whether this event adds to or subtracts from the
+  // balance — income and an "in"-direction transfer add, everything else
+  // (expense, and an "out"-direction transfer, the default) subtracts. Used
+  // anywhere a running total needs a signed amount instead of computeFlow's
+  // per-event balance; a plain `type === "income" ? amount : -amount`
+  // ternary silently treats any non-income type as a subtraction, which is
+  // right for expense but wrong for an "in"-direction transfer.
+  function signedAmount(ev) {
+    const isInflow = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+    return isInflow ? ev.amount : -ev.amount;
+  }
   function computeFlow(events, openBal) {
     let bal = openBal;
     return events.map((ev) => {
-      bal += ev.type === "income" ? ev.amount : -ev.amount;
+      bal += signedAmount(ev);
       return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
     });
   }

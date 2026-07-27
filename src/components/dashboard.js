@@ -221,10 +221,11 @@
         return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-hdr-label" }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { className: "upcoming-count" }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { className: "upcoming-list" }, upcoming.map((ev) => {
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-          const isInc = ev.type === "income";
+          const signed = signedAmount(ev);
+          const isInc = signed >= 0;
           const isPaid = !!completed[ev.id];
           const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)";
-          const amtColor = isPaid ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)";
+          const amtColor = isPaid ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : isInc ? "var(--greenDk)" : "var(--text)";
           const barDiv = null;
           const paidBtn = /* @__PURE__ */ React.createElement(
             "button",

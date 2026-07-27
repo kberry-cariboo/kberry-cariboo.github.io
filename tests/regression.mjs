@@ -363,6 +363,39 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('CSV Coffee Shop', { exact: false }).first().waitFor(V);
   });
 
+  await test('B21 transfer entry: nets into balance, excluded from income/expense totals', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const incomeBefore = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByPlaceholder(/Search/).first().fill('');
+    await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+    await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+    await page.getByPlaceholder('e.g. Mortgage payment').fill('QA Transfer In');
+    await page.locator('#ef-type').selectOption({ value: 'transfer' });
+    await page.getByLabel('Transfer direction').selectOption({ value: 'in' });
+    await page.getByPlaceholder('0.00').first().fill('50.00');
+    await page.locator('#ef-category').selectOption({ label: 'Housing' });
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+    await page.getByRole('button', { name: 'Save Entry' }).click();
+    await page.waitForTimeout(600);
+    if (await page.getByRole('button', { name: 'Save Entry' }).count() > 0) throw new Error('form did not close (validation?)');
+
+    await page.getByText('QA Transfer In').first().waitFor(V);
+    const row = page.locator('tr', { hasText: 'QA Transfer In' }).first();
+    const rowText = await row.innerText();
+    if (!rowText.includes('+$50.00')) throw new Error('transfer-in row did not show +$50.00: ' + rowText);
+
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const incomeAfter = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+    if (incomeBefore !== incomeAfter) throw new Error(`transfer leaked into Annual Income: ${incomeBefore} -> ${incomeAfter}`);
+  });
+
   await ctx.close();
 }
 

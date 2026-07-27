@@ -170,7 +170,7 @@
       const map = /* @__PURE__ */ new Map();
       const add = (ev, key) => {
         const k = ev.type + "|" + norm(ev.desc);
-        const signed = ev.type === "income" ? ev.amount : -ev.amount;
+        const signed = signedAmount(ev);
         let row = map.get(k);
         if (!row) {
           row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0, day: ev.day };
@@ -286,7 +286,7 @@
     useInfiniteScroll(isMobile && monthPg.hasMore, () => setMobileLoaded((l) => l + 1));
     const pagedPeriod1 = monthPg.rows.filter((ev) => ev.day <= 14);
     const pagedPeriod2 = monthPg.rows.filter((ev) => ev.day > 14);
-    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
+    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + signedAmount(ev), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
@@ -363,14 +363,20 @@
             textDecoration: isDone ? "line-through" : "none"
           } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
-          if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", style: {
-            color: isDone ? "var(--textLt)" : "var(--greenDk)",
-            textDecoration: isDone ? "line-through" : "none"
-          } }, ev.type === "income" ? fmt(ev.amount) : "");
-          if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          } }, ev.type === "expense" ? fmt(ev.amount) : "");
+          if (col === "income") {
+            const showHere = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", style: {
+              color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
+              textDecoration: isDone ? "line-through" : "none"
+            } }, showHere ? fmt(ev.amount) : "");
+          }
+          if (col === "expense") {
+            const showHere = ev.type === "expense" || ev.type === "transfer" && ev.transferDirection === "out";
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", style: {
+              color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
+              textDecoration: isDone ? "line-through" : "none"
+            } }, showHere ? fmt(ev.amount) : "");
+          }
           if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: {
             textDecoration: isDone ? "line-through" : "none",
             color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
@@ -392,7 +398,7 @@
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
       const isSel = selIds.has(ev.id);
-      const signed = ev.type === "income" ? ev.amount : -ev.amount;
+      const signed = signedAmount(ev);
       return /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -439,7 +445,7 @@
           }
         }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
+          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
@@ -811,9 +817,9 @@
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
         /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
+          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
-        } }, ev.type === "income" ? "+" : "-", fmt(ev.amount))
+        } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
       )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
         background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
       } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "daily-balance-caption" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 daily-balance-amt", style: {
