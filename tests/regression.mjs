@@ -473,6 +473,24 @@ await test('A1 built-in self-test suite passes', async () => {
     };
     await step('grant', () => ctx.grantPermissions(['notifications']).catch(() => {}));
     await step('goto', () => page.goto(BASE + '#/settings', { waitUntil: 'load' }));
+    // This test is only about the Settings toggle's permission-request flow.
+    // App.js has its own separate effect that fires a *real* Notification
+    // for low-balance/due-bill conditions once notifyEnabled flips on, and
+    // this suite's shared fixture (accumulated by earlier B* tests) can
+    // easily have one of those conditions true by now. Pre-marking both as
+    // "already notified today" keeps that unrelated effect from ever
+    // constructing a real Notification here, so this test can't be
+    // confounded by however slow/flaky real notification delivery is in a
+    // given headless browser. (addInitScript wouldn't apply here since this
+    // goto is a same-document hash navigation, not a fresh document load.)
+    await page.evaluate(() => {
+      try {
+        const d = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        sessionStorage.setItem('cf_notified_lowbal', d);
+        sessionStorage.setItem('cf_notified_duebills', d);
+      } catch (e) {
+      }
+    });
     await page.waitForTimeout(800);
     await step('heading', () => page.getByText('Local Notifications', { exact: false }).first().waitFor(V));
     const notifSupported = await page.evaluate(() => typeof Notification !== 'undefined');
@@ -486,7 +504,14 @@ await test('A1 built-in self-test suite passes', async () => {
     await step('click-on', () => toggle.click());
     await page.waitForTimeout(400);
     if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('toggle did not turn on once permission was granted');
-    await step('on-text', () => page.getByText('On', { exact: true }).first().waitFor(V));
+    await step('on-text', async () => {
+      try {
+        await page.getByText('On', { exact: true }).first().waitFor(V);
+      } catch (e) {
+        const secText = await page.locator('#sec-notifications').innerText().catch(() => 'ERR');
+        throw new Error('label mismatch, sec=' + JSON.stringify(secText.slice(0, 60)));
+      }
+    });
     await step('click-off', () => toggle.click());
     await page.waitForTimeout(200);
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off');
