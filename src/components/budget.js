@@ -404,7 +404,7 @@
       // matching exactly how data rows position the green/transparent stripe.
       /* @__PURE__ */ React.createElement("tr", { key: label }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
         background: "var(--navyMid)"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "period-hdr-td" }, label))
+      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "period-hdr-td" }, label))
     );
     const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, className: "period-hdr-td" }, label);
     const renderEventCard = (ev, opts = {}) => {
