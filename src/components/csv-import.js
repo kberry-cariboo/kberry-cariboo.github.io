@@ -40,7 +40,7 @@
   // for anything else (e.g. "Jan 5, 2026") — this is a best-effort guess the
   // user reviews in the preview table before anything is imported, not a
   // silent authority, so an occasional wrong guess is recoverable by editing
-  // the mapped column or fixing the row afterward in the register.
+  // the mapped column or fixing the row afterward in Entries.
   function parseCsvDate(str) {
     const s = (str || "").trim();
     if (!s) return null;

@@ -136,7 +136,7 @@
         "button",
         {
           onClick: () => openGoalForm(null),
-          className: "cf-btn cf-btn--primary goal-add-btn"
+          className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
         },
         "+ Add"
       ))), goals.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
@@ -190,7 +190,7 @@
                 setGoalCtx({ x: e.clientX, y: e.clientY, goal: g });
               },
               "aria-label": `${g.name} actions`,
-              className: "goal-menu-btn"
+              className: "cf-checkbtn row-menu-btn"
             },
             "⋮"
           ))),
@@ -841,7 +841,7 @@
         "button",
         {
           onClick: addManualRow,
-          className: "cf-btn cf-btn--primary goal-add-btn"
+          className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
         },
         "+ Add"
       )), allRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
@@ -871,13 +871,13 @@
             {
               onClick: (e) => {
                 e.stopPropagation();
-                editDebtRow(key, isAuto ? label : "");
+                setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
               },
-              className: "debt-row-edit-btn",
-              "aria-label": "Edit " + label,
-              title: "Edit balance, rate & payment"
+              className: "cf-checkbtn row-menu-btn",
+              "aria-label": label + " actions",
+              title: label + " actions"
             },
-            "\u270e"
+            "\u22ee"
           )), /* @__PURE__ */ React.createElement("div", { className: "debt-row-meta" }, isAuto && recurDesc ? timesPerYear > 12 && /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"))), bal > 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-row-bal-wrap" }, payoffTrend && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 2 }, title: "Projected balance decline to payoff" }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 22, width: 56 })), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { className: "debt-row-interest" }, "+", fmt(totalInterest), " interest"))),
           (bal > 0 || rate > 0 || isAuto && recurDesc) && /* @__PURE__ */ React.createElement("div", { className: "debt-stats-row" }, isAuto && recurDesc && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Monthly"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(pmt))), bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
         );

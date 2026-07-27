@@ -228,10 +228,10 @@
     "Gifts / Events": "#8E4585",
     "Other": "#8F8A26"
   };
-  const DEFAULT_REG_COLS = ["desc", "type", "amount", "startDate", "schedule", "until", "category", "notes"];
+  const DEFAULT_ENTRIES_COLS = ["desc", "type", "amount", "startDate", "schedule", "until", "category", "notes"];
   const DEFAULT_BUDGET_COLS = ["desc", "category", "income", "expense", "balance"];
   const BUDGET_COL_LABELS = { desc: "Description", category: "Category", income: "Income", expense: "Expense", balance: "Balance" };
-  const REG_COL_LABELS = {
+  const ENTRIES_COL_LABELS = {
     desc: "Description",
     type: "Type",
     amount: "Amount",
