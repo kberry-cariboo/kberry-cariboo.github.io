@@ -71,7 +71,7 @@
         if (saveEntryEdit) saveEntryEdit(editingEntry.id, finalData);
         else setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       setShowEntryForm(false);
       setEditingEntry(null);
       setEditingInitial(null);
@@ -121,6 +121,20 @@
     };
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
+    // month -> category -> expense total, computed once per flow change in a
+    // single pass — feeds both this month's BvA actuals and the envelope-
+    // rollover carry loop below, which used to re-filter the whole `flow`
+    // array per (month, category) pair (O(months * categories * flow.length)
+    // on a year with several rollover categories active in December).
+    const monthCatExpense = useMemo(() => {
+      const byMonth = Array.from({ length: 12 }, () => ({}));
+      flow.forEach((ev) => {
+        if (ev.type !== "expense") return;
+        const m = byMonth[ev.month];
+        m[ev.category] = (m[ev.category] || 0) + ev.amount;
+      });
+      return byMonth;
+    }, [flow]);
     const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
     const yoyActive = budgetSub === "monthly" && compareYoy && prevYearConfigured;
@@ -861,10 +875,7 @@
         const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
         const rollover = budgetTargets._rollover || {};
-        const catExpenses = {};
-        flow.filter((ev) => ev.month === monthIdx && ev.type === "expense").forEach((ev) => {
-          catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
-        });
+        const catExpenses = monthCatExpense[monthIdx];
         // Envelope carry: for opted-in categories, unspent target from earlier
         // months this year rolls forward (floored at zero, YNAB-style).
         const carryFor = (cat) => {
@@ -873,7 +884,7 @@
           for (let mi = 0; mi < monthIdx; mi++) {
             const t = (budgetTargets[`${yr}:${mi}`] || {})[cat] || 0;
             if (t <= 0 && carry <= 0) continue;
-            const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
+            const spent = monthCatExpense[mi][cat] || 0;
             carry = Math.max(0, carry + t - spent);
           }
           return roundMoney(carry);

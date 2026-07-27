@@ -264,6 +264,20 @@
     } catch (err) {
     }
   }
+  // The app's one CSS prefers-reduced-motion rule clamps every
+  // animation-duration/transition-duration to ~0, which already covers all
+  // CSS-driven motion (spinners, modal slide-ins, toasts). It can't reach
+  // Element.scrollIntoView({behavior:"smooth"}) — that's a browser-native
+  // scroll animation, not a CSS animation/transition — so every call site
+  // that requests smooth scrolling checks this first and falls back to an
+  // instant jump.
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
+  }
   function simulateDebtStrategy(debts, extra, order) {
     try {
       let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => __spreadValues({}, d2));

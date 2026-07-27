@@ -83,7 +83,6 @@
       if (timer.current) clearTimeout(timer.current);
     }, []);
     const t = queue[0];
-    if (!t) return null;
     const dismiss = () => {
       if (timer.current) {
         clearTimeout(timer.current);
@@ -91,17 +90,27 @@
       }
       setQueue((prev) => prev.slice(1));
     };
+    // The live-region container stays mounted (even with nothing to show) so
+    // screen readers pick up the change reliably \u2014 a role="status" element
+    // that's inserted into the DOM already carrying its text (the old
+    // `if (!t) return null` here unmounted and remounted a fresh node per
+    // toast) is easy for assistive tech to miss, since live-region
+    // announcements are triggered by content changing inside an
+    // already-present node, not by the node itself appearing.
     return /* @__PURE__ */ React.createElement(
       "div",
-      {
-        role: "status",
-        onClick: dismiss,
-        className: "feedback-toast",
-        style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
-      },
-      /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message,
-      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      { role: "status", "aria-live": "polite" },
+      t && /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          onClick: dismiss,
+          className: "feedback-toast",
+          style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
+        },
+        /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
+        t.message,
+        queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      )
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -313,7 +322,7 @@
         onChange: (e) => setRemember(e.target.checked),
         className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16", role: "status" }, info), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16" }, info)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -600,7 +609,7 @@
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "monthly", label: "Monthly", icon: "grid" },
@@ -636,7 +645,7 @@
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "debt", label: "Debt Payoff", icon: "credit-card" },

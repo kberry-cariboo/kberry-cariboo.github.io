@@ -120,14 +120,13 @@
     });
     const clones = [];
     const updates = [];
-    let idBase = Date.now();
     srcs.forEach((s) => {
       const t = pairOf[s.e.id];
       if (!t) {
         // The user deliberately deleted a previous copy of this source entry —
         // don't resurrect it just because it's "missing" from the target year.
         if (deletedCopyIds[s.e.id]) return;
-        clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        clones.push(__spreadProps(__spreadValues({}, s.e), { id: genId(), desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
         return;
       }
       // The user edited this copy's occurrence in the target year — theirs wins.
@@ -502,7 +501,7 @@
         onClick: (e) => {
           e.preventDefault();
           const el = document.getElementById(anchorId);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
         },
         className: "quicklink-pill"
       },
@@ -638,7 +637,7 @@
         }
         setConfirmDelYear(yc.year);
       }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "txm mt-8" }, yearMsg), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Remove budget year ${confirmDelYear}?`,
@@ -685,9 +684,9 @@
       };
       reader.readAsText(file);
       e.target.value = "";
-    } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "backup-msg", style: {
+    } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), pendingRestore && /* @__PURE__ */ React.createElement(
+    } }, yearMsg))), pendingRestore && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Restore backup?",
@@ -854,7 +853,7 @@
         className: "reset-targets-btn"
       },
       "\u21BA Reset Targets to Actuals"
-    ), tgtResetMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "success-text-mt10" }, tgtResetMsg), confirmTgtReset && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Reset all ${activeYear} targets?`,

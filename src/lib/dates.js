@@ -208,7 +208,7 @@
     const boundary = data.repeats ? newStartD : monthStart;
     const endD = new Date(boundary);
     endD.setDate(endD.getDate() - 1);
-    const newId = Date.now();
+    const newId = genId();
     const next = entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, old), { recurEnd: localDateStr(endD) }) : e);
     next.push(__spreadProps(__spreadValues({}, data), { id: newId, startDate: data.repeats ? localDateStr(newStartD) : data.startDate }));
     return { entries: next, newId, splitDate: localDateStr(boundary) };

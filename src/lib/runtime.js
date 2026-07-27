@@ -30,3 +30,18 @@
     return target;
   };
   const { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, useContext, createContext } = React;
+  // Every new entry/goal/debt-row/clone id goes through this — Date.now() had
+  // a real (if small) collision window: two adds in the same millisecond (a
+  // fast double-tap, two goal-linked entries created in one save) produced
+  // identical ids, which corrupts anything keyed by id (overrides, completed
+  // flags, occurrence keys). Declared here (not app-data.js, where the rest of
+  // these shared helpers live) because migrate.js's schema v1 backfill calls
+  // this at module-load time, before app-data.js's declarations would exist —
+  // runtime.js is the first file in build.js's concatenation order.
+  function genId() {
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {
+    }
+    return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }

@@ -573,7 +573,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onClick: (e) => {
             e.preventDefault();
             const el = document.getElementById(anchorId);
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           },
           className: "quicklink-pill"
         },
