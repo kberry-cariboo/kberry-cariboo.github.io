@@ -166,6 +166,27 @@
     };
     const attemptLogin = async () => {
       const e = email.trim().toLowerCase();
+      if (mode === "forgot") {
+        if (!e) {
+          setError("Please enter your email address.");
+          return;
+        }
+        setLoading(true);
+        setError("");
+        setInfo("");
+        try {
+          await sbResetPassword(e);
+          // Same message regardless of whether the address has an account —
+          // Supabase itself doesn't reveal that either, so echoing it back
+          // here would just be an account-enumeration leak with extra steps.
+          setInfo("If an account exists for that email, a password reset link has been sent.");
+        } catch (err) {
+          setError(err.message || "Something went wrong. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       if (!e || !password) {
         setError("Please enter your email and password.");
         return;
@@ -194,10 +215,21 @@
         setLoading(false);
       }
     };
+    const goToForgot = () => {
+      setMode("forgot");
+      setPassword("");
+      setError("");
+      setInfo("");
+    };
+    const backToSignIn = () => {
+      setMode("signin");
+      setError("");
+      setInfo("");
+    };
     if (!configured) {
       return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap text-center" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "login-notconfigured-logo" }), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-title" }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-desc" }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
     }
-    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -227,11 +259,12 @@
         }
       },
       "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
+    )), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle mb-16" }, "Enter the email on your account and we'll send you a link to reset your password."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "email",
         autoComplete: "email",
+        autoFocus: mode === "forgot",
         value: email,
         onChange: (e) => {
           setEmail(e.target.value);
@@ -239,12 +272,16 @@
         },
         onKeyDown: (e) => {
           var _a;
+          if (mode === "forgot") {
+            if (e.key === "Enter") attemptLogin();
+            return;
+          }
           return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
         },
         placeholder: "your@email.com",
         className: "auth-input"
       }
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    )), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "pw-input",
@@ -267,7 +304,7 @@
         className: "auth-pw-toggle"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
+    ))), mode === "signin" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: goToForgot, className: "ai-settings-link" }, "Forgot password?")), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "checkbox",
@@ -287,8 +324,8 @@
           opacity: loading ? 0.7 : 1
         }
       },
-      loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
+      loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"
+    ), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mt-14 text-center" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: backToSignIn, className: "ai-settings-link" }, "\u2190 Back to sign in"))), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
   function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
