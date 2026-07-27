@@ -457,6 +457,23 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.waitForTimeout(300);
   });
 
+  await test('B23 settings: local notifications toggle requests permission', async () => {
+    await ctx.grantPermissions(['notifications']);
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByText('Local Notifications', { exact: false }).first().waitFor(V);
+    const toggle = page.getByRole('switch', { name: 'Enable local notifications' });
+    await toggle.waitFor(V);
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('expected notifications to start off');
+    await toggle.click();
+    await page.waitForTimeout(400);
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('toggle did not turn on once permission was granted');
+    await page.getByText('On', { exact: true }).first().waitFor(V);
+    await toggle.click();
+    await page.waitForTimeout(200);
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off');
+  });
+
   await ctx.close();
 }
 

@@ -158,6 +158,7 @@
     const [templates, setTemplates] = useLS("cf_templates", []);
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
+    const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
@@ -699,6 +700,50 @@
     const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
     const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
+    // This is a static, backend-less app — there's no server to wake the
+    // browser when it's closed, so these are "local" Notification-API alerts
+    // only: they can fire while this tab is open, never in the background.
+    // Real push (working when the app/browser is fully closed) would need a
+    // push server + service worker subscription, which is out of scope here.
+    const enableNotifications = async () => {
+      try {
+        if (typeof Notification === "undefined") return;
+        const perm = await Notification.requestPermission();
+        setNotifyEnabled(perm === "granted");
+      } catch (e) {
+        setNotifyEnabled(false);
+      }
+    };
+    useEffect(() => {
+      if (!notifyEnabled) return;
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
+      try {
+        if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
+          new Notification("Low balance forecast", {
+            body: `Balance forecast to dip to ${fmt(navLowInfo.min)} around ${MONTHS[navLowInfo.month]} ${navLowInfo.day}.`,
+            tag: "cf-lowbal"
+          });
+          sessionStorage.setItem("cf_notified_lowbal", todayKey);
+        }
+      } catch (e) {
+      }
+      try {
+        const today = startOfToday();
+        const in7 = new Date(today);
+        in7.setDate(today.getDate() + 7);
+        const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date >= today && ev.date <= in7 && !completed[ev.id]);
+        if (dueSoon.length > 0 && sessionStorage.getItem("cf_notified_duebills") !== todayKey) {
+          const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
+          new Notification("Bills due this week", {
+            body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
+            tag: "cf-duebills"
+          });
+          sessionStorage.setItem("cf_notified_duebills", todayKey);
+        }
+      } catch (e) {
+      }
+    }, [notifyEnabled, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -1124,6 +1169,9 @@
         setAlertThreshold: setAlertThresh,
         darkMode,
         setDarkMode,
+        notifyEnabled,
+        setNotifyEnabled,
+        enableNotifications,
         yearConfigs,
         setYearConfigs,
         activeYear,

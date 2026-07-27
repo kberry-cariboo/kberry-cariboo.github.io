@@ -28,6 +28,7 @@ const browserGlobals = {
   FileReader: "readonly", Image: "readonly", CustomEvent: "readonly",
   Event: "readonly", TextEncoder: "readonly", TextDecoder: "readonly",
   crypto: "readonly", PublicKeyCredential: "readonly", console: "readonly",
+  Notification: "readonly",
   alert: "readonly", confirm: "readonly", setTimeout: "readonly",
   clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
   requestAnimationFrame: "readonly", cancelAnimationFrame: "readonly",

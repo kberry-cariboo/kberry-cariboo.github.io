@@ -218,7 +218,9 @@
     return added;
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
-  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
+  }, enableNotifications = async () => {
+  }, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
@@ -273,6 +275,11 @@
     const [confirmDelYear, setConfirmDelYear] = useState(null);
     const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
+    const notifSupported = typeof Notification !== "undefined";
+    const [notifPerm, setNotifPerm] = useState(() => notifSupported ? Notification.permission : "unsupported");
+    useEffect(() => {
+      if (notifSupported) setNotifPerm(Notification.permission);
+    }, [notifSupported, notifyEnabled]);
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
     // devices. If it's already enabled (e.g. legacy desktop setup), keep the block
@@ -486,6 +493,7 @@
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
+      ["sec-notifications", "Local Notifications"],
       ["sec-years", "Budget Years"],
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
@@ -551,7 +559,7 @@
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Local Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => { if (v) enableNotifications(); else setNotifyEnabled(false); }, label: "Enable local notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Alerts you when your forecast balance dips below your threshold, or when bills are due within 7 days. These are local, in-browser notifications only — this app has no backend server, so they can only fire while this tab is open, and never when the app or browser is closed."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",

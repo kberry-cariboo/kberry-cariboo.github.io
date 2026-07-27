@@ -9202,7 +9202,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     return added;
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
-  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
+  }, enableNotifications = async () => {
+  }, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
@@ -9257,6 +9259,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [confirmDelYear, setConfirmDelYear] = useState(null);
     const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
+    const notifSupported = typeof Notification !== "undefined";
+    const [notifPerm, setNotifPerm] = useState(() => notifSupported ? Notification.permission : "unsupported");
+    useEffect(() => {
+      if (notifSupported) setNotifPerm(Notification.permission);
+    }, [notifSupported, notifyEnabled]);
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
     // devices. If it's already enabled (e.g. legacy desktop setup), keep the block
@@ -9470,6 +9477,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
+      ["sec-notifications", "Local Notifications"],
       ["sec-years", "Budget Years"],
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
@@ -9535,7 +9543,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Local Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => { if (v) enableNotifications(); else setNotifyEnabled(false); }, label: "Enable local notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Alerts you when your forecast balance dips below your threshold, or when bills are due within 7 days. These are local, in-browser notifications only — this app has no backend server, so they can only fire while this tab is open, and never when the app or browser is closed."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -10874,6 +10882,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [templates, setTemplates] = useLS("cf_templates", []);
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
+    const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
@@ -11415,6 +11424,50 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
     const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
+    // This is a static, backend-less app — there's no server to wake the
+    // browser when it's closed, so these are "local" Notification-API alerts
+    // only: they can fire while this tab is open, never in the background.
+    // Real push (working when the app/browser is fully closed) would need a
+    // push server + service worker subscription, which is out of scope here.
+    const enableNotifications = async () => {
+      try {
+        if (typeof Notification === "undefined") return;
+        const perm = await Notification.requestPermission();
+        setNotifyEnabled(perm === "granted");
+      } catch (e) {
+        setNotifyEnabled(false);
+      }
+    };
+    useEffect(() => {
+      if (!notifyEnabled) return;
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
+      try {
+        if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
+          new Notification("Low balance forecast", {
+            body: `Balance forecast to dip to ${fmt(navLowInfo.min)} around ${MONTHS[navLowInfo.month]} ${navLowInfo.day}.`,
+            tag: "cf-lowbal"
+          });
+          sessionStorage.setItem("cf_notified_lowbal", todayKey);
+        }
+      } catch (e) {
+      }
+      try {
+        const today = startOfToday();
+        const in7 = new Date(today);
+        in7.setDate(today.getDate() + 7);
+        const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date >= today && ev.date <= in7 && !completed[ev.id]);
+        if (dueSoon.length > 0 && sessionStorage.getItem("cf_notified_duebills") !== todayKey) {
+          const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
+          new Notification("Bills due this week", {
+            body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
+            tag: "cf-duebills"
+          });
+          sessionStorage.setItem("cf_notified_duebills", todayKey);
+        }
+      } catch (e) {
+      }
+    }, [notifyEnabled, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -11840,6 +11893,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setAlertThreshold: setAlertThresh,
         darkMode,
         setDarkMode,
+        notifyEnabled,
+        setNotifyEnabled,
+        enableNotifications,
         yearConfigs,
         setYearConfigs,
         activeYear,
