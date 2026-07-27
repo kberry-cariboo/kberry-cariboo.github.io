@@ -35,7 +35,7 @@
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null, actualAmount: data.actualAmount });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
@@ -291,6 +291,7 @@
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
+    const varianceTitle = (ev) => ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded` : void 0;
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -365,14 +366,14 @@
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
           if (col === "income") {
             const showHere = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
-            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", style: {
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
               textDecoration: isDone ? "line-through" : "none"
             } }, showHere ? fmt(ev.amount) : "");
           }
           if (col === "expense") {
             const showHere = ev.type === "expense" || ev.type === "transfer" && ev.transferDirection === "out";
-            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", style: {
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
               textDecoration: isDone ? "line-through" : "none"
             } }, showHere ? fmt(ev.amount) : "");
@@ -443,7 +444,7 @@
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -816,7 +817,7 @@
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
-        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", style: {
+        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
           color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))

@@ -66,6 +66,14 @@
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
+        // actualAmount is a separate, optional override recorded after the
+        // fact (reconciliation) — e.g. a variable bill that was budgeted at
+        // $150 but actually came out to $162. It drives the running balance
+        // and BvA "spent" totals, while `plannedAmount` keeps the original
+        // scheduled figure around for comparison (shown as a tooltip in the
+        // budget grid and as the editable "Amount" in OccurrenceEditModal).
+        const actual = ov.actualAmount !== void 0 ? ov.actualAmount : planned;
         events.push({
           id: eid,
           entryId: e.id,
@@ -75,7 +83,8 @@
           // this tracked account (default) vs into it. Income/expense
           // entries ignore this entirely.
           transferDirection: e.transferDirection || "out",
-          amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
+          amount: actual,
+          plannedAmount: planned,
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,

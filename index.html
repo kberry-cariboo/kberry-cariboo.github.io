@@ -2458,6 +2458,14 @@ document.addEventListener('DOMContentLoaded',function(){
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
+        // actualAmount is a separate, optional override recorded after the
+        // fact (reconciliation) — e.g. a variable bill that was budgeted at
+        // $150 but actually came out to $162. It drives the running balance
+        // and BvA "spent" totals, while `plannedAmount` keeps the original
+        // scheduled figure around for comparison (shown as a tooltip in the
+        // budget grid and as the editable "Amount" in OccurrenceEditModal).
+        const actual = ov.actualAmount !== void 0 ? ov.actualAmount : planned;
         events.push({
           id: eid,
           entryId: e.id,
@@ -2467,7 +2475,8 @@ document.addEventListener('DOMContentLoaded',function(){
           // this tracked account (default) vs into it. Income/expense
           // entries ignore this entirely.
           transferDirection: e.transferDirection || "out",
-          amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
+          amount: actual,
+          plannedAmount: planned,
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
@@ -5393,7 +5402,12 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
-    const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
+    const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
+    const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
+    const [actualAmount, setActualAmount] = useState(
+      ev.actualAmount !== void 0 ? String(centsToDollars(ev.actualAmount)) : ev.plannedAmount !== void 0 && ev.amount !== ev.plannedAmount ? String(centsToDollars(ev.amount)) : ""
+    );
+    const [actualErr, setActualErr] = useState("");
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
     const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
@@ -5418,6 +5432,14 @@ document.addEventListener('DOMContentLoaded',function(){
         setErr("Enter a valid amount.");
         return;
       }
+      let rawActual = null;
+      if (actualAmount.trim() !== "") {
+        rawActual = Number(actualAmount);
+        if (isNaN(rawActual) || rawActual < 0) {
+          setActualErr("Enter a valid actual amount, or leave it blank.");
+          return;
+        }
+      }
       const a = dollarsToCents(amount);
       const dNum = parseInt(day, 10);
       if (isNaN(dNum) || dNum < 1 || dNum > maxDay) {
@@ -5426,7 +5448,16 @@ document.addEventListener('DOMContentLoaded',function(){
       }
       setErr("");
       setDayErr("");
-      onSave({ desc, amount: a, month: isNaN(monthNum) ? ev.month : monthNum, day: dNum, notes, attachment });
+      setActualErr("");
+      onSave({
+        desc,
+        amount: a,
+        month: isNaN(monthNum) ? ev.month : monthNum,
+        day: dNum,
+        notes,
+        attachment,
+        actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
+      });
     };
     useEffect(() => {
       const h = (e) => {
@@ -5492,7 +5523,25 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-actual-amount" }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "oem-actual-amount",
+            type: "number",
+            inputMode: "decimal",
+            step: "0.01",
+            placeholder: `Same as scheduled ($${amount || "0.00"})`,
+            className: inpCls(!!actualErr),
+            value: actualAmount,
+            onChange: (e) => {
+              setActualAmount(e.target.value);
+              setActualErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount. Recording a different actual updates your balance and Budget vs. Actual totals, without changing the plan.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -5721,7 +5770,7 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null, actualAmount: data.actualAmount });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
@@ -5977,6 +6026,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
+    const varianceTitle = (ev) => ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded` : void 0;
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -6051,14 +6101,14 @@ document.addEventListener('DOMContentLoaded',function(){
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
           if (col === "income") {
             const showHere = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
-            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", style: {
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
               textDecoration: isDone ? "line-through" : "none"
             } }, showHere ? fmt(ev.amount) : "");
           }
           if (col === "expense") {
             const showHere = ev.type === "expense" || ev.type === "transfer" && ev.transferDirection === "out";
-            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", style: {
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
               textDecoration: isDone ? "line-through" : "none"
             } }, showHere ? fmt(ev.amount) : "");
@@ -6129,7 +6179,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -6502,7 +6552,7 @@ document.addEventListener('DOMContentLoaded',function(){
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
-        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", style: {
+        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
           color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))

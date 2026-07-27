@@ -396,6 +396,67 @@ await test('A1 built-in self-test suite passes', async () => {
     if (incomeBefore !== incomeAfter) throw new Error(`transfer leaked into Annual Income: ${incomeBefore} -> ${incomeAfter}`);
   });
 
+  await test('B22 reconcile actual amount paid: updates ledger, balance, and BvA without touching the plan', async () => {
+    // Read the Housing actual as a starting baseline rather than assuming
+    // it's exactly Rent's $1,650 — earlier tests in this shared session
+    // (B13, B21) add their own one-off "QA ..." entries dated today under
+    // the Housing category, so the true total varies with suite order.
+    const parseMoney = (s) => Math.round(parseFloat(s.replace(/[^0-9.-]/g, '')) * 100);
+    const dismissBackupNudge = async () => {
+      const nudge = page.getByRole('button', { name: 'Remind me later' });
+      if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    };
+    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const housingRowBefore = page.locator('.bva-row', { hasText: 'Housing' }).first();
+    const actualBeforeCents = parseMoney(await housingRowBefore.locator('.bva-actual-amt').innerText());
+
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Jul$/ }).click();
+    await page.waitForTimeout(400);
+    await dismissBackupNudge();
+    await page.getByText('Rent', { exact: true }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.getByLabel('Actual Amount Paid').fill('1700.00');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.waitForTimeout(400);
+
+    // Scheduled Amount ($1,650, i.e. the plan) is untouched, but the ledger
+    // now shows the reconciled actual ($1,700) with a variance marker — which
+    // means the row's text is now "Rent✎", not "Rent", so later re-lookups
+    // use a substring match on the <tr> instead of the earlier exact one.
+    const rentRow = page.locator('tr', { hasText: 'Rent' }).filter({ hasText: '✎' }).first();
+    const rowText = await rentRow.innerText();
+    if (!rowText.includes('1,700.00')) throw new Error('reconciled actual not shown in ledger row: ' + rowText);
+
+    await dismissBackupNudge();
+    await rentRow.click();
+    await page.locator('.modal-card').waitFor(V);
+    const scheduledAmount = await page.locator('#oem-amount').inputValue();
+    if (scheduledAmount !== '1650') throw new Error('scheduled Amount field was overwritten by the actual: ' + scheduledAmount);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const housingRowAfter = page.locator('.bva-row', { hasText: 'Housing' }).first();
+    const actualAfterCents = parseMoney(await housingRowAfter.locator('.bva-actual-amt').innerText());
+    if (actualAfterCents - actualBeforeCents !== 5000) {
+      throw new Error(`BvA actual did not pick up the $50 reconciliation: before=${actualBeforeCents} after=${actualAfterCents}`);
+    }
+
+    // Reset back to the scheduled amount so later tests see the original fixture.
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Jul$/ }).click();
+    await page.waitForTimeout(400);
+    await dismissBackupNudge();
+    await page.locator('tr', { hasText: 'Rent' }).filter({ hasText: '✎' }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.getByRole('button', { name: /Reset entry/ }).click();
+    await page.waitForTimeout(300);
+  });
+
   await ctx.close();
 }
 

@@ -159,7 +159,12 @@
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
-    const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
+    const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
+    const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
+    const [actualAmount, setActualAmount] = useState(
+      ev.actualAmount !== void 0 ? String(centsToDollars(ev.actualAmount)) : ev.plannedAmount !== void 0 && ev.amount !== ev.plannedAmount ? String(centsToDollars(ev.amount)) : ""
+    );
+    const [actualErr, setActualErr] = useState("");
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
     const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
@@ -184,6 +189,14 @@
         setErr("Enter a valid amount.");
         return;
       }
+      let rawActual = null;
+      if (actualAmount.trim() !== "") {
+        rawActual = Number(actualAmount);
+        if (isNaN(rawActual) || rawActual < 0) {
+          setActualErr("Enter a valid actual amount, or leave it blank.");
+          return;
+        }
+      }
       const a = dollarsToCents(amount);
       const dNum = parseInt(day, 10);
       if (isNaN(dNum) || dNum < 1 || dNum > maxDay) {
@@ -192,7 +205,16 @@
       }
       setErr("");
       setDayErr("");
-      onSave({ desc, amount: a, month: isNaN(monthNum) ? ev.month : monthNum, day: dNum, notes, attachment });
+      setActualErr("");
+      onSave({
+        desc,
+        amount: a,
+        month: isNaN(monthNum) ? ev.month : monthNum,
+        day: dNum,
+        notes,
+        attachment,
+        actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
+      });
     };
     useEffect(() => {
       const h = (e) => {
@@ -258,7 +280,25 @@
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-actual-amount" }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "oem-actual-amount",
+            type: "number",
+            inputMode: "decimal",
+            step: "0.01",
+            placeholder: `Same as scheduled ($${amount || "0.00"})`,
+            className: inpCls(!!actualErr),
+            value: actualAmount,
+            onChange: (e) => {
+              setActualAmount(e.target.value);
+              setActualErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount. Recording a different actual updates your balance and Budget vs. Actual totals, without changing the plan.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
