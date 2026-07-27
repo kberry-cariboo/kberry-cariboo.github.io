@@ -39,6 +39,11 @@
     const [dateTo, setDateTo] = useState("");
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
+    const [showCsvImport, setShowCsvImport] = useState(false);
+    const handleCsvImport = (newEntries) => {
+      if (addEntry) newEntries.forEach((e) => addEntry(e));
+      else setEntries((prev) => [...prev, ...newEntries]);
+    };
     const openNew = () => {
       setEditing(null);
       setShowForm(true);
@@ -70,7 +75,7 @@
       return () => window.removeEventListener("keydown", h);
     }, [showForm]);
     const doCopy = (e) => {
-      const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
+      const copy = __spreadProps(__spreadValues({}, e), { id: genId(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
       else setEntries((prev) => [...prev, copy]);
     };
@@ -79,7 +84,7 @@
         if (saveEntryEdit) saveEntryEdit(editing.id, data);
         else setEntries((prev) => prev.map((e) => e.id === editing.id ? __spreadProps(__spreadValues({}, data), { id: editing.id }) : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       close();
     };
     const [confirmDelEntry, setConfirmDelEntry] = useState(null);
@@ -92,7 +97,11 @@
     };
     const yearScoped = !searchAllYears;
     const visibleCols = cols.filter((c) => c !== "actions");
-    const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
+    // Memoized so opening a context menu, toggling a mobile filter sheet, or
+    // any other unrelated re-render doesn't re-run the full filter/sort chain
+    // over every entry — only when something that actually changes the
+    // result set does.
+    const filtered = useMemo(() => entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
       if (filterStatus.length === 0) return true;
       const arc = isArchived(e, activeYear);
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
@@ -114,7 +123,7 @@
       else if (sortCol === "schedule") cmp = a.repeats === b.repeats ? 0 : a.repeats ? 1 : -1;
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
-    });
+    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, search, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
     const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
     useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
@@ -160,14 +169,13 @@
       const archived = isArchived(e, activeYear);
       const arcText = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       const arcMeta = { color: archived ? "var(--textLt)" : "var(--textMid)", textDecoration: archived ? "line-through" : "none" };
-      const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
         case "type":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "reg-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "reg-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (e.type === "income" ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (signedAmount(e) >= 0 ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: arcMeta }, e.startDate || "\u2014");
         case "schedule":
@@ -260,6 +268,10 @@
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
+      { onClick: () => setShowCsvImport(true), className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--nowrap" },
+      "Import CSV"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "reg-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
@@ -268,10 +280,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Filters",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowMobileFilters(false);
-        }
+        "aria-label": "Filters"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card reg-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "reg-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
@@ -287,10 +296,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": editing ? "Edit entry" : "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) close();
-        }
+        "aria-label": editing ? "Edit entry" : "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
         "button",
@@ -363,7 +369,7 @@
         color: archived ? "var(--textLt)" : "var(--text)",
         textDecoration: archived ? "line-through" : "none"
       };
-      const isInc = e.type === "income";
+      const isInc = signedAmount(e) >= 0;
       return /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -416,5 +422,11 @@
           { icon: "\u2715", label: "Delete entry", action: () => setConfirmDelEntry(ctxMenu.entry.id), danger: true }
         ]
       }
-    ));
+    ), /* @__PURE__ */ React.createElement(CsvImportModal, {
+      show: showCsvImport,
+      onClose: () => setShowCsvImport(false),
+      onImport: handleCsvImport,
+      categories,
+      existingEntries: entries
+    }));
   }

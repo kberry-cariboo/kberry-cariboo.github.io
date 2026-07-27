@@ -120,14 +120,13 @@
     });
     const clones = [];
     const updates = [];
-    let idBase = Date.now();
     srcs.forEach((s) => {
       const t = pairOf[s.e.id];
       if (!t) {
         // The user deliberately deleted a previous copy of this source entry —
         // don't resurrect it just because it's "missing" from the target year.
         if (deletedCopyIds[s.e.id]) return;
-        clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        clones.push(__spreadProps(__spreadValues({}, s.e), { id: genId(), desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
         return;
       }
       // The user edited this copy's occurrence in the target year — theirs wins.
@@ -219,7 +218,9 @@
     return added;
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
-  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
+  }, enableNotifications = async () => {
+  }, notifPerm = "unsupported", yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
@@ -242,8 +243,8 @@
     const [editColor, setEditColor] = useState(null);
     const [dragIdx, setDragIdx] = useState(null);
     const [dragOverIdx, setDragOverIdx] = useState(null);
-    const [colorPickerFor, setColorPickerFor] = useState(null);
     const [yearMsg, setYearMsg] = useState("");
+    const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
@@ -274,6 +275,7 @@
     const [confirmDelYear, setConfirmDelYear] = useState(null);
     const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
+    const notifSupported = typeof Notification !== "undefined";
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
     // devices. If it's already enabled (e.g. legacy desktop setup), keep the block
@@ -487,6 +489,7 @@
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
+      ["sec-notifications", "Local Notifications"],
       ["sec-years", "Budget Years"],
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
@@ -502,7 +505,7 @@
         onClick: (e) => {
           e.preventDefault();
           const el = document.getElementById(anchorId);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
         },
         className: "quicklink-pill"
       },
@@ -552,7 +555,7 @@
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Local Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => { if (v) enableNotifications(); else setNotifyEnabled(false); }, label: "Enable local notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Alerts you when your forecast balance dips below your threshold, or when bills are due within 7 days. These are local, in-browser notifications only — this app has no backend server, so they can only fire while this tab is open, and never when the app or browser is closed."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -638,7 +641,7 @@
         }
         setConfirmDelYear(yc.year);
       }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "txm mt-8" }, yearMsg), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Remove budget year ${confirmDelYear}?`,
@@ -678,39 +681,57 @@
       reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result);
-          // A backup exported before schema v8 (round-9 AR5) still has
-          // dollar-scale amounts — upgrade it the same way a stale cloud
-          // payload gets upgraded on load, so an old backup can't silently
-          // restore 100x-wrong figures.
-          const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
-          const fixed = moveEntryAttachmentsToOverrides(
-            Array.isArray(d.entries) ? d.entries : [],
-            d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
-          );
-          if (Array.isArray(d.entries)) setEntries(fixed.entries);
-          if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
-          if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
-          if (Array.isArray(d.categories)) setCategories(d.categories);
-          if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-          if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
-          if (Array.isArray(d.templates)) setTemplates(d.templates);
-          if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
-          if (Array.isArray(d.goals)) setGoals(d.goals);
-          if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
-          if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
-          if (d.activeYear) setActiveYear(d.activeYear);
-          if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-          if (d.darkMode != null) setDarkMode(d.darkMode);
-          setYearMsg("\u2705 Backup restored successfully!");
+          setPendingRestore({ parsed, fileName: file.name });
         } catch (err) {
           setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
         }
       };
       reader.readAsText(file);
       e.target.value = "";
-    } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "backup-msg", style: {
+    } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+    } }, yearMsg))), pendingRestore && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: "Restore backup?",
+        message: `Restoring "${pendingRestore.fileName}" replaces your current entries, overrides, budget targets, goals, and other data with what's in this file. This cannot be undone.`,
+        confirmLabel: "Restore",
+        confirmVariant: "danger",
+        onCancel: () => setPendingRestore(null),
+        onConfirm: () => {
+          try {
+            const parsed = pendingRestore.parsed;
+            // A backup exported before schema v8 (round-9 AR5) still has
+            // dollar-scale amounts — upgrade it the same way a stale cloud
+            // payload gets upgraded on load, so an old backup can't silently
+            // restore 100x-wrong figures.
+            const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
+            const fixed = moveEntryAttachmentsToOverrides(
+              Array.isArray(d.entries) ? d.entries : [],
+              d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
+            );
+            if (Array.isArray(d.entries)) setEntries(fixed.entries);
+            if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
+            if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
+            if (Array.isArray(d.categories)) setCategories(d.categories);
+            if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
+            if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
+            if (Array.isArray(d.templates)) setTemplates(d.templates);
+            if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
+            if (Array.isArray(d.goals)) setGoals(d.goals);
+            if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
+            if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
+            if (d.activeYear) setActiveYear(d.activeYear);
+            if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
+            if (d.darkMode != null) setDarkMode(d.darkMode);
+            setYearMsg("\u2705 Backup restored successfully!");
+          } catch (err) {
+            setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
+          }
+          setPendingRestore(null);
+        }
+      }
+    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
     } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
@@ -836,7 +857,7 @@
         className: "reset-targets-btn"
       },
       "\u21BA Reset Targets to Actuals"
-    ), tgtResetMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "success-text-mt10" }, tgtResetMsg), confirmTgtReset && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Reset all ${activeYear} targets?`,

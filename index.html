@@ -50,7 +50,7 @@
         .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
           box-shadow:var(--shadowSm);padding:20px 24px;transition:box-shadow 0.2s ease, transform 0.2s ease;}
         .cf-card--flush{padding:0;overflow:hidden;}
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
+        .modal-overlay{position:fixed;inset:0;background:rgba(90,90,97,0.4);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:16px;}
         .skip-link{position:absolute;left:-9999px;top:0;z-index:3000;
           background:var(--primary);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
@@ -672,6 +672,12 @@
         .pad-8-14{padding:8px 14px;}
         .budget-totals-amt{font-weight:700;padding:10px 14px;text-align:right;}
         .entryform-modal-card{padding:24px 24px 20px;width:min(680px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
+        .csvimport-modal-card{padding:24px 24px 20px;width:min(760px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
+        .csvimport-drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+          padding:36px 20px;border:2px dashed var(--border);border-radius:12px;cursor:pointer;
+          color:var(--textMid);font-size:13px;font-weight:600;transition:border-color 0.15s,color 0.15s;}
+        .csvimport-drop-zone:hover{border-color:var(--primary);color:var(--text);}
+        .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
         .daily-today-wrap{display:flex;align-items:center;gap:8px;margin:4px 16px;}
         .daily-day-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
         .daily-day-number{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--primary);line-height:1;}
@@ -2032,6 +2038,21 @@ document.addEventListener('DOMContentLoaded',function(){
     return target;
   };
   const { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, useContext, createContext } = React;
+  // Every new entry/goal/debt-row/clone id goes through this — Date.now() had
+  // a real (if small) collision window: two adds in the same millisecond (a
+  // fast double-tap, two goal-linked entries created in one save) produced
+  // identical ids, which corrupts anything keyed by id (overrides, completed
+  // flags, occurrence keys). Declared here (not app-data.js, where the rest of
+  // these shared helpers live) because migrate.js's schema v1 backfill calls
+  // this at module-load time, before app-data.js's declarations would exist —
+  // runtime.js is the first file in build.js's concatenation order.
+  function genId() {
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {
+    }
+    return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
   const SUPABASE_URL = "https://vhwrflyqcubvybolbifl.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod3JmbHlxY3Vidnlib2xiaWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzQ5NzUsImV4cCI6MjA5OTgxMDk3NX0.PKKtR6c6mcXV-Sfou3awEDI0HL_1MePaumoOMUZcAug";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
@@ -2175,9 +2196,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if (storedVersion < 1) {
       const entries = readJSON("cf_entries", null);
       if (Array.isArray(entries)) {
-        let uid = Date.now();
         const fixed = entries.map((e) => ({
-          id: e.id != null ? e.id : ++uid,
+          id: e.id != null ? e.id : genId(),
           desc: typeof e.desc === "string" ? e.desc : "Untitled",
           type: e.type === "income" ? "income" : "expense",
           amount: isFinite(Number(e.amount)) ? Math.abs(Number(e.amount)) : 0,
@@ -2427,15 +2447,36 @@ document.addEventListener('DOMContentLoaded',function(){
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
+        // A skipped occurrence never enters the event stream at all — every
+        // balance/total/report computation downstream (computeFlow,
+        // getMonthSummaries, BvA, debt tracking, AI insights, ...) already
+        // just sums whatever's in the array, so this is the only place that
+        // needs to know about skips; nothing else has to remember to exclude
+        // them. The override itself (and its skipped:true flag) still exists
+        // in overridesByYr for the "skipped occurrences" list to read back.
+        if (ov.skipped) return;
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
+        // actualAmount is a separate, optional override recorded after the
+        // fact (reconciliation) — e.g. a variable bill that was budgeted at
+        // $150 but actually came out to $162. It drives the running balance
+        // and BvA "spent" totals, while `plannedAmount` keeps the original
+        // scheduled figure around for comparison (shown as a tooltip in the
+        // budget grid and as the editable "Amount" in OccurrenceEditModal).
+        const actual = ov.actualAmount !== void 0 ? ov.actualAmount : planned;
         events.push({
           id: eid,
           entryId: e.id,
           desc: ov.desc !== void 0 ? ov.desc : e.desc,
           type: e.type,
-          amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
+          // Only meaningful when type is "transfer" — money moving out of
+          // this tracked account (default) vs into it. Income/expense
+          // entries ignore this entirely.
+          transferDirection: e.transferDirection || "out",
+          amount: actual,
+          plannedAmount: planned,
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
@@ -2580,7 +2621,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const boundary = data.repeats ? newStartD : monthStart;
     const endD = new Date(boundary);
     endD.setDate(endD.getDate() - 1);
-    const newId = Date.now();
+    const newId = genId();
     const next = entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, old), { recurEnd: localDateStr(endD) }) : e);
     next.push(__spreadProps(__spreadValues({}, data), { id: newId, startDate: data.repeats ? localDateStr(newStartD) : data.startDate }));
     return { entries: next, newId, splitDate: localDateStr(boundary) };
@@ -2605,10 +2646,21 @@ document.addEventListener('DOMContentLoaded',function(){
     });
     return out;
   }
+  // Cents, signed by whether this event adds to or subtracts from the
+  // balance — income and an "in"-direction transfer add, everything else
+  // (expense, and an "out"-direction transfer, the default) subtracts. Used
+  // anywhere a running total needs a signed amount instead of computeFlow's
+  // per-event balance; a plain `type === "income" ? amount : -amount`
+  // ternary silently treats any non-income type as a subtraction, which is
+  // right for expense but wrong for an "in"-direction transfer.
+  function signedAmount(ev) {
+    const isInflow = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+    return isInflow ? ev.amount : -ev.amount;
+  }
   function computeFlow(events, openBal) {
     let bal = openBal;
     return events.map((ev) => {
-      bal += ev.type === "income" ? ev.amount : -ev.amount;
+      bal += signedAmount(ev);
       return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
     });
   }
@@ -2813,6 +2865,11 @@ document.addEventListener('DOMContentLoaded',function(){
     const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) throw error;
   }
+  async function sbResetPassword(email) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) throw error;
+  }
   // Verify the current password by re-authenticating, then set the new one.
   async function sbChangePassword(email, currentPassword, nextPassword) {
     try {
@@ -2822,6 +2879,29 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
     if (error) throw error;
+  }
+  // localStorage keys behind HOUSEHOLD_SYNCED_FIELDS below (the useLS key for
+  // each synced field, from App.js) plus the per-year AI report cache. On a
+  // shared device, HOUSEHOLD_SYNCED_FIELDS' apply() only overwrites a field
+  // when the newly-loaded household actually has a truthy value for it — so
+  // without clearing these first, a second household signing in on the same
+  // device would inherit any field the first household's save happened not to
+  // set, i.e. the previous household's leftover financial data. Device-level
+  // prefs that aren't household-scoped (lock timeout, saved email, biometric
+  // credential, swipe-coach dismissal) are deliberately left alone.
+  const HOUSEHOLD_LOCAL_STORAGE_KEYS = [
+    "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
+    "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
+    "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
+    "cf_ai_key", "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
+    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
+  ];
+  function clearHouseholdLocalState() {
+    try {
+      HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+      Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+    }
   }
   function useHousehold() {
     const [session, setSession] = useState(null);
@@ -2919,6 +2999,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
+      clearHouseholdLocalState();
     }, []);
     return {
       configured: !!supabaseClient,
@@ -3512,6 +3593,20 @@ document.addEventListener('DOMContentLoaded',function(){
     } catch (err) {
     }
   }
+  // The app's one CSS prefers-reduced-motion rule clamps every
+  // animation-duration/transition-duration to ~0, which already covers all
+  // CSS-driven motion (spinners, modal slide-ins, toasts). It can't reach
+  // Element.scrollIntoView({behavior:"smooth"}) — that's a browser-native
+  // scroll animation, not a CSS animation/transition — so every call site
+  // that requests smooth scrolling checks this first and falls back to an
+  // instant jump.
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
+  }
   function simulateDebtStrategy(debts, extra, order) {
     try {
       let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => __spreadValues({}, d2));
@@ -3821,7 +3916,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const el = stripRef.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     useEffect(() => {
       const el = stripRef.current;
@@ -3945,14 +4040,14 @@ document.addEventListener('DOMContentLoaded',function(){
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
-    // Backdrop click dismisses (matching every other overlay) and initial
-    // focus lands on Cancel — Enter must not trigger the primary action by
-    // default. confirmVariant "danger" (the default) is for destructive
-    // actions (delete/reset); "primary" is for a plain yes/no confirmation
-    // of a safe, additive action, where a red button would misrepresent risk.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => {
-      if (e.target === e.currentTarget) onCancel();
-    } }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    // Backdrop clicks no longer dismiss — only Cancel/the primary action do
+    // (matching every other overlay) — so a slightly-off click doesn't lose
+    // the user's place. Initial focus lands on Cancel — Enter must not
+    // trigger the primary action by default. confirmVariant "danger" (the
+    // default) is for destructive actions (delete/reset); "primary" is for
+    // a plain yes/no confirmation of a safe, additive action, where a red
+    // button would misrepresent risk.
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
@@ -3980,7 +4075,8 @@ document.addEventListener('DOMContentLoaded',function(){
       recurUnit: "month",
       recurDays: [],
       recurEnd: "",
-      monthlyAmounts: null
+      monthlyAmounts: null,
+      transferDirection: "out"
     };
     const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
       // Money is cents at rest; this form's fields are plain dollar text the
@@ -3991,7 +4087,8 @@ document.addEventListener('DOMContentLoaded',function(){
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
-      repeats: (_e = initial.repeats) != null ? _e : false
+      repeats: (_e = initial.repeats) != null ? _e : false,
+      transferDirection: initial.transferDirection || "out"
     }) : blank);
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
@@ -4073,7 +4170,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-amount",
@@ -4206,10 +4303,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) onClose();
-        }
+        "aria-label": "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
         EntryForm,
@@ -4375,6 +4469,334 @@ document.addEventListener('DOMContentLoaded',function(){
       );
     })));
   }
+  // Minimal, dependency-free CSV parser (RFC 4180-ish): handles quoted
+  // fields with embedded commas/newlines and doubled-quote escapes, since
+  // real bank exports routinely quote the description column. A naive
+  // text.split(",").split("\n") breaks the moment a description contains a
+  // comma — which for a "Vendor, Inc." style payee is common enough to matter.
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else inQuotes = false;
+        } else field += c;
+        continue;
+      }
+      if (c === '"') inQuotes = true;
+      else if (c === ",") {
+        row.push(field);
+        field = "";
+      } else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field);
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+        field = "";
+      } else field += c;
+    }
+    if (field !== "" || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+    return rows.map((r) => r.map((f) => f.trim()));
+  }
+  // Tries the unambiguous ISO/slash forms first, then MM/DD/YYYY (the more
+  // common bank-export convention), then falls back to native Date parsing
+  // for anything else (e.g. "Jan 5, 2026") — this is a best-effort guess the
+  // user reviews in the preview table before anything is imported, not a
+  // silent authority, so an occasional wrong guess is recoverable by editing
+  // the mapped column or fixing the row afterward in the register.
+  function parseCsvDate(str) {
+    const s = (str || "").trim();
+    if (!s) return null;
+    let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (m) return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+    m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (m) return `${m[3]}-${String(m[1]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}`;
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return localDateStr(d);
+    return null;
+  }
+  // Strips currency symbols/thousands separators; treats parenthesized
+  // amounts ("($42.50)") as negative, matching common statement formatting.
+  function parseCsvAmount(str) {
+    let s = (str || "").trim();
+    if (!s) return null;
+    let neg = false;
+    if (/^\(.*\)$/.test(s)) {
+      neg = true;
+      s = s.slice(1, -1);
+    }
+    s = s.replace(/[^0-9.-]/g, "");
+    if (s.startsWith("-")) {
+      neg = true;
+      s = s.slice(1);
+    }
+    if (!s) return null;
+    const n = parseFloat(s);
+    if (isNaN(n)) return null;
+    return neg ? -n : n;
+  }
+  const CSV_DATE_HINTS = ["date", "posted", "transaction date", "post date"];
+  const CSV_DESC_HINTS = ["description", "memo", "payee", "name", "merchant"];
+  const CSV_AMOUNT_HINTS = ["amount", "value"];
+  const CSV_DEBIT_HINTS = ["debit", "withdrawal", "money out"];
+  const CSV_CREDIT_HINTS = ["credit", "deposit", "money in"];
+  function guessColumn(headers, hints) {
+    const lower = headers.map((h) => (h || "").toLowerCase());
+    for (const hint of hints) {
+      const idx = lower.findIndex((h) => h === hint);
+      if (idx >= 0) return idx;
+    }
+    for (const hint of hints) {
+      const idx = lower.findIndex((h) => h.includes(hint));
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+  // Bank CSV → one-time entries. Three steps: pick a file, confirm which
+  // columns are date/description/amount (pre-guessed from the header row),
+  // then review a preview (with likely duplicates flagged against existing
+  // entries) before anything is actually added.
+  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [] }) {
+    const [step, setStep] = useState("upload");
+    const [fileName, setFileName] = useState("");
+    const [headers, setHeaders] = useState([]);
+    const [dataRows, setDataRows] = useState([]);
+    const [parseErr, setParseErr] = useState("");
+    const [dateCol, setDateCol] = useState(-1);
+    const [descCol, setDescCol] = useState(-1);
+    const [amountMode, setAmountMode] = useState("single");
+    const [amountCol, setAmountCol] = useState(-1);
+    const [debitCol, setDebitCol] = useState(-1);
+    const [creditCol, setCreditCol] = useState(-1);
+    const [flipSign, setFlipSign] = useState(false);
+    // Bank exports are overwhelmingly expenses, so default to "Other" (never
+    // the raw categories[0] — that's "Income" in the app's own default list,
+    // a bad first guess for a pile of card transactions) when it exists,
+    // otherwise fall back to whatever's alphabetically first.
+    const [category, setCategory] = useState(() => {
+      if (categories.includes("Other")) return "Other";
+      const sorted = [...categories].sort((a, b) => a.localeCompare(b));
+      return sorted[0] || "";
+    });
+    const [skipDuplicates, setSkipDuplicates] = useState(true);
+    const [excludedRows, setExcludedRows] = useState(() => /* @__PURE__ */ new Set());
+    const reset = () => {
+      setStep("upload");
+      setFileName("");
+      setHeaders([]);
+      setDataRows([]);
+      setParseErr("");
+      setDateCol(-1);
+      setDescCol(-1);
+      setAmountMode("single");
+      setAmountCol(-1);
+      setDebitCol(-1);
+      setCreditCol(-1);
+      setFlipSign(false);
+      setExcludedRows(/* @__PURE__ */ new Set());
+    };
+    const close = () => {
+      reset();
+      onClose();
+    };
+    const handleFile = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const rows = parseCSV(String(ev.target.result || ""));
+          if (rows.length < 2) {
+            setParseErr("That file doesn't look like a CSV with a header row and at least one data row.");
+            return;
+          }
+          const [hdr, ...rest] = rows;
+          setHeaders(hdr);
+          setDataRows(rest);
+          setParseErr("");
+          setDateCol(guessColumn(hdr, CSV_DATE_HINTS));
+          setDescCol(guessColumn(hdr, CSV_DESC_HINTS));
+          const guessedAmount = guessColumn(hdr, CSV_AMOUNT_HINTS);
+          const guessedDebit = guessColumn(hdr, CSV_DEBIT_HINTS);
+          const guessedCredit = guessColumn(hdr, CSV_CREDIT_HINTS);
+          if (guessedAmount < 0 && (guessedDebit >= 0 || guessedCredit >= 0)) {
+            setAmountMode("split");
+            setDebitCol(guessedDebit);
+            setCreditCol(guessedCredit);
+          } else {
+            setAmountMode("single");
+            setAmountCol(guessedAmount);
+          }
+          setFileName(file.name);
+          setStep("map");
+        } catch (err) {
+          setParseErr("Couldn't read that file: " + (err.message || "unknown error"));
+        }
+      };
+      reader.onerror = () => setParseErr("Couldn't read that file.");
+      reader.readAsText(file);
+    };
+    // Every parsed row, with its resolved date/desc/amount/type and a
+    // best-effort duplicate flag (same date + same absolute amount already
+    // present as a one-time entry) — computed fresh each time the mapping
+    // changes so the preview always reflects the current column choices.
+    const parsedRows = useMemo(() => {
+      if (step !== "preview" && step !== "map") return [];
+      const existingKeys = /* @__PURE__ */ new Set(
+        existingEntries.filter((e) => !e.repeats).map((e) => `${e.startDate}|${Math.abs(e.amount)}`)
+      );
+      return dataRows.map((r, i) => {
+        const date = dateCol >= 0 ? parseCsvDate(r[dateCol]) : null;
+        const desc = descCol >= 0 ? (r[descCol] || "").trim() : "";
+        let rawAmount = null;
+        if (amountMode === "single") {
+          rawAmount = amountCol >= 0 ? parseCsvAmount(r[amountCol]) : null;
+          if (rawAmount != null && flipSign) rawAmount = -rawAmount;
+        } else {
+          const debit = debitCol >= 0 ? parseCsvAmount(r[debitCol]) : null;
+          const credit = creditCol >= 0 ? parseCsvAmount(r[creditCol]) : null;
+          if (credit) rawAmount = Math.abs(credit);
+          else if (debit) rawAmount = -Math.abs(debit);
+        }
+        const type = rawAmount != null && rawAmount >= 0 ? "income" : "expense";
+        const amountCents = rawAmount != null ? dollarsToCents(Math.abs(rawAmount)) : null;
+        const valid = !!date && !!desc && rawAmount != null;
+        const isDuplicate = valid && existingKeys.has(`${date}|${amountCents}`);
+        return { i, date, desc, amountCents, type, valid, isDuplicate };
+      });
+    }, [dataRows, dateCol, descCol, amountMode, amountCol, debitCol, creditCol, flipSign, step, existingEntries]);
+    // All hooks must run before this — React requires the same hooks in the
+    // same order on every render, so the early return for a closed modal has
+    // to come after every useState/useMemo above, not before.
+    if (!show) return null;
+    const toggleExcluded = (i) => setExcludedRows((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+    const rowsToImport = parsedRows.filter((r) => r.valid && !excludedRows.has(r.i) && !(skipDuplicates && r.isDuplicate));
+    const doImport = () => {
+      const newEntries = rowsToImport.map((r) => ({
+        id: genId(),
+        desc: r.desc,
+        type: r.type,
+        amount: r.amountCents,
+        category,
+        notes: "",
+        startDate: r.date,
+        repeats: false,
+        recurEvery: 1,
+        recurUnit: "month",
+        recurDays: [],
+        recurEnd: "",
+        monthlyAmounts: null,
+        importedFrom: fileName || "CSV"
+      }));
+      onImport(newEntries);
+      toast(`Imported ${newEntries.length} entr${newEntries.length === 1 ? "y" : "ies"} from ${fileName}`);
+      close();
+    };
+    const colOptions = (value, onChange, placeholder) => /* @__PURE__ */ React.createElement(
+      "select",
+      { className: "field-input", value, onChange: (e) => onChange(parseInt(e.target.value, 10)) },
+      /* @__PURE__ */ React.createElement("option", { value: -1 }, placeholder),
+      headers.map((h, i) => /* @__PURE__ */ React.createElement("option", { key: i, value: i }, h || `Column ${i + 1}`))
+    );
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Import CSV"
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card csvimport-modal-card", onClick: (e) => e.stopPropagation() },
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, "Import CSV"), /* @__PURE__ */ React.createElement("button", { onClick: close, "aria-label": "Close", className: "fab-panel-close" }, "✕")),
+        step === "upload" && /* @__PURE__ */ React.createElement(React.Fragment, null,
+          /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Import transactions from your bank's CSV export as one-time entries. You'll map the columns and review everything before it's added."),
+          /* @__PURE__ */ React.createElement("label", { className: "csvimport-drop-zone" },
+            /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 22 }),
+            /* @__PURE__ */ React.createElement("span", null, "Choose a CSV file"),
+            /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", className: "hidden", onChange: (e) => handleFile(e.target.files[0]) })
+          ),
+          parseErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mt-8" }, parseErr)
+        ),
+        step === "map" && /* @__PURE__ */ React.createElement(React.Fragment, null,
+          /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, fileName, " — ", dataRows.length, " row", dataRows.length !== 1 ? "s" : "", ". Confirm which columns to use:"),
+          /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Date column"), colOptions(dateCol, setDateCol, "— Select —")),
+          /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Description column"), colOptions(descCol, setDescCol, "— Select —")),
+          /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(PillToggle, {
+            options: [{ id: "single", label: "One amount column" }, { id: "split", label: "Separate debit / credit" }],
+            value: amountMode,
+            onChange: setAmountMode
+          })),
+          amountMode === "single" ? /* @__PURE__ */ React.createElement(React.Fragment, null,
+            /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Amount column"), colOptions(amountCol, setAmountCol, "— Select —")),
+            /* @__PURE__ */ React.createElement(Toggle, { value: flipSign, onChange: setFlipSign, label: "Flip sign (negative = income)" })
+          ) : /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" },
+            /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
+            /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
+          ),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category for imported entries"),
+            /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
+              [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+            ),
+            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Applied to every imported row — recategorize individual entries afterward in Entries.")
+          ),
+          /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
+            /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
+            /* @__PURE__ */ React.createElement("button", { onClick: close, className: "cf-btn cf-btn--secondary" }, "Cancel"),
+            /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                onClick: () => setStep("preview"),
+                disabled: dateCol < 0 || descCol < 0 || (amountMode === "single" ? amountCol < 0 : debitCol < 0 && creditCol < 0) || !category,
+                className: "cf-btn cf-btn--primary btn-pad-24"
+              },
+              "Preview →"
+            )
+          )
+        ),
+        step === "preview" && /* @__PURE__ */ React.createElement(React.Fragment, null,
+          /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" },
+            /* @__PURE__ */ React.createElement("span", { className: "txl" }, rowsToImport.length, " of ", parsedRows.length, " row", parsedRows.length !== 1 ? "s" : "", " will be imported"),
+            /* @__PURE__ */ React.createElement("label", { className: "cf-row cf-gap-6", style: { fontSize: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: skipDuplicates, onChange: (e) => setSkipDuplicates(e.target.checked) }), "Skip likely duplicates")
+          ),
+          /* @__PURE__ */ React.createElement("div", { className: "hscroll csvimport-preview-wrap", role: "region", "aria-label": "Import preview" },
+            /* @__PURE__ */ React.createElement("table", { className: "forecast-table" },
+              /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
+              /* @__PURE__ */ React.createElement("tbody", null, parsedRows.map((r) => {
+                const excluded = excludedRows.has(r.i) || (skipDuplicates && r.isDuplicate) || !r.valid;
+                return /* @__PURE__ */ React.createElement("tr", { key: r.i, className: "forecast-tr", style: { opacity: excluded ? 0.45 : 1 } },
+                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: !excludedRows.has(r.i) && !(skipDuplicates && r.isDuplicate), disabled: skipDuplicates && r.isDuplicate, onChange: () => toggleExcluded(r.i) })),
+                  /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, r.date || "—"),
+                  /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell" }, r.desc || "—", !r.valid && /* @__PURE__ */ React.createElement("span", { className: "field-error-text" }, " Couldn't parse this row"), r.isDuplicate && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Possible duplicate")),
+                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13" }, r.amountCents != null ? fmt(r.amountCents) : "—"),
+                  /* @__PURE__ */ React.createElement("td", null, r.type)
+                );
+              }))
+            )
+          ),
+          /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
+            /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("map"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
+            /* @__PURE__ */ React.createElement("button", { onClick: close, className: "cf-btn cf-btn--secondary" }, "Cancel"),
+            /* @__PURE__ */ React.createElement(
+              "button",
+              { onClick: doImport, disabled: rowsToImport.length === 0, className: "cf-btn cf-btn--primary btn-pad-24" },
+              `Import ${rowsToImport.length} entr${rowsToImport.length === 1 ? "y" : "ies"}`
+            )
+          )
+        )
+      )
+    );
+  }
   function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
@@ -4416,6 +4838,11 @@ document.addEventListener('DOMContentLoaded',function(){
     const [dateTo, setDateTo] = useState("");
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
+    const [showCsvImport, setShowCsvImport] = useState(false);
+    const handleCsvImport = (newEntries) => {
+      if (addEntry) newEntries.forEach((e) => addEntry(e));
+      else setEntries((prev) => [...prev, ...newEntries]);
+    };
     const openNew = () => {
       setEditing(null);
       setShowForm(true);
@@ -4447,7 +4874,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return () => window.removeEventListener("keydown", h);
     }, [showForm]);
     const doCopy = (e) => {
-      const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
+      const copy = __spreadProps(__spreadValues({}, e), { id: genId(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
       else setEntries((prev) => [...prev, copy]);
     };
@@ -4456,7 +4883,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (saveEntryEdit) saveEntryEdit(editing.id, data);
         else setEntries((prev) => prev.map((e) => e.id === editing.id ? __spreadProps(__spreadValues({}, data), { id: editing.id }) : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       close();
     };
     const [confirmDelEntry, setConfirmDelEntry] = useState(null);
@@ -4469,7 +4896,11 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const yearScoped = !searchAllYears;
     const visibleCols = cols.filter((c) => c !== "actions");
-    const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
+    // Memoized so opening a context menu, toggling a mobile filter sheet, or
+    // any other unrelated re-render doesn't re-run the full filter/sort chain
+    // over every entry — only when something that actually changes the
+    // result set does.
+    const filtered = useMemo(() => entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
       if (filterStatus.length === 0) return true;
       const arc = isArchived(e, activeYear);
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
@@ -4491,7 +4922,7 @@ document.addEventListener('DOMContentLoaded',function(){
       else if (sortCol === "schedule") cmp = a.repeats === b.repeats ? 0 : a.repeats ? 1 : -1;
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
-    });
+    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, search, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
     const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
     useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
@@ -4537,14 +4968,13 @@ document.addEventListener('DOMContentLoaded',function(){
       const archived = isArchived(e, activeYear);
       const arcText = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       const arcMeta = { color: archived ? "var(--textLt)" : "var(--textMid)", textDecoration: archived ? "line-through" : "none" };
-      const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
         case "type":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "reg-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : "var(--red)" } }, e.type));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "reg-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (e.type === "income" ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (signedAmount(e) >= 0 ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: arcMeta }, e.startDate || "\u2014");
         case "schedule":
@@ -4637,6 +5067,10 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
+      { onClick: () => setShowCsvImport(true), className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--nowrap" },
+      "Import CSV"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "reg-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
@@ -4645,10 +5079,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Filters",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowMobileFilters(false);
-        }
+        "aria-label": "Filters"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card reg-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "reg-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
@@ -4664,10 +5095,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": editing ? "Edit entry" : "Add entry",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) close();
-        }
+        "aria-label": editing ? "Edit entry" : "Add entry"
       },
       /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
         "button",
@@ -4740,7 +5168,7 @@ document.addEventListener('DOMContentLoaded',function(){
         color: archived ? "var(--textLt)" : "var(--text)",
         textDecoration: archived ? "line-through" : "none"
       };
-      const isInc = e.type === "income";
+      const isInc = signedAmount(e) >= 0;
       return /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -4793,7 +5221,13 @@ document.addEventListener('DOMContentLoaded',function(){
           { icon: "\u2715", label: "Delete entry", action: () => setConfirmDelEntry(ctxMenu.entry.id), danger: true }
         ]
       }
-    ));
+    ), /* @__PURE__ */ React.createElement(CsvImportModal, {
+      show: showCsvImport,
+      onClose: () => setShowCsvImport(false),
+      onImport: handleCsvImport,
+      categories,
+      existingEntries: entries
+    }));
   }
   function ReceiptLightbox({ src, onClose }) {
     useEffect(() => {
@@ -4954,9 +5388,14 @@ document.addEventListener('DOMContentLoaded',function(){
       it.label
     )));
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
-    const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
+    const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
+    const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
+    const [actualAmount, setActualAmount] = useState(
+      ev.actualAmount !== void 0 ? String(centsToDollars(ev.actualAmount)) : ev.plannedAmount !== void 0 && ev.amount !== ev.plannedAmount ? String(centsToDollars(ev.amount)) : ""
+    );
+    const [actualErr, setActualErr] = useState("");
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
     const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
@@ -4981,6 +5420,14 @@ document.addEventListener('DOMContentLoaded',function(){
         setErr("Enter a valid amount.");
         return;
       }
+      let rawActual = null;
+      if (actualAmount.trim() !== "") {
+        rawActual = Number(actualAmount);
+        if (isNaN(rawActual) || rawActual < 0) {
+          setActualErr("Enter a valid actual amount, or leave it blank.");
+          return;
+        }
+      }
       const a = dollarsToCents(amount);
       const dNum = parseInt(day, 10);
       if (isNaN(dNum) || dNum < 1 || dNum > maxDay) {
@@ -4989,7 +5436,16 @@ document.addEventListener('DOMContentLoaded',function(){
       }
       setErr("");
       setDayErr("");
-      onSave({ desc, amount: a, month: isNaN(monthNum) ? ev.month : monthNum, day: dNum, notes, attachment });
+      setActualErr("");
+      onSave({
+        desc,
+        amount: a,
+        month: isNaN(monthNum) ? ev.month : monthNum,
+        day: dNum,
+        notes,
+        attachment,
+        actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
+      });
     };
     useEffect(() => {
       const h = (e) => {
@@ -5004,11 +5460,7 @@ document.addEventListener('DOMContentLoaded',function(){
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Edit occurrence",
-        onClick: (e) => {
-          e.stopPropagation();
-          if (e.target === e.currentTarget) onCancel();
-        }
+        "aria-label": "Edit occurrence"
       },
       /* @__PURE__ */ React.createElement(
         "div",
@@ -5055,7 +5507,25 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-actual-amount" }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "oem-actual-amount",
+            type: "number",
+            inputMode: "decimal",
+            step: "0.01",
+            placeholder: `Same as scheduled ($${amount || "0.00"})`,
+            className: inpCls(!!actualErr),
+            value: actualAmount,
+            onChange: (e) => {
+              setActualAmount(e.target.value);
+              setActualErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount. Recording a different actual updates your balance and Budget vs. Actual totals, without changing the plan.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -5114,22 +5584,41 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           "Remove"
         ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onDelete,
-            className: "cf-btn cf-btn--danger",
-            style: { marginRight: ev.isOverride && onReset ? 0 : "auto" }
-          },
-          "Delete…"
-        ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onReset,
-            className: "oem-reset-btn"
-          },
-          "\u21BA Reset entry"
-        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"))
+        (() => {
+          // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
+          // (the flexbox trick .oem-footer-row's justify-content:flex-end
+          // relies on to pin this leading cluster left while Cancel/Save
+          // pack right) — the others get 0 so only one button ever splits
+          // the row.
+          const hasReset = ev.isOverride && onReset;
+          const lastLeading = onSkip ? "skip" : hasReset ? "reset" : onDelete ? "delete" : null;
+          return /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onDelete,
+              className: "cf-btn cf-btn--danger",
+              style: { marginRight: lastLeading === "delete" ? "auto" : 0 }
+            },
+            "Delete\u2026"
+          ), hasReset && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onReset,
+              className: "oem-reset-btn",
+              style: { marginRight: lastLeading === "reset" ? "auto" : 0 }
+            },
+            "\u21BA Reset entry"
+          ), onSkip && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onSkip,
+              className: "cf-btn cf-btn--secondary",
+              title: "Remove just this date \u2014 the recurring entry keeps going",
+              style: { marginRight: "auto" }
+            },
+            "\u23ED Skip this date"
+          ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"));
+        })()
       )
     );
   }
@@ -5237,10 +5726,9 @@ document.addEventListener('DOMContentLoaded',function(){
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
-  }, onAddNextYear = null }) {
+  }, onAddNextYear = null, skippedOccurrences = [] }) {
     var _a, _b;
     const isMobile = useIsMobile();
-    const [editingId, setEditingId] = useState(null);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -5266,10 +5754,26 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null, actualAmount: data.actualAmount });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
+    };
+    // Skipping removes just this one date from the recurrence — the entry
+    // and every other occurrence are untouched. Only meaningful for
+    // recurring entries; a one-time entry's only "occurrence" is the entry
+    // itself, which is what Delete already covers.
+    const skipOccurrence = (ev) => {
+      if (!setOverride) return;
+      haptic();
+      setOverride(ev.id, { skipped: true });
+      toast(`Skipped "${ev.desc}" — ${MONTHS[ev.month]} ${ev.day}`);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+    };
+    const restoreSkipped = (occId) => {
+      if (!clearOverride) return;
+      clearOverride(occId);
     };
     const [confirmDelEv, setConfirmDelEv] = useState(null);
     const requestDeleteEntry = (ev) => setConfirmDelEv(ev);
@@ -5302,7 +5806,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (saveEntryEdit) saveEntryEdit(editingEntry.id, finalData);
         else setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       setShowEntryForm(false);
       setEditingEntry(null);
       setEditingInitial(null);
@@ -5352,6 +5856,20 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
+    // month -> category -> expense total, computed once per flow change in a
+    // single pass — feeds both this month's BvA actuals and the envelope-
+    // rollover carry loop below, which used to re-filter the whole `flow`
+    // array per (month, category) pair (O(months * categories * flow.length)
+    // on a year with several rollover categories active in December).
+    const monthCatExpense = useMemo(() => {
+      const byMonth = Array.from({ length: 12 }, () => ({}));
+      flow.forEach((ev) => {
+        if (ev.type !== "expense") return;
+        const m = byMonth[ev.month];
+        m[ev.category] = (m[ev.category] || 0) + ev.amount;
+      });
+      return byMonth;
+    }, [flow]);
     const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
     const yoyActive = budgetSub === "monthly" && compareYoy && prevYearConfigured;
@@ -5371,7 +5889,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const map = /* @__PURE__ */ new Map();
       const add = (ev, key) => {
         const k = ev.type + "|" + norm(ev.desc);
-        const signed = ev.type === "income" ? ev.amount : -ev.amount;
+        const signed = signedAmount(ev);
         let row = map.get(k);
         if (!row) {
           row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0, day: ev.day };
@@ -5406,7 +5924,6 @@ document.addEventListener('DOMContentLoaded',function(){
       if (target !== monthIdx) setMonthIdx(target);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
-    const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
@@ -5473,6 +5990,10 @@ document.addEventListener('DOMContentLoaded',function(){
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
+    // Skipped occurrences never enter `flow` at all, so this is the only way
+    // to find (and undo) one — surfaced only for the currently-viewed month
+    // to keep it relevant rather than a growing year-long list.
+    const skippedThisMonth = useMemo(() => skippedOccurrences.filter((s) => s.month === monthIdx), [skippedOccurrences, monthIdx]);
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     // Monthly grid is paginated (bounded rows-per-page) rather than internally
@@ -5484,16 +6005,12 @@ document.addEventListener('DOMContentLoaded',function(){
     useInfiniteScroll(isMobile && monthPg.hasMore, () => setMobileLoaded((l) => l + 1));
     const pagedPeriod1 = monthPg.rows.filter((ev) => ev.day <= 14);
     const pagedPeriod2 = monthPg.rows.filter((ev) => ev.day > 14);
-    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
+    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + signedAmount(ev), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
-    const handleAdd = (data) => {
-      if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
-      setShowAddForm(false);
-    };
+    const varianceTitle = (ev) => ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded` : void 0;
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -5566,14 +6083,20 @@ document.addEventListener('DOMContentLoaded',function(){
             textDecoration: isDone ? "line-through" : "none"
           } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
-          if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", style: {
-            color: isDone ? "var(--textLt)" : "var(--greenDk)",
-            textDecoration: isDone ? "line-through" : "none"
-          } }, ev.type === "income" ? fmt(ev.amount) : "");
-          if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          } }, ev.type === "expense" ? fmt(ev.amount) : "");
+          if (col === "income") {
+            const showHere = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
+              color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
+              textDecoration: isDone ? "line-through" : "none"
+            } }, showHere ? fmt(ev.amount) : "");
+          }
+          if (col === "expense") {
+            const showHere = ev.type === "expense" || ev.type === "transfer" && ev.transferDirection === "out";
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
+              color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
+              textDecoration: isDone ? "line-through" : "none"
+            } }, showHere ? fmt(ev.amount) : "");
+          }
           if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: {
             textDecoration: isDone ? "line-through" : "none",
             color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
@@ -5595,7 +6118,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
       const isSel = selIds.has(ev.id);
-      const signed = ev.type === "income" ? ev.amount : -ev.amount;
+      const signed = signedAmount(ev);
       return /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -5640,9 +6163,9 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
+          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
@@ -5718,7 +6241,6 @@ document.addEventListener('DOMContentLoaded',function(){
       const dir = dx < 0 ? 1 : -1;
       haptic();
       setMonthIdx((v) => Math.max(0, Math.min(11, v + dir)));
-      setEditingId(null);
       setShowOccurrenceForm(false);
       setEditingEv(null);
       setShowEntryForm(false);
@@ -5756,7 +6278,6 @@ document.addEventListener('DOMContentLoaded',function(){
           value: monthIdx,
           onChange: (v) => {
             setMonthIdx(v);
-            setEditingId(null);
           },
           noMargin: false,
           matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null,
@@ -5764,6 +6285,25 @@ document.addEventListener('DOMContentLoaded',function(){
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
+      (budgetSub === "monthly" || budgetSub === "daily") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          key: s.occId,
+          className: "cf-row cf-gap-6",
+          style: { background: "var(--bgCard)", border: "1px solid var(--amber)", borderRadius: 6, padding: "2px 8px", alignItems: "center" }
+        },
+        s.desc, " (", s.day, ")",
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => restoreSkipped(s.occId),
+            "aria-label": `Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`,
+            title: "Restore this occurrence",
+            className: "reg-clear-dates-btn"
+          },
+          "↺"
+        )
+      )))),
       budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -5872,14 +6412,7 @@ document.addEventListener('DOMContentLoaded',function(){
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Entry form",
-          onClick: (e) => {
-            e.stopPropagation();
-            if (e.target === e.currentTarget) {
-              setShowEntryForm(false);
-              setEditingEntry(null);
-            }
-          }
+          "aria-label": "Entry form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
@@ -5918,7 +6451,8 @@ document.addEventListener('DOMContentLoaded',function(){
             setShowOccurrenceForm(false);
             setEditingEv(null);
             openEntryEdit(ev);
-          }
+          },
+          onSkip: editingEv.repeats ? () => skipOccurrence(editingEv) : null
         }
       ), confirmDelEv && /* @__PURE__ */ React.createElement(
         ConfirmDialog,
@@ -5950,6 +6484,9 @@ document.addEventListener('DOMContentLoaded',function(){
               } },
               { icon: "\u21BB", label: "Edit recurring entry", action: () => {
                 openEntryEdit(budgetCtx.ev);
+              } },
+              { icon: "\u23ED", label: "Skip this occurrence", action: () => {
+                skipOccurrence(budgetCtx.ev);
               } }
             ] : [
               { icon: "\u270E", label: "Edit entry", action: () => {
@@ -5992,10 +6529,10 @@ document.addEventListener('DOMContentLoaded',function(){
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
-        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
+        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
+          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
-        } }, ev.type === "income" ? "+" : "-", fmt(ev.amount))
+        } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
       )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
         background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
       } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "daily-balance-caption" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 daily-balance-amt", style: {
@@ -6048,11 +6585,7 @@ document.addEventListener('DOMContentLoaded',function(){
             className: "modal-overlay",
             role: "dialog",
             "aria-modal": "true",
-            "aria-label": "Budget target",
-            onClick: (e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setShowBvaModal(false);
-            }
+            "aria-label": "Budget target"
           },
           /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",
@@ -6100,10 +6633,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
         const rollover = budgetTargets._rollover || {};
-        const catExpenses = {};
-        flow.filter((ev) => ev.month === monthIdx && ev.type === "expense").forEach((ev) => {
-          catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
-        });
+        const catExpenses = monthCatExpense[monthIdx];
         // Envelope carry: for opted-in categories, unspent target from earlier
         // months this year rolls forward (floored at zero, YNAB-style).
         const carryFor = (cat) => {
@@ -6112,7 +6642,7 @@ document.addEventListener('DOMContentLoaded',function(){
           for (let mi = 0; mi < monthIdx; mi++) {
             const t = (budgetTargets[`${yr}:${mi}`] || {})[cat] || 0;
             if (t <= 0 && carry <= 0) continue;
-            const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
+            const spent = monthCatExpense[mi][cat] || 0;
             carry = Math.max(0, carry + t - spent);
           }
           return roundMoney(carry);
@@ -6178,7 +6708,7 @@ document.addEventListener('DOMContentLoaded',function(){
           );
         }), cats.length > 0 && (() => {
           const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
-          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
+          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0) + carryFor(c), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
@@ -6251,7 +6781,7 @@ document.addEventListener('DOMContentLoaded',function(){
       textAlign: i >= (isMobile ? 2 : 3) ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-amount-mobile", style: { color: ev.type === "income" ? "var(--greenDk)" : "var(--text)" } }, fmt(ev.type === "income" ? ev.amount : -ev.amount, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-amount-mobile", style: { color: signedAmount(ev) >= 0 ? "var(--greenDk)" : "var(--text)" } }, fmt(signedAmount(ev), true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), !isMobile && (() => {
@@ -6462,8 +6992,12 @@ document.addEventListener('DOMContentLoaded',function(){
       }));
       const expenseCats = {}, incomeCats = {};
       flow.filter((e) => e.month <= currentMonth).forEach((e) => {
+        // Transfers move money between the user's own accounts — neither
+        // real spending nor real income, so a plain if/else here (treating
+        // "not expense" as income) would have quietly folded them into
+        // incomeCats and inflated the AI's income picture.
         if (e.type === "expense") expenseCats[e.category] = (expenseCats[e.category] || 0) + e.amount;
-        else incomeCats[e.category] = (incomeCats[e.category] || 0) + e.amount;
+        else if (e.type === "income") incomeCats[e.category] = (incomeCats[e.category] || 0) + e.amount;
       });
       const bvaRows = [];
       const targetByCat = {};
@@ -6764,7 +7298,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onClick: (e) => {
             e.preventDefault();
             const el = document.getElementById(anchorId);
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           },
           className: "quicklink-pill"
         },
@@ -6821,15 +7355,15 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       { icon: "check-circle", label: "Priority Actions" }
     ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, className: "ai-feature-card" }, /* @__PURE__ */ React.createElement("div", { className: "ai-feature-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-feature-label" }, label)))))));
   }
-  // Hoisted out of PlanView/DashboardView render bodies — inline component
-  // definitions create a new type each render and force React to remount.
-  // DASH_AXIS_TICK_X/Y are hoisted the same way: they were previously
-  // recreated as new object literals on every DashboardView render at each
-  // of its ~6 chart call sites.
+  // Shared between PlanView (plan.js) and DashboardView (dashboard.js) —
+  // chart-tick styling and the debt-payoff amortization projection used by
+  // both PlanView's Debt Payoff Tracker and DashboardView's Debt Snapshot
+  // widget. Hoisted to consts/plain functions (not defined inside either
+  // view) so they aren't recreated as new object/function identities on
+  // every render — DASH_AXIS_TICK_X/Y in particular used to be recreated at
+  // each of DashboardView's ~6 chart call sites.
   const DASH_AXIS_TICK_X = { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" };
   const DASH_AXIS_TICK_Y = { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" };
-  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
-  const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   // Projected balance trajectory for a debt payoff sparkline — same
   // amortization step (accrue interest, then apply payment capped at the
   // remaining balance) used by both PlanView's Debt Payoff Tracker and
@@ -6845,6 +7379,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }
     return points;
   };
+  // Hoisted out of PlanView's render body — an inline component
+  // definition creates a new type each render and forces React to remount.
+  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
@@ -6858,7 +7395,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
-    const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
@@ -6891,10 +7427,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         setGoals((prev) => prev.map((g) => g.id === goalForm.id ? __spreadProps(__spreadValues({}, g), { name, target, saved, monthly, targetDate: goalForm.targetDate || "" }) : g));
       } else {
-        const id = Date.now();
+        const id = genId();
         let entryId = null;
         if (goalForm.linkEntry && monthly > 0) {
-          entryId = id + 1;
+          entryId = genId();
           const today = /* @__PURE__ */ new Date();
           const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
           setEntries((prev) => [...prev, {
@@ -6908,13 +7444,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             recurUnit: "month",
             recurDays: [],
             recurEnd: goalForm.targetDate || "",
-            category: "Savings",
+            category: "Savings / RRSP",
             notes: "Savings goal contribution"
           }]);
         }
         let payoutEntryId = null;
         if (goalForm.payoutEntry && goalForm.targetDate) {
-          payoutEntryId = id + 2;
+          payoutEntryId = genId();
           setEntries((prev) => [...prev, {
             id: payoutEntryId,
             desc: `Goal payout: ${name}`,
@@ -6926,7 +7462,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             recurUnit: "month",
             recurDays: [],
             recurEnd: "",
-            category: "Savings",
+            category: "Savings / RRSP",
             notes: "Planned goal spending"
           }]);
         }
@@ -7065,10 +7601,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Goal form",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowGoalForm(false);
-          }
+          "aria-label": "Goal form"
         },
         /* @__PURE__ */ React.createElement(
           "div",
@@ -7164,10 +7697,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Add funds",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowFundForm(false);
-          }
+          "aria-label": "Add funds"
         },
         /* @__PURE__ */ React.createElement(
           "div",
@@ -7406,7 +7936,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         if (editKey) {
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [editKey]: __spreadValues(__spreadValues({}, p[editKey]), formVals) }));
         } else {
-          const id = "manual_" + Date.now();
+          const id = "manual_" + genId();
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [id]: formVals }));
         }
         setShowDebtForm(false);
@@ -7560,10 +8090,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Debt form",
-          onClick: (e) => {
-            if (e.target === e.currentTarget) setShowDebtForm(false);
-          }
+          "aria-label": "Debt form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
@@ -7738,6 +8265,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       })))));
     })());
   }
+  // Hoisted out of DashboardView's render body — an inline component
+  // definition creates a new type each render and forces React to remount.
+  const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
@@ -7804,12 +8334,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }, [effectiveFlow]);
     const catPieData = useMemo(() => catTotals.map(([name, value]) => ({ name, value })), [catTotals]);
     const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
-    const savingsRate = useMemo(() => summaries.map((m) => ({
-      month: m.month,
-      rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
-      surplus: m.surplus,
-      income: m.income
-    })), [summaries]);
     const totalIncome = summaries.reduce((s, m) => s + m.income, 0);
     const totalExpense = summaries.reduce((s, m) => s + m.expense, 0);
     const netSurplus = totalIncome - totalExpense;
@@ -7964,10 +8488,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-hdr-label" }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { className: "upcoming-count" }, upcoming.length, " event", upcoming.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { className: "upcoming-list" }, upcoming.map((ev) => {
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-          const isInc = ev.type === "income";
+          const signed = signedAmount(ev);
+          const isInc = signed >= 0;
           const isPaid = !!completed[ev.id];
           const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)";
-          const amtColor = isPaid ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)";
+          const amtColor = isPaid ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : isInc ? "var(--greenDk)" : "var(--text)";
           const barDiv = null;
           const paidBtn = /* @__PURE__ */ React.createElement(
             "button",
@@ -8305,15 +8830,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     const loadSampleData = () => {
       const y = activeYear;
-      const base = Date.now();
-      const mk = (i, e) => ({ id: base + i, notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
+      const mk = (e) => ({ id: genId(), notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
       setEntries((prev) => [...prev, ...[
-        mk(0, { desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
-        mk(1, { desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
-        mk(2, { desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
-        mk(3, { desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
-        mk(4, { desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
-        mk(5, { desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
+        mk({ desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
+        mk({ desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
+        mk({ desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
+        mk({ desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
+        mk({ desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
+        mk({ desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
       ]]);
     };
     const hasSample = entries.some((e) => e.sample);
@@ -8339,10 +8863,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Customize dashboard",
-        onClick: (e) => {
-          if (e.target === e.currentTarget) setShowCustomize(false);
-        }
+        "aria-label": "Customize dashboard"
       },
       /* @__PURE__ */ React.createElement(
         "div",
@@ -8544,14 +9065,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     });
     const clones = [];
     const updates = [];
-    let idBase = Date.now();
     srcs.forEach((s) => {
       const t = pairOf[s.e.id];
       if (!t) {
         // The user deliberately deleted a previous copy of this source entry —
         // don't resurrect it just because it's "missing" from the target year.
         if (deletedCopyIds[s.e.id]) return;
-        clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        clones.push(__spreadProps(__spreadValues({}, s.e), { id: genId(), desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
         return;
       }
       // The user edited this copy's occurrence in the target year — theirs wins.
@@ -8643,7 +9163,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     return added;
   }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
-  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
+  }, enableNotifications = async () => {
+  }, notifPerm = "unsupported", yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
@@ -8666,8 +9188,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [editColor, setEditColor] = useState(null);
     const [dragIdx, setDragIdx] = useState(null);
     const [dragOverIdx, setDragOverIdx] = useState(null);
-    const [colorPickerFor, setColorPickerFor] = useState(null);
     const [yearMsg, setYearMsg] = useState("");
+    const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
@@ -8698,6 +9220,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [confirmDelYear, setConfirmDelYear] = useState(null);
     const [confirmCopyYear, setConfirmCopyYear] = useState(null);
     const [historyOpen, setHistoryOpen] = useState({});
+    const notifSupported = typeof Notification !== "undefined";
     const [bioSupported, setBioSupported] = useState(false);
     // Biometric unlock is a phone/tablet feature: offer setup only on coarse-pointer
     // devices. If it's already enabled (e.g. legacy desktop setup), keep the block
@@ -8911,6 +9434,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
+      ["sec-notifications", "Local Notifications"],
       ["sec-years", "Budget Years"],
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
@@ -8926,7 +9450,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onClick: (e) => {
           e.preventDefault();
           const el = document.getElementById(anchorId);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
         },
         className: "quicklink-pill"
       },
@@ -8976,7 +9500,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Local Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => { if (v) enableNotifications(); else setNotifyEnabled(false); }, label: "Enable local notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Alerts you when your forecast balance dips below your threshold, or when bills are due within 7 days. These are local, in-browser notifications only — this app has no backend server, so they can only fire while this tab is open, and never when the app or browser is closed."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -9062,7 +9586,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         setConfirmDelYear(yc.year);
       }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "txm mt-8" }, yearMsg), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Remove budget year ${confirmDelYear}?`,
@@ -9102,39 +9626,57 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result);
-          // A backup exported before schema v8 (round-9 AR5) still has
-          // dollar-scale amounts — upgrade it the same way a stale cloud
-          // payload gets upgraded on load, so an old backup can't silently
-          // restore 100x-wrong figures.
-          const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
-          const fixed = moveEntryAttachmentsToOverrides(
-            Array.isArray(d.entries) ? d.entries : [],
-            d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
-          );
-          if (Array.isArray(d.entries)) setEntries(fixed.entries);
-          if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
-          if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
-          if (Array.isArray(d.categories)) setCategories(d.categories);
-          if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-          if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
-          if (Array.isArray(d.templates)) setTemplates(d.templates);
-          if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
-          if (Array.isArray(d.goals)) setGoals(d.goals);
-          if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
-          if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
-          if (d.activeYear) setActiveYear(d.activeYear);
-          if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-          if (d.darkMode != null) setDarkMode(d.darkMode);
-          setYearMsg("\u2705 Backup restored successfully!");
+          setPendingRestore({ parsed, fileName: file.name });
         } catch (err) {
           setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
         }
       };
       reader.readAsText(file);
       e.target.value = "";
-    } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "backup-msg", style: {
+    } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+    } }, yearMsg))), pendingRestore && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: "Restore backup?",
+        message: `Restoring "${pendingRestore.fileName}" replaces your current entries, overrides, budget targets, goals, and other data with what's in this file. This cannot be undone.`,
+        confirmLabel: "Restore",
+        confirmVariant: "danger",
+        onCancel: () => setPendingRestore(null),
+        onConfirm: () => {
+          try {
+            const parsed = pendingRestore.parsed;
+            // A backup exported before schema v8 (round-9 AR5) still has
+            // dollar-scale amounts — upgrade it the same way a stale cloud
+            // payload gets upgraded on load, so an old backup can't silently
+            // restore 100x-wrong figures.
+            const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
+            const fixed = moveEntryAttachmentsToOverrides(
+              Array.isArray(d.entries) ? d.entries : [],
+              d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
+            );
+            if (Array.isArray(d.entries)) setEntries(fixed.entries);
+            if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
+            if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
+            if (Array.isArray(d.categories)) setCategories(d.categories);
+            if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
+            if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
+            if (Array.isArray(d.templates)) setTemplates(d.templates);
+            if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
+            if (Array.isArray(d.goals)) setGoals(d.goals);
+            if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
+            if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
+            if (d.activeYear) setActiveYear(d.activeYear);
+            if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
+            if (d.darkMode != null) setDarkMode(d.darkMode);
+            setYearMsg("\u2705 Backup restored successfully!");
+          } catch (err) {
+            setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
+          }
+          setPendingRestore(null);
+        }
+      }
+    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
     } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
@@ -9260,7 +9802,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "reset-targets-btn"
       },
       "\u21BA Reset Targets to Actuals"
-    ), tgtResetMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "success-text-mt10" }, tgtResetMsg), confirmTgtReset && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Reset all ${activeYear} targets?`,
@@ -9547,7 +10089,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       if (timer.current) clearTimeout(timer.current);
     }, []);
     const t = queue[0];
-    if (!t) return null;
     const dismiss = () => {
       if (timer.current) {
         clearTimeout(timer.current);
@@ -9555,17 +10096,27 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
       setQueue((prev) => prev.slice(1));
     };
+    // The live-region container stays mounted (even with nothing to show) so
+    // screen readers pick up the change reliably \u2014 a role="status" element
+    // that's inserted into the DOM already carrying its text (the old
+    // `if (!t) return null` here unmounted and remounted a fresh node per
+    // toast) is easy for assistive tech to miss, since live-region
+    // announcements are triggered by content changing inside an
+    // already-present node, not by the node itself appearing.
     return /* @__PURE__ */ React.createElement(
       "div",
-      {
-        role: "status",
-        onClick: dismiss,
-        className: "feedback-toast",
-        style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
-      },
-      /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message,
-      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      { role: "status", "aria-live": "polite" },
+      t && /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          onClick: dismiss,
+          className: "feedback-toast",
+          style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
+        },
+        /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
+        t.message,
+        queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      )
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -9630,6 +10181,27 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     const attemptLogin = async () => {
       const e = email.trim().toLowerCase();
+      if (mode === "forgot") {
+        if (!e) {
+          setError("Please enter your email address.");
+          return;
+        }
+        setLoading(true);
+        setError("");
+        setInfo("");
+        try {
+          await sbResetPassword(e);
+          // Same message regardless of whether the address has an account —
+          // Supabase itself doesn't reveal that either, so echoing it back
+          // here would just be an account-enumeration leak with extra steps.
+          setInfo("If an account exists for that email, a password reset link has been sent.");
+        } catch (err) {
+          setError(err.message || "Something went wrong. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       if (!e || !password) {
         setError("Please enter your email and password.");
         return;
@@ -9658,10 +10230,21 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setLoading(false);
       }
     };
+    const goToForgot = () => {
+      setMode("forgot");
+      setPassword("");
+      setError("");
+      setInfo("");
+    };
+    const backToSignIn = () => {
+      setMode("signin");
+      setError("");
+      setInfo("");
+    };
     if (!configured) {
       return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap text-center" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "login-notconfigured-logo" }), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-title" }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-desc" }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
     }
-    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -9691,11 +10274,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
+    )), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle mb-16" }, "Enter the email on your account and we'll send you a link to reset your password."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "email",
         autoComplete: "email",
+        autoFocus: mode === "forgot",
         value: email,
         onChange: (e) => {
           setEmail(e.target.value);
@@ -9703,12 +10287,16 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         },
         onKeyDown: (e) => {
           var _a;
+          if (mode === "forgot") {
+            if (e.key === "Enter") attemptLogin();
+            return;
+          }
           return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
         },
         placeholder: "your@email.com",
         className: "auth-input"
       }
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    )), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "pw-input",
@@ -9731,7 +10319,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "auth-pw-toggle"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
+    ))), mode === "signin" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: goToForgot, className: "ai-settings-link" }, "Forgot password?")), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "checkbox",
@@ -9740,7 +10328,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onChange: (e) => setRemember(e.target.checked),
         className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16", role: "status" }, info), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16" }, info)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -9751,8 +10339,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           opacity: loading ? 0.7 : 1
         }
       },
-      loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
+      loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"
+    ), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mt-14 text-center" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: backToSignIn, className: "ai-settings-link" }, "\u2190 Back to sign in"))), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
   function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
@@ -10027,7 +10615,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "monthly", label: "Monthly", icon: "grid" },
@@ -10063,7 +10651,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "debt", label: "Debt Payoff", icon: "credit-card" },
@@ -10251,6 +10839,20 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [templates, setTemplates] = useLS("cf_templates", []);
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
+    const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
+    // Sourced only from Notification.requestPermission()'s resolved value,
+    // never re-read from the Notification.permission property afterward —
+    // some browsers (observed under CDP-driven permission grants) don't
+    // keep that property perfectly in sync with the promise's result in
+    // the same tick, which showed the Settings toggle as "granted" while
+    // the status text still read the stale "denied" default.
+    const [notifPerm, setNotifPerm] = useState(() => {
+      try {
+        return typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+      } catch (e) {
+        return "unsupported";
+      }
+    });
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
@@ -10375,7 +10977,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       } catch (e) {
       }
       if (doExport) {
-        const blob = new Blob([JSON.stringify({ entries, budgetTargets, yearConfigs, categories, templates, activeYear }, null, 2)], { type: "application/json" });
+        // Same full field set (and schemaVersion stamp) as Settings' Export
+        // Backup — a partial payload here would restore with fields silently
+        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
+        // data and re-centsified (100x-inflated) on import.
+        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
@@ -10383,8 +10990,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         URL.revokeObjectURL(a.href);
       }
     };
-    const searchRef = useRef(null);
-    const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
@@ -10459,7 +11064,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return flows;
     }, [entries, yearConfigs, overridesByYr]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
-    const isFirstYear = ((_a = sortedConfigs[0]) == null ? void 0 : _a.year) === activeYear;
     const activeOpenBal = useMemo(() => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
@@ -10470,8 +11074,28 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const activeFlow = yearFlows[activeYear] || [];
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
+    // Skipped occurrences never appear in activeFlow (expandEntries drops
+    // them before they reach it) — this is the one place that reads
+    // overridesByYr directly to surface them so a skip can be found and
+    // undone later. `(.+)` matches greedily so a UUID entry id (which itself
+    // contains hyphens) doesn't get mis-split by the year/month/day suffix.
+    const skippedOccurrences = useMemo(() => {
+      const yOvs = overridesByYr[activeYear] || {};
+      const re = new RegExp(`^(.+)-${activeYear}-(\\d+)-(\\d+)$`);
+      const out = [];
+      Object.keys(yOvs).forEach((occId) => {
+        const ov = yOvs[occId];
+        if (!ov || !ov.skipped) return;
+        const m = occId.match(re);
+        if (!m) return;
+        const entry = entries.find((e) => String(e.id) === m[1]);
+        if (!entry) return;
+        out.push({ occId, entryId: entry.id, desc: entry.desc, category: entry.category, month: parseInt(m[2], 10), day: parseInt(m[3], 10) });
+      });
+      return out.sort((a, b) => a.month - b.month || a.day - b.day);
+    }, [overridesByYr, activeYear, entries]);
     const addEntry = (data) => {
-      const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
+      const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
       if (entry.type === "expense") {
         setBudgetTargets((prev) => {
@@ -10508,7 +11132,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
-    const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     // Rebuilt fresh every render (cheap — plain values, no computation), so
     // buildPayload/applyPayload can never close over a stale field.
     const houseValues = {
@@ -10771,6 +11394,51 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
     const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
+    // This is a static, backend-less app — there's no server to wake the
+    // browser when it's closed, so these are "local" Notification-API alerts
+    // only: they can fire while this tab is open, never in the background.
+    // Real push (working when the app/browser is fully closed) would need a
+    // push server + service worker subscription, which is out of scope here.
+    const enableNotifications = async () => {
+      try {
+        if (typeof Notification === "undefined") return;
+        const perm = await Notification.requestPermission();
+        setNotifPerm(perm);
+        setNotifyEnabled(perm === "granted");
+      } catch (e) {
+        setNotifyEnabled(false);
+      }
+    };
+    useEffect(() => {
+      if (!notifyEnabled) return;
+      if (typeof Notification === "undefined" || notifPerm !== "granted") return;
+      if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
+      try {
+        if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
+          new Notification("Low balance forecast", {
+            body: `Balance forecast to dip to ${fmt(navLowInfo.min)} around ${MONTHS[navLowInfo.month]} ${navLowInfo.day}.`,
+            tag: "cf-lowbal"
+          });
+          sessionStorage.setItem("cf_notified_lowbal", todayKey);
+        }
+      } catch (e) {
+      }
+      try {
+        const today = startOfToday();
+        const in7 = new Date(today);
+        in7.setDate(today.getDate() + 7);
+        const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date >= today && ev.date <= in7 && !completed[ev.id]);
+        if (dueSoon.length > 0 && sessionStorage.getItem("cf_notified_duebills") !== todayKey) {
+          const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
+          new Notification("Bills due this week", {
+            body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
+            tag: "cf-duebills"
+          });
+          sessionStorage.setItem("cf_notified_duebills", todayKey);
+        }
+      } catch (e) {
+      }
+    }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -10805,7 +11473,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         return next;
       });
     };
-    const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const latestYear = yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : activeYear;
     const addNextYearInline = () => {
       const y = latestYear + 1;
@@ -10942,7 +11609,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           setTab("settings");
           setTimeout(() => {
             const el = document.getElementById("sec-security");
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           }, 150);
         } }] : [],
         ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
@@ -11134,7 +11801,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         budgetColOrder,
         setBudgetColOrder,
         onDeleted: (e) => pushUndo(e),
-        onAddNextYear: activeYear === latestYear ? addNextYearInline : null
+        onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
+        skippedOccurrences
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,
@@ -11196,6 +11864,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setAlertThreshold: setAlertThresh,
         darkMode,
         setDarkMode,
+        notifyEnabled,
+        setNotifyEnabled,
+        enableNotifications,
+        notifPerm,
         yearConfigs,
         setYearConfigs,
         activeYear,

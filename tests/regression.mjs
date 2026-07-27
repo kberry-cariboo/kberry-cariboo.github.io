@@ -319,6 +319,227 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('AI Financial Assessment', { exact: false }).waitFor(V);
   });
 
+  await test('B19 skip a recurring occurrence, then restore it', async () => {
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Jul$/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByText('Rent', { exact: true }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.getByRole('button', { name: /Skip this date/ }).click();
+    await page.waitForTimeout(300);
+    if (await page.getByText('Rent', { exact: true }).count() > 0) {
+      throw new Error('skipped occurrence still visible in the grid');
+    }
+    await page.getByText('skipped in Jul', { exact: false }).waitFor(V);
+    await page.getByRole('button', { name: /Restore/ }).click();
+    await page.waitForTimeout(300);
+    await page.getByText('Rent', { exact: true }).first().waitFor(V);
+  });
+
+  await test('B20 CSV import: upload, auto-map, preview, and add entries', async () => {
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: 'Import CSV' }).click();
+    await page.locator('.modal-card').waitFor(V);
+    const csv = 'Date,Description,Amount\n2026-07-09,CSV Coffee Shop,-4.53\n2026-07-10,CSV Paycheck,1000.01\n';
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'transactions.csv', mimeType: 'text/csv', buffer: Buffer.from(csv)
+    });
+    await page.getByText('2 rows. Confirm which columns', { exact: false }).waitFor(V);
+    const previewBtn = page.getByRole('button', { name: /Preview/ });
+    if (await previewBtn.isDisabled()) throw new Error('columns were not auto-mapped from the CSV header row');
+    await previewBtn.click();
+    await page.getByText('2 of 2 rows will be imported', { exact: false }).waitFor(V);
+    await page.getByText('CSV Coffee Shop', { exact: false }).waitFor(V);
+    await page.getByText('CSV Paycheck', { exact: false }).waitFor(V);
+    await page.getByRole('button', { name: /Import 2 entries/ }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.modal-overlay').count().then((n) => {
+      if (n > 0) throw new Error('import modal did not close after importing');
+    });
+    await page.getByPlaceholder(/Search/).first().fill('CSV Coffee Shop');
+    await page.waitForTimeout(300);
+    await page.getByText('CSV Coffee Shop', { exact: false }).first().waitFor(V);
+  });
+
+  await test('B21 transfer entry: nets into balance, excluded from income/expense totals', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const incomeBefore = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByPlaceholder(/Search/).first().fill('');
+    await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+    await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+    await page.getByPlaceholder('e.g. Mortgage payment').fill('QA Transfer In');
+    await page.locator('#ef-type').selectOption({ value: 'transfer' });
+    await page.getByLabel('Transfer direction').selectOption({ value: 'in' });
+    await page.getByPlaceholder('0.00').first().fill('50.00');
+    await page.locator('#ef-category').selectOption({ label: 'Housing' });
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+    await page.getByRole('button', { name: 'Save Entry' }).click();
+    await page.waitForTimeout(600);
+    if (await page.getByRole('button', { name: 'Save Entry' }).count() > 0) throw new Error('form did not close (validation?)');
+
+    await page.getByText('QA Transfer In').first().waitFor(V);
+    const row = page.locator('tr', { hasText: 'QA Transfer In' }).first();
+    const rowText = await row.innerText();
+    if (!rowText.includes('+$50.00')) throw new Error('transfer-in row did not show +$50.00: ' + rowText);
+
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const incomeAfter = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+    if (incomeBefore !== incomeAfter) throw new Error(`transfer leaked into Annual Income: ${incomeBefore} -> ${incomeAfter}`);
+  });
+
+  await test('B22 reconcile actual amount paid: updates ledger, balance, and BvA without touching the plan', async () => {
+    // Read the Housing actual as a starting baseline rather than assuming
+    // it's exactly Rent's $1,650 — earlier tests in this shared session
+    // (B13, B21) add their own one-off "QA ..." entries dated today under
+    // the Housing category, so the true total varies with suite order.
+    const parseMoney = (s) => Math.round(parseFloat(s.replace(/[^0-9.-]/g, '')) * 100);
+    const dismissBackupNudge = async () => {
+      const nudge = page.getByRole('button', { name: 'Remind me later' });
+      if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    };
+    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const housingRowBefore = page.locator('.bva-row', { hasText: 'Housing' }).first();
+    const actualBeforeCents = parseMoney(await housingRowBefore.locator('.bva-actual-amt').innerText());
+
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Jul$/ }).click();
+    await page.waitForTimeout(400);
+    await dismissBackupNudge();
+    await page.getByText('Rent', { exact: true }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.getByLabel('Actual Amount Paid').fill('1700.00');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.waitForTimeout(400);
+
+    // Scheduled Amount ($1,650, i.e. the plan) is untouched, but the ledger
+    // now shows the reconciled actual ($1,700) with a variance marker — which
+    // means the row's text is now "Rent✎", not "Rent", so later re-lookups
+    // use a substring match on the <tr> instead of the earlier exact one.
+    const rentRow = page.locator('tr', { hasText: 'Rent' }).filter({ hasText: '✎' }).first();
+    const rowText = await rentRow.innerText();
+    if (!rowText.includes('1,700.00')) throw new Error('reconciled actual not shown in ledger row: ' + rowText);
+
+    await dismissBackupNudge();
+    await rentRow.click();
+    await page.locator('.modal-card').waitFor(V);
+    const scheduledAmount = await page.locator('#oem-amount').inputValue();
+    if (scheduledAmount !== '1650') throw new Error('scheduled Amount field was overwritten by the actual: ' + scheduledAmount);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const housingRowAfter = page.locator('.bva-row', { hasText: 'Housing' }).first();
+    const actualAfterCents = parseMoney(await housingRowAfter.locator('.bva-actual-amt').innerText());
+    if (actualAfterCents - actualBeforeCents !== 5000) {
+      throw new Error(`BvA actual did not pick up the $50 reconciliation: before=${actualBeforeCents} after=${actualAfterCents}`);
+    }
+
+    // Reset back to the scheduled amount so later tests see the original fixture.
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Jul$/ }).click();
+    await page.waitForTimeout(400);
+    await dismissBackupNudge();
+    await page.locator('tr', { hasText: 'Rent' }).filter({ hasText: '✎' }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.getByRole('button', { name: /Reset entry/ }).click();
+    await page.waitForTimeout(300);
+  });
+
+  await test('B23 settings: local notifications toggle requests permission', async () => {
+    // grantPermissions(['notifications']) needs the Notification API to
+    // actually exist in this browser build — some headless Chromium builds
+    // (e.g. the one CI downloads fresh, vs. a pinned local build) don't
+    // expose it, and the app already handles that by showing a "not
+    // supported" message instead of a broken toggle (see notifSupported in
+    // settings.js). So branch on which case we're in rather than assuming.
+    const step = async (label, fn) => {
+      try {
+        return await fn();
+      } catch (e) {
+        throw new Error(`[${label}] ` + String(e.message || e).split('\n')[0].slice(0, 90));
+      }
+    };
+    await step('grant', () => ctx.grantPermissions(['notifications']).catch(() => {}));
+    await step('goto', () => page.goto(BASE + '#/settings', { waitUntil: 'load' }));
+    // This test is only about the Settings toggle's permission-request flow.
+    // App.js has its own separate effect that fires a *real* Notification
+    // for low-balance/due-bill conditions once notifyEnabled flips on, and
+    // this suite's shared fixture (accumulated by earlier B* tests) can
+    // easily have one of those conditions true by now. Pre-marking both as
+    // "already notified today" keeps that unrelated effect from ever
+    // constructing a real Notification here, so this test can't be
+    // confounded by however slow/flaky real notification delivery is in a
+    // given headless browser. (addInitScript wouldn't apply here since this
+    // goto is a same-document hash navigation, not a fresh document load.)
+    await page.evaluate(() => {
+      try {
+        const d = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        sessionStorage.setItem('cf_notified_lowbal', d);
+        sessionStorage.setItem('cf_notified_duebills', d);
+      } catch (e) {
+      }
+    });
+    await page.waitForTimeout(800);
+    await step('heading', () => page.getByText('Local Notifications', { exact: false }).first().waitFor(V));
+    const notifSupported = await page.evaluate(() => typeof Notification !== 'undefined');
+    if (!notifSupported) {
+      await step('unsupported-msg', () => page.getByText("doesn't support notifications", { exact: false }).first().waitFor(V));
+      return;
+    }
+    const toggle = page.getByRole('switch', { name: 'Enable local notifications' });
+    await step('toggle-visible', () => toggle.waitFor(V));
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('expected notifications to start off');
+    await step('click-on', () => toggle.click());
+    await page.waitForTimeout(400);
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('toggle did not turn on once permission was granted');
+    await step('on-text', async () => {
+      try {
+        await page.getByText('On', { exact: true }).first().waitFor(V);
+      } catch (e) {
+        const secText = await page.locator('#sec-notifications').innerText().catch(() => 'ERR');
+        throw new Error('label mismatch, sec=' + JSON.stringify(secText.slice(0, 60)));
+      }
+    });
+    await step('click-off', () => toggle.click());
+    await page.waitForTimeout(200);
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off');
+  });
+
+  await test('B24 modal: backdrop click no longer dismisses, only X/Cancel do', async () => {
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+    await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+    await page.getByPlaceholder('e.g. Mortgage payment').fill('QA Backdrop Click Test');
+
+    // Click the backdrop itself, well clear of the centered modal-card.
+    await page.locator('.modal-overlay').first().click({ position: { x: 5, y: 5 } });
+    await page.waitForTimeout(300);
+    if (await page.getByPlaceholder('e.g. Mortgage payment').count() === 0) {
+      throw new Error('modal closed on backdrop click — should only close via X/Cancel');
+    }
+    const stillThere = await page.getByPlaceholder('e.g. Mortgage payment').inputValue();
+    if (stillThere !== 'QA Backdrop Click Test') throw new Error('form contents were lost: ' + stillThere);
+
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.waitForTimeout(300);
+    if (await page.getByPlaceholder('e.g. Mortgage payment').count() > 0) {
+      throw new Error('modal did not close via Cancel button');
+    }
+  });
+
   await ctx.close();
 }
 

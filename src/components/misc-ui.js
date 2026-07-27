@@ -157,9 +157,14 @@
       it.label
     )));
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
-    const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
+    const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
+    const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
+    const [actualAmount, setActualAmount] = useState(
+      ev.actualAmount !== void 0 ? String(centsToDollars(ev.actualAmount)) : ev.plannedAmount !== void 0 && ev.amount !== ev.plannedAmount ? String(centsToDollars(ev.amount)) : ""
+    );
+    const [actualErr, setActualErr] = useState("");
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
     const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
@@ -184,6 +189,14 @@
         setErr("Enter a valid amount.");
         return;
       }
+      let rawActual = null;
+      if (actualAmount.trim() !== "") {
+        rawActual = Number(actualAmount);
+        if (isNaN(rawActual) || rawActual < 0) {
+          setActualErr("Enter a valid actual amount, or leave it blank.");
+          return;
+        }
+      }
       const a = dollarsToCents(amount);
       const dNum = parseInt(day, 10);
       if (isNaN(dNum) || dNum < 1 || dNum > maxDay) {
@@ -192,7 +205,16 @@
       }
       setErr("");
       setDayErr("");
-      onSave({ desc, amount: a, month: isNaN(monthNum) ? ev.month : monthNum, day: dNum, notes, attachment });
+      setActualErr("");
+      onSave({
+        desc,
+        amount: a,
+        month: isNaN(monthNum) ? ev.month : monthNum,
+        day: dNum,
+        notes,
+        attachment,
+        actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
+      });
     };
     useEffect(() => {
       const h = (e) => {
@@ -207,11 +229,7 @@
         className: "modal-overlay",
         role: "dialog",
         "aria-modal": "true",
-        "aria-label": "Edit occurrence",
-        onClick: (e) => {
-          e.stopPropagation();
-          if (e.target === e.currentTarget) onCancel();
-        }
+        "aria-label": "Edit occurrence"
       },
       /* @__PURE__ */ React.createElement(
         "div",
@@ -258,7 +276,25 @@
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-actual-amount" }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "oem-actual-amount",
+            type: "number",
+            inputMode: "decimal",
+            step: "0.01",
+            placeholder: `Same as scheduled ($${amount || "0.00"})`,
+            className: inpCls(!!actualErr),
+            value: actualAmount,
+            onChange: (e) => {
+              setActualAmount(e.target.value);
+              setActualErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") save();
+            }
+          }
+        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount. Recording a different actual updates your balance and Budget vs. Actual totals, without changing the plan.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -317,22 +353,41 @@
           },
           "Remove"
         ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onDelete,
-            className: "cf-btn cf-btn--danger",
-            style: { marginRight: ev.isOverride && onReset ? 0 : "auto" }
-          },
-          "Delete…"
-        ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onReset,
-            className: "oem-reset-btn"
-          },
-          "\u21BA Reset entry"
-        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"))
+        (() => {
+          // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
+          // (the flexbox trick .oem-footer-row's justify-content:flex-end
+          // relies on to pin this leading cluster left while Cancel/Save
+          // pack right) — the others get 0 so only one button ever splits
+          // the row.
+          const hasReset = ev.isOverride && onReset;
+          const lastLeading = onSkip ? "skip" : hasReset ? "reset" : onDelete ? "delete" : null;
+          return /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onDelete,
+              className: "cf-btn cf-btn--danger",
+              style: { marginRight: lastLeading === "delete" ? "auto" : 0 }
+            },
+            "Delete\u2026"
+          ), hasReset && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onReset,
+              className: "oem-reset-btn",
+              style: { marginRight: lastLeading === "reset" ? "auto" : 0 }
+            },
+            "\u21BA Reset entry"
+          ), onSkip && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onSkip,
+              className: "cf-btn cf-btn--secondary",
+              title: "Remove just this date \u2014 the recurring entry keeps going",
+              style: { marginRight: "auto" }
+            },
+            "\u23ED Skip this date"
+          ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"));
+        })()
       )
     );
   }

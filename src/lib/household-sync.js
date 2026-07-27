@@ -11,6 +11,11 @@
     const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) throw error;
   }
+  async function sbResetPassword(email) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) throw error;
+  }
   // Verify the current password by re-authenticating, then set the new one.
   async function sbChangePassword(email, currentPassword, nextPassword) {
     try {
@@ -20,6 +25,29 @@
     }
     const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
     if (error) throw error;
+  }
+  // localStorage keys behind HOUSEHOLD_SYNCED_FIELDS below (the useLS key for
+  // each synced field, from App.js) plus the per-year AI report cache. On a
+  // shared device, HOUSEHOLD_SYNCED_FIELDS' apply() only overwrites a field
+  // when the newly-loaded household actually has a truthy value for it — so
+  // without clearing these first, a second household signing in on the same
+  // device would inherit any field the first household's save happened not to
+  // set, i.e. the previous household's leftover financial data. Device-level
+  // prefs that aren't household-scoped (lock timeout, saved email, biometric
+  // credential, swipe-coach dismissal) are deliberately left alone.
+  const HOUSEHOLD_LOCAL_STORAGE_KEYS = [
+    "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
+    "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
+    "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
+    "cf_ai_key", "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
+    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
+  ];
+  function clearHouseholdLocalState() {
+    try {
+      HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+      Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+    }
   }
   function useHousehold() {
     const [session, setSession] = useState(null);
@@ -117,6 +145,7 @@
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
+      clearHouseholdLocalState();
     }, []);
     return {
       configured: !!supabaseClient,

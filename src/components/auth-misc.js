@@ -83,7 +83,6 @@
       if (timer.current) clearTimeout(timer.current);
     }, []);
     const t = queue[0];
-    if (!t) return null;
     const dismiss = () => {
       if (timer.current) {
         clearTimeout(timer.current);
@@ -91,17 +90,27 @@
       }
       setQueue((prev) => prev.slice(1));
     };
+    // The live-region container stays mounted (even with nothing to show) so
+    // screen readers pick up the change reliably \u2014 a role="status" element
+    // that's inserted into the DOM already carrying its text (the old
+    // `if (!t) return null` here unmounted and remounted a fresh node per
+    // toast) is easy for assistive tech to miss, since live-region
+    // announcements are triggered by content changing inside an
+    // already-present node, not by the node itself appearing.
     return /* @__PURE__ */ React.createElement(
       "div",
-      {
-        role: "status",
-        onClick: dismiss,
-        className: "feedback-toast",
-        style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
-      },
-      /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message,
-      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      { role: "status", "aria-live": "polite" },
+      t && /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          onClick: dismiss,
+          className: "feedback-toast",
+          style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
+        },
+        /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
+        t.message,
+        queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      )
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -166,6 +175,27 @@
     };
     const attemptLogin = async () => {
       const e = email.trim().toLowerCase();
+      if (mode === "forgot") {
+        if (!e) {
+          setError("Please enter your email address.");
+          return;
+        }
+        setLoading(true);
+        setError("");
+        setInfo("");
+        try {
+          await sbResetPassword(e);
+          // Same message regardless of whether the address has an account —
+          // Supabase itself doesn't reveal that either, so echoing it back
+          // here would just be an account-enumeration leak with extra steps.
+          setInfo("If an account exists for that email, a password reset link has been sent.");
+        } catch (err) {
+          setError(err.message || "Something went wrong. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       if (!e || !password) {
         setError("Please enter your email and password.");
         return;
@@ -194,10 +224,21 @@
         setLoading(false);
       }
     };
+    const goToForgot = () => {
+      setMode("forgot");
+      setPassword("");
+      setError("");
+      setInfo("");
+    };
+    const backToSignIn = () => {
+      setMode("signin");
+      setError("");
+      setInfo("");
+    };
     if (!configured) {
       return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap text-center" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "login-notconfigured-logo" }), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-title" }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-desc" }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
     }
-    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -227,11 +268,12 @@
         }
       },
       "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
+    )), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle mb-16" }, "Enter the email on your account and we'll send you a link to reset your password."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "email",
         autoComplete: "email",
+        autoFocus: mode === "forgot",
         value: email,
         onChange: (e) => {
           setEmail(e.target.value);
@@ -239,12 +281,16 @@
         },
         onKeyDown: (e) => {
           var _a;
+          if (mode === "forgot") {
+            if (e.key === "Enter") attemptLogin();
+            return;
+          }
           return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
         },
         placeholder: "your@email.com",
         className: "auth-input"
       }
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    )), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "pw-input",
@@ -267,7 +313,7 @@
         className: "auth-pw-toggle"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
+    ))), mode === "signin" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: goToForgot, className: "ai-settings-link" }, "Forgot password?")), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "checkbox",
@@ -276,7 +322,7 @@
         onChange: (e) => setRemember(e.target.checked),
         className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16", role: "status" }, info), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16" }, info)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -287,8 +333,8 @@
           opacity: loading ? 0.7 : 1
         }
       },
-      loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
+      loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"
+    ), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mt-14 text-center" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: backToSignIn, className: "ai-settings-link" }, "\u2190 Back to sign in"))), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
   function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
@@ -563,7 +609,7 @@
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "monthly", label: "Monthly", icon: "grid" },
@@ -599,7 +645,7 @@
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "debt", label: "Debt Payoff", icon: "credit-card" },

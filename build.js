@@ -21,11 +21,14 @@ const APP_MODULES = [
   "src/lib/app-data.js",
   "src/components/primitives.js",
   "src/components/forms.js",
+  "src/components/csv-import.js",
   "src/components/register.js",
   "src/components/misc-ui.js",
   "src/components/budget.js",
   "src/components/forecast-plan.js",
-  "src/components/plan-dashboard.js",
+  "src/components/plan-dashboard-shared.js",
+  "src/components/plan.js",
+  "src/components/dashboard.js",
   "src/components/settings.js",
   "src/components/auth-misc.js",
   "src/App.js",
@@ -63,4 +66,8 @@ function build() {
   console.log(`build.js: wrote index.html (${output.length.toLocaleString()} bytes)`);
 }
 
-build();
+module.exports = { APP_MODULES, ROOT, read };
+// Only build when run directly (`node build.js`) — scripts/lint-bundle.js
+// requires this module purely for APP_MODULES/read and must not trigger a
+// build as a side effect of `require`.
+if (require.main === module) build();

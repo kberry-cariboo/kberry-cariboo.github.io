@@ -7,10 +7,9 @@
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
-  }, onAddNextYear = null }) {
+  }, onAddNextYear = null, skippedOccurrences = [] }) {
     var _a, _b;
     const isMobile = useIsMobile();
-    const [editingId, setEditingId] = useState(null);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -36,10 +35,26 @@
     };
     const handleOccurrenceSave = (data) => {
       if (editingEv && setOverride) {
-        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null });
+        setOverride(editingEv.id, { desc: data.desc, amount: data.amount, month: data.month, day: data.day, notes: data.notes || "", attachment: data.attachment || null, actualAmount: data.actualAmount });
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
+    };
+    // Skipping removes just this one date from the recurrence — the entry
+    // and every other occurrence are untouched. Only meaningful for
+    // recurring entries; a one-time entry's only "occurrence" is the entry
+    // itself, which is what Delete already covers.
+    const skipOccurrence = (ev) => {
+      if (!setOverride) return;
+      haptic();
+      setOverride(ev.id, { skipped: true });
+      toast(`Skipped "${ev.desc}" — ${MONTHS[ev.month]} ${ev.day}`);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+    };
+    const restoreSkipped = (occId) => {
+      if (!clearOverride) return;
+      clearOverride(occId);
     };
     const [confirmDelEv, setConfirmDelEv] = useState(null);
     const requestDeleteEntry = (ev) => setConfirmDelEv(ev);
@@ -72,7 +87,7 @@
         if (saveEntryEdit) saveEntryEdit(editingEntry.id, finalData);
         else setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       setShowEntryForm(false);
       setEditingEntry(null);
       setEditingInitial(null);
@@ -122,6 +137,20 @@
     };
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
+    // month -> category -> expense total, computed once per flow change in a
+    // single pass — feeds both this month's BvA actuals and the envelope-
+    // rollover carry loop below, which used to re-filter the whole `flow`
+    // array per (month, category) pair (O(months * categories * flow.length)
+    // on a year with several rollover categories active in December).
+    const monthCatExpense = useMemo(() => {
+      const byMonth = Array.from({ length: 12 }, () => ({}));
+      flow.forEach((ev) => {
+        if (ev.type !== "expense") return;
+        const m = byMonth[ev.month];
+        m[ev.category] = (m[ev.category] || 0) + ev.amount;
+      });
+      return byMonth;
+    }, [flow]);
     const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
     const yoyActive = budgetSub === "monthly" && compareYoy && prevYearConfigured;
@@ -141,7 +170,7 @@
       const map = /* @__PURE__ */ new Map();
       const add = (ev, key) => {
         const k = ev.type + "|" + norm(ev.desc);
-        const signed = ev.type === "income" ? ev.amount : -ev.amount;
+        const signed = signedAmount(ev);
         let row = map.get(k);
         if (!row) {
           row = { desc: ev.desc, category: ev.category, type: ev.type, cur: 0, prev: 0, day: ev.day };
@@ -176,7 +205,6 @@
       if (target !== monthIdx) setMonthIdx(target);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
-    const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
@@ -243,6 +271,10 @@
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
+    // Skipped occurrences never enter `flow` at all, so this is the only way
+    // to find (and undo) one — surfaced only for the currently-viewed month
+    // to keep it relevant rather than a growing year-long list.
+    const skippedThisMonth = useMemo(() => skippedOccurrences.filter((s) => s.month === monthIdx), [skippedOccurrences, monthIdx]);
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     // Monthly grid is paginated (bounded rows-per-page) rather than internally
@@ -254,16 +286,12 @@
     useInfiniteScroll(isMobile && monthPg.hasMore, () => setMobileLoaded((l) => l + 1));
     const pagedPeriod1 = monthPg.rows.filter((ev) => ev.day <= 14);
     const pagedPeriod2 = monthPg.rows.filter((ev) => ev.day > 14);
-    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + (ev.type === "income" ? ev.amount : -ev.amount), 0);
+    const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + signedAmount(ev), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
-    const handleAdd = (data) => {
-      if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
-      setShowAddForm(false);
-    };
+    const varianceTitle = (ev) => ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded` : void 0;
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -336,14 +364,20 @@
             textDecoration: isDone ? "line-through" : "none"
           } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
-          if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", style: {
-            color: isDone ? "var(--textLt)" : "var(--greenDk)",
-            textDecoration: isDone ? "line-through" : "none"
-          } }, ev.type === "income" ? fmt(ev.amount) : "");
-          if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          } }, ev.type === "expense" ? fmt(ev.amount) : "");
+          if (col === "income") {
+            const showHere = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
+              color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
+              textDecoration: isDone ? "line-through" : "none"
+            } }, showHere ? fmt(ev.amount) : "");
+          }
+          if (col === "expense") {
+            const showHere = ev.type === "expense" || ev.type === "transfer" && ev.transferDirection === "out";
+            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
+              color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
+              textDecoration: isDone ? "line-through" : "none"
+            } }, showHere ? fmt(ev.amount) : "");
+          }
           if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: {
             textDecoration: isDone ? "line-through" : "none",
             color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
@@ -365,7 +399,7 @@
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
       const isSel = selIds.has(ev.id);
-      const signed = ev.type === "income" ? ev.amount : -ev.amount;
+      const signed = signedAmount(ev);
       return /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -410,9 +444,9 @@
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
+          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
@@ -488,7 +522,6 @@
       const dir = dx < 0 ? 1 : -1;
       haptic();
       setMonthIdx((v) => Math.max(0, Math.min(11, v + dir)));
-      setEditingId(null);
       setShowOccurrenceForm(false);
       setEditingEv(null);
       setShowEntryForm(false);
@@ -526,7 +559,6 @@
           value: monthIdx,
           onChange: (v) => {
             setMonthIdx(v);
-            setEditingId(null);
           },
           noMargin: false,
           matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null,
@@ -534,6 +566,25 @@
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
+      (budgetSub === "monthly" || budgetSub === "daily") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          key: s.occId,
+          className: "cf-row cf-gap-6",
+          style: { background: "var(--bgCard)", border: "1px solid var(--amber)", borderRadius: 6, padding: "2px 8px", alignItems: "center" }
+        },
+        s.desc, " (", s.day, ")",
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => restoreSkipped(s.occId),
+            "aria-label": `Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`,
+            title: "Restore this occurrence",
+            className: "reg-clear-dates-btn"
+          },
+          "↺"
+        )
+      )))),
       budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -642,14 +693,7 @@
           className: "modal-overlay",
           role: "dialog",
           "aria-modal": "true",
-          "aria-label": "Entry form",
-          onClick: (e) => {
-            e.stopPropagation();
-            if (e.target === e.currentTarget) {
-              setShowEntryForm(false);
-              setEditingEntry(null);
-            }
-          }
+          "aria-label": "Entry form"
         },
         /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
@@ -688,7 +732,8 @@
             setShowOccurrenceForm(false);
             setEditingEv(null);
             openEntryEdit(ev);
-          }
+          },
+          onSkip: editingEv.repeats ? () => skipOccurrence(editingEv) : null
         }
       ), confirmDelEv && /* @__PURE__ */ React.createElement(
         ConfirmDialog,
@@ -720,6 +765,9 @@
               } },
               { icon: "\u21BB", label: "Edit recurring entry", action: () => {
                 openEntryEdit(budgetCtx.ev);
+              } },
+              { icon: "\u23ED", label: "Skip this occurrence", action: () => {
+                skipOccurrence(budgetCtx.ev);
               } }
             ] : [
               { icon: "\u270E", label: "Edit entry", action: () => {
@@ -762,10 +810,10 @@
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
-        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
+        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
+          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
           textDecoration: isPast(dayObj.day) ? "line-through" : "none"
-        } }, ev.type === "income" ? "+" : "-", fmt(ev.amount))
+        } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
       )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
         background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
       } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "daily-balance-caption" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 daily-balance-amt", style: {
@@ -818,11 +866,7 @@
             className: "modal-overlay",
             role: "dialog",
             "aria-modal": "true",
-            "aria-label": "Budget target",
-            onClick: (e) => {
-              e.stopPropagation();
-              if (e.target === e.currentTarget) setShowBvaModal(false);
-            }
+            "aria-label": "Budget target"
           },
           /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",
@@ -870,10 +914,7 @@
         const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
         const rollover = budgetTargets._rollover || {};
-        const catExpenses = {};
-        flow.filter((ev) => ev.month === monthIdx && ev.type === "expense").forEach((ev) => {
-          catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
-        });
+        const catExpenses = monthCatExpense[monthIdx];
         // Envelope carry: for opted-in categories, unspent target from earlier
         // months this year rolls forward (floored at zero, YNAB-style).
         const carryFor = (cat) => {
@@ -882,7 +923,7 @@
           for (let mi = 0; mi < monthIdx; mi++) {
             const t = (budgetTargets[`${yr}:${mi}`] || {})[cat] || 0;
             if (t <= 0 && carry <= 0) continue;
-            const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
+            const spent = monthCatExpense[mi][cat] || 0;
             carry = Math.max(0, carry + t - spent);
           }
           return roundMoney(carry);
@@ -948,7 +989,7 @@
           );
         }), cats.length > 0 && (() => {
           const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
-          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
+          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0) + carryFor(c), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";

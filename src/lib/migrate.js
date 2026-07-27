@@ -137,9 +137,8 @@
     if (storedVersion < 1) {
       const entries = readJSON("cf_entries", null);
       if (Array.isArray(entries)) {
-        let uid = Date.now();
         const fixed = entries.map((e) => ({
-          id: e.id != null ? e.id : ++uid,
+          id: e.id != null ? e.id : genId(),
           desc: typeof e.desc === "string" ? e.desc : "Untitled",
           type: e.type === "income" ? "income" : "expense",
           amount: isFinite(Number(e.amount)) ? Math.abs(Number(e.amount)) : 0,

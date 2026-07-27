@@ -158,6 +158,20 @@
     const [templates, setTemplates] = useLS("cf_templates", []);
     const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
     const [completed, setCompleted] = useLS("cf_completed", {});
+    const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
+    // Sourced only from Notification.requestPermission()'s resolved value,
+    // never re-read from the Notification.permission property afterward —
+    // some browsers (observed under CDP-driven permission grants) don't
+    // keep that property perfectly in sync with the promise's result in
+    // the same tick, which showed the Settings toggle as "granted" while
+    // the status text still read the stale "denied" default.
+    const [notifPerm, setNotifPerm] = useState(() => {
+      try {
+        return typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+      } catch (e) {
+        return "unsupported";
+      }
+    });
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
@@ -282,7 +296,12 @@
       } catch (e) {
       }
       if (doExport) {
-        const blob = new Blob([JSON.stringify({ entries, budgetTargets, yearConfigs, categories, templates, activeYear }, null, 2)], { type: "application/json" });
+        // Same full field set (and schemaVersion stamp) as Settings' Export
+        // Backup — a partial payload here would restore with fields silently
+        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
+        // data and re-centsified (100x-inflated) on import.
+        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
@@ -290,8 +309,6 @@
         URL.revokeObjectURL(a.href);
       }
     };
-    const searchRef = useRef(null);
-    const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
@@ -366,7 +383,6 @@
       return flows;
     }, [entries, yearConfigs, overridesByYr]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
-    const isFirstYear = ((_a = sortedConfigs[0]) == null ? void 0 : _a.year) === activeYear;
     const activeOpenBal = useMemo(() => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
@@ -377,8 +393,28 @@
     const activeFlow = yearFlows[activeYear] || [];
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
+    // Skipped occurrences never appear in activeFlow (expandEntries drops
+    // them before they reach it) — this is the one place that reads
+    // overridesByYr directly to surface them so a skip can be found and
+    // undone later. `(.+)` matches greedily so a UUID entry id (which itself
+    // contains hyphens) doesn't get mis-split by the year/month/day suffix.
+    const skippedOccurrences = useMemo(() => {
+      const yOvs = overridesByYr[activeYear] || {};
+      const re = new RegExp(`^(.+)-${activeYear}-(\\d+)-(\\d+)$`);
+      const out = [];
+      Object.keys(yOvs).forEach((occId) => {
+        const ov = yOvs[occId];
+        if (!ov || !ov.skipped) return;
+        const m = occId.match(re);
+        if (!m) return;
+        const entry = entries.find((e) => String(e.id) === m[1]);
+        if (!entry) return;
+        out.push({ occId, entryId: entry.id, desc: entry.desc, category: entry.category, month: parseInt(m[2], 10), day: parseInt(m[3], 10) });
+      });
+      return out.sort((a, b) => a.month - b.month || a.day - b.day);
+    }, [overridesByYr, activeYear, entries]);
     const addEntry = (data) => {
-      const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
+      const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
       if (entry.type === "expense") {
         setBudgetTargets((prev) => {
@@ -415,7 +451,6 @@
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
-    const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     // Rebuilt fresh every render (cheap — plain values, no computation), so
     // buildPayload/applyPayload can never close over a stale field.
     const houseValues = {
@@ -678,6 +713,51 @@
     const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
     const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
+    // This is a static, backend-less app — there's no server to wake the
+    // browser when it's closed, so these are "local" Notification-API alerts
+    // only: they can fire while this tab is open, never in the background.
+    // Real push (working when the app/browser is fully closed) would need a
+    // push server + service worker subscription, which is out of scope here.
+    const enableNotifications = async () => {
+      try {
+        if (typeof Notification === "undefined") return;
+        const perm = await Notification.requestPermission();
+        setNotifPerm(perm);
+        setNotifyEnabled(perm === "granted");
+      } catch (e) {
+        setNotifyEnabled(false);
+      }
+    };
+    useEffect(() => {
+      if (!notifyEnabled) return;
+      if (typeof Notification === "undefined" || notifPerm !== "granted") return;
+      if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
+      try {
+        if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
+          new Notification("Low balance forecast", {
+            body: `Balance forecast to dip to ${fmt(navLowInfo.min)} around ${MONTHS[navLowInfo.month]} ${navLowInfo.day}.`,
+            tag: "cf-lowbal"
+          });
+          sessionStorage.setItem("cf_notified_lowbal", todayKey);
+        }
+      } catch (e) {
+      }
+      try {
+        const today = startOfToday();
+        const in7 = new Date(today);
+        in7.setDate(today.getDate() + 7);
+        const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date >= today && ev.date <= in7 && !completed[ev.id]);
+        if (dueSoon.length > 0 && sessionStorage.getItem("cf_notified_duebills") !== todayKey) {
+          const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
+          new Notification("Bills due this week", {
+            body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
+            tag: "cf-duebills"
+          });
+          sessionStorage.setItem("cf_notified_duebills", todayKey);
+        }
+      } catch (e) {
+      }
+    }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
@@ -712,7 +792,6 @@
         return next;
       });
     };
-    const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const latestYear = yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : activeYear;
     const addNextYearInline = () => {
       const y = latestYear + 1;
@@ -849,7 +928,7 @@
           setTab("settings");
           setTimeout(() => {
             const el = document.getElementById("sec-security");
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           }, 150);
         } }] : [],
         ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
@@ -1041,7 +1120,8 @@
         budgetColOrder,
         setBudgetColOrder,
         onDeleted: (e) => pushUndo(e),
-        onAddNextYear: activeYear === latestYear ? addNextYearInline : null
+        onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
+        skippedOccurrences
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,
@@ -1103,6 +1183,10 @@
         setAlertThreshold: setAlertThresh,
         darkMode,
         setDarkMode,
+        notifyEnabled,
+        setNotifyEnabled,
+        enableNotifications,
+        notifPerm,
         yearConfigs,
         setYearConfigs,
         activeYear,

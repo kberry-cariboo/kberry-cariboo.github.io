@@ -55,15 +55,36 @@
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
+        // A skipped occurrence never enters the event stream at all — every
+        // balance/total/report computation downstream (computeFlow,
+        // getMonthSummaries, BvA, debt tracking, AI insights, ...) already
+        // just sums whatever's in the array, so this is the only place that
+        // needs to know about skips; nothing else has to remember to exclude
+        // them. The override itself (and its skipped:true flag) still exists
+        // in overridesByYr for the "skipped occurrences" list to read back.
+        if (ov.skipped) return;
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
+        // actualAmount is a separate, optional override recorded after the
+        // fact (reconciliation) — e.g. a variable bill that was budgeted at
+        // $150 but actually came out to $162. It drives the running balance
+        // and BvA "spent" totals, while `plannedAmount` keeps the original
+        // scheduled figure around for comparison (shown as a tooltip in the
+        // budget grid and as the editable "Amount" in OccurrenceEditModal).
+        const actual = ov.actualAmount !== void 0 ? ov.actualAmount : planned;
         events.push({
           id: eid,
           entryId: e.id,
           desc: ov.desc !== void 0 ? ov.desc : e.desc,
           type: e.type,
-          amount: ov.amount !== void 0 ? ov.amount : amtForMonth(m),
+          // Only meaningful when type is "transfer" — money moving out of
+          // this tracked account (default) vs into it. Income/expense
+          // entries ignore this entirely.
+          transferDirection: e.transferDirection || "out",
+          amount: actual,
+          plannedAmount: planned,
           category: e.category,
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
@@ -208,7 +229,7 @@
     const boundary = data.repeats ? newStartD : monthStart;
     const endD = new Date(boundary);
     endD.setDate(endD.getDate() - 1);
-    const newId = Date.now();
+    const newId = genId();
     const next = entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, old), { recurEnd: localDateStr(endD) }) : e);
     next.push(__spreadProps(__spreadValues({}, data), { id: newId, startDate: data.repeats ? localDateStr(newStartD) : data.startDate }));
     return { entries: next, newId, splitDate: localDateStr(boundary) };
@@ -233,10 +254,21 @@
     });
     return out;
   }
+  // Cents, signed by whether this event adds to or subtracts from the
+  // balance — income and an "in"-direction transfer add, everything else
+  // (expense, and an "out"-direction transfer, the default) subtracts. Used
+  // anywhere a running total needs a signed amount instead of computeFlow's
+  // per-event balance; a plain `type === "income" ? amount : -amount`
+  // ternary silently treats any non-income type as a subtraction, which is
+  // right for expense but wrong for an "in"-direction transfer.
+  function signedAmount(ev) {
+    const isInflow = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+    return isInflow ? ev.amount : -ev.amount;
+  }
   function computeFlow(events, openBal) {
     let bal = openBal;
     return events.map((ev) => {
-      bal += ev.type === "income" ? ev.amount : -ev.amount;
+      bal += signedAmount(ev);
       return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
     });
   }
