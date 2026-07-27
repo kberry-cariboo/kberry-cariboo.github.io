@@ -644,6 +644,12 @@
         .pad-8-14{padding:8px 14px;}
         .budget-totals-amt{font-weight:700;padding:10px 14px;text-align:right;}
         .entryform-modal-card{padding:24px 24px 20px;width:min(680px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
+        .csvimport-modal-card{padding:24px 24px 20px;width:min(760px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
+        .csvimport-drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+          padding:36px 20px;border:2px dashed var(--border);border-radius:12px;cursor:pointer;
+          color:var(--textMid);font-size:13px;font-weight:600;transition:border-color 0.15s,color 0.15s;}
+        .csvimport-drop-zone:hover{border-color:var(--primary);color:var(--text);}
+        .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
         .daily-today-wrap{display:flex;align-items:center;gap:8px;margin:4px 16px;}
         .daily-day-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
         .daily-day-number{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--primary);line-height:1;}

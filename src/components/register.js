@@ -39,6 +39,11 @@
     const [dateTo, setDateTo] = useState("");
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
+    const [showCsvImport, setShowCsvImport] = useState(false);
+    const handleCsvImport = (newEntries) => {
+      if (addEntry) newEntries.forEach((e) => addEntry(e));
+      else setEntries((prev) => [...prev, ...newEntries]);
+    };
     const openNew = () => {
       setEditing(null);
       setShowForm(true);
@@ -263,6 +268,10 @@
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
+      { onClick: () => setShowCsvImport(true), className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--nowrap" },
+      "Import CSV"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
     ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "reg-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
@@ -419,5 +428,11 @@
           { icon: "\u2715", label: "Delete entry", action: () => setConfirmDelEntry(ctxMenu.entry.id), danger: true }
         ]
       }
-    ));
+    ), /* @__PURE__ */ React.createElement(CsvImportModal, {
+      show: showCsvImport,
+      onClose: () => setShowCsvImport(false),
+      onImport: handleCsvImport,
+      categories,
+      existingEntries: entries
+    }));
   }

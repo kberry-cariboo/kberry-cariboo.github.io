@@ -21,6 +21,7 @@ const APP_MODULES = [
   "src/lib/app-data.js",
   "src/components/primitives.js",
   "src/components/forms.js",
+  "src/components/csv-import.js",
   "src/components/register.js",
   "src/components/misc-ui.js",
   "src/components/budget.js",

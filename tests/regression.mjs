@@ -337,6 +337,32 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('Rent', { exact: true }).first().waitFor(V);
   });
 
+  await test('B20 CSV import: upload, auto-map, preview, and add entries', async () => {
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: 'Import CSV' }).click();
+    await page.locator('.modal-card').waitFor(V);
+    const csv = 'Date,Description,Amount\n2026-07-09,CSV Coffee Shop,-4.53\n2026-07-10,CSV Paycheck,1000.01\n';
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'transactions.csv', mimeType: 'text/csv', buffer: Buffer.from(csv)
+    });
+    await page.getByText('2 rows. Confirm which columns', { exact: false }).waitFor(V);
+    const previewBtn = page.getByRole('button', { name: /Preview/ });
+    if (await previewBtn.isDisabled()) throw new Error('columns were not auto-mapped from the CSV header row');
+    await previewBtn.click();
+    await page.getByText('2 of 2 rows will be imported', { exact: false }).waitFor(V);
+    await page.getByText('CSV Coffee Shop', { exact: false }).waitFor(V);
+    await page.getByText('CSV Paycheck', { exact: false }).waitFor(V);
+    await page.getByRole('button', { name: /Import 2 entries/ }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.modal-overlay').count().then((n) => {
+      if (n > 0) throw new Error('import modal did not close after importing');
+    });
+    await page.getByPlaceholder(/Search/).first().fill('CSV Coffee Shop');
+    await page.waitForTimeout(300);
+    await page.getByText('CSV Coffee Shop', { exact: false }).first().waitFor(V);
+  });
+
   await ctx.close();
 }
 
