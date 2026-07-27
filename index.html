@@ -2813,6 +2813,11 @@ document.addEventListener('DOMContentLoaded',function(){
     const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) throw error;
   }
+  async function sbResetPassword(email) {
+    if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) throw error;
+  }
   // Verify the current password by re-authenticating, then set the new one.
   async function sbChangePassword(email, currentPassword, nextPassword) {
     try {
@@ -2822,6 +2827,29 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
     if (error) throw error;
+  }
+  // localStorage keys behind HOUSEHOLD_SYNCED_FIELDS below (the useLS key for
+  // each synced field, from App.js) plus the per-year AI report cache. On a
+  // shared device, HOUSEHOLD_SYNCED_FIELDS' apply() only overwrites a field
+  // when the newly-loaded household actually has a truthy value for it — so
+  // without clearing these first, a second household signing in on the same
+  // device would inherit any field the first household's save happened not to
+  // set, i.e. the previous household's leftover financial data. Device-level
+  // prefs that aren't household-scoped (lock timeout, saved email, biometric
+  // credential, swipe-coach dismissal) are deliberately left alone.
+  const HOUSEHOLD_LOCAL_STORAGE_KEYS = [
+    "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
+    "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
+    "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
+    "cf_ai_key", "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
+    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
+  ];
+  function clearHouseholdLocalState() {
+    try {
+      HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+      Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+    }
   }
   function useHousehold() {
     const [session, setSession] = useState(null);
@@ -2919,6 +2947,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
+      clearHouseholdLocalState();
     }, []);
     return {
       configured: !!supabaseClient,
@@ -4537,7 +4566,6 @@ document.addEventListener('DOMContentLoaded',function(){
       const archived = isArchived(e, activeYear);
       const arcText = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       const arcMeta = { color: archived ? "var(--textLt)" : "var(--textMid)", textDecoration: archived ? "line-through" : "none" };
-      const arcMono = { color: archived ? "var(--textLt)" : "var(--text)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
@@ -5240,7 +5268,6 @@ document.addEventListener('DOMContentLoaded',function(){
   }, onAddNextYear = null }) {
     var _a, _b;
     const isMobile = useIsMobile();
-    const [editingId, setEditingId] = useState(null);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -5406,7 +5433,6 @@ document.addEventListener('DOMContentLoaded',function(){
       if (target !== monthIdx) setMonthIdx(target);
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
-    const view = budgetSub === "daily" ? "daily" : "monthly";
     const [budgetCtx, setBudgetCtx] = useState(null);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
@@ -5489,11 +5515,6 @@ document.addEventListener('DOMContentLoaded',function(){
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
-    const handleAdd = (data) => {
-      if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
-      setShowAddForm(false);
-    };
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -5718,7 +5739,6 @@ document.addEventListener('DOMContentLoaded',function(){
       const dir = dx < 0 ? 1 : -1;
       haptic();
       setMonthIdx((v) => Math.max(0, Math.min(11, v + dir)));
-      setEditingId(null);
       setShowOccurrenceForm(false);
       setEditingEv(null);
       setShowEntryForm(false);
@@ -5756,7 +5776,6 @@ document.addEventListener('DOMContentLoaded',function(){
           value: monthIdx,
           onChange: (v) => {
             setMonthIdx(v);
-            setEditingId(null);
           },
           noMargin: false,
           matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null,
@@ -6178,7 +6197,7 @@ document.addEventListener('DOMContentLoaded',function(){
           );
         }), cats.length > 0 && (() => {
           const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
-          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0), 0));
+          const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0) + carryFor(c), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
@@ -6858,7 +6877,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
-    const [budgetCtx, setBudgetCtx] = useState(null);
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
@@ -6908,7 +6926,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             recurUnit: "month",
             recurDays: [],
             recurEnd: goalForm.targetDate || "",
-            category: "Savings",
+            category: "Savings / RRSP",
             notes: "Savings goal contribution"
           }]);
         }
@@ -6926,7 +6944,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             recurUnit: "month",
             recurDays: [],
             recurEnd: "",
-            category: "Savings",
+            category: "Savings / RRSP",
             notes: "Planned goal spending"
           }]);
         }
@@ -7804,12 +7822,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }, [effectiveFlow]);
     const catPieData = useMemo(() => catTotals.map(([name, value]) => ({ name, value })), [catTotals]);
     const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
-    const savingsRate = useMemo(() => summaries.map((m) => ({
-      month: m.month,
-      rate: m.income > 0 ? Math.round((m.income - m.expense) / m.income * 100) : 0,
-      surplus: m.surplus,
-      income: m.income
-    })), [summaries]);
     const totalIncome = summaries.reduce((s, m) => s + m.income, 0);
     const totalExpense = summaries.reduce((s, m) => s + m.expense, 0);
     const netSurplus = totalIncome - totalExpense;
@@ -8666,8 +8678,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const [editColor, setEditColor] = useState(null);
     const [dragIdx, setDragIdx] = useState(null);
     const [dragOverIdx, setDragOverIdx] = useState(null);
-    const [colorPickerFor, setColorPickerFor] = useState(null);
     const [yearMsg, setYearMsg] = useState("");
+    const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
@@ -9102,30 +9114,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result);
-          // A backup exported before schema v8 (round-9 AR5) still has
-          // dollar-scale amounts — upgrade it the same way a stale cloud
-          // payload gets upgraded on load, so an old backup can't silently
-          // restore 100x-wrong figures.
-          const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
-          const fixed = moveEntryAttachmentsToOverrides(
-            Array.isArray(d.entries) ? d.entries : [],
-            d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
-          );
-          if (Array.isArray(d.entries)) setEntries(fixed.entries);
-          if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
-          if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
-          if (Array.isArray(d.categories)) setCategories(d.categories);
-          if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-          if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
-          if (Array.isArray(d.templates)) setTemplates(d.templates);
-          if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
-          if (Array.isArray(d.goals)) setGoals(d.goals);
-          if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
-          if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
-          if (d.activeYear) setActiveYear(d.activeYear);
-          if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-          if (d.darkMode != null) setDarkMode(d.darkMode);
-          setYearMsg("\u2705 Backup restored successfully!");
+          setPendingRestore({ parsed, fileName: file.name });
         } catch (err) {
           setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
         }
@@ -9134,7 +9123,48 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       e.target.value = "";
     } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "backup-msg", style: {
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+    } }, yearMsg)), pendingRestore && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: "Restore backup?",
+        message: `Restoring "${pendingRestore.fileName}" replaces your current entries, overrides, budget targets, goals, and other data with what's in this file. This cannot be undone.`,
+        confirmLabel: "Restore",
+        confirmVariant: "danger",
+        onCancel: () => setPendingRestore(null),
+        onConfirm: () => {
+          try {
+            const parsed = pendingRestore.parsed;
+            // A backup exported before schema v8 (round-9 AR5) still has
+            // dollar-scale amounts — upgrade it the same way a stale cloud
+            // payload gets upgraded on load, so an old backup can't silently
+            // restore 100x-wrong figures.
+            const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
+            const fixed = moveEntryAttachmentsToOverrides(
+              Array.isArray(d.entries) ? d.entries : [],
+              d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
+            );
+            if (Array.isArray(d.entries)) setEntries(fixed.entries);
+            if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
+            if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
+            if (Array.isArray(d.categories)) setCategories(d.categories);
+            if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
+            if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
+            if (Array.isArray(d.templates)) setTemplates(d.templates);
+            if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
+            if (Array.isArray(d.goals)) setGoals(d.goals);
+            if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
+            if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
+            if (d.activeYear) setActiveYear(d.activeYear);
+            if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
+            if (d.darkMode != null) setDarkMode(d.darkMode);
+            setYearMsg("\u2705 Backup restored successfully!");
+          } catch (err) {
+            setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
+          }
+          setPendingRestore(null);
+        }
+      }
+    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
     } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
@@ -9630,6 +9660,27 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     const attemptLogin = async () => {
       const e = email.trim().toLowerCase();
+      if (mode === "forgot") {
+        if (!e) {
+          setError("Please enter your email address.");
+          return;
+        }
+        setLoading(true);
+        setError("");
+        setInfo("");
+        try {
+          await sbResetPassword(e);
+          // Same message regardless of whether the address has an account —
+          // Supabase itself doesn't reveal that either, so echoing it back
+          // here would just be an account-enumeration leak with extra steps.
+          setInfo("If an account exists for that email, a password reset link has been sent.");
+        } catch (err) {
+          setError(err.message || "Something went wrong. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       if (!e || !password) {
         setError("Please enter your email and password.");
         return;
@@ -9658,10 +9709,21 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setLoading(false);
       }
     };
+    const goToForgot = () => {
+      setMode("forgot");
+      setPassword("");
+      setError("");
+      setInfo("");
+    };
+    const backToSignIn = () => {
+      setMode("signin");
+      setError("");
+      setInfo("");
+    };
     if (!configured) {
       return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap text-center" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "login-notconfigured-logo" }), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-title" }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-desc" }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
     }
-    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : "Create your account"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -9691,11 +9753,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
       },
       "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
+    )), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle mb-16" }, "Enter the email on your account and we'll send you a link to reset your password."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "email",
         autoComplete: "email",
+        autoFocus: mode === "forgot",
         value: email,
         onChange: (e) => {
           setEmail(e.target.value);
@@ -9703,12 +9766,16 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         },
         onKeyDown: (e) => {
           var _a;
+          if (mode === "forgot") {
+            if (e.key === "Enter") attemptLogin();
+            return;
+          }
           return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
         },
         placeholder: "your@email.com",
         className: "auth-input"
       }
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    )), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "pw-input",
@@ -9731,7 +9798,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "auth-pw-toggle"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
+    ))), mode === "signin" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: goToForgot, className: "ai-settings-link" }, "Forgot password?")), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "checkbox",
@@ -9751,8 +9818,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           opacity: loading ? 0.7 : 1
         }
       },
-      loading ? mode === "signin" ? "Signing in\u2026" : "Creating account\u2026" : mode === "signin" ? "Sign in" : "Create account"
-    )), /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
+      loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"
+    ), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mt-14 text-center" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: backToSignIn, className: "ai-settings-link" }, "\u2190 Back to sign in"))), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
   function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
@@ -10375,7 +10442,12 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       } catch (e) {
       }
       if (doExport) {
-        const blob = new Blob([JSON.stringify({ entries, budgetTargets, yearConfigs, categories, templates, activeYear }, null, 2)], { type: "application/json" });
+        // Same full field set (and schemaVersion stamp) as Settings' Export
+        // Backup — a partial payload here would restore with fields silently
+        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
+        // data and re-centsified (100x-inflated) on import.
+        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
@@ -10383,8 +10455,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         URL.revokeObjectURL(a.href);
       }
     };
-    const searchRef = useRef(null);
-    const [budgetView, setBudgetView] = useLS("cf_budgetView", "monthly");
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
     const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
@@ -10459,7 +10529,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       return flows;
     }, [entries, yearConfigs, overridesByYr]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
-    const isFirstYear = ((_a = sortedConfigs[0]) == null ? void 0 : _a.year) === activeYear;
     const activeOpenBal = useMemo(() => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
@@ -10508,7 +10577,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
-    const currentBalance = useMemo(() => getCurrentBalance(activeFlow, activeOpenBal, activeYear), [activeFlow, activeOpenBal, activeYear]);
     // Rebuilt fresh every render (cheap — plain values, no computation), so
     // buildPayload/applyPayload can never close over a stale field.
     const houseValues = {
@@ -10805,7 +10873,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         return next;
       });
     };
-    const updateOpenBal = (val) => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const latestYear = yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : activeYear;
     const addNextYearInline = () => {
       const y = latestYear + 1;
