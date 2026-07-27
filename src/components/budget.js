@@ -560,11 +560,11 @@
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
-      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "reg-bulkbar reg-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "reg-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
+      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "budget-bulkbar budget-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: markSelectedPaid,
-          className: "reg-bulk-markpaid-btn"
+          className: "budget-bulk-markpaid-btn"
         },
         "\u2713 Mark paid (",
         MONTHS[monthIdx],
@@ -574,7 +574,7 @@
         {
           onClick: clearSel,
           "aria-label": "Clear selection",
-          className: "reg-bulk-clear-btn"
+          className: "budget-bulk-clear-btn"
         },
         "Clear"
       )),
@@ -605,7 +605,7 @@
             onClick: () => restoreSkipped(s.occId),
             "aria-label": `Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`,
             title: "Restore this occurrence",
-            className: "reg-clear-dates-btn"
+            className: "link-btn-sm"
           },
           "↺"
         )
@@ -660,7 +660,7 @@
               "aria-checked": allSel,
               "aria-label": allSel ? "Deselect all rows" : "Select all rows",
               title: allSel ? "Deselect all" : "Select all",
-              className: "reg-selectall-btn",
+              className: "budget-selectall-btn",
               style: {
                 border: allSel ? "none" : "1.5px solid rgba(255,255,255,0.4)",
                 background: allSel ? "var(--navy)" : someSel ? "rgba(255,255,255,0.25)" : "transparent",

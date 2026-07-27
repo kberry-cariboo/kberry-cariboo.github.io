@@ -311,12 +311,17 @@
     };
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
-    const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_REG_COLS);
+    const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_ENTRIES_COLS);
     const [budgetColOrder, setBudgetColOrder] = useLS("cf_budget_col_order", DEFAULT_BUDGET_COLS);
-    const [regFilter, setRegFilter] = useLS("cf_reg_filter", "all");
-    const [regFilterCats, setRegFilterCats] = useLS("cf_reg_filter_cats", []);
-    const [regFilterScheds, setRegFilterScheds] = useLS("cf_reg_filter_scheds", []);
-    const [regFilterStatus, setRegFilterStatus] = useLS("cf_reg_filter_status", []);
+    // Storage keys and the household-sync field names below intentionally
+    // keep their old "cf_reg_filter"/"regFilter" values — renaming those
+    // would silently reset every existing user's saved Entries filters
+    // (locally and in any synced household) on upgrade. Only the in-code
+    // identifiers are renamed to match the Entries naming used everywhere else.
+    const [entriesFilter, setEntriesFilter] = useLS("cf_reg_filter", "all");
+    const [entriesFilterCats, setEntriesFilterCats] = useLS("cf_reg_filter_cats", []);
+    const [entriesFilterScheds, setEntriesFilterScheds] = useLS("cf_reg_filter_scheds", []);
+    const [entriesFilterStatus, setEntriesFilterStatus] = useLS("cf_reg_filter_status", []);
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
     useEffect(() => {
@@ -327,7 +332,7 @@
       // it the moment they start typing.
       if (tab === "plan") return;
       // Starting a search shows results in the Budget monthly view (which
-      // jumps to the most recent matching month), not the Entries register.
+      // jumps to the most recent matching month), not the Entries list.
       setTab("budget");
       setBudgetSub("monthly");
     }, [globalSearch, tab]);
@@ -464,10 +469,10 @@
       darkMode,
       forecastHorizon,
       colOrder,
-      regFilter,
-      regFilterCats,
-      regFilterScheds,
-      regFilterStatus,
+      regFilter: entriesFilter,
+      regFilterCats: entriesFilterCats,
+      regFilterScheds: entriesFilterScheds,
+      regFilterStatus: entriesFilterStatus,
       aiApiKey,
       budgetTargets,
       templates,
@@ -496,10 +501,10 @@
       darkMode: setDarkMode,
       forecastHorizon: setForecastHorizon,
       colOrder: setColOrder,
-      regFilter: setRegFilter,
-      regFilterCats: setRegFilterCats,
-      regFilterScheds: setRegFilterScheds,
-      regFilterStatus: setRegFilterStatus,
+      regFilter: setEntriesFilter,
+      regFilterCats: setEntriesFilterCats,
+      regFilterScheds: setEntriesFilterScheds,
+      regFilterStatus: setEntriesFilterStatus,
       aiApiKey: setAiApiKey,
       budgetTargets: setBudgetTargets,
       templates: setTemplates,
@@ -601,7 +606,7 @@
         // Jump to Entries and open its own "Add Entry" form.
         setTab("budget");
         setBudgetSub("entries");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("cf:reg-open-new")), 50);
+        setTimeout(() => window.dispatchEvent(new CustomEvent("cf:entries-open-new")), 50);
       };
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
@@ -1124,7 +1129,7 @@
         skippedOccurrences
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
-      RegisterView,
+      EntriesView,
       {
         entries,
         setEntries,
@@ -1139,14 +1144,14 @@
         globalSearch,
         colOrder,
         setColOrder,
-        filter: regFilter,
-        setFilter: setRegFilter,
-        filterCats: regFilterCats,
-        setFilterCats: setRegFilterCats,
-        filterScheds: regFilterScheds,
-        setFilterScheds: setRegFilterScheds,
-        filterStatus: regFilterStatus,
-        setFilterStatus: setRegFilterStatus
+        filter: entriesFilter,
+        setFilter: setEntriesFilter,
+        filterCats: entriesFilterCats,
+        setFilterCats: setEntriesFilterCats,
+        filterScheds: entriesFilterScheds,
+        setFilterScheds: setEntriesFilterScheds,
+        filterStatus: entriesFilterStatus,
+        setFilterStatus: setEntriesFilterStatus
       }
     )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
       setTab("budget");

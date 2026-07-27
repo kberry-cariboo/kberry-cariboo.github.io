@@ -1,11 +1,11 @@
-  function RegisterView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
-  }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_REG_COLS, setColOrder = () => {
+  function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
+  }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_ENTRIES_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
   }, filterScheds = [], setFilterScheds = () => {
   }, filterStatus = [], setFilterStatus = () => {
   } }) {
-    const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_REG_COLS;
+    const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_ENTRIES_COLS;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [searchAllYears, setSearchAllYears] = useState(false);
@@ -58,9 +58,9 @@
     };
     useEffect(() => {
       const onNew = () => openNew();
-      window.addEventListener("cf:reg-open-new", onNew);
+      window.addEventListener("cf:entries-open-new", onNew);
       return () => {
-        window.removeEventListener("cf:reg-open-new", onNew);
+        window.removeEventListener("cf:entries-open-new", onNew);
       };
     }, []);
     useEffect(() => {
@@ -170,21 +170,21 @@
       const arcMeta = { color: archived ? "var(--textLt)" : "var(--textMid)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
         case "type":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "reg-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "entries-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (signedAmount(e) >= 0 ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (signedAmount(e) >= 0 ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
         case "startDate":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-date", style: arcMeta }, e.startDate || "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate || "\u2014");
         case "schedule":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-sched", style: arcMeta }, recurLabel(e));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta }, recurLabel(e));
         case "until":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), e.recurEnd) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), e.recurEnd) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
         case "category":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-cat", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-cat", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }));
         case "notes":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "reg-col-notes", style: arcMeta }, e.notes);
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-notes", style: arcMeta }, e.notes);
         default:
           return /* @__PURE__ */ React.createElement("td", { key: col });
       }
@@ -220,7 +220,7 @@
         type: "date",
         value: dateFrom,
         onChange: (e) => setDateFrom(e.target.value),
-        className: "reg-date-input"
+        className: "entries-date-input"
       }
     ), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "To"), /* @__PURE__ */ React.createElement(
       "input",
@@ -228,7 +228,7 @@
         type: "date",
         value: dateTo,
         onChange: (e) => setDateTo(e.target.value),
-        className: "reg-date-input"
+        className: "entries-date-input"
       }
     ), (dateFrom || dateTo) && /* @__PURE__ */ React.createElement(
       "button",
@@ -237,16 +237,16 @@
           setDateFrom("");
           setDateTo("");
         },
-        className: "reg-clear-dates-btn"
+        className: "link-btn-sm"
       },
       "✕"
     )));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "reg-toptools-row" }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "reg-filter-row" }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "entries-toptools-row" }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "entries-filter-row" }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowMobileFilters(true),
         "aria-haspopup": "dialog",
-        className: "reg-mobile-filter-btn",
+        className: "entries-mobile-filter-btn",
         style: {
           border: "1.5px solid " + (activeFilterCount > 0 ? "var(--navy)" : "var(--border)"),
           background: activeFilterCount > 0 ? "rgba(28,43,58,0.07)" : "var(--bgCard)",
@@ -254,14 +254,14 @@
         }
       },
       "\u2699\ufe0f Filters",
-      activeFilterCount > 0 && /* @__PURE__ */ React.createElement("span", { className: "reg-filter-count-badge" }, activeFilterCount)
-    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "reg-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement(
+      activeFilterCount > 0 && /* @__PURE__ */ React.createElement("span", { className: "entries-filter-count-badge" }, activeFilterCount)
+    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement(
       "input",
       {
         placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "",
         value: search,
         onChange: (e) => setSearch(e.target.value),
-        className: "reg-search-input"
+        className: "entries-search-input"
       }
     ), /* @__PURE__ */ React.createElement(
       "button",
@@ -271,7 +271,7 @@
       "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
-    ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "reg-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering register by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+    ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "entries-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering entries by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -279,11 +279,11 @@
         "aria-modal": "true",
         "aria-label": "Filters"
       },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card reg-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "reg-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "entries-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setShowMobileFilters(false),
-          className: "cf-btn cf-btn--primary reg-showresults-btn"
+          className: "cf-btn cf-btn--primary entries-showresults-btn"
         },
         "Show results"
       ))
@@ -314,14 +314,14 @@
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
       ))
-    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "reg-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "reg-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "entries-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "entries-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
-        className: "reg-th reg-th--col",
+        className: "entries-th entries-th--col",
         draggable: true,
         tabIndex: 0,
-        "aria-label": `${REG_COL_LABELS[col] || col} column — press left or right arrow to reorder`,
+        "aria-label": `${ENTRIES_COL_LABELS[col] || col} column — press left or right arrow to reorder`,
         "aria-sort": sortCol === col ? sortDir === "asc" ? "ascending" : "descending" : void 0,
         onKeyDown: (e) => {
           if (e.key === "ArrowLeft") {
@@ -349,18 +349,18 @@
             e.stopPropagation();
             toggleSort(col);
           },
-          className: "reg-th-sort-label",
-          title: `Sort by ${REG_COL_LABELS[col]}`
+          className: "entries-th-sort-label",
+          title: `Sort by ${ENTRIES_COL_LABELS[col]}`
         },
-        REG_COL_LABELS[col],
-        /* @__PURE__ */ React.createElement("span", { className: "reg-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
-      ) : /* @__PURE__ */ React.createElement(React.Fragment, null, REG_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
-    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "reg-th reg-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "reg-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "reg-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+        ENTRIES_COL_LABELS[col],
+        /* @__PURE__ */ React.createElement("span", { className: "entries-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
+      ) : /* @__PURE__ */ React.createElement(React.Fragment, null, ENTRIES_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
+    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "entries-th entries-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "entries-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
       onAction: openNew
-    })))))), /* @__PURE__ */ React.createElement("div", { className: "reg-cards" }, paged.map((e, i) => {
+    })))))), /* @__PURE__ */ React.createElement("div", { className: "entries-cards" }, paged.map((e, i) => {
       const archived = isArchived(e, activeYear);
       const arcStyle = {
         color: archived ? "var(--textLt)" : "var(--text)",
@@ -372,9 +372,9 @@
         {
           key: e.id,
           onContextMenu: (ev) => openCtx(ev, e),
-          className: "reg-mobile-card"
+          className: "entries-mobile-card"
         },
-        /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-card-toprow" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "reg-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 reg-mobile-amount", style: {
+        /* @__PURE__ */ React.createElement("div", { className: "entries-mobile-card-toprow" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "entries-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 entries-mobile-amount", style: {
           color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
         } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
@@ -389,9 +389,9 @@
           },
           "⋮"
         )),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { className: "reg-mobile-date" }, humanShortDate(e.startDate), e.repeats && ` \xB7 ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { className: "reg-mobile-notes" }, e.notes))
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-date" }, humanShortDate(e.startDate), e.repeats && ` \xB7 ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-notes" }, e.notes))
       );
-    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "reg-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(search || globalSearch) && "+ Add Entry",
