@@ -2032,6 +2032,21 @@ document.addEventListener('DOMContentLoaded',function(){
     return target;
   };
   const { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, useContext, createContext } = React;
+  // Every new entry/goal/debt-row/clone id goes through this — Date.now() had
+  // a real (if small) collision window: two adds in the same millisecond (a
+  // fast double-tap, two goal-linked entries created in one save) produced
+  // identical ids, which corrupts anything keyed by id (overrides, completed
+  // flags, occurrence keys). Declared here (not app-data.js, where the rest of
+  // these shared helpers live) because migrate.js's schema v1 backfill calls
+  // this at module-load time, before app-data.js's declarations would exist —
+  // runtime.js is the first file in build.js's concatenation order.
+  function genId() {
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {
+    }
+    return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
   const SUPABASE_URL = "https://vhwrflyqcubvybolbifl.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod3JmbHlxY3Vidnlib2xiaWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzQ5NzUsImV4cCI6MjA5OTgxMDk3NX0.PKKtR6c6mcXV-Sfou3awEDI0HL_1MePaumoOMUZcAug";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
@@ -2175,9 +2190,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if (storedVersion < 1) {
       const entries = readJSON("cf_entries", null);
       if (Array.isArray(entries)) {
-        let uid = Date.now();
         const fixed = entries.map((e) => ({
-          id: e.id != null ? e.id : ++uid,
+          id: e.id != null ? e.id : genId(),
           desc: typeof e.desc === "string" ? e.desc : "Untitled",
           type: e.type === "income" ? "income" : "expense",
           amount: isFinite(Number(e.amount)) ? Math.abs(Number(e.amount)) : 0,
@@ -2580,7 +2594,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const boundary = data.repeats ? newStartD : monthStart;
     const endD = new Date(boundary);
     endD.setDate(endD.getDate() - 1);
-    const newId = Date.now();
+    const newId = genId();
     const next = entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, old), { recurEnd: localDateStr(endD) }) : e);
     next.push(__spreadProps(__spreadValues({}, data), { id: newId, startDate: data.repeats ? localDateStr(newStartD) : data.startDate }));
     return { entries: next, newId, splitDate: localDateStr(boundary) };
@@ -3541,6 +3555,20 @@ document.addEventListener('DOMContentLoaded',function(){
     } catch (err) {
     }
   }
+  // The app's one CSS prefers-reduced-motion rule clamps every
+  // animation-duration/transition-duration to ~0, which already covers all
+  // CSS-driven motion (spinners, modal slide-ins, toasts). It can't reach
+  // Element.scrollIntoView({behavior:"smooth"}) — that's a browser-native
+  // scroll animation, not a CSS animation/transition — so every call site
+  // that requests smooth scrolling checks this first and falls back to an
+  // instant jump.
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
+  }
   function simulateDebtStrategy(debts, extra, order) {
     try {
       let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => __spreadValues({}, d2));
@@ -3850,7 +3878,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const el = stripRef.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     useEffect(() => {
       const el = stripRef.current;
@@ -4476,7 +4504,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return () => window.removeEventListener("keydown", h);
     }, [showForm]);
     const doCopy = (e) => {
-      const copy = __spreadProps(__spreadValues({}, e), { id: Date.now(), desc: e.desc + " (copy)" });
+      const copy = __spreadProps(__spreadValues({}, e), { id: genId(), desc: e.desc + " (copy)" });
       if (addEntry) addEntry(copy);
       else setEntries((prev) => [...prev, copy]);
     };
@@ -4485,7 +4513,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (saveEntryEdit) saveEntryEdit(editing.id, data);
         else setEntries((prev) => prev.map((e) => e.id === editing.id ? __spreadProps(__spreadValues({}, data), { id: editing.id }) : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       close();
     };
     const [confirmDelEntry, setConfirmDelEntry] = useState(null);
@@ -4498,7 +4526,11 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const yearScoped = !searchAllYears;
     const visibleCols = cols.filter((c) => c !== "actions");
-    const filtered = entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
+    // Memoized so opening a context menu, toggling a mobile filter sheet, or
+    // any other unrelated re-render doesn't re-run the full filter/sort chain
+    // over every entry — only when something that actually changes the
+    // result set does.
+    const filtered = useMemo(() => entries.filter((e) => !yearScoped || !activeYear || e.startDate && e.startDate.startsWith(String(activeYear)) || !e.startDate || e.repeats && (!e.recurEnd || e.recurEnd >= String(activeYear) + "-01-01")).filter((e) => filter === "all" || e.type === filter).filter((e) => filterCats.length === 0 || filterCats.includes(e.category)).filter((e) => filterScheds.length === 0 || filterScheds.includes("recurring") && e.repeats || filterScheds.includes("onetime") && !e.repeats).filter((e) => {
       if (filterStatus.length === 0) return true;
       const arc = isArchived(e, activeYear);
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
@@ -4520,7 +4552,7 @@ document.addEventListener('DOMContentLoaded',function(){
       else if (sortCol === "schedule") cmp = a.repeats === b.repeats ? 0 : a.repeats ? 1 : -1;
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
-    });
+    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, search, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
     const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
     useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
@@ -5329,7 +5361,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (saveEntryEdit) saveEntryEdit(editingEntry.id, finalData);
         else setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: Date.now() })]);
+      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       setShowEntryForm(false);
       setEditingEntry(null);
       setEditingInitial(null);
@@ -5379,6 +5411,20 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     const summaries = useMemo(() => getMonthSummaries(flow, openBal), [flow, openBal]);
     const s = summaries[monthIdx] || summaries[0];
+    // month -> category -> expense total, computed once per flow change in a
+    // single pass — feeds both this month's BvA actuals and the envelope-
+    // rollover carry loop below, which used to re-filter the whole `flow`
+    // array per (month, category) pair (O(months * categories * flow.length)
+    // on a year with several rollover categories active in December).
+    const monthCatExpense = useMemo(() => {
+      const byMonth = Array.from({ length: 12 }, () => ({}));
+      flow.forEach((ev) => {
+        if (ev.type !== "expense") return;
+        const m = byMonth[ev.month];
+        m[ev.category] = (m[ev.category] || 0) + ev.amount;
+      });
+      return byMonth;
+    }, [flow]);
     const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
     const yoyActive = budgetSub === "monthly" && compareYoy && prevYearConfigured;
@@ -6119,10 +6165,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
         const rollover = budgetTargets._rollover || {};
-        const catExpenses = {};
-        flow.filter((ev) => ev.month === monthIdx && ev.type === "expense").forEach((ev) => {
-          catExpenses[ev.category] = (catExpenses[ev.category] || 0) + ev.amount;
-        });
+        const catExpenses = monthCatExpense[monthIdx];
         // Envelope carry: for opted-in categories, unspent target from earlier
         // months this year rolls forward (floored at zero, YNAB-style).
         const carryFor = (cat) => {
@@ -6131,7 +6174,7 @@ document.addEventListener('DOMContentLoaded',function(){
           for (let mi = 0; mi < monthIdx; mi++) {
             const t = (budgetTargets[`${yr}:${mi}`] || {})[cat] || 0;
             if (t <= 0 && carry <= 0) continue;
-            const spent = flow.filter((ev) => ev.month === mi && ev.type === "expense" && ev.category === cat).reduce((s, ev) => s + ev.amount, 0);
+            const spent = monthCatExpense[mi][cat] || 0;
             carry = Math.max(0, carry + t - spent);
           }
           return roundMoney(carry);
@@ -6783,7 +6826,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           onClick: (e) => {
             e.preventDefault();
             const el = document.getElementById(anchorId);
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           },
           className: "quicklink-pill"
         },
@@ -6840,15 +6883,15 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       { icon: "check-circle", label: "Priority Actions" }
     ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, className: "ai-feature-card" }, /* @__PURE__ */ React.createElement("div", { className: "ai-feature-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-feature-label" }, label)))))));
   }
-  // Hoisted out of PlanView/DashboardView render bodies — inline component
-  // definitions create a new type each render and force React to remount.
-  // DASH_AXIS_TICK_X/Y are hoisted the same way: they were previously
-  // recreated as new object literals on every DashboardView render at each
-  // of its ~6 chart call sites.
+  // Shared between PlanView (plan.js) and DashboardView (dashboard.js) —
+  // chart-tick styling and the debt-payoff amortization projection used by
+  // both PlanView's Debt Payoff Tracker and DashboardView's Debt Snapshot
+  // widget. Hoisted to consts/plain functions (not defined inside either
+  // view) so they aren't recreated as new object/function identities on
+  // every render — DASH_AXIS_TICK_X/Y in particular used to be recreated at
+  // each of DashboardView's ~6 chart call sites.
   const DASH_AXIS_TICK_X = { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" };
   const DASH_AXIS_TICK_Y = { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" };
-  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
-  const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   // Projected balance trajectory for a debt payoff sparkline — same
   // amortization step (accrue interest, then apply payment capped at the
   // remaining balance) used by both PlanView's Debt Payoff Tracker and
@@ -6864,6 +6907,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }
     return points;
   };
+  // Hoisted out of PlanView's render body — an inline component
+  // definition creates a new type each render and forces React to remount.
+  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
@@ -6909,10 +6955,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         setGoals((prev) => prev.map((g) => g.id === goalForm.id ? __spreadProps(__spreadValues({}, g), { name, target, saved, monthly, targetDate: goalForm.targetDate || "" }) : g));
       } else {
-        const id = Date.now();
+        const id = genId();
         let entryId = null;
         if (goalForm.linkEntry && monthly > 0) {
-          entryId = id + 1;
+          entryId = genId();
           const today = /* @__PURE__ */ new Date();
           const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
           setEntries((prev) => [...prev, {
@@ -6932,7 +6978,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         let payoutEntryId = null;
         if (goalForm.payoutEntry && goalForm.targetDate) {
-          payoutEntryId = id + 2;
+          payoutEntryId = genId();
           setEntries((prev) => [...prev, {
             id: payoutEntryId,
             desc: `Goal payout: ${name}`,
@@ -7424,7 +7470,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         if (editKey) {
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [editKey]: __spreadValues(__spreadValues({}, p[editKey]), formVals) }));
         } else {
-          const id = "manual_" + Date.now();
+          const id = "manual_" + genId();
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [id]: formVals }));
         }
         setShowDebtForm(false);
@@ -7756,6 +7802,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       })))));
     })());
   }
+  // Hoisted out of DashboardView's render body — an inline component
+  // definition creates a new type each render and forces React to remount.
+  const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
@@ -8317,15 +8366,14 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     };
     const loadSampleData = () => {
       const y = activeYear;
-      const base = Date.now();
-      const mk = (i, e) => ({ id: base + i, notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
+      const mk = (e) => ({ id: genId(), notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
       setEntries((prev) => [...prev, ...[
-        mk(0, { desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
-        mk(1, { desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
-        mk(2, { desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
-        mk(3, { desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
-        mk(4, { desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
-        mk(5, { desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
+        mk({ desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
+        mk({ desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
+        mk({ desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
+        mk({ desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
+        mk({ desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
+        mk({ desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
       ]]);
     };
     const hasSample = entries.some((e) => e.sample);
@@ -8556,14 +8604,13 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     });
     const clones = [];
     const updates = [];
-    let idBase = Date.now();
     srcs.forEach((s) => {
       const t = pairOf[s.e.id];
       if (!t) {
         // The user deliberately deleted a previous copy of this source entry —
         // don't resurrect it just because it's "missing" from the target year.
         if (deletedCopyIds[s.e.id]) return;
-        clones.push(__spreadProps(__spreadValues({}, s.e), { id: idBase++, desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        clones.push(__spreadProps(__spreadValues({}, s.e), { id: genId(), desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
         return;
       }
       // The user edited this copy's occurrence in the target year — theirs wins.
@@ -8938,7 +8985,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onClick: (e) => {
           e.preventDefault();
           const el = document.getElementById(anchorId);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
         },
         className: "quicklink-pill"
       },
@@ -9074,7 +9121,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         setConfirmDelYear(yc.year);
       }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "txm mt-8" }, yearMsg), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Remove budget year ${confirmDelYear}?`,
@@ -9121,9 +9168,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       };
       reader.readAsText(file);
       e.target.value = "";
-    } }))), yearMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "backup-msg", style: {
+    } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg)), pendingRestore && /* @__PURE__ */ React.createElement(
+    } }, yearMsg))), pendingRestore && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: "Restore backup?",
@@ -9290,7 +9337,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "reset-targets-btn"
       },
       "\u21BA Reset Targets to Actuals"
-    ), tgtResetMsg && /* @__PURE__ */ React.createElement("div", { role: "status", className: "success-text-mt10" }, tgtResetMsg), confirmTgtReset && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
       {
         title: `Reset all ${activeYear} targets?`,
@@ -9577,7 +9624,6 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       if (timer.current) clearTimeout(timer.current);
     }, []);
     const t = queue[0];
-    if (!t) return null;
     const dismiss = () => {
       if (timer.current) {
         clearTimeout(timer.current);
@@ -9585,17 +9631,27 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
       setQueue((prev) => prev.slice(1));
     };
+    // The live-region container stays mounted (even with nothing to show) so
+    // screen readers pick up the change reliably \u2014 a role="status" element
+    // that's inserted into the DOM already carrying its text (the old
+    // `if (!t) return null` here unmounted and remounted a fresh node per
+    // toast) is easy for assistive tech to miss, since live-region
+    // announcements are triggered by content changing inside an
+    // already-present node, not by the node itself appearing.
     return /* @__PURE__ */ React.createElement(
       "div",
-      {
-        role: "status",
-        onClick: dismiss,
-        className: "feedback-toast",
-        style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
-      },
-      /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-      t.message,
-      queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      { role: "status", "aria-live": "polite" },
+      t && /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          onClick: dismiss,
+          className: "feedback-toast",
+          style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
+        },
+        /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
+        t.message,
+        queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
+      )
     );
   }
   function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
@@ -9807,7 +9863,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onChange: (e) => setRemember(e.target.checked),
         className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16", role: "status" }, info), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16" }, info)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -10094,7 +10150,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "monthly", label: "Monthly", icon: "grid" },
@@ -10130,7 +10186,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
       const btn = el.querySelector('[data-active="true"]');
-      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
       { id: "debt", label: "Debt Payoff", icon: "credit-card" },
@@ -10540,7 +10596,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
     const addEntry = (data) => {
-      const entry = __spreadProps(__spreadValues({}, data), { id: Date.now(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
+      const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
       if (entry.type === "expense") {
         setBudgetTargets((prev) => {
@@ -11009,7 +11065,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           setTab("settings");
           setTimeout(() => {
             const el = document.getElementById("sec-security");
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           }, 150);
         } }] : [],
         ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
