@@ -458,10 +458,21 @@ await test('A1 built-in self-test suite passes', async () => {
   });
 
   await test('B23 settings: local notifications toggle requests permission', async () => {
-    await ctx.grantPermissions(['notifications']);
+    // grantPermissions(['notifications']) needs the Notification API to
+    // actually exist in this browser build — some headless Chromium builds
+    // (e.g. the one CI downloads fresh, vs. a pinned local build) don't
+    // expose it, and the app already handles that by showing a "not
+    // supported" message instead of a broken toggle (see notifSupported in
+    // settings.js). So branch on which case we're in rather than assuming.
+    await ctx.grantPermissions(['notifications']).catch(() => {});
     await page.goto(BASE + '#/settings', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByText('Local Notifications', { exact: false }).first().waitFor(V);
+    const notifSupported = await page.evaluate(() => typeof Notification !== 'undefined');
+    if (!notifSupported) {
+      await page.getByText("doesn't support notifications", { exact: false }).first().waitFor(V);
+      return;
+    }
     const toggle = page.getByRole('switch', { name: 'Enable local notifications' });
     await toggle.waitFor(V);
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('expected notifications to start off');
