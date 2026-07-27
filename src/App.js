@@ -379,6 +379,26 @@
     const activeFlow = yearFlows[activeYear] || [];
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
+    // Skipped occurrences never appear in activeFlow (expandEntries drops
+    // them before they reach it) — this is the one place that reads
+    // overridesByYr directly to surface them so a skip can be found and
+    // undone later. `(.+)` matches greedily so a UUID entry id (which itself
+    // contains hyphens) doesn't get mis-split by the year/month/day suffix.
+    const skippedOccurrences = useMemo(() => {
+      const yOvs = overridesByYr[activeYear] || {};
+      const re = new RegExp(`^(.+)-${activeYear}-(\\d+)-(\\d+)$`);
+      const out = [];
+      Object.keys(yOvs).forEach((occId) => {
+        const ov = yOvs[occId];
+        if (!ov || !ov.skipped) return;
+        const m = occId.match(re);
+        if (!m) return;
+        const entry = entries.find((e) => String(e.id) === m[1]);
+        if (!entry) return;
+        out.push({ occId, entryId: entry.id, desc: entry.desc, category: entry.category, month: parseInt(m[2], 10), day: parseInt(m[3], 10) });
+      });
+      return out.sort((a, b) => a.month - b.month || a.day - b.day);
+    }, [overridesByYr, activeYear, entries]);
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
@@ -1041,7 +1061,8 @@
         budgetColOrder,
         setBudgetColOrder,
         onDeleted: (e) => pushUndo(e),
-        onAddNextYear: activeYear === latestYear ? addNextYearInline : null
+        onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
+        skippedOccurrences
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,

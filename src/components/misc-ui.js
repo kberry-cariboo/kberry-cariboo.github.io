@@ -157,7 +157,7 @@
       it.label
     )));
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
     const [day, setDay] = useState(String(ev.day));
@@ -317,22 +317,41 @@
           },
           "Remove"
         ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onDelete,
-            className: "cf-btn cf-btn--danger",
-            style: { marginRight: ev.isOverride && onReset ? 0 : "auto" }
-          },
-          "Delete…"
-        ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onReset,
-            className: "oem-reset-btn"
-          },
-          "\u21BA Reset entry"
-        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"))
+        (() => {
+          // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
+          // (the flexbox trick .oem-footer-row's justify-content:flex-end
+          // relies on to pin this leading cluster left while Cancel/Save
+          // pack right) — the others get 0 so only one button ever splits
+          // the row.
+          const hasReset = ev.isOverride && onReset;
+          const lastLeading = onSkip ? "skip" : hasReset ? "reset" : onDelete ? "delete" : null;
+          return /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onDelete,
+              className: "cf-btn cf-btn--danger",
+              style: { marginRight: lastLeading === "delete" ? "auto" : 0 }
+            },
+            "Delete\u2026"
+          ), hasReset && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onReset,
+              className: "oem-reset-btn",
+              style: { marginRight: lastLeading === "reset" ? "auto" : 0 }
+            },
+            "\u21BA Reset entry"
+          ), onSkip && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onSkip,
+              className: "cf-btn cf-btn--secondary",
+              title: "Remove just this date \u2014 the recurring entry keeps going",
+              style: { marginRight: "auto" }
+            },
+            "\u23ED Skip this date"
+          ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"));
+        })()
       )
     );
   }

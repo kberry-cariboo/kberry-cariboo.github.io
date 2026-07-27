@@ -2441,6 +2441,14 @@ document.addEventListener('DOMContentLoaded',function(){
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
+        // A skipped occurrence never enters the event stream at all — every
+        // balance/total/report computation downstream (computeFlow,
+        // getMonthSummaries, BvA, debt tracking, AI insights, ...) already
+        // just sums whatever's in the array, so this is the only place that
+        // needs to know about skips; nothing else has to remember to exclude
+        // them. The override itself (and its skipped:true flag) still exists
+        // in overridesByYr for the "skipped occurrences" list to read back.
+        if (ov.skipped) return;
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
@@ -5014,7 +5022,7 @@ document.addEventListener('DOMContentLoaded',function(){
       it.label
     )));
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const [amount, setAmount] = useState(String(centsToDollars(ev.amount)));
     const [day, setDay] = useState(String(ev.day));
@@ -5174,22 +5182,41 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           "Remove"
         ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onDelete,
-            className: "cf-btn cf-btn--danger",
-            style: { marginRight: ev.isOverride && onReset ? 0 : "auto" }
-          },
-          "Delete…"
-        ), ev.isOverride && onReset && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: onReset,
-            className: "oem-reset-btn"
-          },
-          "\u21BA Reset entry"
-        ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"))
+        (() => {
+          // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
+          // (the flexbox trick .oem-footer-row's justify-content:flex-end
+          // relies on to pin this leading cluster left while Cancel/Save
+          // pack right) — the others get 0 so only one button ever splits
+          // the row.
+          const hasReset = ev.isOverride && onReset;
+          const lastLeading = onSkip ? "skip" : hasReset ? "reset" : onDelete ? "delete" : null;
+          return /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onDelete,
+              className: "cf-btn cf-btn--danger",
+              style: { marginRight: lastLeading === "delete" ? "auto" : 0 }
+            },
+            "Delete\u2026"
+          ), hasReset && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onReset,
+              className: "oem-reset-btn",
+              style: { marginRight: lastLeading === "reset" ? "auto" : 0 }
+            },
+            "\u21BA Reset entry"
+          ), onSkip && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: onSkip,
+              className: "cf-btn cf-btn--secondary",
+              title: "Remove just this date \u2014 the recurring entry keeps going",
+              style: { marginRight: "auto" }
+            },
+            "\u23ED Skip this date"
+          ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"));
+        })()
       )
     );
   }
@@ -5297,7 +5324,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
-  }, onAddNextYear = null }) {
+  }, onAddNextYear = null, skippedOccurrences = [] }) {
     var _a, _b;
     const isMobile = useIsMobile();
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
@@ -5329,6 +5356,22 @@ document.addEventListener('DOMContentLoaded',function(){
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
+    };
+    // Skipping removes just this one date from the recurrence — the entry
+    // and every other occurrence are untouched. Only meaningful for
+    // recurring entries; a one-time entry's only "occurrence" is the entry
+    // itself, which is what Delete already covers.
+    const skipOccurrence = (ev) => {
+      if (!setOverride) return;
+      haptic();
+      setOverride(ev.id, { skipped: true });
+      toast(`Skipped "${ev.desc}" — ${MONTHS[ev.month]} ${ev.day}`);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+    };
+    const restoreSkipped = (occId) => {
+      if (!clearOverride) return;
+      clearOverride(occId);
     };
     const [confirmDelEv, setConfirmDelEv] = useState(null);
     const requestDeleteEntry = (ev) => setConfirmDelEv(ev);
@@ -5545,6 +5588,10 @@ document.addEventListener('DOMContentLoaded',function(){
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
+    // Skipped occurrences never enter `flow` at all, so this is the only way
+    // to find (and undo) one — surfaced only for the currently-viewed month
+    // to keep it relevant rather than a growing year-long list.
+    const skippedThisMonth = useMemo(() => skippedOccurrences.filter((s) => s.month === monthIdx), [skippedOccurrences, monthIdx]);
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     // Monthly grid is paginated (bounded rows-per-page) rather than internally
@@ -5829,6 +5876,25 @@ document.addEventListener('DOMContentLoaded',function(){
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
+      (budgetSub === "monthly" || budgetSub === "daily") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          key: s.occId,
+          className: "cf-row cf-gap-6",
+          style: { background: "var(--bgCard)", border: "1px solid var(--amber)", borderRadius: 6, padding: "2px 8px", alignItems: "center" }
+        },
+        s.desc, " (", s.day, ")",
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => restoreSkipped(s.occId),
+            "aria-label": `Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`,
+            title: "Restore this occurrence",
+            className: "reg-clear-dates-btn"
+          },
+          "↺"
+        )
+      )))),
       budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -5983,7 +6049,8 @@ document.addEventListener('DOMContentLoaded',function(){
             setShowOccurrenceForm(false);
             setEditingEv(null);
             openEntryEdit(ev);
-          }
+          },
+          onSkip: editingEv.repeats ? () => skipOccurrence(editingEv) : null
         }
       ), confirmDelEv && /* @__PURE__ */ React.createElement(
         ConfirmDialog,
@@ -6015,6 +6082,9 @@ document.addEventListener('DOMContentLoaded',function(){
               } },
               { icon: "\u21BB", label: "Edit recurring entry", action: () => {
                 openEntryEdit(budgetCtx.ev);
+              } },
+              { icon: "\u23ED", label: "Skip this occurrence", action: () => {
+                skipOccurrence(budgetCtx.ev);
               } }
             ] : [
               { icon: "\u270E", label: "Edit entry", action: () => {
@@ -10595,6 +10665,26 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const activeFlow = yearFlows[activeYear] || [];
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
+    // Skipped occurrences never appear in activeFlow (expandEntries drops
+    // them before they reach it) — this is the one place that reads
+    // overridesByYr directly to surface them so a skip can be found and
+    // undone later. `(.+)` matches greedily so a UUID entry id (which itself
+    // contains hyphens) doesn't get mis-split by the year/month/day suffix.
+    const skippedOccurrences = useMemo(() => {
+      const yOvs = overridesByYr[activeYear] || {};
+      const re = new RegExp(`^(.+)-${activeYear}-(\\d+)-(\\d+)$`);
+      const out = [];
+      Object.keys(yOvs).forEach((occId) => {
+        const ov = yOvs[occId];
+        if (!ov || !ov.skipped) return;
+        const m = occId.match(re);
+        if (!m) return;
+        const entry = entries.find((e) => String(e.id) === m[1]);
+        if (!entry) return;
+        out.push({ occId, entryId: entry.id, desc: entry.desc, category: entry.category, month: parseInt(m[2], 10), day: parseInt(m[3], 10) });
+      });
+      return out.sort((a, b) => a.month - b.month || a.day - b.day);
+    }, [overridesByYr, activeYear, entries]);
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
@@ -11257,7 +11347,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         budgetColOrder,
         setBudgetColOrder,
         onDeleted: (e) => pushUndo(e),
-        onAddNextYear: activeYear === latestYear ? addNextYearInline : null
+        onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
+        skippedOccurrences
       }
     ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       RegisterView,

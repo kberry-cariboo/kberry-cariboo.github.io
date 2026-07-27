@@ -7,7 +7,7 @@
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
-  }, onAddNextYear = null }) {
+  }, onAddNextYear = null, skippedOccurrences = [] }) {
     var _a, _b;
     const isMobile = useIsMobile();
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
@@ -39,6 +39,22 @@
       }
       setShowOccurrenceForm(false);
       setEditingEv(null);
+    };
+    // Skipping removes just this one date from the recurrence — the entry
+    // and every other occurrence are untouched. Only meaningful for
+    // recurring entries; a one-time entry's only "occurrence" is the entry
+    // itself, which is what Delete already covers.
+    const skipOccurrence = (ev) => {
+      if (!setOverride) return;
+      haptic();
+      setOverride(ev.id, { skipped: true });
+      toast(`Skipped "${ev.desc}" — ${MONTHS[ev.month]} ${ev.day}`);
+      setShowOccurrenceForm(false);
+      setEditingEv(null);
+    };
+    const restoreSkipped = (occId) => {
+      if (!clearOverride) return;
+      clearOverride(occId);
     };
     const [confirmDelEv, setConfirmDelEv] = useState(null);
     const requestDeleteEntry = (ev) => setConfirmDelEv(ev);
@@ -255,6 +271,10 @@
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
+    // Skipped occurrences never enter `flow` at all, so this is the only way
+    // to find (and undo) one — surfaced only for the currently-viewed month
+    // to keep it relevant rather than a growing year-long list.
+    const skippedThisMonth = useMemo(() => skippedOccurrences.filter((s) => s.month === monthIdx), [skippedOccurrences, monthIdx]);
     const period1 = monthEvents.filter((ev) => ev.day <= 14);
     const period2 = monthEvents.filter((ev) => ev.day > 14);
     // Monthly grid is paginated (bounded rows-per-page) rather than internally
@@ -539,6 +559,25 @@
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
+      (budgetSub === "monthly" || budgetSub === "daily") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          key: s.occId,
+          className: "cf-row cf-gap-6",
+          style: { background: "var(--bgCard)", border: "1px solid var(--amber)", borderRadius: 6, padding: "2px 8px", alignItems: "center" }
+        },
+        s.desc, " (", s.day, ")",
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => restoreSkipped(s.occId),
+            "aria-label": `Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`,
+            title: "Restore this occurrence",
+            className: "reg-clear-dates-btn"
+          },
+          "↺"
+        )
+      )))),
       budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -693,7 +732,8 @@
             setShowOccurrenceForm(false);
             setEditingEv(null);
             openEntryEdit(ev);
-          }
+          },
+          onSkip: editingEv.repeats ? () => skipOccurrence(editingEv) : null
         }
       ), confirmDelEv && /* @__PURE__ */ React.createElement(
         ConfirmDialog,
@@ -725,6 +765,9 @@
               } },
               { icon: "\u21BB", label: "Edit recurring entry", action: () => {
                 openEntryEdit(budgetCtx.ev);
+              } },
+              { icon: "\u23ED", label: "Skip this occurrence", action: () => {
+                skipOccurrence(budgetCtx.ev);
               } }
             ] : [
               { icon: "\u270E", label: "Edit entry", action: () => {

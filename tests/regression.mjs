@@ -319,6 +319,24 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('AI Financial Assessment', { exact: false }).waitFor(V);
   });
 
+  await test('B19 skip a recurring occurrence, then restore it', async () => {
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^Jul$/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByText('Rent', { exact: true }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.getByRole('button', { name: /Skip this date/ }).click();
+    await page.waitForTimeout(300);
+    if (await page.getByText('Rent', { exact: true }).count() > 0) {
+      throw new Error('skipped occurrence still visible in the grid');
+    }
+    await page.getByText('skipped in Jul', { exact: false }).waitFor(V);
+    await page.getByRole('button', { name: /Restore/ }).click();
+    await page.waitForTimeout(300);
+    await page.getByText('Rent', { exact: true }).first().waitFor(V);
+  });
+
   await ctx.close();
 }
 

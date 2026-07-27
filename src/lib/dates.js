@@ -55,6 +55,14 @@
         const m = date.getMonth(), d = date.getDate();
         const eid = `${e.id}-${year}-${m}-${d}`;
         const ov = overrides[eid] || {};
+        // A skipped occurrence never enters the event stream at all — every
+        // balance/total/report computation downstream (computeFlow,
+        // getMonthSummaries, BvA, debt tracking, AI insights, ...) already
+        // just sums whatever's in the array, so this is the only place that
+        // needs to know about skips; nothing else has to remember to exclude
+        // them. The override itself (and its skipped:true flag) still exists
+        // in overridesByYr for the "skipped occurrences" list to read back.
+        if (ov.skipped) return;
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
