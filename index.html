@@ -3118,10 +3118,54 @@ document.addEventListener('DOMContentLoaded',function(){
       if (v && typeof v === "object") set(v);
     } }
   ];
+  // Edits that never reached the server. The service worker means the app
+  // loads and is fully usable offline, so this is a real state to be in — and
+  // previously a silent data-loss one: a failed load left autosave disabled,
+  // the edits lived only in localStorage, and the next successful load
+  // overwrote them from the server without a word.
+  //
+  // Two markers, both persisted so they survive the tab being closed:
+  //   cf_unsaved_since  — set when a save fails or an edit happens while
+  //                       autosave is disabled; cleared on a successful save.
+  //   cf_last_synced_at — the payload savedAt this device last agreed with.
+  //                       Comparing it to the server's tells us whether the
+  //                       cloud moved on while we were away, which is the
+  //                       difference between "safe to push" and "ask the user".
+  const UNSAVED_KEY = "cf_unsaved_since";
+  const SYNCED_AT_KEY = "cf_last_synced_at";
+  const readMarker = (k) => {
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
+  };
+  const writeMarker = (k, v) => {
+    try {
+      if (v == null) localStorage.removeItem(k);
+      else localStorage.setItem(k, v);
+    } catch (e) {
+    }
+  };
+
   function useHouseholdData({ household, values, setters }) {
     const [status, setStatus] = useState("idle");
     const [msg, setMsg] = useState("");
+    // True when this device is holding edits the server hasn't got.
+    const [unsaved, setUnsaved] = useState(() => !!readMarker(UNSAVED_KEY));
+    // Set when *both* sides changed independently — there's no safe automatic
+    // answer, so the user picks. Holds the server copy while they decide.
+    const [divergence, setDivergence] = useState(null);
     const initialized = useRef(false);
+    const loadAttempted = useRef(false);
+    const markUnsaved = useCallback(() => {
+      if (!readMarker(UNSAVED_KEY)) writeMarker(UNSAVED_KEY, (/* @__PURE__ */ new Date()).toISOString());
+      setUnsaved(true);
+    }, []);
+    const clearUnsaved = useCallback(() => {
+      writeMarker(UNSAVED_KEY, null);
+      setUnsaved(false);
+    }, []);
     const saveTimer = useRef(null);
     const lastLoadedHousehold = useRef(null);
     // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
@@ -3222,12 +3266,44 @@ document.addEventListener('DOMContentLoaded',function(){
             });
           });
         }
+        // Unsaved local edits must never be silently overwritten by the
+        // server copy. Which resolution is safe depends on whether the cloud
+        // moved on while this device was offline.
+        if (readMarker(UNSAVED_KEY)) {
+          const serverSavedAt = payload.savedAt || null;
+          const lastAgreed = readMarker(SYNCED_AT_KEY);
+          if (!serverSavedAt || serverSavedAt === lastAgreed) {
+            // Nobody else changed anything — this device's copy is simply the
+            // newer one. Push it instead of applying the older server state.
+            initialized.current = true;
+            const pushed = await saveDataRef.current(true);
+            if (pushed) {
+              toast("Synced the changes you made while offline.");
+              return true;
+            }
+            // Still can't reach the server: keep local state as-is rather
+            // than replacing it with a copy we know is stale.
+            setStatus("error");
+            setMsg("⚠ Unsaved changes on this device — will retry");
+            return false;
+          }
+          // Both sides moved. There is no correct automatic answer, so stop
+          // and let the user choose; local state is left untouched meanwhile.
+          loadAttempted.current = true;
+          setDivergence({ payload, rmap });
+          setStatus("error");
+          setMsg("⚠ Unsaved changes here and newer changes in the cloud");
+          return false;
+        }
         applyPayload(payload);
+        writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
         initialized.current = true;
+        loadAttempted.current = true;
         setStatus("ok");
         setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
+        loadAttempted.current = true;
         setStatus("error");
         setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
         return false;
@@ -3265,8 +3341,12 @@ document.addEventListener('DOMContentLoaded',function(){
           p_expected_saved_at: lastSavedAtRef.current
         });
         if (error) throw error;
-        if (newSavedAt) lastSavedAtRef.current = newSavedAt;
+        if (newSavedAt) {
+          lastSavedAtRef.current = newSavedAt;
+          writeMarker(SYNCED_AT_KEY, newSavedAt);
+        }
         await syncReceipts();
+        clearUnsaved();
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -3280,11 +3360,15 @@ document.addEventListener('DOMContentLoaded',function(){
           toast("Another device saved changes to this household — reloaded the latest version. Please redo your last change if it's missing.", "error");
           return false;
         }
+        // Anything else (offline, server down, transient network) leaves the
+        // edits on this device only. Remember that, so a later load can't
+        // quietly overwrite them and a reconnect can retry.
+        markUnsaved();
         setStatus("error");
         setMsg("❌ " + e.message);
         return false;
       }
-    }, [household, buildPayload, syncReceipts, loadData]);
+    }, [household, buildPayload, syncReceipts, loadData, clearUnsaved, markUnsaved]);
     // loadData is declared before saveData, so it reaches the latest saveData
     // through a ref (also keeps loadData's identity stable across payload edits).
     const saveDataRef = useRef(saveData);
@@ -3343,7 +3427,77 @@ document.addEventListener('DOMContentLoaded',function(){
       values.debtData,
       values.deletedCopyIds
     ]);
-    return { status, msg, saveData, loadData };
+    // --- resolving a divergence -------------------------------------------
+    // Deliberately only reachable from an explicit user choice; nothing here
+    // runs automatically, because either branch discards somebody's work.
+    const keepLocalChanges = useCallback(async () => {
+      if (!divergence) return;
+      // Adopt the server's savedAt so the conflict check passes — we are
+      // knowingly overwriting it.
+      lastSavedAtRef.current = divergence.payload.savedAt || null;
+      initialized.current = true;
+      setDivergence(null);
+      const ok = await saveDataRef.current(false);
+      if (ok) toast("This device's version is now the shared one.");
+    }, [divergence]);
+    const discardLocalChanges = useCallback(() => {
+      if (!divergence) return;
+      const { payload, rmap } = divergence;
+      receiptCache.current = Object.assign({}, rmap);
+      if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+        Object.keys(payload.overridesByYr).forEach((year) => {
+          const yOvs = payload.overridesByYr[year] || {};
+          Object.keys(yOvs).forEach((k) => {
+            const src = rmap["override:" + year + ":" + k];
+            if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+          });
+        });
+      }
+      applyPayload(payload);
+      lastSavedAtRef.current = payload.savedAt || null;
+      writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
+      clearUnsaved();
+      initialized.current = true;
+      setDivergence(null);
+      setStatus("ok");
+      setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+      toast("Using the cloud version. This device's unsaved changes were discarded.", "error");
+    }, [divergence, applyPayload, clearUnsaved]);
+
+    // Retry whenever the device plausibly has connectivity again. Without
+    // this, a save that failed offline was never attempted again until the
+    // user happened to make another edit.
+    useEffect(() => {
+      if (!household) return;
+      const retry = () => {
+        if (!readMarker(UNSAVED_KEY) || divergence) return;
+        try {
+          if (navigator.onLine === false) return;
+        } catch (e) {
+        }
+        if (initialized.current) saveDataRef.current(true);
+        else loadData();
+      };
+      const onVisible = () => {
+        if (document.visibilityState === "visible") retry();
+      };
+      window.addEventListener("online", retry);
+      document.addEventListener("visibilitychange", onVisible);
+      return () => {
+        window.removeEventListener("online", retry);
+        document.removeEventListener("visibilitychange", onVisible);
+      };
+    }, [household, loadData, divergence]);
+
+    // Edits made while autosave is disabled (i.e. the initial load failed) are
+    // the exact case that used to vanish. Nothing will try to save them until
+    // connectivity returns, so record that they exist.
+    useEffect(() => {
+      if (!household || !loadAttempted.current || initialized.current) return;
+      markUnsaved();
+    }, [household, markUnsaved, values.entries, values.overridesByYr, values.yearConfigs, values.completed, values.goals, values.budgetTargets]);
+
+    return { status, msg, saveData, loadData, unsaved, divergence, keepLocalChanges, discardLocalChanges };
   }
   // Notifications — foreground (shown by the page while it's open) and
   // background Web Push (delivered by the browser's push service with the app
@@ -5636,6 +5790,50 @@ document.addEventListener('DOMContentLoaded',function(){
       existingEntries: entries
     }));
   }
+  // Shown only when this device has edits the server never received *and* the
+  // cloud copy also changed since. Both outcomes lose somebody's work, so the
+  // app refuses to guess — it stops syncing and asks. Local state is left
+  // exactly as-is until a button is pressed, so dismissing by accident can't
+  // destroy anything (there is deliberately no dismiss).
+  function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }) {
+    const [busy, setBusy] = useState(false);
+    if (!divergence) return null;
+    const when = (() => {
+      try {
+        const iso = localStorage.getItem("cf_unsaved_since");
+        return iso ? new Date(iso).toLocaleString() : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+    const cloudWhen = (() => {
+      try {
+        return divergence.payload && divergence.payload.savedAt
+          ? new Date(divergence.payload.savedAt).toLocaleString()
+          : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+    const run = (fn) => async () => {
+      setBusy(true);
+      try {
+        await fn();
+      } finally {
+        setBusy(false);
+      }
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "sync-divergence-title" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" },
+      /* @__PURE__ */ React.createElement("div", { id: "sync-divergence-title", className: "settings-header-title mb-8" }, "Two versions of your budget"),
+      /* @__PURE__ */ React.createElement("div", { className: "txm mb-14" }, "This device has changes that were never saved to the cloud", when ? ` (since ${when})` : "", ", and the cloud copy has changed too", cloudWhen ? ` (last saved ${cloudWhen})` : "", ". Keeping one means losing the other, so pick which to keep."),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" },
+        /* @__PURE__ */ React.createElement("button", { onClick: run(onKeepLocal), disabled: busy, className: "cf-btn cf-btn--primary cf-btn--md" }, busy ? "Working\u2026" : "Keep this device's version"),
+        /* @__PURE__ */ React.createElement("button", { onClick: run(onUseCloud), disabled: busy, className: "cf-btn cf-btn--secondary cf-btn--md" }, "Use the cloud version")
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "txl mt-14" }, "Not sure? Export a backup first from Settings \u2192 Data Backup & Restore \u2014 that saves this device's current version to a file either way.")
+    ));
+  }
+
   function ReceiptLightbox({ src, onClose }) {
     useEffect(() => {
       const h = (e) => {
@@ -9649,7 +9847,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
-  }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseSave = () => {
+  }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
   }, household = null, members = [], createInvite = () => {
   }, setMemberDisabled = () => {
@@ -10167,7 +10365,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           setPendingRestore(null);
         }
       }
-    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
     } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
@@ -11799,7 +11997,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       status: houseStatus,
       msg: houseMsg,
       saveData: houseSave,
-      loadData: houseLoad
+      loadData: houseLoad,
+      unsaved: houseUnsaved,
+      divergence: houseDivergence,
+      keepLocalChanges,
+      discardLocalChanges
     } = useHouseholdData({
       household,
       values: houseValues,
@@ -12183,7 +12385,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -12569,6 +12771,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         sbConfigured,
         houseStatus,
         houseMsg,
+        houseUnsaved,
         houseSave,
         houseLoad,
         household,

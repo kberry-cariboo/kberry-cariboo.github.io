@@ -1,3 +1,47 @@
+  // Shown only when this device has edits the server never received *and* the
+  // cloud copy also changed since. Both outcomes lose somebody's work, so the
+  // app refuses to guess — it stops syncing and asks. Local state is left
+  // exactly as-is until a button is pressed, so dismissing by accident can't
+  // destroy anything (there is deliberately no dismiss).
+  function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }) {
+    const [busy, setBusy] = useState(false);
+    if (!divergence) return null;
+    const when = (() => {
+      try {
+        const iso = localStorage.getItem("cf_unsaved_since");
+        return iso ? new Date(iso).toLocaleString() : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+    const cloudWhen = (() => {
+      try {
+        return divergence.payload && divergence.payload.savedAt
+          ? new Date(divergence.payload.savedAt).toLocaleString()
+          : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+    const run = (fn) => async () => {
+      setBusy(true);
+      try {
+        await fn();
+      } finally {
+        setBusy(false);
+      }
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "sync-divergence-title" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" },
+      /* @__PURE__ */ React.createElement("div", { id: "sync-divergence-title", className: "settings-header-title mb-8" }, "Two versions of your budget"),
+      /* @__PURE__ */ React.createElement("div", { className: "txm mb-14" }, "This device has changes that were never saved to the cloud", when ? ` (since ${when})` : "", ", and the cloud copy has changed too", cloudWhen ? ` (last saved ${cloudWhen})` : "", ". Keeping one means losing the other, so pick which to keep."),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" },
+        /* @__PURE__ */ React.createElement("button", { onClick: run(onKeepLocal), disabled: busy, className: "cf-btn cf-btn--primary cf-btn--md" }, busy ? "Working\u2026" : "Keep this device's version"),
+        /* @__PURE__ */ React.createElement("button", { onClick: run(onUseCloud), disabled: busy, className: "cf-btn cf-btn--secondary cf-btn--md" }, "Use the cloud version")
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "txl mt-14" }, "Not sure? Export a backup first from Settings \u2192 Data Backup & Restore \u2014 that saves this device's current version to a file either way.")
+    ));
+  }
+
   function ReceiptLightbox({ src, onClose }) {
     useEffect(() => {
       const h = (e) => {
