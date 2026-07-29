@@ -2063,7 +2063,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // "Public key" — it always starts with "B" (the 0x04 uncompressed-point
   // prefix), e.g. "BKN7BdVKiXrVNLcZ...". It is not the curve name, and not
   // anything from the script's own source.
-  const VAPID_PUBLIC_KEY = "";
+  const VAPID_PUBLIC_KEY = "BGbemiiYRInroq-BSlKEpaETX129HajcS-cxognl96Al5OjLKIAcMbXfGRwGmxjBbN_yFX7KJgErCj6WThQYIWs";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
