@@ -128,9 +128,18 @@ site can't send anything:
    `--no-verify-jwt` lets pg_cron call it without a user session; `CRON_SECRET`
    is what actually keeps it private.
 
-4. **Schedule it** — edit `supabase/push-cron.sql` to insert your `CRON_SECRET`,
-   then run it in the SQL editor. It runs hourly (every hour is somebody's 8am —
-   delivery time is per-device).
+4. **Schedule it** — store the same `CRON_SECRET` in Supabase Vault, then run
+   `supabase/push-cron.sql` in the SQL editor:
+
+   ```sql
+   select vault.create_secret('<your CRON_SECRET>', 'cf_cron_secret');
+   ```
+
+   The secret is deliberately *not* written into `push-cron.sql` — this
+   repository is public, so the cron job reads it from Vault at call time
+   instead. The script refuses to schedule anything if the Vault secret is
+   missing. It then runs hourly (every hour is somebody's 8am — delivery time
+   is per-device).
 
 5. **Install the app to your home screen** on the phone and enable notifications
    in Settings. Android delivers to installed PWAs far more reliably than to a

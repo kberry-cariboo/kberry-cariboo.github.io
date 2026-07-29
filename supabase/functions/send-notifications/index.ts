@@ -215,8 +215,17 @@ Deno.serve(async (req) => {
   // Deployed with --no-verify-jwt so pg_cron can call it without a user
   // session; this shared secret is what actually keeps it private. pg_net
   // sends it as a header from the cron job (see push-cron.sql).
+  //
+  // Fails closed: a missing CRON_SECRET refuses every request rather than
+  // accepting anonymous ones. Forgetting to set it should break the cron job
+  // visibly (403 in net._http_response), not quietly leave the endpoint open
+  // to anyone who learns the URL.
   const expected = Deno.env.get("CRON_SECRET");
-  if (expected && req.headers.get("x-cron-secret") !== expected) {
+  if (!expected) {
+    console.error("CRON_SECRET is not set — refusing all requests.");
+    return new Response("forbidden: CRON_SECRET not configured", { status: 403 });
+  }
+  if (req.headers.get("x-cron-secret") !== expected) {
     return new Response("forbidden", { status: 403 });
   }
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
