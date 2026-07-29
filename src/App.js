@@ -806,31 +806,15 @@
         });
         markSeen("cf_notified_lowbal");
       }
+      // A single notification covering everything due today, itemised in the
+      // body — same wording the push schedule uses (billDigestMessage), so a
+      // bill reads the same whether the app was open or closed when it landed.
       const today = startOfToday();
       const dueToday = activeFlow.filter((ev) => ev.type === "expense" && ev.month === today.getMonth() && ev.day === today.getDate() && !completed[ev.id]);
       if (dueToday.length > 0 && !seen("cf_notified_duetoday")) {
-        const total = dueToday.reduce((s, ev) => s + ev.amount, 0);
-        showLocalNotification(
-          dueToday.length === 1 ? `${dueToday[0].desc} is due today` : `${dueToday.length} bills due today`,
-          {
-            body: dueToday.length === 1 ? `${fmt(dueToday[0].amount)} due today.` : `${fmt(total)} total due today.`,
-            tag: "cf-duetoday"
-          }
-        );
+        const msg = billDigestMessage(dueToday.map((ev) => ({ id: ev.id, desc: ev.desc, cents: ev.amount })));
+        showLocalNotification(msg.title, { body: msg.body, tag: "cf-bills-due" });
         markSeen("cf_notified_duetoday");
-      }
-      const in7 = new Date(today);
-      in7.setDate(today.getDate() + 7);
-      // Strictly after today — "due today" already has its own notification
-      // above, and counting those twice made the weekly total look wrong.
-      const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date > today && ev.date <= in7 && !completed[ev.id]);
-      if (dueSoon.length > 0 && !seen("cf_notified_duebills")) {
-        const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
-        showLocalNotification("Bills due this week", {
-          body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
-          tag: "cf-duebills"
-        });
-        markSeen("cf_notified_duebills");
       }
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {

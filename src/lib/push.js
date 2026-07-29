@@ -173,6 +173,29 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
+  // The wording for a day's bills, from a list of { id, desc, cents }.
+  //
+  // One notification per day rather than one per bill: a phone buzzing eight
+  // times on the 1st of the month trains you to swipe the whole lot away. The
+  // itemisation isn't lost though — it moves into the body, one bill per line,
+  // which Android shows in full when the notification is expanded.
+  //
+  // The Edge Function has a mirror of this (see billDigest in
+  // supabase/functions/send-notifications/index.ts) because it has to re-word
+  // the message after dropping bills that were paid since the schedule was
+  // published. Keep the two in step; a self-test pins the output of this one.
+  function billDigestMessage(items) {
+    if (!items || !items.length) return null;
+    if (items.length === 1) {
+      return { title: `${items[0].desc} is due today`, body: fmt(items[0].cents) };
+    }
+    const total = items.reduce((s, i) => s + i.cents, 0);
+    return {
+      title: `${items.length} bills due today · ${fmt(total)}`,
+      body: items.map((i) => `${i.desc} — ${fmt(i.cents)}`).join("\n")
+    };
+  }
+
   // Precompute the alerts worth sending over the next NOTIFY_HORIZON_DAYS.
   //
   // Why precompute on the client instead of recomputing server-side: the money
@@ -206,7 +229,11 @@
 
     const rows = [];
 
-    // 1. Bills due today, one row per date that has any.
+    // 1. One row — and so one notification — per day that has bills due, with
+    //    every bill for that day itemised inside it. `items` travels with the
+    //    row so the sender can drop bills paid since publication and re-word
+    //    the message around what's left, rather than announcing a count and a
+    //    total that are no longer true.
     const byDate = {};
     inWindow.forEach(({ ev, date }) => {
       if (ev.type !== "expense") return;
@@ -215,19 +242,16 @@
       (byDate[key] = byDate[key] || []).push(ev);
     });
     Object.keys(byDate).sort().forEach((dateKey) => {
-      const evs = byDate[dateKey];
-      const total = evs.reduce((s, e) => s + e.amount, 0);
-      const names = evs.map((e) => e.desc).filter(Boolean);
-      const head = names.slice(0, 3).join(", ");
-      const more = names.length > 3 ? ` +${names.length - 3} more` : "";
+      const items = byDate[dateKey].map((e) => ({ id: e.id, desc: e.desc, cents: e.amount }));
+      const msg = billDigestMessage(items);
       rows.push({
         for_date: dateKey,
-        kind: "bills_today",
-        title: evs.length === 1 ? `${evs[0].desc} is due today` : `${evs.length} bills due today`,
-        body: evs.length === 1
-          ? `${fmt(evs[0].amount)} due today.`
-          : `${fmt(total)} total — ${head}${more}.`,
-        occurrence_ids: evs.map((e) => e.id),
+        kind: "bills_due",
+        // A digest isn't about one occurrence; the ids live in `items`.
+        occurrence_id: "",
+        title: msg.title,
+        body: msg.body,
+        items,
         url: "./#budget"
       });
     });
@@ -243,9 +267,12 @@
       rows.push({
         for_date: ymd(warnAt),
         kind: "low_balance",
+        // Not tied to a single occurrence — empty string rather than null so
+        // it still participates in the (date, kind, occurrence) primary key.
+        occurrence_id: "",
+        items: [],
         title: "Low balance ahead",
         body: `Balance is forecast to dip to ${fmt(dip.ev.balance)} on ${humanShortDate(ymd(dip.date))}, below your ${fmt(alertThreshold)} threshold.`,
-        occurrence_ids: [],
         url: "./#dashboard"
       });
     }

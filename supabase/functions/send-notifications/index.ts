@@ -47,14 +47,43 @@ type Sub = {
   failure_count: number;
 };
 
+type Item = { id: string; desc: string; cents: number };
+
 type Row = {
   for_date: string;
   kind: string;
+  occurrence_id: string;
   title: string;
   body: string;
-  occurrence_ids: string[];
+  items: Item[];
   url: string;
 };
+
+// Mirror of `fmt` in src/lib/format.js — amounts are integer cents everywhere.
+// Both sides call the same ICU implementation of toLocaleString, so the output
+// is identical; a Node-side test compares the two over a range of values.
+function money(cents: number): string {
+  const abs = Math.abs(cents / 100).toLocaleString("en-CA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return cents < 0 ? `-$${abs}` : `$${abs}`;
+}
+
+// Mirror of billDigestMessage in src/lib/push.js. It has to exist here too:
+// once bills paid since publication are filtered out, the stored count and
+// total are wrong and the message has to be rebuilt around what's left.
+function billDigest(items: Item[]): { title: string; body: string } | null {
+  if (!items.length) return null;
+  if (items.length === 1) {
+    return { title: `${items[0].desc} is due today`, body: money(items[0].cents) };
+  }
+  const total = items.reduce((s, i) => s + i.cents, 0);
+  return {
+    title: `${items.length} bills due today · ${money(total)}`,
+    body: items.map((i) => `${i.desc} — ${money(i.cents)}`).join("\n"),
+  };
+}
 
 // Intl is the only correct way to do this — a fixed UTC offset would be wrong
 // for half the year in any DST zone, and would silently drift the delivery hour.
@@ -114,16 +143,14 @@ async function run(): Promise<Record<string, number>> {
     const dates = [...new Set(devices.map((d) => d.localDate))];
     const { data: rows, error: rowErr } = await db
       .from("notification_schedule")
-      .select("for_date, kind, title, body, occurrence_ids, url")
+      .select("for_date, kind, occurrence_id, title, body, items, url")
       .eq("household_id", householdId)
       .in("for_date", dates);
     if (rowErr) throw rowErr;
     if (!rows?.length) continue;
 
-    // A bill marked paid after the schedule was published shouldn't nag. If
-    // every occurrence behind a bills_today row is now complete, the row is
-    // dropped entirely; otherwise the count/total would be a lie, so it's sent
-    // with a note rather than silently wrong numbers.
+    // A bill marked paid after the schedule was published shouldn't nag —
+    // this is the set used to filter each day's items below.
     const { data: done, error: doneErr } = await db
       .from("completed_occurrences")
       .select("occurrence_id")
@@ -136,9 +163,27 @@ async function run(): Promise<Record<string, number>> {
         if (row.for_date !== localDate) continue;
         stats.due++;
 
-        const ids = row.occurrence_ids ?? [];
-        const outstanding = ids.filter((id) => !completed.has(id));
-        if (ids.length > 0 && outstanding.length === 0) {
+        // Bills paid since the schedule was published drop out here. If that
+        // empties the day entirely there's nothing to say; otherwise the
+        // message is rebuilt so the count and total match what's actually
+        // still outstanding.
+        let title = row.title;
+        let body = row.body;
+        const items = Array.isArray(row.items) ? row.items : [];
+        if (items.length) {
+          const outstanding = items.filter((i) => !completed.has(i.id));
+          if (!outstanding.length) {
+            stats.skipped++;
+            continue;
+          }
+          if (outstanding.length !== items.length) {
+            const rebuilt = billDigest(outstanding);
+            if (rebuilt) {
+              title = rebuilt.title;
+              body = rebuilt.body;
+            }
+          }
+        } else if (row.occurrence_id && completed.has(row.occurrence_id)) {
           stats.skipped++;
           continue;
         }
@@ -148,7 +193,12 @@ async function run(): Promise<Record<string, number>> {
         // local hour repeats.
         const { error: ledgerErr } = await db
           .from("notification_sends")
-          .insert({ endpoint: sub.endpoint, for_date: row.for_date, kind: row.kind });
+          .insert({
+            endpoint: sub.endpoint,
+            for_date: row.for_date,
+            kind: row.kind,
+            occurrence_id: row.occurrence_id ?? "",
+          });
         if (ledgerErr) {
           // 23505 = unique violation = already sent. Anything else is real.
           if ((ledgerErr as { code?: string }).code === "23505") {
@@ -159,10 +209,10 @@ async function run(): Promise<Record<string, number>> {
         }
 
         const payload = JSON.stringify({
-          title: row.title,
-          body: outstanding.length < ids.length
-            ? `${row.body} (${ids.length - outstanding.length} already marked paid)`
-            : row.body,
+          title,
+          body,
+          // One tag per (kind, date): a re-send for the same day replaces the
+          // earlier notification rather than adding a second one.
           tag: `cf-${row.kind}-${row.for_date}`,
           url: row.url || "./",
         });
@@ -198,7 +248,8 @@ async function run(): Promise<Record<string, number>> {
           await db.from("notification_sends").delete()
             .eq("endpoint", sub.endpoint)
             .eq("for_date", row.for_date)
-            .eq("kind", row.kind);
+            .eq("kind", row.kind)
+            .eq("occurrence_id", row.occurrence_id ?? "");
         }
       }
     }

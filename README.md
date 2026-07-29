@@ -95,9 +95,10 @@ entirely; use **Settings → Backup** for local JSON export/import.
 
 Two independent layers:
 
-**Foreground** works out of the box, no setup. While the app is open it alerts
-on bills due today, bills due within 7 days, and a forecast balance heading
-below your threshold. Turn it on in **Settings → Notifications**.
+**Foreground** works out of the box, no setup. While the app is open it raises
+a single alert per day listing every bill due that day, plus a warning when the
+forecast balance is heading below your threshold. Turn it on in
+**Settings → Notifications**.
 
 **Background (Web Push)** is what reaches your phone with the app and browser
 both closed — Android renders these as ordinary system notifications. It needs
@@ -148,7 +149,9 @@ site can't send anything:
 ### How the scheduling works
 
 The app owns all the money math. Whenever your budget changes it publishes a
-rolling 90-day list of "on this date, say this" rows to `notification_schedule`;
+rolling 90-day list of "on this date, say this" rows to `notification_schedule`
+— one row per day that has bills due, with that day's bills itemised in the
+row's `items`, so a busy day is one notification rather than eight;
 the Edge Function only looks up today's rows for each device's timezone and
 sends them. That avoids a second, drifting copy of the recurrence/override
 logic in Deno — see the comment on `buildNotificationSchedule` in
@@ -158,8 +161,9 @@ The consequence worth knowing: **the schedule only extends 90 days from the last
 time you opened the app.** Open it once a quarter and you'll never notice; leave
 it untouched for longer and background alerts stop until you next open it. The
 one thing that isn't precomputed is whether a bill has since been marked paid —
-the function re-checks `completed_occurrences` at send time and drops alerts
-whose bills are all settled.
+the function re-checks `completed_occurrences` at send time, drops those bills
+from the day's list, and re-words the message around what's left (skipping the
+notification entirely if everything due that day is settled).
 
 ## Fonts, icons, manifest
 

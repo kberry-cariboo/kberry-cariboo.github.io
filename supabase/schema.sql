@@ -251,30 +251,45 @@ create index if not exists push_subscriptions_household_idx on push_subscription
 -- the Edge Function just looks up today's rows. See the long comment on
 -- buildNotificationSchedule in src/lib/push.js for why the split falls here.
 --
--- occurrence_ids lets the sender drop bills that were marked paid after the
--- schedule was written — that's the one part that can't be precomputed.
-create table if not exists notification_schedule (
+-- One row per day that has bills due ('bills_due'), carrying every bill for
+-- that day in `items` as [{id, desc, cents}] — one notification per day, with
+-- the individual bills itemised inside it. The list is what lets the sender
+-- drop bills marked paid after the schedule was written and re-word the
+-- message around what's left, which is the one part that can't be
+-- precomputed. occurrence_id is reserved for alerts that are about a single
+-- occurrence; digests and 'low_balance' use an empty string.
+--
+-- These two tables are dropped and recreated rather than altered: both are
+-- entirely derived (the app republishes the schedule within seconds of being
+-- opened, and the ledger only matters for alerts already sent today), so
+-- rebuilding them is cheaper and less error-prone than migrating a primary
+-- key in place. Re-running this file therefore clears both — harmless.
+drop table if exists notification_schedule;
+create table notification_schedule (
   household_id uuid not null references households(id) on delete cascade,
   for_date date not null,
-  kind text not null,                       -- 'bills_today' | 'low_balance'
+  kind text not null,                       -- 'bills_due' | 'low_balance'
+  occurrence_id text not null default '',   -- '' for alerts with no occurrence
   title text not null,
   body text not null default '',
-  occurrence_ids text[] not null default '{}',
+  items jsonb not null default '[]'::jsonb, -- [{id, desc, cents}] for 'bills_due'
   url text not null default './',
   created_at timestamptz not null default now(),
-  primary key (household_id, for_date, kind)
+  primary key (household_id, for_date, kind, occurrence_id)
 );
 create index if not exists notification_schedule_date_idx on notification_schedule (for_date);
 
 -- Delivery ledger. The cron runs hourly (it has to, to hit every timezone's
 -- chosen hour), so this is what stops a device being notified twice for the
 -- same alert.
-create table if not exists notification_sends (
+drop table if exists notification_sends;
+create table notification_sends (
   endpoint text not null,
   for_date date not null,
   kind text not null,
+  occurrence_id text not null default '',
   sent_at timestamptz not null default now(),
-  primary key (endpoint, for_date, kind)
+  primary key (endpoint, for_date, kind, occurrence_id)
 );
 
 alter table households enable row level security;
@@ -1209,21 +1224,22 @@ declare
   n int;
 begin
   delete from notification_schedule where household_id = hid;
-  insert into notification_schedule (household_id, for_date, kind, title, body, occurrence_ids, url)
+  insert into notification_schedule (household_id, for_date, kind, occurrence_id, title, body, items, url)
   select
     hid,
     cf_date(r->>'for_date'),
     r->>'kind',
+    coalesce(r->>'occurrence_id', ''),
     coalesce(r->>'title', 'CashFlow'),
     coalesce(r->>'body', ''),
-    cf_text_array(r->'occurrence_ids'),
+    case when jsonb_typeof(r->'items') = 'array' then r->'items' else '[]'::jsonb end,
     coalesce(nullif(r->>'url', ''), './')
   from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) as r
   where cf_date(r->>'for_date') is not null
     and coalesce(r->>'kind', '') <> ''
-  -- The client builds one row per (date, kind); this guards against a
-  -- duplicate slipping through and aborting the whole publish.
-  on conflict (household_id, for_date, kind) do nothing;
+  -- The client builds one row per (date, kind, occurrence); this guards
+  -- against a duplicate slipping through and aborting the whole publish.
+  on conflict (household_id, for_date, kind, occurrence_id) do nothing;
   get diagnostics n = row_count;
   return n;
 end $$;
