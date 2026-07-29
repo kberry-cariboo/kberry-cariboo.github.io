@@ -15,13 +15,13 @@
         className: "alert-row",
         style: {
           background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`
+          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amberInk)"}`
         }
       },
-      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amber)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
+      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
       /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, ev.desc), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
       /* @__PURE__ */ React.createElement("div", { className: "text-right" }, /* @__PURE__ */ React.createElement("div", { className: "alert-row-balance", style: {
-        color: ev.balance < 0 ? "var(--red)" : "var(--amber)"
+        color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)"
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
     );
@@ -35,7 +35,7 @@
     )), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
       color: "var(--red)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev) => renderAlertRow(ev))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
-      color: "var(--amber)"
+      color: "var(--amberInk)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))));
   }
   // One-time (non-repeating) entries exist only in the year of their startDate,
@@ -609,6 +609,9 @@
           inputMode: "decimal",
           step: "0.01",
           className: "cf-text-mono-13 openbal-input",
+          // "Opening balance" next to it is a span, not a label — name the
+          // field per-year so it's unambiguous when several years are listed.
+          "aria-label": `Opening balance for ${yc.year}`,
           value: centsToDollars(yc.openingBalance),
           onChange: (e) => updateOpenBal(yc.year, dollarsToCents(e.target.value))
         }

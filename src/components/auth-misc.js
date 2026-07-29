@@ -485,6 +485,24 @@
       ov[evs[0].id] = { amount: 250 };
       const evs2 = expandEntries([entry], 2026, ov);
       t("override changes amount", () => evs2[0].amount === 250 && evs2[0].isOverride === true);
+      // Per-day keys (banner snooze, once-a-day notification guards) must roll
+      // over at local midnight. toISOString() rolls over at 00:00 UTC, which
+      // west of Greenwich is mid-afternoon the day before.
+      t("todayStr() is the local date, not the UTC one", () => {
+        const now = /* @__PURE__ */ new Date();
+        const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        return todayStr() === expected;
+      });
+      t("todayStr() matches localDateStr for an evening instant", () => {
+        // 22:30 local on any date: still today locally, already tomorrow in UTC
+        // for every timezone west of UTC+01:30.
+        const d = new Date(2026, 2, 10, 22, 30, 0);
+        const viaUtc = d.toISOString().slice(0, 10);
+        const local = localDateStr(d);
+        // Only assert the divergence where it actually exists; east of
+        // Greenwich the two legitimately agree at this hour.
+        return d.getTimezoneOffset() > 90 ? local === "2026-03-10" && viaUtc !== local : local === "2026-03-10";
+      });
       t("localStorage roundtrip", () => {
         localStorage.setItem("cf_selftest", "x");
         const v = localStorage.getItem("cf_selftest") === "x";

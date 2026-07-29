@@ -220,6 +220,10 @@
         type: "date",
         value: dateFrom,
         onChange: (e) => setDateFrom(e.target.value),
+        // The adjacent "From" text is a plain span, not a <label for>, so it
+        // gives screen readers nothing — without this the field is announced
+        // as an unnamed date picker.
+        "aria-label": "Filter entries from date",
         className: "entries-date-input"
       }
     ), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "To"), /* @__PURE__ */ React.createElement(
@@ -228,6 +232,7 @@
         type: "date",
         value: dateTo,
         onChange: (e) => setDateTo(e.target.value),
+        "aria-label": "Filter entries to date",
         className: "entries-date-input"
       }
     ), (dateFrom || dateTo) && /* @__PURE__ */ React.createElement(
@@ -261,6 +266,10 @@
         placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "",
         value: search,
         onChange: (e) => setSearch(e.target.value),
+        // Placeholder is empty by design when there's no header search, so
+        // there is no implicit name to fall back on either.
+        "aria-label": "Search entries",
+        type: "search",
         className: "entries-search-input"
       }
     ), /* @__PURE__ */ React.createElement(

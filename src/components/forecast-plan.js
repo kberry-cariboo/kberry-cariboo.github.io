@@ -33,7 +33,7 @@
     const pgInfo = isMobile ? cumulativeRows(searchedEvents, mobileLoaded, pgSize) : paginateRows(searchedEvents, pgPage, pgSize);
     useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const pagedEvents = pgInfo.rows;
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amber)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onAdd: addEntry ? () => setShowAddEntry(true) : null,
@@ -61,7 +61,7 @@
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
       return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: isMobile ? 140 : 180 } }, ev.desc), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), !isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), isMobile && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-amount-mobile", style: { color: signedAmount(ev) >= 0 ? "var(--greenDk)" : "var(--text)" } }, fmt(signedAmount(ev), true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
-        color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)",
+        color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), !isMobile && (() => {
         const m = ev.month;
@@ -74,7 +74,7 @@
         const pct = Math.round(ev.amount / target * 100);
         const conf = pct <= 100 ? 100 : pct <= 120 ? 75 : pct <= 150 ? 50 : 25;
         if (conf === 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: "Within budget target" }, "\u2713"));
-        const color = conf >= 50 ? "var(--amber)" : "var(--red)";
+        const color = conf >= 50 ? "var(--amberInk)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
       })());
     })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile })));
@@ -468,11 +468,11 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     const sectionColor = {
       "Executive Summary": "var(--primary)",
       "Income Analysis": "var(--greenDk)",
-      "Spending Analysis": "var(--amber)",
+      "Spending Analysis": "var(--amberInk)",
       "Debt Management": "var(--red)",
       "Savings Goals": "var(--greenDk)",
       "Budget Performance": "var(--primary)",
-      "Cash Flow & Risk": "var(--amber)",
+      "Cash Flow & Risk": "var(--amberInk)",
       "Priority Action Items": "var(--greenDk)"
     };
     // Sections render most-actionable-first regardless of the order the model
@@ -587,7 +587,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       const match = rawText.match(/\b([1-9]|10)\s*\/\s*10\b|\bscore[:\s]+([1-9]|10)\b/i);
       if (!match) return null;
       const score = parseInt(match[1] || match[2]);
-      const color = score >= 7 ? "var(--greenDk)" : score >= 4 ? "var(--amber)" : "var(--red)";
+      const color = score >= 7 ? "var(--greenDk)" : score >= 4 ? "var(--amberInk)" : "var(--red)";
       return /* @__PURE__ */ React.createElement("div", { className: "ai-score-badge", style: {
         border: `2px solid ${color}`,
         boxShadow: `0 0 0 4px ${color}22`
@@ -612,7 +612,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const isIndented = line.match(/^\s{2,}/);
         const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt|shortfall|danger|critical|problem|unsustainable)/i.test(text);
         const isPositive = /(well|strong|excellent|good|under budget|saving|positive|recommendation)/i.test(text);
-        const dot = isWarning ? "var(--amber)" : isPositive ? "var(--greenDk)" : "var(--navyLt)";
+        const dot = isWarning ? "var(--amberInk)" : isPositive ? "var(--greenDk)" : "var(--navyLt)";
         return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-bullet-row", style: {
           marginBottom: isIndented ? 4 : 8,
           paddingLeft: isIndented ? 16 : 0

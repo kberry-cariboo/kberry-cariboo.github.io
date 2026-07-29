@@ -65,6 +65,12 @@
   const useIsMobile = () => useMediaQuery("(max-width: 768px)");
   const useIsPhone = () => useMediaQuery("(max-width: 480px)");
   const useIsCoarsePointer = () => useMediaQuery("(pointer: coarse)");
+  // Text colours here are pinned to WCAG AA (4.5:1) against the surfaces they
+  // actually render on — an audit found 295 failing nodes concentrated in a
+  // handful of these tokens. greenDk/red/textLt are deliberately darker than
+  // the original brand values (#27AE73 / #E85D4A / #66798C, which measured
+  // 2.84, 3.11 and 4.09) because they're used for small text on white and on
+  // the pale tints. If you brighten them back, re-run the contrast audit.
   const LIGHT = {
     navy: "#1C2B3A",
     navyMid: "#243447",
@@ -72,17 +78,27 @@
     bg: "#F7F4EF",
     bgCard: "#FFFFFF",
     green: "#2ECC8A",
-    greenDk: "#27AE73",
+    greenDk: "#1B7950",
     greenLt: "#EAFBF3",
-    red: "#E85D4A",
+    red: "#B34739",
     redLt: "#FFF0EE",
     amber: "#F5A623",
+    // Amber is legible as a fill or border but not as text: #F5A623 on white
+    // measures 2.02:1. Fills and borders keep the gold; text uses this darker
+    // ink so "over budget" / "today" markers are actually readable.
+    amberInk: "#8E6014",
     amberLt: "#FFF8EC",
     text: "#1C2B3A",
-    textMid: "#5A6A7A",
-    textLt: "#66798C",
+    textMid: "#586878",
+    textLt: "#5B6C7D",
     border: "#E8E4DD",
     stripe: "#F7F4EF",
+    // Rows for dates already past. This used to be conveyed with opacity:0.7
+    // on the whole row, which dragged every colour in it below WCAG AA — the
+    // day column measured 2.97:1 and the green amounts 2.75:1. Fading the
+    // *surface* instead of the content keeps the "already happened" cue while
+    // the text stays at full strength.
+    pastBg: "#EFEBE4",
     headerBg: "#1C2B3A",
     headerText: "#ffffff",
     inputBg: "#F7F4EF",
@@ -101,6 +117,9 @@
     // navy in light mode; dark mode needs its own value because there the navy
     // doubles as a surface color and active states would vanish into it.
     primary: "#1C2B3A",
+    // Navy on light surfaces is already ~12:1 as text; the token exists so
+    // .link-primary can use one name across both themes.
+    primaryInk: "#1C2B3A",
     // Negative amounts rendered ON navy surfaces (totals rows) — --red is too
     // dark against navy, so those cells use this lighter coral.
     coral: "#FF8A7A"
@@ -114,15 +133,19 @@
     green: "#2ECC8A",
     greenDk: "#27AE73",
     greenLt: "#16291F",
-    red: "#E85D4A",
+    red: "#E8705F",
     redLt: "#2A1515",
     amber: "#F5A623",
+    // On dark surfaces the gold already clears AA (7.6:1 on the card), so the
+    // ink token is the same colour — it exists to keep the call sites uniform.
+    amberInk: "#F5A623",
     amberLt: "#2A2010",
     text: "#E8EDF2",
     textMid: "#8FA3B8",
-    textLt: "#7A93AC",
+    textLt: "#7F97AF",
     border: "#243447",
     stripe: "#1E2D3E",
+    pastBg: "#151E2A",
     headerBg: "#0F1923",
     headerText: "#ffffff",
     inputBg: "#162230",
@@ -134,9 +157,79 @@
     accent: "#5B8DEF",
     accentLt: "#1A2942",
     primary: "#4E729C",
+    // `primary` doubles as an interactive fill here, so it can't just be
+    // lightened — that would wash out active pills and buttons. Links rendered
+    // *in* that colour need their own value (#4E729C on a card is 3.09:1).
+    primaryInk: "#7C97B6",
     chipKeep: "60%",
     coral: "#FF8A7A"
   };
+  // Contrast utilities (WCAG 2.1 relative luminance / ratio). Used to keep
+  // category chips readable: a chip's text is its category hue drawn on a 13%
+  // tint of that same hue, which for mid-tone hues (olive, orange, pink) lands
+  // around 3:1 — well under AA. A fixed "mix toward white by N%" can't fix
+  // that, because the right amount depends on the hue and on whether the
+  // surface underneath is light or dark. So compute it per hue instead, which
+  // also covers the arbitrary colours users pick for their own categories.
+  const _srgbToLin = (v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  function hexToRgb(hex) {
+    const h = String(hex || "").replace("#", "");
+    const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+    const n = parseInt(full, 16);
+    return Number.isFinite(n) && full.length === 6
+      ? [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+      : [0, 0, 0];
+  }
+  const rgbToHex = (r, g, b) => "#" + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+  function relLuminance(hex) {
+    const [r, g, b] = hexToRgb(hex).map((v) => _srgbToLin(v / 255));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function contrastRatio(a, b) {
+    const [hi, lo] = [relLuminance(a), relLuminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+  function blendOver(fg, bg, alpha) {
+    const f = hexToRgb(fg), b = hexToRgb(bg);
+    return rgbToHex(f[0] * alpha + b[0] * (1 - alpha), f[1] * alpha + b[1] * (1 - alpha), f[2] * alpha + b[2] * (1 - alpha));
+  }
+  // Nudge `hue` toward black or white (whichever direction the surface calls
+  // for) until it clears `target` against `bg`. Returns the hue unchanged when
+  // it already passes, so brand colours that are fine stay exactly as chosen.
+  function readableInk(hue, bg, target = 4.5) {
+    if (contrastRatio(hue, bg) >= target) return hue;
+    const [r, g, b] = hexToRgb(hue);
+    const towardWhite = relLuminance(bg) < 0.18;
+    for (let k = 1; k <= 100; k++) {
+      const t = k / 100;
+      const c = towardWhite
+        ? rgbToHex(r + (255 - r) * t, g + (255 - g) * t, b + (255 - b) * t)
+        : rgbToHex(r * (1 - t), g * (1 - t), b * (1 - t));
+      if (contrastRatio(c, bg) >= target) return c;
+    }
+    return towardWhite ? "#FFFFFF" : "#000000";
+  }
+  // Chip ink, cached per (hue, surface). The surface is passed in rather than
+  // read from module state: a module variable can't trigger a React re-render,
+  // so chips rendered before a theme switch kept their old ink and dark mode
+  // ended up *worse* than before this was computed at all (~2.5:1). It comes
+  // through CategoriesContext so a theme change re-renders every chip.
+  //
+  // Chip background is `hue + "22"` — the hue at 13.3% over the surface. The
+  // 5.2 target (rather than 4.5) is headroom: chips also sit on stripes,
+  // selected rows and past-row tints, which are a little different from the
+  // card colour this is computed against.
+  const _chipInkCache = /* @__PURE__ */ new Map();
+  function chipInk(hue, surface) {
+    const surf = surface || "#FFFFFF";
+    const key = hue + "|" + surf;
+    let v = _chipInkCache.get(key);
+    if (v === void 0) {
+      v = readableInk(hue, blendOver(hue, surf, 0x22 / 255), 5.6);
+      _chipInkCache.set(key, v);
+    }
+    return v;
+  }
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function compressReceiptImage(file, cb) {

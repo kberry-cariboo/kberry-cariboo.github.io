@@ -142,7 +142,7 @@
           border-radius:20px;padding:5px 12px;border:1px solid rgba(255,255,255,0.12);}
         .header-search-icon{color:rgba(255,255,255,0.4);flex-shrink:0;}
         .header-search-input{font-size:13px;background:transparent;border:none;outline:none;
-          color:#fff;width:130px;caret-color:var(--amber);}
+          color:#fff;width:130px;caret-color:var(--amberInk);}
         .header-search-clear{background:transparent;border:none;cursor:pointer;
           color:rgba(255,255,255,0.5);font-size:14px;padding:0;line-height:1;}
         .alert-bell-btn{position:relative;border:1px solid;border-radius:8px;width:36px;height:36px;
@@ -211,7 +211,7 @@
         .oem-card{padding:24px 24px 20px;width:min(460px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;}
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
-        .oem-hint{font-size:12px;color:var(--amber);margin-bottom:18px;}
+        .oem-hint{font-size:12px;color:var(--amberInk);margin-bottom:18px;}
         .flex-55{flex:1 1 55%;}
         .flex-45{flex:1 1 45%;}
         .oem-attach-img{height:56px;border-radius:8px;border:1px solid var(--border);cursor:pointer;}
@@ -222,7 +222,7 @@
           background:var(--inputBg);}
         .oem-footer-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;}
         .oem-reset-btn{font-size:13px;padding:9px 16px;border-radius:8px;border:1px solid var(--amber);
-          cursor:pointer;background:transparent;color:var(--amber);margin-right:auto;}
+          cursor:pointer;background:transparent;color:var(--amberInk);margin-right:auto;}
         .oem-save-btn{font-weight:700;padding:9px 24px;}
         .household-onboard-wrap{min-height:100vh;background:var(--headerBg);display:flex;
           flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:Inter,sans-serif;}
@@ -328,7 +328,7 @@
         .weekday-btn-row{display:flex;gap:3px;flex-wrap:wrap;}
         .weekday-btn{font-size:11px;font-weight:700;flex:1 1 auto;min-width:34px;height:32px;border-radius:6px;}
         .recur-hint{font-size:10px;color:var(--textLt);margin-top:4px;}
-        .recur-hint-amber{font-size:10px;color:var(--amber);margin-top:4px;}
+        .recur-hint-amber{font-size:10px;color:var(--amberInk);margin-top:4px;}
         .recur-semimonth-desc{font-size:13px;color:var(--textMid);margin-bottom:10px;}
         .monthly-toggle-wrap{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
         .monthly-amounts-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
@@ -356,7 +356,7 @@
         .cf-gap-4{gap:4px;}
         .cursor-pointer{cursor:pointer;}
         .cf-btn--nowrap{white-space:nowrap;}
-        .recur-onetime{color:var(--amber);font-size:13px;}
+        .recur-onetime{color:var(--amberInk);font-size:13px;}
         .entries-col-type{padding:10px 12px;}
         .entries-type-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;text-transform:uppercase;}
         .entries-col-amount{font-weight:600;padding:10px 12px;}
@@ -375,7 +375,7 @@
         .entries-filter-count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;}
         .entries-allyears-label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--textMid);cursor:pointer;white-space:nowrap;}
         .entries-search-input{font-size:13px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--bgCard);color:var(--text);outline:none;width:200px;}
-        .entries-headersearch-banner{font-size:12px;color:var(--amber);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);width:100%;margin-top:6px;}
+        .entries-headersearch-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);width:100%;margin-top:6px;}
         .entries-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         .entries-mobilefilters-stack{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
         .entries-showresults-btn{width:100%;margin-top:18px;padding:12px;}
@@ -407,9 +407,9 @@
         .kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
         .forecast-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px;}
         .forecast-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .search-filter-banner{font-size:12px;color:var(--amber);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);margin-top:8px;}
+        .search-filter-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);margin-top:8px;}
         .forecast-danger-banner{background:var(--amberLt);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:16px;}
-        .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amber);margin-bottom:4px;}
+        .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
         .forecast-lowest-value{font-family:'IBM Plex Mono',monospace;}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
@@ -519,7 +519,7 @@
         .cashflow-month-label{font-size:9px;text-align:center;color:var(--textLt);margin-top:2px;}
         /* ── settings.js ── */
         .text-right{text-align:right;}
-        .link-primary{color:var(--primary);}
+        .link-primary{color:var(--primaryInk);}
         .cf-gap-16{gap:16px;}
         .mt-14{margin-top:14px;}
         .mt-16{margin-top:16px;}
@@ -584,7 +584,7 @@
         .template-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
         .audit-entry{padding:10px 0;border-bottom:1px solid var(--border);}
         .cf-btn--micro{font-size:11px;padding:4px 10px;border-radius:6px;}
-        .revert-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--amberLt);cursor:pointer;background:var(--amberLt);color:var(--amber);}
+        .revert-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--amberLt);cursor:pointer;background:var(--amberLt);color:var(--amberInk);}
         .history-list{margin-top:8px;padding-left:12px;border-left:2px solid var(--border);}
         .history-item-text{font-size:11px;color:var(--textLt);margin-bottom:4px;}
         .errorboundary-wrap{padding:40px 32px;max-width:560px;margin:0 auto;}
@@ -606,14 +606,14 @@
         .drag-dots{opacity:0.3;font-size:9px;margin-left:2px;}
         .budget-desc-td{font-size:13px;padding:8px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .attach-indicator{margin-left:6px;display:inline-flex;}
-        .override-mark{margin-left:6px;font-size:10px;color:var(--amber);font-weight:700;}
+        .override-mark{margin-left:6px;font-size:10px;color:var(--amberInk);font-weight:700;}
         .budget-amount-td{padding:8px 14px;text-align:right;font-weight:600;}
         .budget-balance-td{padding:8px 14px;text-align:right;font-weight:700;}
         .budget-spacer-td{width:30px;padding:0;box-shadow:inset 3px 0 0 0 transparent;}
         .period-hdr-td{background:var(--navyMid);padding:8px 14px;font-size:11px;font-weight:700;color:#fff;letter-spacing:0.1em;text-transform:uppercase;}
         .today-line-td{padding:0;background:transparent;box-shadow:inset 3px 0 0 0 transparent;}
         .today-line-wrap{display:flex;align-items:center;gap:8px;padding:4px 8px;}
-        .today-label{font-size:10px;font-weight:700;color:var(--amber);white-space:nowrap;letter-spacing:0.1em;}
+        .today-label{font-size:10px;font-weight:700;color:var(--amberInk);white-space:nowrap;letter-spacing:0.1em;}
         .today-line-card-wrap{display:flex;align-items:center;gap:8px;padding:6px 14px;}
         .card-top-row{display:flex;align-items:center;gap:8px;justify-content:space-between;}
         .card-desc-span{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
@@ -631,7 +631,7 @@
         .totals-amounts-row{display:flex;gap:12px;align-items:baseline;}
         .swipe-coach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;}
         .gotit-btn{font-size:12px;font-weight:700;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--primary);white-space:nowrap;flex-shrink:0;}
-        .budget-search-banner{font-size:12px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);}
+        .budget-search-banner{font-size:12px;color:var(--amberInk);margin-bottom:8px;padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -743,7 +743,7 @@
         .strat-suggest-btn{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--primary);cursor:pointer;text-decoration:underline;}
         .strat-chart-wrap{margin-top:16px;}
         .strat-chart-label{font-size:11px;color:var(--textLt);margin-bottom:4px;}
-        .debt-restore-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--amber);cursor:pointer;background:transparent;color:var(--amber);white-space:nowrap;}
+        .debt-restore-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--amber);cursor:pointer;background:transparent;color:var(--amberInk);white-space:nowrap;}
         .debt-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:20px 0;}
         .debt-row{padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);cursor:context-menu;}
         .debt-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
@@ -863,7 +863,7 @@
         /* Larger auth-screen variant of the shared input */
         .field-input--lg{font-size:15px;padding:10px 14px;}
         /* Footer legal links */
-        .cf-footer-link{color:rgba(255,255,255,0.4);text-decoration:none;
+        .cf-footer-link{color:rgba(255,255,255,0.55);text-decoration:none;
           border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:1px;transition:color 0.15s;}
         .cf-footer-link:hover{color:rgba(255,255,255,0.7);}
         /* KPI stat card */
@@ -905,7 +905,7 @@
         .month-nav-arrow:disabled{cursor:default;color:var(--border);}
         .month-pill{position:relative;}
         .month-pill[data-match="true"]:not([data-active="true"]){background:var(--amberLt);
-          color:var(--amber);outline:2px solid var(--amber);}
+          color:var(--amberInk);outline:2px solid var(--amber);}
         .month-pill-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;
           border-radius:50%;background:var(--amber);border:2px solid var(--bgCard);}
         /* Edge-scroll fade: hints that more months sit off-screen on the
