@@ -806,24 +806,16 @@
         });
         markSeen("cf_notified_lowbal");
       }
-      // One notification per bill due today, mirroring what the push schedule
-      // sends (see buildNotificationSchedule). Each carries its own tag so
-      // they stack in the shade instead of overwriting one another, and its
-      // own seen-key so a bill added or un-paid later today still announces
-      // itself without re-announcing the others.
+      // A single notification covering everything due today, itemised in the
+      // body — same wording the push schedule uses (billDigestMessage), so a
+      // bill reads the same whether the app was open or closed when it landed.
       const today = startOfToday();
-      activeFlow.forEach((ev) => {
-        if (ev.type !== "expense") return;
-        if (ev.month !== today.getMonth() || ev.day !== today.getDate()) return;
-        if (completed[ev.id]) return;
-        const key = `cf_notified_bill_${ev.id}`;
-        if (seen(key)) return;
-        showLocalNotification(`${ev.desc} is due today`, {
-          body: ev.category ? `${fmt(ev.amount)} · ${ev.category}` : fmt(ev.amount),
-          tag: `cf-bill-${ev.id}`
-        });
-        markSeen(key);
-      });
+      const dueToday = activeFlow.filter((ev) => ev.type === "expense" && ev.month === today.getMonth() && ev.day === today.getDate() && !completed[ev.id]);
+      if (dueToday.length > 0 && !seen("cf_notified_duetoday")) {
+        const msg = billDigestMessage(dueToday.map((ev) => ({ id: ev.id, desc: ev.desc, cents: ev.amount })));
+        showLocalNotification(msg.title, { body: msg.body, tag: "cf-bills-due" });
+        markSeen("cf_notified_duetoday");
+      }
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {

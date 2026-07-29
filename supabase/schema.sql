@@ -251,12 +251,13 @@ create index if not exists push_subscriptions_household_idx on push_subscription
 -- the Edge Function just looks up today's rows. See the long comment on
 -- buildNotificationSchedule in src/lib/push.js for why the split falls here.
 --
--- One row per bill per due date ('bill_due'), so each bill gets its own
--- notification rather than a daily or weekly digest. occurrence_id is what
--- makes them individually addressable — it completes the primary key, and it
--- lets the sender drop a bill that was marked paid after the schedule was
--- written, which is the one part that can't be precomputed. Alerts that aren't
--- about a specific occurrence ('low_balance') use an empty string.
+-- One row per day that has bills due ('bills_due'), carrying every bill for
+-- that day in `items` as [{id, desc, cents}] — one notification per day, with
+-- the individual bills itemised inside it. The list is what lets the sender
+-- drop bills marked paid after the schedule was written and re-word the
+-- message around what's left, which is the one part that can't be
+-- precomputed. occurrence_id is reserved for alerts that are about a single
+-- occurrence; digests and 'low_balance' use an empty string.
 --
 -- These two tables are dropped and recreated rather than altered: both are
 -- entirely derived (the app republishes the schedule within seconds of being
@@ -267,10 +268,11 @@ drop table if exists notification_schedule;
 create table notification_schedule (
   household_id uuid not null references households(id) on delete cascade,
   for_date date not null,
-  kind text not null,                       -- 'bill_due' | 'low_balance'
+  kind text not null,                       -- 'bills_due' | 'low_balance'
   occurrence_id text not null default '',   -- '' for alerts with no occurrence
   title text not null,
   body text not null default '',
+  items jsonb not null default '[]'::jsonb, -- [{id, desc, cents}] for 'bills_due'
   url text not null default './',
   created_at timestamptz not null default now(),
   primary key (household_id, for_date, kind, occurrence_id)
@@ -1222,7 +1224,7 @@ declare
   n int;
 begin
   delete from notification_schedule where household_id = hid;
-  insert into notification_schedule (household_id, for_date, kind, occurrence_id, title, body, url)
+  insert into notification_schedule (household_id, for_date, kind, occurrence_id, title, body, items, url)
   select
     hid,
     cf_date(r->>'for_date'),
@@ -1230,6 +1232,7 @@ begin
     coalesce(r->>'occurrence_id', ''),
     coalesce(r->>'title', 'CashFlow'),
     coalesce(r->>'body', ''),
+    case when jsonb_typeof(r->'items') = 'array' then r->'items' else '[]'::jsonb end,
     coalesce(nullif(r->>'url', ''), './')
   from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) as r
   where cf_date(r->>'for_date') is not null

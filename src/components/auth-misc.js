@@ -609,26 +609,30 @@
           { id: "c-2026-2-20", type: "expense", month: 2, day: 20, amount: 1e3, desc: "Phone", balance: 100 }
         ]
       };
-      t("schedule: one row per bill, not a daily digest", () => {
+      t("schedule: one row per day, bills itemised inside it", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
-        const today = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-10");
-        return today.length === 2 && today.every((r) => /is due today$/.test(r.title)) && today[0].occurrence_id !== today[1].occurrence_id;
+        const today = rows.filter((r) => r.kind === "bills_due" && r.for_date === "2026-03-10");
+        return today.length === 1 && today[0].items.length === 2 && today[0].body.split("\n").length === 2;
       });
-      t("schedule: each bill row names its own amount", () => {
+      t("schedule: digest titles the count and total", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
-        const rent = rows.find((r) => r.occurrence_id === "a-2026-2-10");
-        return !!rent && rent.title === "Rent is due today" && rent.body.indexOf(fmt(5e3)) === 0;
+        const today = rows.find((r) => r.kind === "bills_due" && r.for_date === "2026-03-10");
+        return today.title === `2 bills due today \xB7 ${fmt(7e3)}` && today.body.indexOf(`Rent \u2014 ${fmt(5e3)}`) === 0;
+      });
+      t("schedule: a lone bill is named, not counted", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
+        const later = rows.find((r) => r.kind === "bills_due" && r.for_date === "2026-03-20");
+        return later.title === "Phone is due today" && later.body === fmt(1e3);
       });
       t("schedule: bills already marked paid are dropped", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, completed: { "a-2026-2-10": true }, alertThreshold: 0, now: schedNow });
-        const today = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-10");
-        return today.length === 1 && today[0].occurrence_id === "b-2026-2-10";
+        const today = rows.find((r) => r.kind === "bills_due" && r.for_date === "2026-03-10");
+        return today.items.length === 1 && today.title === "Hydro is due today";
       });
-      t("schedule: future bills get their own dated rows", () => {
+      t("schedule: separate days stay separate notifications", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
-        // The 20th is inside the horizon but is NOT rolled into today's alerts.
-        const later = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-20");
-        return later.length === 1 && later[0].occurrence_id === "c-2026-2-20";
+        const dates = rows.filter((r) => r.kind === "bills_due").map((r) => r.for_date);
+        return dates.length === 2 && dates.indexOf("2026-03-10") >= 0 && dates.indexOf("2026-03-20") >= 0;
       });
       t("schedule: low-balance warning lands 3 days before the dip", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 5e4, now: schedNow });

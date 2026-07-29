@@ -47,14 +47,43 @@ type Sub = {
   failure_count: number;
 };
 
+type Item = { id: string; desc: string; cents: number };
+
 type Row = {
   for_date: string;
   kind: string;
   occurrence_id: string;
   title: string;
   body: string;
+  items: Item[];
   url: string;
 };
+
+// Mirror of `fmt` in src/lib/format.js — amounts are integer cents everywhere.
+// Both sides call the same ICU implementation of toLocaleString, so the output
+// is identical; a Node-side test compares the two over a range of values.
+function money(cents: number): string {
+  const abs = Math.abs(cents / 100).toLocaleString("en-CA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return cents < 0 ? `-$${abs}` : `$${abs}`;
+}
+
+// Mirror of billDigestMessage in src/lib/push.js. It has to exist here too:
+// once bills paid since publication are filtered out, the stored count and
+// total are wrong and the message has to be rebuilt around what's left.
+function billDigest(items: Item[]): { title: string; body: string } | null {
+  if (!items.length) return null;
+  if (items.length === 1) {
+    return { title: `${items[0].desc} is due today`, body: money(items[0].cents) };
+  }
+  const total = items.reduce((s, i) => s + i.cents, 0);
+  return {
+    title: `${items.length} bills due today · ${money(total)}`,
+    body: items.map((i) => `${i.desc} — ${money(i.cents)}`).join("\n"),
+  };
+}
 
 // Intl is the only correct way to do this — a fixed UTC offset would be wrong
 // for half the year in any DST zone, and would silently drift the delivery hour.
@@ -114,15 +143,14 @@ async function run(): Promise<Record<string, number>> {
     const dates = [...new Set(devices.map((d) => d.localDate))];
     const { data: rows, error: rowErr } = await db
       .from("notification_schedule")
-      .select("for_date, kind, occurrence_id, title, body, url")
+      .select("for_date, kind, occurrence_id, title, body, items, url")
       .eq("household_id", householdId)
       .in("for_date", dates);
     if (rowErr) throw rowErr;
     if (!rows?.length) continue;
 
-    // A bill marked paid after the schedule was published shouldn't nag. Now
-    // that each row is a single bill, this is a clean per-row decision: the
-    // bill is either still outstanding or it isn't.
+    // A bill marked paid after the schedule was published shouldn't nag —
+    // this is the set used to filter each day's items below.
     const { data: done, error: doneErr } = await db
       .from("completed_occurrences")
       .select("occurrence_id")
@@ -135,7 +163,27 @@ async function run(): Promise<Record<string, number>> {
         if (row.for_date !== localDate) continue;
         stats.due++;
 
-        if (row.occurrence_id && completed.has(row.occurrence_id)) {
+        // Bills paid since the schedule was published drop out here. If that
+        // empties the day entirely there's nothing to say; otherwise the
+        // message is rebuilt so the count and total match what's actually
+        // still outstanding.
+        let title = row.title;
+        let body = row.body;
+        const items = Array.isArray(row.items) ? row.items : [];
+        if (items.length) {
+          const outstanding = items.filter((i) => !completed.has(i.id));
+          if (!outstanding.length) {
+            stats.skipped++;
+            continue;
+          }
+          if (outstanding.length !== items.length) {
+            const rebuilt = billDigest(outstanding);
+            if (rebuilt) {
+              title = rebuilt.title;
+              body = rebuilt.body;
+            }
+          }
+        } else if (row.occurrence_id && completed.has(row.occurrence_id)) {
           stats.skipped++;
           continue;
         }
@@ -161,14 +209,11 @@ async function run(): Promise<Record<string, number>> {
         }
 
         const payload = JSON.stringify({
-          title: row.title,
-          body: row.body,
-          // Per-occurrence tag: several bills due the same day must stack in
-          // the notification shade, not replace one another. A shared tag
-          // would leave only the last bill visible.
-          tag: row.occurrence_id
-            ? `cf-bill-${row.occurrence_id}`
-            : `cf-${row.kind}-${row.for_date}`,
+          title,
+          body,
+          // One tag per (kind, date): a re-send for the same day replaces the
+          // earlier notification rather than adding a second one.
+          tag: `cf-${row.kind}-${row.for_date}`,
           url: row.url || "./",
         });
 
