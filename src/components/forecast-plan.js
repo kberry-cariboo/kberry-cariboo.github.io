@@ -231,12 +231,20 @@
           }
         }
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, [activeYear]);
     const saveReport = (text) => {
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ text, ts: (/* @__PURE__ */ new Date()).toISOString() }));
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     };
     const buildContext = () => {
@@ -560,6 +568,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           try {
             localStorage.removeItem(CACHE_KEY);
           } catch (e) {
+            // Storage can throw outright in private/partitioned modes.
+            // Nothing here is essential to the current interaction, so a
+            // failure is genuinely ignorable — real save failures surface
+            // via notifyStorageWriteFailure.
           }
         },
         className: "cf-btn cf-btn--secondary cf-btn--wide"

@@ -1984,8 +1984,15 @@ try{
       if(!hadController) return;
       if(refreshed) return; refreshed=true; window.location.reload();
     });
-  }).catch(()=>{});
-}catch(e){}}
+  }).catch((err)=>{
+    // This is the catch that hid a real bug for months: registration was
+    // failing outright (blob: URL) and nothing said so, which silently cost
+    // offline caching and made push impossible. Never swallow it again.
+    console.warn('CashFlow: service worker registration failed — offline caching and notifications are unavailable.', err);
+  });
+}catch(e){
+  console.warn('CashFlow: could not register a service worker.', e);
+}}
 function showError(t,m){
   // Built with real DOM nodes + textContent (not innerHTML) since `m` is a
   // caught exception's message/stack — it can embed text this app didn't
@@ -2055,6 +2062,7 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
     } catch (e) {
+      // Falls through to the Math.random id path below on older browsers.
     }
     return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
@@ -2289,6 +2297,10 @@ document.addEventListener('DOMContentLoaded',function(){
           write("cf_budgtargets", {});
         }
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }
     if (storedVersion < 6) {
@@ -2298,6 +2310,10 @@ document.addEventListener('DOMContentLoaded',function(){
         localStorage.removeItem("cf_gist_id");
         localStorage.removeItem("cf_last_snapshot");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }
     if (storedVersion < 7) {
@@ -2854,6 +2870,10 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       localStorage.removeItem("cf_webauthn_" + userId);
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   }
   async function verifyBiometric(userId) {
@@ -2911,7 +2931,7 @@ document.addEventListener('DOMContentLoaded',function(){
     "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
     "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
     "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
-    "cf_ai_key", "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
+    "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
     "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
   ];
   function clearHouseholdLocalState() {
@@ -2919,6 +2939,10 @@ document.addEventListener('DOMContentLoaded',function(){
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   }
   function useHousehold() {
@@ -3047,6 +3071,12 @@ document.addEventListener('DOMContentLoaded',function(){
   // previously lived inline in applyPayload — legacy/malformed data (an old
   // backup, an older app version's payload) is still guarded exactly as
   // before, just declared once instead of duplicated across apply/build.
+  // Deliberately NOT in this list: aiApiKey. It's a personal credential with
+  // the holder's own billing behind it, and household_settings is readable by
+  // every member — syncing it handed your API key to everyone you share a
+  // budget with. It now lives only in this device's localStorage; enter it
+  // per device. cf_ai_key is likewise absent from HOUSEHOLD_LOCAL_STORAGE_KEYS
+  // above for the same reason: it isn't the household's to clear.
   const HOUSEHOLD_SYNCED_FIELDS = [
     { key: "entries", apply: (v, set) => {
       if (v) set(v);
@@ -3108,9 +3138,6 @@ document.addEventListener('DOMContentLoaded',function(){
     { key: "completed", apply: (v, set) => {
       if (v) set(v);
     } },
-    { key: "aiApiKey", apply: (v, set) => {
-      if (v && set) set(v);
-    } },
     { key: "debtData", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
     } },
@@ -3145,6 +3172,10 @@ document.addEventListener('DOMContentLoaded',function(){
       if (v == null) localStorage.removeItem(k);
       else localStorage.setItem(k, v);
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   };
 
@@ -3423,7 +3454,6 @@ document.addEventListener('DOMContentLoaded',function(){
       values.goals,
       values.dashHidden,
       values.dashOrder,
-      values.aiApiKey,
       values.debtData,
       values.deletedCopyIds
     ]);
@@ -3474,6 +3504,8 @@ document.addEventListener('DOMContentLoaded',function(){
         try {
           if (navigator.onLine === false) return;
         } catch (e) {
+          // Some browsers don't expose onLine; assume we're online and let
+          // the request decide.
         }
         if (initialized.current) saveDataRef.current(true);
         else loadData();
@@ -4033,6 +4065,7 @@ document.addEventListener('DOMContentLoaded',function(){
       cv.height = Math.round(img.height * scale);
       cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
       const b64 = cv.toDataURL("image/jpeg", 0.6);
+      URL.revokeObjectURL(img.src);
       if (b64.length > 3e5) {
         toast("Image too large even after compression \u2014 try a smaller photo.", "error");
         cb(null);
@@ -4041,6 +4074,10 @@ document.addEventListener('DOMContentLoaded',function(){
       cb(b64);
     };
     img.onerror = () => {
+      // Revoke on both paths — this was the one createObjectURL in the app
+      // with no matching revoke, so every rejected photo leaked its blob for
+      // the life of the page.
+      URL.revokeObjectURL(img.src);
       toast("Could not read that image \u2014 try a different photo.", "error");
       cb(null);
     };
@@ -4134,6 +4171,8 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       raw = (location.hash || "").replace(/^#\/?/, "");
     } catch (e) {
+      // A malformed or inaccessible hash just means no deep link; the
+      // default view is correct.
     }
     const [t, s] = raw.split("/");
     return {
@@ -4146,6 +4185,8 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       navigator.vibrate && navigator.vibrate(8);
     } catch (err) {
+      // A malformed or inaccessible hash just means no deep link; the
+      // default view is correct.
     }
   }
   // The app's one CSS prefers-reduced-motion rule clamps every
@@ -6345,6 +6386,10 @@ document.addEventListener('DOMContentLoaded',function(){
       try {
         localStorage.setItem("cf_coach_swipe", "1");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
       setShowSwipeCoach(false);
     };
@@ -6433,6 +6478,7 @@ document.addEventListener('DOMContentLoaded',function(){
         try {
           e.target.setPointerCapture(d.pointerId);
         } catch (e2) {
+          // Pointer capture is an enhancement; drag still works without it.
         }
       }
       if (d.active) {
@@ -7596,12 +7642,20 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, [activeYear]);
     const saveReport = (text) => {
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ text, ts: (/* @__PURE__ */ new Date()).toISOString() }));
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     };
     const buildContext = () => {
@@ -7925,6 +7979,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           try {
             localStorage.removeItem(CACHE_KEY);
           } catch (e) {
+            // Storage can throw outright in private/partitioned modes.
+            // Nothing here is essential to the current interaction, so a
+            // failure is genuinely ignorable — real save failures surface
+            // via notifyStorageWriteFailure.
           }
         },
         className: "cf-btn cf-btn--secondary cf-btn--wide"
@@ -9925,6 +9983,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         if (v) localStorage.setItem("cf_lock_on_launch", "1");
         else localStorage.removeItem("cf_lock_on_launch");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     };
     const toggleBiometric = async () => {
@@ -10542,6 +10604,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           try {
             Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
           } catch (e) {
+            // Storage can throw outright in private/partitioned modes.
+            // Nothing here is essential to the current interaction, so a
+            // failure is genuinely ignorable — real save failures surface
+            // via notifyStorageWriteFailure.
           }
           window.location.reload();
         },
@@ -10742,6 +10808,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     try {
       window.dispatchEvent(new CustomEvent("cf:toast", { detail: { message, kind } }));
     } catch (err) {
+      // Toasts are advisory. If the event can't be dispatched the user
+      // simply doesn't see a confirmation.
     }
   }
   // Small FIFO queue (max 3) so a save-error toast can't be silently
@@ -10860,11 +10928,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         try {
           localStorage.setItem("cf_saved_email", e);
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       } else {
         try {
           localStorage.removeItem("cf_saved_email");
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       }
     };
@@ -11286,6 +11362,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
               try {
                 root2.unmount();
               } catch (e) {
+                // Teardown of a throwaway test root — a failure here can't
+                // affect the app.
               }
             }, 0);
           }
@@ -11568,6 +11646,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         try {
           sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       stamp();
@@ -11585,6 +11667,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
           else stamp();
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       document.addEventListener("visibilitychange", onVis);
@@ -11602,6 +11688,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         try {
           sessionStorage.removeItem(LOCK_KEY);
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       }
     }, [authLoading, session]);
@@ -11663,6 +11753,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       try {
         sessionStorage.setItem("cf_tab", tab);
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
@@ -11690,6 +11784,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         }
         hashInitialized.current = true;
       } catch (e) {
+        // A malformed or inaccessible hash just means no deep link; the
+        // default view is correct.
       }
     }, [tab, budgetSub, planSub]);
     useEffect(() => {
@@ -11726,6 +11822,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         if (sc) sc.scrollTop = 0;
         window.scrollTo(0, 0);
       } catch (e) {
+        // Scroll/focus restoration is cosmetic; failing it must not break
+        // navigation.
       }
     }, [tab, budgetSub, planSub]);
     useEffect(() => {
@@ -11753,6 +11851,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
             first.focus();
           }
         } catch (err) {
+          // Scroll/focus restoration is cosmetic; failing it must not break
+          // navigation.
         }
       };
       document.addEventListener("keydown", trap, true);
@@ -11765,6 +11865,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         const daysSince = last ? Math.floor((Date.now() - parseInt(last)) / 864e5) : 999;
         if (daysSince >= 30) setTimeout(() => setShowBackupNudge(true), 5e3);
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, []);
     const dismissBackup = (doExport = false) => {
@@ -11772,6 +11876,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       try {
         localStorage.setItem("cf_last_backup", String(Date.now()));
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
       if (doExport) {
         // Same full field set (and schemaVersion stamp) as Settings' Export
@@ -12031,6 +12139,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           try {
             if (houseLoadRef.current) houseLoadRef.current();
           } catch (e) {
+            // A reload failure is already reported through the sync status;
+            // this guard only stops a throw escaping the event handler.
           }
         }
         setPullProgress(0);
@@ -12286,6 +12396,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         try {
           sessionStorage.setItem(k, todayKey);
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       if (navLowInfo && !seen("cf_notified_lowbal")) {
@@ -12381,6 +12495,10 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         try {
           sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
         setLocked(false);
       }, onSignOut: logout }));

@@ -39,7 +39,7 @@
     "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
     "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
     "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
-    "cf_ai_key", "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
+    "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
     "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
   ];
   function clearHouseholdLocalState() {
@@ -47,6 +47,10 @@
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   }
   function useHousehold() {
@@ -175,6 +179,12 @@
   // previously lived inline in applyPayload — legacy/malformed data (an old
   // backup, an older app version's payload) is still guarded exactly as
   // before, just declared once instead of duplicated across apply/build.
+  // Deliberately NOT in this list: aiApiKey. It's a personal credential with
+  // the holder's own billing behind it, and household_settings is readable by
+  // every member — syncing it handed your API key to everyone you share a
+  // budget with. It now lives only in this device's localStorage; enter it
+  // per device. cf_ai_key is likewise absent from HOUSEHOLD_LOCAL_STORAGE_KEYS
+  // above for the same reason: it isn't the household's to clear.
   const HOUSEHOLD_SYNCED_FIELDS = [
     { key: "entries", apply: (v, set) => {
       if (v) set(v);
@@ -236,9 +246,6 @@
     { key: "completed", apply: (v, set) => {
       if (v) set(v);
     } },
-    { key: "aiApiKey", apply: (v, set) => {
-      if (v && set) set(v);
-    } },
     { key: "debtData", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
     } },
@@ -273,6 +280,10 @@
       if (v == null) localStorage.removeItem(k);
       else localStorage.setItem(k, v);
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   };
 
@@ -551,7 +562,6 @@
       values.goals,
       values.dashHidden,
       values.dashOrder,
-      values.aiApiKey,
       values.debtData,
       values.deletedCopyIds
     ]);
@@ -602,6 +612,8 @@
         try {
           if (navigator.onLine === false) return;
         } catch (e) {
+          // Some browsers don't expose onLine; assume we're online and let
+          // the request decide.
         }
         if (initialized.current) saveDataRef.current(true);
         else loadData();

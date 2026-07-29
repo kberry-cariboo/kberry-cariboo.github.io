@@ -47,6 +47,8 @@
     try {
       window.dispatchEvent(new CustomEvent("cf:toast", { detail: { message, kind } }));
     } catch (err) {
+      // Toasts are advisory. If the event can't be dispatched the user
+      // simply doesn't see a confirmation.
     }
   }
   // Small FIFO queue (max 3) so a save-error toast can't be silently
@@ -165,11 +167,19 @@
         try {
           localStorage.setItem("cf_saved_email", e);
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       } else {
         try {
           localStorage.removeItem("cf_saved_email");
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       }
     };
@@ -591,6 +601,8 @@
               try {
                 root2.unmount();
               } catch (e) {
+                // Teardown of a throwaway test root — a failure here can't
+                // affect the app.
               }
             }, 0);
           }

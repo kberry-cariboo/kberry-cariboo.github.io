@@ -31,6 +31,10 @@
 -- Nobody can read/write another household's data because every policy and RPC
 -- below checks the caller is a member of the household they're touching.
 
+-- gen_random_bytes (invite codes) lives in pgcrypto. gen_random_uuid() is core
+-- from PG13 on, so this is only needed for the former.
+create extension if not exists pgcrypto;
+
 create table if not exists households (
   id uuid primary key default gen_random_uuid(),
   name text not null default 'My Household',
@@ -866,7 +870,7 @@ begin
      cf_num(d->>'alertThreshold'),
      cf_bool(d->>'darkMode'),
      cf_int(d->>'forecastHorizon'),
-     d->>'aiApiKey',
+     null,
      cf_text_array(d->'colOrder'),
      d->>'regFilter',
      cf_text_array(d->'regFilterCats'),
@@ -889,7 +893,6 @@ begin
      alert_threshold = case when d ? 'alertThreshold' then excluded.alert_threshold else s.alert_threshold end,
      dark_mode = case when d ? 'darkMode' then excluded.dark_mode else s.dark_mode end,
      forecast_horizon = case when d ? 'forecastHorizon' then excluded.forecast_horizon else s.forecast_horizon end,
-     ai_api_key = case when d ? 'aiApiKey' then excluded.ai_api_key else s.ai_api_key end,
      col_order = case when d ? 'colOrder' then excluded.col_order else s.col_order end,
      reg_filter = case when d ? 'regFilter' then excluded.reg_filter else s.reg_filter end,
      reg_filter_cats = case when d ? 'regFilterCats' then excluded.reg_filter_cats else s.reg_filter_cats end,
@@ -1244,6 +1247,14 @@ begin
   return n;
 end $$;
 
+-- The AI API key is no longer synced (see HOUSEHOLD_SYNCED_FIELDS in
+-- src/lib/household-sync.js): it's a personal credential with its own billing,
+-- and every household member can read household_settings. Clear any value a
+-- previous version stored. The column is kept rather than dropped so older
+-- clients that still send the field don't error; cf_apply_household_payload
+-- ignores it now.
+update household_settings set ai_api_key = null where ai_api_key is not null;
+
 -- Household lifecycle RPCs ----------------------------------------------------
 
 -- Called once, right after a brand-new user's first sign-in, if they don't
@@ -1285,7 +1296,14 @@ begin
   if hid is null then
     raise exception 'You must belong to a household first.';
   end if;
-  code := upper(substr(md5(random()::text || clock_timestamp()::text), 1, 8));
+  -- gen_random_bytes (pgcrypto) is a CSPRNG; random() is a seeded PRNG whose
+  -- output is predictable from prior draws, which is not a property you want
+  -- guarding access to a household's entire financial history. Base32-ish
+  -- alphabet with I/O/0/1 removed so codes survive being read aloud or typed
+  -- from a photo. 8 chars over 32 symbols = ~40 bits.
+  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + (get_byte(b, i) % 32), 1), '')
+    into code
+    from (select gen_random_bytes(8) as b) g, generate_series(0, 7) as i;
   insert into household_invites(code, household_id, created_by) values (code, hid, auth.uid());
   return code;
 end;

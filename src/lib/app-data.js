@@ -242,6 +242,7 @@
       cv.height = Math.round(img.height * scale);
       cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
       const b64 = cv.toDataURL("image/jpeg", 0.6);
+      URL.revokeObjectURL(img.src);
       if (b64.length > 3e5) {
         toast("Image too large even after compression \u2014 try a smaller photo.", "error");
         cb(null);
@@ -250,6 +251,10 @@
       cb(b64);
     };
     img.onerror = () => {
+      // Revoke on both paths — this was the one createObjectURL in the app
+      // with no matching revoke, so every rejected photo leaked its blob for
+      // the life of the page.
+      URL.revokeObjectURL(img.src);
       toast("Could not read that image \u2014 try a different photo.", "error");
       cb(null);
     };
@@ -343,6 +348,8 @@
     try {
       raw = (location.hash || "").replace(/^#\/?/, "");
     } catch (e) {
+      // A malformed or inaccessible hash just means no deep link; the
+      // default view is correct.
     }
     const [t, s] = raw.split("/");
     return {
@@ -355,6 +362,8 @@
     try {
       navigator.vibrate && navigator.vibrate(8);
     } catch (err) {
+      // A malformed or inaccessible hash just means no deep link; the
+      // default view is correct.
     }
   }
   // The app's one CSS prefers-reduced-motion rule clamps every

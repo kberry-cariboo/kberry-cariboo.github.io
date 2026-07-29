@@ -90,6 +90,10 @@
         try {
           sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       stamp();
@@ -107,6 +111,10 @@
           if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
           else stamp();
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       document.addEventListener("visibilitychange", onVis);
@@ -124,6 +132,10 @@
         try {
           sessionStorage.removeItem(LOCK_KEY);
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       }
     }, [authLoading, session]);
@@ -185,6 +197,10 @@
       try {
         sessionStorage.setItem("cf_tab", tab);
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
@@ -212,6 +228,8 @@
         }
         hashInitialized.current = true;
       } catch (e) {
+        // A malformed or inaccessible hash just means no deep link; the
+        // default view is correct.
       }
     }, [tab, budgetSub, planSub]);
     useEffect(() => {
@@ -248,6 +266,8 @@
         if (sc) sc.scrollTop = 0;
         window.scrollTo(0, 0);
       } catch (e) {
+        // Scroll/focus restoration is cosmetic; failing it must not break
+        // navigation.
       }
     }, [tab, budgetSub, planSub]);
     useEffect(() => {
@@ -275,6 +295,8 @@
             first.focus();
           }
         } catch (err) {
+          // Scroll/focus restoration is cosmetic; failing it must not break
+          // navigation.
         }
       };
       document.addEventListener("keydown", trap, true);
@@ -287,6 +309,10 @@
         const daysSince = last ? Math.floor((Date.now() - parseInt(last)) / 864e5) : 999;
         if (daysSince >= 30) setTimeout(() => setShowBackupNudge(true), 5e3);
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, []);
     const dismissBackup = (doExport = false) => {
@@ -294,6 +320,10 @@
       try {
         localStorage.setItem("cf_last_backup", String(Date.now()));
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
       if (doExport) {
         // Same full field set (and schemaVersion stamp) as Settings' Export
@@ -553,6 +583,8 @@
           try {
             if (houseLoadRef.current) houseLoadRef.current();
           } catch (e) {
+            // A reload failure is already reported through the sync status;
+            // this guard only stops a throw escaping the event handler.
           }
         }
         setPullProgress(0);
@@ -808,6 +840,10 @@
         try {
           sessionStorage.setItem(k, todayKey);
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       if (navLowInfo && !seen("cf_notified_lowbal")) {
@@ -903,6 +939,10 @@
         try {
           sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
         setLocked(false);
       }, onSignOut: logout }));

@@ -61,7 +61,14 @@ export default [
       "no-compare-neg-zero": "error",
       "no-cond-assign": "error",
       "use-isnan": "error",
-      "valid-typeof": "error"
+      "valid-typeof": "error",
+      // A `catch {}` with nothing in it is how two real bugs hid here for
+      // months (a service worker that never registered, and a notification
+      // API that throws on Android) — both failed loudly and were swallowed.
+      // no-empty does not flag a block containing a comment, so the rule
+      // reads as: swallowing an error is fine, but say why. If you can't
+      // write the reason, the error probably shouldn't be swallowed.
+      "no-empty": ["error", { allowEmptyCatch: false }]
     }
   },
   {

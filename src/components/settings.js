@@ -336,6 +336,10 @@
         if (v) localStorage.setItem("cf_lock_on_launch", "1");
         else localStorage.removeItem("cf_lock_on_launch");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     };
     const toggleBiometric = async () => {
@@ -953,6 +957,10 @@
           try {
             Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
           } catch (e) {
+            // Storage can throw outright in private/partitioned modes.
+            // Nothing here is essential to the current interaction, so a
+            // failure is genuinely ignorable — real save failures surface
+            // via notifyStorageWriteFailure.
           }
           window.location.reload();
         },

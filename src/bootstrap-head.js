@@ -26,8 +26,15 @@ try{
       if(!hadController) return;
       if(refreshed) return; refreshed=true; window.location.reload();
     });
-  }).catch(()=>{});
-}catch(e){}}
+  }).catch((err)=>{
+    // This is the catch that hid a real bug for months: registration was
+    // failing outright (blob: URL) and nothing said so, which silently cost
+    // offline caching and made push impossible. Never swallow it again.
+    console.warn('CashFlow: service worker registration failed — offline caching and notifications are unavailable.', err);
+  });
+}catch(e){
+  console.warn('CashFlow: could not register a service worker.', e);
+}}
 function showError(t,m){
   // Built with real DOM nodes + textContent (not innerHTML) since `m` is a
   // caught exception's message/stack — it can embed text this app didn't
