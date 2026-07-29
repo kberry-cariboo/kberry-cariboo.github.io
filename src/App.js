@@ -90,6 +90,10 @@
         try {
           sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       stamp();
@@ -107,6 +111,10 @@
           if (at && Date.now() - at > lockTimeout * 6e4) setLocked(true);
           else stamp();
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       document.addEventListener("visibilitychange", onVis);
@@ -124,6 +132,10 @@
         try {
           sessionStorage.removeItem(LOCK_KEY);
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       }
     }, [authLoading, session]);
@@ -185,6 +197,10 @@
       try {
         sessionStorage.setItem("cf_tab", tab);
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, [tab]);
     const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
@@ -212,6 +228,8 @@
         }
         hashInitialized.current = true;
       } catch (e) {
+        // A malformed or inaccessible hash just means no deep link; the
+        // default view is correct.
       }
     }, [tab, budgetSub, planSub]);
     useEffect(() => {
@@ -248,6 +266,8 @@
         if (sc) sc.scrollTop = 0;
         window.scrollTo(0, 0);
       } catch (e) {
+        // Scroll/focus restoration is cosmetic; failing it must not break
+        // navigation.
       }
     }, [tab, budgetSub, planSub]);
     useEffect(() => {
@@ -275,6 +295,8 @@
             first.focus();
           }
         } catch (err) {
+          // Scroll/focus restoration is cosmetic; failing it must not break
+          // navigation.
         }
       };
       document.addEventListener("keydown", trap, true);
@@ -287,6 +309,10 @@
         const daysSince = last ? Math.floor((Date.now() - parseInt(last)) / 864e5) : 999;
         if (daysSince >= 30) setTimeout(() => setShowBackupNudge(true), 5e3);
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }, []);
     const dismissBackup = (doExport = false) => {
@@ -294,6 +320,10 @@
       try {
         localStorage.setItem("cf_last_backup", String(Date.now()));
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
       if (doExport) {
         // Same full field set (and schemaVersion stamp) as Settings' Export
@@ -304,7 +334,7 @@
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `CashFlow_Backup_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+        a.download = `CashFlow_Backup_${todayStr()}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
       }
@@ -372,7 +402,7 @@
       // Keep native UI (selects, date pickers, scrollbars, autofill) on the
       // same scheme as the theme — CSS variables can't reach those.
       document.documentElement.style.colorScheme = theme === DARK ? "dark" : "light";
-    }, [darkMode, sessionUser]);
+    }, [darkMode, sessionUser, C]);
     const yearFlows = useMemo(() => {
       const flows = {};
       let carry = null;
@@ -519,7 +549,11 @@
       status: houseStatus,
       msg: houseMsg,
       saveData: houseSave,
-      loadData: houseLoad
+      loadData: houseLoad,
+      unsaved: houseUnsaved,
+      divergence: houseDivergence,
+      keepLocalChanges,
+      discardLocalChanges
     } = useHouseholdData({
       household,
       values: houseValues,
@@ -549,6 +583,8 @@
           try {
             if (houseLoadRef.current) houseLoadRef.current();
           } catch (e) {
+            // A reload failure is already reported through the sync status;
+            // this guard only stops a throw escaping the event handler.
           }
         }
         setPullProgress(0);
@@ -716,7 +752,14 @@
     }, [activeFlow, activeYear, alertThresh]);
     const navLowAlert = !!navLowInfo;
     const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
-    const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    // The calendar day *here*, not in UTC. toISOString() was returning the UTC
+    // date, which west of Greenwich rolls over in the afternoon — from 5pm
+    // local (4pm in winter) every key gated on this already pointed at
+    // tomorrow. That silently un-snoozed the low-balance banner and reset the
+    // once-a-day notification guards, so the same bills could announce
+    // themselves twice in one evening. todayStr() is the local-date helper the
+    // rest of the date code already uses.
+    const todayKey = todayStr();
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
@@ -797,6 +840,10 @@
         try {
           sessionStorage.setItem(k, todayKey);
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       };
       if (navLowInfo && !seen("cf_notified_lowbal")) {
@@ -892,11 +939,15 @@
         try {
           sessionStorage.setItem(LOCK_KEY, String(Date.now()));
         } catch (e) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -928,7 +979,7 @@
       const hasWarning = warning.length > 0;
       if (!hasCritical && !hasWarning) return null;
       const count = hasCritical ? upcoming.length : warning.length;
-      const color = hasCritical ? "var(--red)" : "var(--amber)";
+      const color = hasCritical ? "var(--red)" : "var(--amberInk)";
       const label = hasCritical ? hasWarning ? `${critical.length} critical, ${warning.length} warning alert${upcoming.length > 1 ? "s" : ""}` : `${critical.length} critical alert${critical.length > 1 ? "s" : ""}` : `${warning.length} warning alert${warning.length > 1 ? "s" : ""}`;
       return /* @__PURE__ */ React.createElement(
         "button",
@@ -1119,7 +1170,7 @@
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
     } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
-      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amber)"}55`
+      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}55`
     } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
@@ -1282,6 +1333,7 @@
         sbConfigured,
         houseStatus,
         houseMsg,
+        houseUnsaved,
         houseSave,
         houseLoad,
         household,

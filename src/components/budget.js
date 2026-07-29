@@ -21,6 +21,10 @@
       try {
         localStorage.setItem("cf_coach_swipe", "1");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
       setShowSwipeCoach(false);
     };
@@ -109,6 +113,7 @@
         try {
           e.target.setPointerCapture(d.pointerId);
         } catch (e2) {
+          // Pointer capture is an enhancement; drag still works without it.
         }
       }
       if (d.active) {
@@ -312,9 +317,12 @@
           },
           className: "budget-event-tr",
           style: {
-            background: selIds.has(ev.id) ? "var(--stripe)" : isDone ? "var(--doneBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
+            background: selIds.has(ev.id) ? "var(--stripe)" : isDone ? "var(--doneBg)" : past ? "var(--pastBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
             borderBottom: isDropTarget ? "2px solid var(--primary)" : "1px solid var(--border)",
-            opacity: past && !isDone ? 0.7 : isDragging ? 0.4 : 1
+            // Past rows are tinted, not faded — see pastBg in app-data.js.
+            // Drag opacity stays: it's a transient gesture, not a way of
+            // presenting content you still have to read.
+            opacity: isDragging ? 0.4 : 1
           }
         },
         /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-col-checkbox--cell", onClick: (e) => e.stopPropagation(), style: {
@@ -380,7 +388,7 @@
           }
           if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: {
             textDecoration: isDone ? "line-through" : "none",
-            color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
+            color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
           } }, fmt(ev.balance));
           return null;
         }),
@@ -424,9 +432,8 @@
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
           },
           style: {
-            background: isSel ? "var(--stripe)" : isDone ? "var(--doneBg)" : "var(--bgCard)",
-            boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent",
-            opacity: past && !isDone ? 0.7 : 1
+            background: isSel ? "var(--stripe)" : isDone ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
+            boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent"
           }
         },
         /* @__PURE__ */ React.createElement(
@@ -462,7 +469,7 @@
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amber)" : "var(--text)"
+          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
         } }, fmt(ev.balance))))), /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -479,7 +486,7 @@
       );
     };
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
-      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)"
+      color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
     const days = useMemo(() => {
       let runBal = s ? s.open : openBal;
@@ -619,7 +626,7 @@
         "Got it"
       )),
       gq && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
-      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amber)" : "var(--text)" })),
+      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })),
       budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -699,7 +706,7 @@
       })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { className: "openbal-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
         background: "var(--amberLt)"
       } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td", style: { background: "var(--amberLt)" } }), bCols.map((col) => {
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: { color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amber)" : "var(--text)" } }, fmt(s.open));
+        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: { color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(s.open));
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-label-cell" }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
         return /* @__PURE__ */ React.createElement("td", { key: col, className: `${cls} pad-8-14` });
@@ -854,7 +861,7 @@
       )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
         background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
       } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "daily-balance-caption" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 daily-balance-amt", style: {
-        color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amber)" : "var(--greenDk)"
+        color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
       } }, fmt(dayObj.balance))))))), days.length === 0 && /* @__PURE__ */ React.createElement("p", { className: "no-activity-msg" }, "No activity this month."))),
       bvaCtxMenu && /* @__PURE__ */ React.createElement(
         ContextMenu,
@@ -993,7 +1000,7 @@
           const target = roundMoney((baseTarget + carry));
           const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
-          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amber)" : "var(--red)";
+          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amberInk)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return /* @__PURE__ */ React.createElement(
             "div",
@@ -1029,7 +1036,7 @@
           const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0) + carryFor(c), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
-          const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amber)" : "var(--red)";
+          const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
             color: tOver ? tColor : "var(--text)"
           } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over")));

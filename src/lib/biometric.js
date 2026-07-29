@@ -72,6 +72,10 @@
     try {
       localStorage.removeItem("cf_webauthn_" + userId);
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   }
   async function verifyBiometric(userId) {

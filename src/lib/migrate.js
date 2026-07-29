@@ -212,6 +212,10 @@
           write("cf_budgtargets", {});
         }
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }
     if (storedVersion < 6) {
@@ -221,6 +225,10 @@
         localStorage.removeItem("cf_gist_id");
         localStorage.removeItem("cf_last_snapshot");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     }
     if (storedVersion < 7) {

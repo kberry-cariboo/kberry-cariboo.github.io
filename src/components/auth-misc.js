@@ -47,6 +47,8 @@
     try {
       window.dispatchEvent(new CustomEvent("cf:toast", { detail: { message, kind } }));
     } catch (err) {
+      // Toasts are advisory. If the event can't be dispatched the user
+      // simply doesn't see a confirmation.
     }
   }
   // Small FIFO queue (max 3) so a save-error toast can't be silently
@@ -165,11 +167,19 @@
         try {
           localStorage.setItem("cf_saved_email", e);
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       } else {
         try {
           localStorage.removeItem("cf_saved_email");
         } catch (err) {
+          // Storage can throw outright in private/partitioned modes.
+          // Nothing here is essential to the current interaction, so a
+          // failure is genuinely ignorable — real save failures surface via
+          // notifyStorageWriteFailure.
         }
       }
     };
@@ -485,6 +495,24 @@
       ov[evs[0].id] = { amount: 250 };
       const evs2 = expandEntries([entry], 2026, ov);
       t("override changes amount", () => evs2[0].amount === 250 && evs2[0].isOverride === true);
+      // Per-day keys (banner snooze, once-a-day notification guards) must roll
+      // over at local midnight. toISOString() rolls over at 00:00 UTC, which
+      // west of Greenwich is mid-afternoon the day before.
+      t("todayStr() is the local date, not the UTC one", () => {
+        const now = /* @__PURE__ */ new Date();
+        const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        return todayStr() === expected;
+      });
+      t("todayStr() matches localDateStr for an evening instant", () => {
+        // 22:30 local on any date: still today locally, already tomorrow in UTC
+        // for every timezone west of UTC+01:30.
+        const d = new Date(2026, 2, 10, 22, 30, 0);
+        const viaUtc = d.toISOString().slice(0, 10);
+        const local = localDateStr(d);
+        // Only assert the divergence where it actually exists; east of
+        // Greenwich the two legitimately agree at this hour.
+        return d.getTimezoneOffset() > 90 ? local === "2026-03-10" && viaUtc !== local : local === "2026-03-10";
+      });
       t("localStorage roundtrip", () => {
         localStorage.setItem("cf_selftest", "x");
         const v = localStorage.getItem("cf_selftest") === "x";
@@ -573,6 +601,8 @@
               try {
                 root2.unmount();
               } catch (e) {
+                // Teardown of a throwaway test root — a failure here can't
+                // affect the app.
               }
             }, 0);
           }

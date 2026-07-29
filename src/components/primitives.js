@@ -11,7 +11,7 @@
     const color = getCatColor(category, cats, catColors);
     return /* @__PURE__ */ React.createElement("span", { className: ("cat-chip " + className).trim(), style: __spreadValues({
       background: color + "22",
-      color: `color-mix(in srgb, ${color} var(--chipKeep, 100%), #fff)`,
+      color: chipInk(color, ctxCats.chipSurface),
       border: `1px solid ${color}44`
     }, style) }, category);
   };

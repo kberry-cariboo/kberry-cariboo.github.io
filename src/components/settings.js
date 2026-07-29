@@ -15,13 +15,13 @@
         className: "alert-row",
         style: {
           background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amber)"}`
+          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amberInk)"}`
         }
       },
-      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amber)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
+      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
       /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, ev.desc), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
       /* @__PURE__ */ React.createElement("div", { className: "text-right" }, /* @__PURE__ */ React.createElement("div", { className: "alert-row-balance", style: {
-        color: ev.balance < 0 ? "var(--red)" : "var(--amber)"
+        color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)"
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
     );
@@ -35,7 +35,7 @@
     )), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
       color: "var(--red)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev) => renderAlertRow(ev))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
-      color: "var(--amber)"
+      color: "var(--amberInk)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))));
   }
   // One-time (non-repeating) entries exist only in the year of their startDate,
@@ -258,7 +258,7 @@
   }, lockTimeout = 15, setLockTimeout = () => {
   }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
-  }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseSave = () => {
+  }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
   }, household = null, members = [], createInvite = () => {
   }, setMemberDisabled = () => {
@@ -336,6 +336,10 @@
         if (v) localStorage.setItem("cf_lock_on_launch", "1");
         else localStorage.removeItem("cf_lock_on_launch");
       } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
       }
     };
     const toggleBiometric = async () => {
@@ -609,6 +613,9 @@
           inputMode: "decimal",
           step: "0.01",
           className: "cf-text-mono-13 openbal-input",
+          // "Opening balance" next to it is a span, not a label — name the
+          // field per-year so it's unambiguous when several years are listed.
+          "aria-label": `Opening balance for ${yc.year}`,
           value: centsToDollars(yc.openingBalance),
           onChange: (e) => updateOpenBal(yc.year, dollarsToCents(e.target.value))
         }
@@ -773,7 +780,7 @@
           setPendingRestore(null);
         }
       }
-    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
     } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
@@ -950,6 +957,10 @@
           try {
             Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
           } catch (e) {
+            // Storage can throw outright in private/partitioned modes.
+            // Nothing here is essential to the current interaction, so a
+            // failure is genuinely ignorable — real save failures surface
+            // via notifyStorageWriteFailure.
           }
           window.location.reload();
         },

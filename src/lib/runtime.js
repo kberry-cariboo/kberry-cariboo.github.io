@@ -42,6 +42,7 @@
     try {
       if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
     } catch (e) {
+      // Falls through to the Math.random id path below on older browsers.
     }
     return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }

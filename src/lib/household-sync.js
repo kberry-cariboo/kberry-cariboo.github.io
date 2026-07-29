@@ -39,7 +39,7 @@
     "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
     "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
     "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
-    "cf_ai_key", "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
+    "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
     "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
   ];
   function clearHouseholdLocalState() {
@@ -47,6 +47,10 @@
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
     }
   }
   function useHousehold() {
@@ -175,6 +179,12 @@
   // previously lived inline in applyPayload — legacy/malformed data (an old
   // backup, an older app version's payload) is still guarded exactly as
   // before, just declared once instead of duplicated across apply/build.
+  // Deliberately NOT in this list: aiApiKey. It's a personal credential with
+  // the holder's own billing behind it, and household_settings is readable by
+  // every member — syncing it handed your API key to everyone you share a
+  // budget with. It now lives only in this device's localStorage; enter it
+  // per device. cf_ai_key is likewise absent from HOUSEHOLD_LOCAL_STORAGE_KEYS
+  // above for the same reason: it isn't the household's to clear.
   const HOUSEHOLD_SYNCED_FIELDS = [
     { key: "entries", apply: (v, set) => {
       if (v) set(v);
@@ -236,9 +246,6 @@
     { key: "completed", apply: (v, set) => {
       if (v) set(v);
     } },
-    { key: "aiApiKey", apply: (v, set) => {
-      if (v && set) set(v);
-    } },
     { key: "debtData", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
     } },
@@ -246,10 +253,58 @@
       if (v && typeof v === "object") set(v);
     } }
   ];
+  // Edits that never reached the server. The service worker means the app
+  // loads and is fully usable offline, so this is a real state to be in — and
+  // previously a silent data-loss one: a failed load left autosave disabled,
+  // the edits lived only in localStorage, and the next successful load
+  // overwrote them from the server without a word.
+  //
+  // Two markers, both persisted so they survive the tab being closed:
+  //   cf_unsaved_since  — set when a save fails or an edit happens while
+  //                       autosave is disabled; cleared on a successful save.
+  //   cf_last_synced_at — the payload savedAt this device last agreed with.
+  //                       Comparing it to the server's tells us whether the
+  //                       cloud moved on while we were away, which is the
+  //                       difference between "safe to push" and "ask the user".
+  const UNSAVED_KEY = "cf_unsaved_since";
+  const SYNCED_AT_KEY = "cf_last_synced_at";
+  const readMarker = (k) => {
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
+  };
+  const writeMarker = (k, v) => {
+    try {
+      if (v == null) localStorage.removeItem(k);
+      else localStorage.setItem(k, v);
+    } catch (e) {
+      // Storage can throw outright in private/partitioned modes. Nothing
+      // here is essential to the current interaction, so a failure is
+      // genuinely ignorable — real save failures surface via
+      // notifyStorageWriteFailure.
+    }
+  };
+
   function useHouseholdData({ household, values, setters }) {
     const [status, setStatus] = useState("idle");
     const [msg, setMsg] = useState("");
+    // True when this device is holding edits the server hasn't got.
+    const [unsaved, setUnsaved] = useState(() => !!readMarker(UNSAVED_KEY));
+    // Set when *both* sides changed independently — there's no safe automatic
+    // answer, so the user picks. Holds the server copy while they decide.
+    const [divergence, setDivergence] = useState(null);
     const initialized = useRef(false);
+    const loadAttempted = useRef(false);
+    const markUnsaved = useCallback(() => {
+      if (!readMarker(UNSAVED_KEY)) writeMarker(UNSAVED_KEY, (/* @__PURE__ */ new Date()).toISOString());
+      setUnsaved(true);
+    }, []);
+    const clearUnsaved = useCallback(() => {
+      writeMarker(UNSAVED_KEY, null);
+      setUnsaved(false);
+    }, []);
     const saveTimer = useRef(null);
     const lastLoadedHousehold = useRef(null);
     // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
@@ -350,12 +405,44 @@
             });
           });
         }
+        // Unsaved local edits must never be silently overwritten by the
+        // server copy. Which resolution is safe depends on whether the cloud
+        // moved on while this device was offline.
+        if (readMarker(UNSAVED_KEY)) {
+          const serverSavedAt = payload.savedAt || null;
+          const lastAgreed = readMarker(SYNCED_AT_KEY);
+          if (!serverSavedAt || serverSavedAt === lastAgreed) {
+            // Nobody else changed anything — this device's copy is simply the
+            // newer one. Push it instead of applying the older server state.
+            initialized.current = true;
+            const pushed = await saveDataRef.current(true);
+            if (pushed) {
+              toast("Synced the changes you made while offline.");
+              return true;
+            }
+            // Still can't reach the server: keep local state as-is rather
+            // than replacing it with a copy we know is stale.
+            setStatus("error");
+            setMsg("⚠ Unsaved changes on this device — will retry");
+            return false;
+          }
+          // Both sides moved. There is no correct automatic answer, so stop
+          // and let the user choose; local state is left untouched meanwhile.
+          loadAttempted.current = true;
+          setDivergence({ payload, rmap });
+          setStatus("error");
+          setMsg("⚠ Unsaved changes here and newer changes in the cloud");
+          return false;
+        }
         applyPayload(payload);
+        writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
         initialized.current = true;
+        loadAttempted.current = true;
         setStatus("ok");
         setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
+        loadAttempted.current = true;
         setStatus("error");
         setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
         return false;
@@ -393,8 +480,12 @@
           p_expected_saved_at: lastSavedAtRef.current
         });
         if (error) throw error;
-        if (newSavedAt) lastSavedAtRef.current = newSavedAt;
+        if (newSavedAt) {
+          lastSavedAtRef.current = newSavedAt;
+          writeMarker(SYNCED_AT_KEY, newSavedAt);
+        }
         await syncReceipts();
+        clearUnsaved();
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -408,11 +499,15 @@
           toast("Another device saved changes to this household — reloaded the latest version. Please redo your last change if it's missing.", "error");
           return false;
         }
+        // Anything else (offline, server down, transient network) leaves the
+        // edits on this device only. Remember that, so a later load can't
+        // quietly overwrite them and a reconnect can retry.
+        markUnsaved();
         setStatus("error");
         setMsg("❌ " + e.message);
         return false;
       }
-    }, [household, buildPayload, syncReceipts, loadData]);
+    }, [household, buildPayload, syncReceipts, loadData, clearUnsaved, markUnsaved]);
     // loadData is declared before saveData, so it reaches the latest saveData
     // through a ref (also keeps loadData's identity stable across payload edits).
     const saveDataRef = useRef(saveData);
@@ -467,9 +562,80 @@
       values.goals,
       values.dashHidden,
       values.dashOrder,
-      values.aiApiKey,
       values.debtData,
       values.deletedCopyIds
     ]);
-    return { status, msg, saveData, loadData };
+    // --- resolving a divergence -------------------------------------------
+    // Deliberately only reachable from an explicit user choice; nothing here
+    // runs automatically, because either branch discards somebody's work.
+    const keepLocalChanges = useCallback(async () => {
+      if (!divergence) return;
+      // Adopt the server's savedAt so the conflict check passes — we are
+      // knowingly overwriting it.
+      lastSavedAtRef.current = divergence.payload.savedAt || null;
+      initialized.current = true;
+      setDivergence(null);
+      const ok = await saveDataRef.current(false);
+      if (ok) toast("This device's version is now the shared one.");
+    }, [divergence]);
+    const discardLocalChanges = useCallback(() => {
+      if (!divergence) return;
+      const { payload, rmap } = divergence;
+      receiptCache.current = Object.assign({}, rmap);
+      if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+        Object.keys(payload.overridesByYr).forEach((year) => {
+          const yOvs = payload.overridesByYr[year] || {};
+          Object.keys(yOvs).forEach((k) => {
+            const src = rmap["override:" + year + ":" + k];
+            if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+          });
+        });
+      }
+      applyPayload(payload);
+      lastSavedAtRef.current = payload.savedAt || null;
+      writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
+      clearUnsaved();
+      initialized.current = true;
+      setDivergence(null);
+      setStatus("ok");
+      setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+      toast("Using the cloud version. This device's unsaved changes were discarded.", "error");
+    }, [divergence, applyPayload, clearUnsaved]);
+
+    // Retry whenever the device plausibly has connectivity again. Without
+    // this, a save that failed offline was never attempted again until the
+    // user happened to make another edit.
+    useEffect(() => {
+      if (!household) return;
+      const retry = () => {
+        if (!readMarker(UNSAVED_KEY) || divergence) return;
+        try {
+          if (navigator.onLine === false) return;
+        } catch (e) {
+          // Some browsers don't expose onLine; assume we're online and let
+          // the request decide.
+        }
+        if (initialized.current) saveDataRef.current(true);
+        else loadData();
+      };
+      const onVisible = () => {
+        if (document.visibilityState === "visible") retry();
+      };
+      window.addEventListener("online", retry);
+      document.addEventListener("visibilitychange", onVisible);
+      return () => {
+        window.removeEventListener("online", retry);
+        document.removeEventListener("visibilitychange", onVisible);
+      };
+    }, [household, loadData, divergence]);
+
+    // Edits made while autosave is disabled (i.e. the initial load failed) are
+    // the exact case that used to vanish. Nothing will try to save them until
+    // connectivity returns, so record that they exist.
+    useEffect(() => {
+      if (!household || !loadAttempted.current || initialized.current) return;
+      markUnsaved();
+    }, [household, markUnsaved, values.entries, values.overridesByYr, values.yearConfigs, values.completed, values.goals, values.budgetTargets]);
+
+    return { status, msg, saveData, loadData, unsaved, divergence, keepLocalChanges, discardLocalChanges };
   }
