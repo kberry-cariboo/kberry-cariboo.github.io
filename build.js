@@ -6,6 +6,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const ROOT = __dirname;
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
@@ -37,18 +38,33 @@ const APP_MODULES = [
 
 // The service worker can't be inlined into index.html — it has to be fetched
 // from a real same-origin URL — so it's the one build output besides
-// index.html. Its cache name is stamped from bootstrap-head.js's CF_VERSION so
-// bumping the app version also invalidates the worker's cache.
-function buildServiceWorker() {
+// index.html.
+//
+// Its cache name carries a content hash of the built page, not just
+// CF_VERSION. That distinction matters more than it looks: the cache name is
+// the only thing that makes sw.js differ between builds, and a byte-identical
+// sw.js is how the browser decides there's no update — no install, no
+// activate, no controllerchange, so an installed PWA never reloads and users
+// stay on the old bundle. Keying on CF_VERSION alone made that a manual step
+// everyone forgets (four rounds of notification changes all shipped under
+// v177, and installs kept showing stale UI copy). Hashing the output makes it
+// automatic: any change to src/ changes the hash, and no change leaves the
+// worker untouched so browsers aren't churned for nothing.
+//
+// CF_VERSION stays in the name because it's the human-readable build tag shown
+// in Settings — the hash is for correctness, the version is for people.
+function buildServiceWorker(builtHtml) {
   const bootstrap = read("src/bootstrap-head.js");
   const m = bootstrap.match(/const CF_VERSION\s*=\s*'([^']+)'/);
   if (!m) {
     console.error("build.js: couldn't find CF_VERSION in src/bootstrap-head.js");
     process.exit(1);
   }
-  const sw = read("src/sw.js").replace(/__CF_VERSION__/g, () => m[1]);
+  const hash = crypto.createHash("sha256").update(builtHtml).digest("hex").slice(0, 12);
+  const cacheName = `${m[1]}-${hash}`;
+  const sw = read("src/sw.js").replace(/__CF_VERSION__/g, () => cacheName);
   fs.writeFileSync(path.join(ROOT, "sw.js"), sw);
-  console.log(`build.js: wrote sw.js (${sw.length.toLocaleString()} bytes, cache cf-${m[1]})`);
+  console.log(`build.js: wrote sw.js (${sw.length.toLocaleString()} bytes, cache cf-${cacheName})`);
 }
 
 function build() {
@@ -82,7 +98,7 @@ function build() {
   fs.writeFileSync(path.join(ROOT, "index.html"), output);
   console.log(`build.js: wrote index.html (${output.length.toLocaleString()} bytes)`);
 
-  buildServiceWorker();
+  buildServiceWorker(output);
 }
 
 module.exports = { APP_MODULES, ROOT, read };
