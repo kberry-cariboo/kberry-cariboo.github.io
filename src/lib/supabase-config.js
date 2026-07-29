@@ -7,6 +7,6 @@
   // VAPID_PRIVATE_KEY secret and must never be committed. Leaving this empty
   // simply disables background push — the app falls back to foreground-only
   // notifications and says so in Settings.
-  const VAPID_PUBLIC_KEY = "";
+  const VAPID_PUBLIC_KEY = "prime256v1";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
