@@ -806,32 +806,24 @@
         });
         markSeen("cf_notified_lowbal");
       }
+      // One notification per bill due today, mirroring what the push schedule
+      // sends (see buildNotificationSchedule). Each carries its own tag so
+      // they stack in the shade instead of overwriting one another, and its
+      // own seen-key so a bill added or un-paid later today still announces
+      // itself without re-announcing the others.
       const today = startOfToday();
-      const dueToday = activeFlow.filter((ev) => ev.type === "expense" && ev.month === today.getMonth() && ev.day === today.getDate() && !completed[ev.id]);
-      if (dueToday.length > 0 && !seen("cf_notified_duetoday")) {
-        const total = dueToday.reduce((s, ev) => s + ev.amount, 0);
-        showLocalNotification(
-          dueToday.length === 1 ? `${dueToday[0].desc} is due today` : `${dueToday.length} bills due today`,
-          {
-            body: dueToday.length === 1 ? `${fmt(dueToday[0].amount)} due today.` : `${fmt(total)} total due today.`,
-            tag: "cf-duetoday"
-          }
-        );
-        markSeen("cf_notified_duetoday");
-      }
-      const in7 = new Date(today);
-      in7.setDate(today.getDate() + 7);
-      // Strictly after today — "due today" already has its own notification
-      // above, and counting those twice made the weekly total look wrong.
-      const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date > today && ev.date <= in7 && !completed[ev.id]);
-      if (dueSoon.length > 0 && !seen("cf_notified_duebills")) {
-        const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
-        showLocalNotification("Bills due this week", {
-          body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
-          tag: "cf-duebills"
+      activeFlow.forEach((ev) => {
+        if (ev.type !== "expense") return;
+        if (ev.month !== today.getMonth() || ev.day !== today.getDate()) return;
+        if (completed[ev.id]) return;
+        const key = `cf_notified_bill_${ev.id}`;
+        if (seen(key)) return;
+        showLocalNotification(`${ev.desc} is due today`, {
+          body: ev.category ? `${fmt(ev.amount)} · ${ev.category}` : fmt(ev.amount),
+          tag: `cf-bill-${ev.id}`
         });
-        markSeen("cf_notified_duebills");
-      }
+        markSeen(key);
+      });
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {

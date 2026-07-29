@@ -95,9 +95,10 @@ entirely; use **Settings → Backup** for local JSON export/import.
 
 Two independent layers:
 
-**Foreground** works out of the box, no setup. While the app is open it alerts
-on bills due today, bills due within 7 days, and a forecast balance heading
-below your threshold. Turn it on in **Settings → Notifications**.
+**Foreground** works out of the box, no setup. While the app is open it raises
+one alert per bill on the day that bill is due, plus a warning when the
+forecast balance is heading below your threshold. Turn it on in
+**Settings → Notifications**.
 
 **Background (Web Push)** is what reaches your phone with the app and browser
 both closed — Android renders these as ordinary system notifications. It needs
@@ -148,7 +149,9 @@ site can't send anything:
 ### How the scheduling works
 
 The app owns all the money math. Whenever your budget changes it publishes a
-rolling 90-day list of "on this date, say this" rows to `notification_schedule`;
+rolling 90-day list of "on this date, say this" rows to `notification_schedule`
+— one row per bill per due date, so bills arrive individually rather than as a
+daily or weekly digest;
 the Edge Function only looks up today's rows for each device's timezone and
 sends them. That avoids a second, drifting copy of the recurrence/override
 logic in Deno — see the comment on `buildNotificationSchedule` in

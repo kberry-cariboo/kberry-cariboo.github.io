@@ -206,28 +206,24 @@
 
     const rows = [];
 
-    // 1. Bills due today, one row per date that has any.
-    const byDate = {};
+    // 1. One row per bill, on the day it's due — not one digest per day and
+    //    not a weekly roll-up. Each becomes its own notification naming the
+    //    bill and its amount, so the notification shade reads as a to-do list
+    //    you can dismiss item by item as you pay them.
+    //
+    //    occurrence_id is what makes these individually addressable: it keys
+    //    the row, tags the notification (so several on the same day stack
+    //    instead of replacing each other), and lets the sender skip a bill
+    //    that's been marked paid since the schedule was written.
     inWindow.forEach(({ ev, date }) => {
       if (ev.type !== "expense") return;
       if (completed[ev.id]) return;
-      const key = ymd(date);
-      (byDate[key] = byDate[key] || []).push(ev);
-    });
-    Object.keys(byDate).sort().forEach((dateKey) => {
-      const evs = byDate[dateKey];
-      const total = evs.reduce((s, e) => s + e.amount, 0);
-      const names = evs.map((e) => e.desc).filter(Boolean);
-      const head = names.slice(0, 3).join(", ");
-      const more = names.length > 3 ? ` +${names.length - 3} more` : "";
       rows.push({
-        for_date: dateKey,
-        kind: "bills_today",
-        title: evs.length === 1 ? `${evs[0].desc} is due today` : `${evs.length} bills due today`,
-        body: evs.length === 1
-          ? `${fmt(evs[0].amount)} due today.`
-          : `${fmt(total)} total — ${head}${more}.`,
-        occurrence_ids: evs.map((e) => e.id),
+        for_date: ymd(date),
+        kind: "bill_due",
+        occurrence_id: ev.id,
+        title: `${ev.desc} is due today`,
+        body: ev.category ? `${fmt(ev.amount)} · ${ev.category}` : fmt(ev.amount),
         url: "./#budget"
       });
     });
@@ -243,9 +239,11 @@
       rows.push({
         for_date: ymd(warnAt),
         kind: "low_balance",
+        // Not tied to a single occurrence — empty string rather than null so
+        // it still participates in the (date, kind, occurrence) primary key.
+        occurrence_id: "",
         title: "Low balance ahead",
         body: `Balance is forecast to dip to ${fmt(dip.ev.balance)} on ${humanShortDate(ymd(dip.date))}, below your ${fmt(alertThreshold)} threshold.`,
-        occurrence_ids: [],
         url: "./#dashboard"
       });
     }

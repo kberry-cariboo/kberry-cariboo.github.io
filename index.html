@@ -3544,28 +3544,24 @@ document.addEventListener('DOMContentLoaded',function(){
 
     const rows = [];
 
-    // 1. Bills due today, one row per date that has any.
-    const byDate = {};
+    // 1. One row per bill, on the day it's due — not one digest per day and
+    //    not a weekly roll-up. Each becomes its own notification naming the
+    //    bill and its amount, so the notification shade reads as a to-do list
+    //    you can dismiss item by item as you pay them.
+    //
+    //    occurrence_id is what makes these individually addressable: it keys
+    //    the row, tags the notification (so several on the same day stack
+    //    instead of replacing each other), and lets the sender skip a bill
+    //    that's been marked paid since the schedule was written.
     inWindow.forEach(({ ev, date }) => {
       if (ev.type !== "expense") return;
       if (completed[ev.id]) return;
-      const key = ymd(date);
-      (byDate[key] = byDate[key] || []).push(ev);
-    });
-    Object.keys(byDate).sort().forEach((dateKey) => {
-      const evs = byDate[dateKey];
-      const total = evs.reduce((s, e) => s + e.amount, 0);
-      const names = evs.map((e) => e.desc).filter(Boolean);
-      const head = names.slice(0, 3).join(", ");
-      const more = names.length > 3 ? ` +${names.length - 3} more` : "";
       rows.push({
-        for_date: dateKey,
-        kind: "bills_today",
-        title: evs.length === 1 ? `${evs[0].desc} is due today` : `${evs.length} bills due today`,
-        body: evs.length === 1
-          ? `${fmt(evs[0].amount)} due today.`
-          : `${fmt(total)} total — ${head}${more}.`,
-        occurrence_ids: evs.map((e) => e.id),
+        for_date: ymd(date),
+        kind: "bill_due",
+        occurrence_id: ev.id,
+        title: `${ev.desc} is due today`,
+        body: ev.category ? `${fmt(ev.amount)} · ${ev.category}` : fmt(ev.amount),
         url: "./#budget"
       });
     });
@@ -3581,9 +3577,11 @@ document.addEventListener('DOMContentLoaded',function(){
       rows.push({
         for_date: ymd(warnAt),
         kind: "low_balance",
+        // Not tied to a single occurrence — empty string rather than null so
+        // it still participates in the (date, kind, occurrence) primary key.
+        occurrence_id: "",
         title: "Low balance ahead",
         body: `Balance is forecast to dip to ${fmt(dip.ev.balance)} on ${humanShortDate(ymd(dip.date))}, below your ${fmt(alertThreshold)} threshold.`,
-        occurrence_ids: [],
         url: "./#dashboard"
       });
     }
@@ -9848,7 +9846,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "autolock-select"
       },
       HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
-    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "You'll be alerted when bills are due today, when bills are due within 7 days, and when your forecast balance is heading below your threshold. With background delivery active these arrive as ordinary system notifications on your phone, at the time set above, whether or not the app is open — otherwise they only show while it is."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Each bill gets its own notification on the day it's due, naming the bill and its amount, plus a warning when your forecast balance is heading below your threshold. With background delivery active these arrive as ordinary system notifications on your phone, at the time set above, whether or not the app is open — otherwise they only show while it is."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -10963,20 +10961,31 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           { id: "c-2026-2-20", type: "expense", month: 2, day: 20, amount: 1e3, desc: "Phone", balance: 100 }
         ]
       };
-      t("schedule: same-day bills collapse into one alert", () => {
+      t("schedule: one row per bill, not a daily digest", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
-        const today = rows.filter((r) => r.kind === "bills_today" && r.for_date === "2026-03-10");
-        return today.length === 1 && today[0].title === "2 bills due today" && today[0].occurrence_ids.length === 2;
+        const today = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-10");
+        return today.length === 2 && today.every((r) => /is due today$/.test(r.title)) && today[0].occurrence_id !== today[1].occurrence_id;
+      });
+      t("schedule: each bill row names its own amount", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
+        const rent = rows.find((r) => r.occurrence_id === "a-2026-2-10");
+        return !!rent && rent.title === "Rent is due today" && rent.body.indexOf(fmt(5e3)) === 0;
       });
       t("schedule: bills already marked paid are dropped", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, completed: { "a-2026-2-10": true }, alertThreshold: 0, now: schedNow });
-        const today = rows.find((r) => r.kind === "bills_today" && r.for_date === "2026-03-10");
-        return !!today && today.title === "Hydro is due today" && today.occurrence_ids.length === 1;
+        const today = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-10");
+        return today.length === 1 && today[0].occurrence_id === "b-2026-2-10";
+      });
+      t("schedule: future bills get their own dated rows", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
+        // The 20th is inside the horizon but is NOT rolled into today's alerts.
+        const later = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-20");
+        return later.length === 1 && later[0].occurrence_id === "c-2026-2-20";
       });
       t("schedule: low-balance warning lands 3 days before the dip", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 5e4, now: schedNow });
         const low = rows.filter((r) => r.kind === "low_balance");
-        return low.length === 1 && low[0].for_date === "2026-03-17";
+        return low.length === 1 && low[0].for_date === "2026-03-17" && low[0].occurrence_id === "";
       });
       t("schedule: nothing scheduled beyond the horizon", () => {
         const far = { 2026: [{ id: "z-2026-11-25", type: "expense", month: 11, day: 25, amount: 100, desc: "Far", balance: 1e5 }] };
@@ -11910,32 +11919,24 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         });
         markSeen("cf_notified_lowbal");
       }
+      // One notification per bill due today, mirroring what the push schedule
+      // sends (see buildNotificationSchedule). Each carries its own tag so
+      // they stack in the shade instead of overwriting one another, and its
+      // own seen-key so a bill added or un-paid later today still announces
+      // itself without re-announcing the others.
       const today = startOfToday();
-      const dueToday = activeFlow.filter((ev) => ev.type === "expense" && ev.month === today.getMonth() && ev.day === today.getDate() && !completed[ev.id]);
-      if (dueToday.length > 0 && !seen("cf_notified_duetoday")) {
-        const total = dueToday.reduce((s, ev) => s + ev.amount, 0);
-        showLocalNotification(
-          dueToday.length === 1 ? `${dueToday[0].desc} is due today` : `${dueToday.length} bills due today`,
-          {
-            body: dueToday.length === 1 ? `${fmt(dueToday[0].amount)} due today.` : `${fmt(total)} total due today.`,
-            tag: "cf-duetoday"
-          }
-        );
-        markSeen("cf_notified_duetoday");
-      }
-      const in7 = new Date(today);
-      in7.setDate(today.getDate() + 7);
-      // Strictly after today — "due today" already has its own notification
-      // above, and counting those twice made the weekly total look wrong.
-      const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date > today && ev.date <= in7 && !completed[ev.id]);
-      if (dueSoon.length > 0 && !seen("cf_notified_duebills")) {
-        const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
-        showLocalNotification("Bills due this week", {
-          body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
-          tag: "cf-duebills"
+      activeFlow.forEach((ev) => {
+        if (ev.type !== "expense") return;
+        if (ev.month !== today.getMonth() || ev.day !== today.getDate()) return;
+        if (completed[ev.id]) return;
+        const key = `cf_notified_bill_${ev.id}`;
+        if (seen(key)) return;
+        showLocalNotification(`${ev.desc} is due today`, {
+          body: ev.category ? `${fmt(ev.amount)} · ${ev.category}` : fmt(ev.amount),
+          tag: `cf-bill-${ev.id}`
         });
-        markSeen("cf_notified_duebills");
-      }
+        markSeen(key);
+      });
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
       setOverridesByYr((prev) => {

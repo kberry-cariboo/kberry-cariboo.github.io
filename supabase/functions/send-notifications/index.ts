@@ -50,9 +50,9 @@ type Sub = {
 type Row = {
   for_date: string;
   kind: string;
+  occurrence_id: string;
   title: string;
   body: string;
-  occurrence_ids: string[];
   url: string;
 };
 
@@ -114,16 +114,15 @@ async function run(): Promise<Record<string, number>> {
     const dates = [...new Set(devices.map((d) => d.localDate))];
     const { data: rows, error: rowErr } = await db
       .from("notification_schedule")
-      .select("for_date, kind, title, body, occurrence_ids, url")
+      .select("for_date, kind, occurrence_id, title, body, url")
       .eq("household_id", householdId)
       .in("for_date", dates);
     if (rowErr) throw rowErr;
     if (!rows?.length) continue;
 
-    // A bill marked paid after the schedule was published shouldn't nag. If
-    // every occurrence behind a bills_today row is now complete, the row is
-    // dropped entirely; otherwise the count/total would be a lie, so it's sent
-    // with a note rather than silently wrong numbers.
+    // A bill marked paid after the schedule was published shouldn't nag. Now
+    // that each row is a single bill, this is a clean per-row decision: the
+    // bill is either still outstanding or it isn't.
     const { data: done, error: doneErr } = await db
       .from("completed_occurrences")
       .select("occurrence_id")
@@ -136,9 +135,7 @@ async function run(): Promise<Record<string, number>> {
         if (row.for_date !== localDate) continue;
         stats.due++;
 
-        const ids = row.occurrence_ids ?? [];
-        const outstanding = ids.filter((id) => !completed.has(id));
-        if (ids.length > 0 && outstanding.length === 0) {
+        if (row.occurrence_id && completed.has(row.occurrence_id)) {
           stats.skipped++;
           continue;
         }
@@ -148,7 +145,12 @@ async function run(): Promise<Record<string, number>> {
         // local hour repeats.
         const { error: ledgerErr } = await db
           .from("notification_sends")
-          .insert({ endpoint: sub.endpoint, for_date: row.for_date, kind: row.kind });
+          .insert({
+            endpoint: sub.endpoint,
+            for_date: row.for_date,
+            kind: row.kind,
+            occurrence_id: row.occurrence_id ?? "",
+          });
         if (ledgerErr) {
           // 23505 = unique violation = already sent. Anything else is real.
           if ((ledgerErr as { code?: string }).code === "23505") {
@@ -160,10 +162,13 @@ async function run(): Promise<Record<string, number>> {
 
         const payload = JSON.stringify({
           title: row.title,
-          body: outstanding.length < ids.length
-            ? `${row.body} (${ids.length - outstanding.length} already marked paid)`
-            : row.body,
-          tag: `cf-${row.kind}-${row.for_date}`,
+          body: row.body,
+          // Per-occurrence tag: several bills due the same day must stack in
+          // the notification shade, not replace one another. A shared tag
+          // would leave only the last bill visible.
+          tag: row.occurrence_id
+            ? `cf-bill-${row.occurrence_id}`
+            : `cf-${row.kind}-${row.for_date}`,
           url: row.url || "./",
         });
 
@@ -198,7 +203,8 @@ async function run(): Promise<Record<string, number>> {
           await db.from("notification_sends").delete()
             .eq("endpoint", sub.endpoint)
             .eq("for_date", row.for_date)
-            .eq("kind", row.kind);
+            .eq("kind", row.kind)
+            .eq("occurrence_id", row.occurrence_id ?? "");
         }
       }
     }

@@ -609,20 +609,31 @@
           { id: "c-2026-2-20", type: "expense", month: 2, day: 20, amount: 1e3, desc: "Phone", balance: 100 }
         ]
       };
-      t("schedule: same-day bills collapse into one alert", () => {
+      t("schedule: one row per bill, not a daily digest", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
-        const today = rows.filter((r) => r.kind === "bills_today" && r.for_date === "2026-03-10");
-        return today.length === 1 && today[0].title === "2 bills due today" && today[0].occurrence_ids.length === 2;
+        const today = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-10");
+        return today.length === 2 && today.every((r) => /is due today$/.test(r.title)) && today[0].occurrence_id !== today[1].occurrence_id;
+      });
+      t("schedule: each bill row names its own amount", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
+        const rent = rows.find((r) => r.occurrence_id === "a-2026-2-10");
+        return !!rent && rent.title === "Rent is due today" && rent.body.indexOf(fmt(5e3)) === 0;
       });
       t("schedule: bills already marked paid are dropped", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, completed: { "a-2026-2-10": true }, alertThreshold: 0, now: schedNow });
-        const today = rows.find((r) => r.kind === "bills_today" && r.for_date === "2026-03-10");
-        return !!today && today.title === "Hydro is due today" && today.occurrence_ids.length === 1;
+        const today = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-10");
+        return today.length === 1 && today[0].occurrence_id === "b-2026-2-10";
+      });
+      t("schedule: future bills get their own dated rows", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
+        // The 20th is inside the horizon but is NOT rolled into today's alerts.
+        const later = rows.filter((r) => r.kind === "bill_due" && r.for_date === "2026-03-20");
+        return later.length === 1 && later[0].occurrence_id === "c-2026-2-20";
       });
       t("schedule: low-balance warning lands 3 days before the dip", () => {
         const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 5e4, now: schedNow });
         const low = rows.filter((r) => r.kind === "low_balance");
-        return low.length === 1 && low[0].for_date === "2026-03-17";
+        return low.length === 1 && low[0].for_date === "2026-03-17" && low[0].occurrence_id === "";
       });
       t("schedule: nothing scheduled beyond the horizon", () => {
         const far = { 2026: [{ id: "z-2026-11-25", type: "expense", month: 11, day: 25, amount: 100, desc: "Far", balance: 1e5 }] };
