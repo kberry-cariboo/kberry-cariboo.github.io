@@ -499,7 +499,7 @@
       });
       t("React present (v" + (typeof React !== "undefined" && React.version || "?") + ")", () => typeof React !== "undefined" && !!React.useState && !!ReactDOM.createRoot);
       t("Recharts present", () => typeof window.Recharts !== "undefined");
-      t("Service worker supported", () => "serviceWorker" in navigator);
+      t("Service worker API present", () => "serviceWorker" in navigator);
       t("navigator.onLine readable", () => typeof navigator.onLine === "boolean");
       t("canvas (attachments) supported", () => {
         const c = document.createElement("canvas");
@@ -598,10 +598,77 @@
         return pct === 25 && monthsLeft === 9;
       });
       t("debt sim: diverging payments \u2192 null", () => simulateDebtStrategy([{ label: "X", bal: 1e4, rate: 50, pmt: 10 }], 0, "avalanche") === null);
+      // Notification schedule \u2014 the rows the Edge Function sends as push.
+      // These are the only place the "what gets said, and when" decision is
+      // made, so they're worth pinning down.
+      const schedNow = new Date(2026, 2, 10);
+      const schedFlow = {
+        2026: [
+          { id: "a-2026-2-10", type: "expense", month: 2, day: 10, amount: 5e3, desc: "Rent", balance: 1e5 },
+          { id: "b-2026-2-10", type: "expense", month: 2, day: 10, amount: 2e3, desc: "Hydro", balance: 98e3 },
+          { id: "c-2026-2-20", type: "expense", month: 2, day: 20, amount: 1e3, desc: "Phone", balance: 100 }
+        ]
+      };
+      t("schedule: same-day bills collapse into one alert", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 0, now: schedNow });
+        const today = rows.filter((r) => r.kind === "bills_today" && r.for_date === "2026-03-10");
+        return today.length === 1 && today[0].title === "2 bills due today" && today[0].occurrence_ids.length === 2;
+      });
+      t("schedule: bills already marked paid are dropped", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, completed: { "a-2026-2-10": true }, alertThreshold: 0, now: schedNow });
+        const today = rows.find((r) => r.kind === "bills_today" && r.for_date === "2026-03-10");
+        return !!today && today.title === "Hydro is due today" && today.occurrence_ids.length === 1;
+      });
+      t("schedule: low-balance warning lands 3 days before the dip", () => {
+        const rows = buildNotificationSchedule({ yearFlows: schedFlow, alertThreshold: 5e4, now: schedNow });
+        const low = rows.filter((r) => r.kind === "low_balance");
+        return low.length === 1 && low[0].for_date === "2026-03-17";
+      });
+      t("schedule: nothing scheduled beyond the horizon", () => {
+        const far = { 2026: [{ id: "z-2026-11-25", type: "expense", month: 11, day: 25, amount: 100, desc: "Far", balance: 1e5 }] };
+        return buildNotificationSchedule({ yearFlows: far, alertThreshold: 0, now: schedNow }).length === 0;
+      });
       return out;
     }, []);
-    const passed = results.filter((r) => r.ok).length;
-    return /* @__PURE__ */ React.createElement("div", { className: "selftest-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "selftest-h2" }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { className: "selftest-count", style: { color: passed === results.length ? "var(--greenDk)" : "var(--red)" } }, passed, "/", results.length, " checks passed"), results.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "selftest-row" }, /* @__PURE__ */ React.createElement("span", { className: "selftest-mark", style: { color: r.ok ? "var(--greenDk)" : "var(--red)" } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { className: "c-text flex-1" }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { className: "selftest-detail" }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, className: "selftest-back-link" }, "\u2190 Back to app"));
+    // "serviceWorker" in navigator only proves the browser has the API — it was
+    // true for the whole time registration was silently failing against a
+    // blob: URL, so it reported green while offline caching and push were both
+    // dead. These checks await the real registration instead, and can't be part
+    // of the synchronous memo above.
+    const [swResults, setSwResults] = useState([]);
+    useEffect(() => {
+      let live = true;
+      const add = (rs) => {
+        if (live) setSwResults(rs);
+      };
+      if (!("serviceWorker" in navigator)) {
+        add([{ name: "Service worker registered", ok: false, detail: "not supported in this browser" }]);
+        return () => {
+          live = false;
+        };
+      }
+      Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timed out after 10s")), 1e4))
+      ]).then((reg) => {
+        add([
+          { name: "Service worker registered + active", ok: !!reg.active, detail: reg.scope },
+          { name: "showNotification available (Android's only path)", ok: typeof reg.showNotification === "function", detail: "" },
+          { name: "Push subscriptions supported", ok: !!reg.pushManager, detail: "" }
+          // Whether a VAPID key is configured is deliberately not a check —
+          // an install without background push is a valid configuration, not
+          // a fault. Settings → Notifications reports that state instead.
+        ]);
+      }).catch((e) => {
+        add([{ name: "Service worker registered + active", ok: false, detail: e.message }]);
+      });
+      return () => {
+        live = false;
+      };
+    }, []);
+    const allResults = results.concat(swResults);
+    const passed = allResults.filter((r) => r.ok).length;
+    return /* @__PURE__ */ React.createElement("div", { className: "selftest-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "selftest-h2" }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { className: "selftest-count", style: { color: passed === allResults.length ? "var(--greenDk)" : "var(--red)" } }, passed, "/", allResults.length, " checks passed"), allResults.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "selftest-row" }, /* @__PURE__ */ React.createElement("span", { className: "selftest-mark", style: { color: r.ok ? "var(--greenDk)" : "var(--red)" } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { className: "c-text flex-1" }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { className: "selftest-detail" }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, className: "selftest-back-link" }, "\u2190 Back to app"));
   }
   function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);

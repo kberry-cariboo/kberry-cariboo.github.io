@@ -15,12 +15,20 @@ src/vendor/                Minified React + ReactDOM bundle, a small hand-rolled
                             the official @supabase/supabase-js UMD bundle
 src/bootstrap-head.js      Service worker registration + error boundary setup
 src/bootstrap-tail.js      Closes the bootstrap wrapper
+src/sw.js                   Service worker source — caching + Web Push handlers
 src/lib/                    Shared constants, formatting/date helpers, hooks,
-                            Supabase config, and the household auth/sync hooks
+                            Supabase config, notification/push helpers, and the
+                            household auth/sync hooks
 src/components/            UI components, grouped by area (forms, register,
                             budget, plan/dashboard, settings, auth, etc.)
 src/App.js                  The root App component + ReactDOM.render call
 ```
+
+`build.js` produces **two** files at the repo root: `index.html` and `sw.js`.
+The service worker can't be inlined — a worker has to be fetched from a real
+same-origin URL — so it's built separately, with its cache name stamped from
+`CF_VERSION` in `src/bootstrap-head.js`. Both are generated; don't hand-edit
+either.
 
 `build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
 
@@ -28,14 +36,17 @@ src/App.js                  The root App component + ReactDOM.render call
 
 ```bash
 # edit files under src/, then:
-node build.js        # rebuilds index.html
+node build.js        # rebuilds index.html + sw.js
 ```
 
-Open `index.html` directly in a browser (or serve the repo root with any static file server) to check your change before committing.
+Serve the repo root with any static file server to check your change before
+committing. (Opening `index.html` from the filesystem still works for most of
+the app, but the service worker — and therefore offline caching and
+notifications — needs a real `http://` or `https://` origin.)
 
-A GitHub Actions workflow (`.github/workflows/build.yml`) rebuilds `index.html` automatically:
-- On pull requests, it **fails the check** if `index.html` doesn't match what `node build.js` produces from `src/` — run the build locally and commit the result before merging.
-- On pushes to `main`, it rebuilds and commits `index.html` back automatically if it's out of sync, so GitHub Pages (serving `index.html` straight from the branch root) always reflects `src/`.
+A GitHub Actions workflow (`.github/workflows/build.yml`) rebuilds the generated files automatically:
+- On pull requests, it **fails the check** if `index.html` or `sw.js` don't match what `node build.js` produces from `src/` — run the build locally and commit the result before merging.
+- On pushes to `main`, it rebuilds and commits them back automatically if they're out of sync, so GitHub Pages (serving straight from the branch root) always reflects `src/`.
 
 ## Supabase setup
 
@@ -47,9 +58,12 @@ your own instance:
    `supabase/schema.sql` — it creates the household tables plus the normalized
    budget tables (`entries`, `entry_overrides`, `categories`, `year_configs`,
    `budget_targets`, `templates`, `completed_occurrences`, `goals`,
-   `household_settings`, and `receipts`), Row Level Security policies, and the
-   RPC functions the app talks to (`load_household`/`save_household`/
-   `put_receipt`/`delete_receipt` plus the household lifecycle RPCs).
+   `household_settings`, and `receipts`), the push-notification tables
+   (`push_subscriptions`, `notification_schedule`, `notification_sends`), Row
+   Level Security policies, and the RPC functions the app talks to
+   (`load_household`/`save_household`/`put_receipt`/`delete_receipt`,
+   `save_push_subscription`/`delete_push_subscription`/
+   `save_notification_schedule`, plus the household lifecycle RPCs).
 3. In your project's API settings, copy the **Project URL** and **anon public key**.
 4. Paste them into `src/lib/supabase-config.js` (`SUPABASE_URL` / `SUPABASE_ANON_KEY`)
    and run `node build.js`. The anon key is safe to ship in client-side code — Row
@@ -76,6 +90,67 @@ images into `receipts`) the first time it runs. The legacy `household_data`
 table is left untouched as a backup — verify your data in the app, then drop it
 whenever you like. The earlier GitHub Gist sync/backup feature has been removed
 entirely; use **Settings → Backup** for local JSON export/import.
+
+## Notifications
+
+Two independent layers:
+
+**Foreground** works out of the box, no setup. While the app is open it alerts
+on bills due today, bills due within 7 days, and a forecast balance heading
+below your threshold. Turn it on in **Settings → Notifications**.
+
+**Background (Web Push)** is what reaches your phone with the app and browser
+both closed — Android renders these as ordinary system notifications. It needs
+a one-time setup, because a push has to be *sent* by something, and a static
+site can't send anything:
+
+1. **Generate a VAPID key pair** (no dependencies, nothing leaves your machine):
+
+   ```bash
+   node scripts/gen-vapid-keys.js
+   ```
+
+2. **Publish the public half** — paste it into `src/lib/supabase-config.js` as
+   `VAPID_PUBLIC_KEY` and run `node build.js`. It ships to every browser by
+   design; it is not a secret. Leaving it empty is a supported configuration:
+   background push simply stays off and Settings says so.
+
+3. **Deploy the sender**:
+
+   ```bash
+   supabase functions deploy send-notifications --no-verify-jwt
+   supabase secrets set VAPID_PUBLIC_KEY=<public>
+   supabase secrets set VAPID_PRIVATE_KEY=<private>     # never commit this
+   supabase secrets set VAPID_SUBJECT=mailto:you@example.com
+   supabase secrets set CRON_SECRET=$(openssl rand -hex 32)
+   ```
+
+   `--no-verify-jwt` lets pg_cron call it without a user session; `CRON_SECRET`
+   is what actually keeps it private.
+
+4. **Schedule it** — edit `supabase/push-cron.sql` to insert your `CRON_SECRET`,
+   then run it in the SQL editor. It runs hourly (every hour is somebody's 8am —
+   delivery time is per-device).
+
+5. **Install the app to your home screen** on the phone and enable notifications
+   in Settings. Android delivers to installed PWAs far more reliably than to a
+   browser tab.
+
+### How the scheduling works
+
+The app owns all the money math. Whenever your budget changes it publishes a
+rolling 90-day list of "on this date, say this" rows to `notification_schedule`;
+the Edge Function only looks up today's rows for each device's timezone and
+sends them. That avoids a second, drifting copy of the recurrence/override
+logic in Deno — see the comment on `buildNotificationSchedule` in
+`src/lib/push.js`.
+
+The consequence worth knowing: **the schedule only extends 90 days from the last
+time you opened the app.** Open it once a quarter and you'll never notice; leave
+it untouched for longer and background alerts stop until you next open it. The
+one thing that isn't precomputed is whether a bill has since been marked paid —
+the function re-checks `completed_occurrences` at send time and drops alerts
+whose bills are all settled.
 
 ## Fonts, icons, manifest
 

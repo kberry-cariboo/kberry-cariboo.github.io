@@ -18,6 +18,7 @@ const APP_MODULES = [
   "src/lib/format.js",
   "src/lib/biometric.js",
   "src/lib/household-sync.js",
+  "src/lib/push.js",
   "src/lib/app-data.js",
   "src/components/primitives.js",
   "src/components/forms.js",
@@ -33,6 +34,22 @@ const APP_MODULES = [
   "src/components/auth-misc.js",
   "src/App.js",
 ];
+
+// The service worker can't be inlined into index.html — it has to be fetched
+// from a real same-origin URL — so it's the one build output besides
+// index.html. Its cache name is stamped from bootstrap-head.js's CF_VERSION so
+// bumping the app version also invalidates the worker's cache.
+function buildServiceWorker() {
+  const bootstrap = read("src/bootstrap-head.js");
+  const m = bootstrap.match(/const CF_VERSION\s*=\s*'([^']+)'/);
+  if (!m) {
+    console.error("build.js: couldn't find CF_VERSION in src/bootstrap-head.js");
+    process.exit(1);
+  }
+  const sw = read("src/sw.js").replace(/__CF_VERSION__/g, () => m[1]);
+  fs.writeFileSync(path.join(ROOT, "sw.js"), sw);
+  console.log(`build.js: wrote sw.js (${sw.length.toLocaleString()} bytes, cache cf-${m[1]})`);
+}
 
 function build() {
   const template = read("index.template.html");
@@ -64,6 +81,8 @@ function build() {
 
   fs.writeFileSync(path.join(ROOT, "index.html"), output);
   console.log(`build.js: wrote index.html (${output.length.toLocaleString()} bytes)`);
+
+  buildServiceWorker();
 }
 
 module.exports = { APP_MODULES, ROOT, read };
