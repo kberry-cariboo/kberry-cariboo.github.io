@@ -1,19 +1,14 @@
-const CF_VERSION='v176';
-if('serviceWorker'in navigator){const sw=`const CACHE='cf-${CF_VERSION}';
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>clients.claim()).then(()=>self.clients.matchAll({type:'window'})).then(cs=>cs.forEach(c=>c.postMessage({type:'CF_SW_ACTIVATED',cache:CACHE}))));});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  if(e.request.mode==='navigate'){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>caches.match(e.request)));
-    return;
-  }
-  e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>cached);return cached||fresh;}));
-});`;
+// Bumping this invalidates the service worker's cache. build.js reads the
+// literal out of this line to stamp the generated sw.js, so the worker and the
+// bundle it caches can never disagree about which version they are.
+const CF_VERSION='v177';
+if('serviceWorker'in navigator){
 try{
-  const b=new Blob([sw],{type:'text/javascript'});
   const hadController=!!navigator.serviceWorker.controller;
-  navigator.serviceWorker.register(URL.createObjectURL(b)).then(reg=>{
+  // A real same-origin script, not a blob: URL — see the header comment in
+  // src/sw.js. Registered relative to the document so the worker's scope is
+  // the app root whether that's a user site (/) or a project page (/repo/).
+  navigator.serviceWorker.register('sw.js').then(reg=>{
     reg.update().catch(()=>{});
     let refreshed=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{

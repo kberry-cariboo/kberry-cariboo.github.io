@@ -217,10 +217,40 @@
     });
     return added;
   }
+  // Delivery hour choices for background push. Labelled in 12-hour form
+  // because that's how the alert time reads on the phone that receives it.
+  const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => ({
+    value: h,
+    label: `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? "AM" : "PM"}`
+  }));
+
+  // One line of plain English about whether alerts can reach a closed app.
+  // The distinction matters: "notifications are on" means something quite
+  // different when they can only fire in a foreground tab.
+  function pushStatusLine(pushState) {
+    const detail = (pushState && pushState.detail) || "";
+    switch (pushState && pushState.status) {
+      case "subscribed":
+        return "This device is registered for background delivery — alerts arrive even when the app and browser are closed.";
+      case "working":
+        return "Registering this device…";
+      case "unavailable":
+        if (detail === "no-vapid-key") return "Background delivery isn't set up for this deployment, so alerts only appear while the app is open. (Add a VAPID public key — see the README.)";
+        if (detail === "bad-vapid-key") return "The configured VAPID public key isn't valid — it must be the 87-character key printed by scripts/gen-vapid-keys.js. Alerts will only appear while the app is open until it's fixed.";
+        if (detail === "unsupported" || detail === "no-service-worker") return "This browser can't do background delivery, so alerts only appear while the app is open.";
+        if (detail === "no-supabase") return "Background delivery needs the cloud sync connection, so alerts only appear while the app is open.";
+        return "Couldn't register this device for background delivery — alerts will only appear while the app is open.";
+      default:
+        return "Alerts appear while the app is open.";
+    }
+  }
+
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
   }, enableNotifications = async () => {
-  }, notifPerm = "unsupported", yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
+  }, disableNotifications = async () => {
+  }, notifPerm = "unsupported", notifyHour = 8, setNotifyHour = () => {
+  }, pushState = { status: "idle", detail: "" }, yearConfigs, setYearConfigs, activeYear, setActiveYear, overridesByYr, setOverridesByYr, entries, setEntries, completed = {}, setCompleted = () => {
   }, goals = [], setGoals = () => {
   }, debtData = {}, setDebtData = () => {
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
@@ -489,7 +519,7 @@
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
-      ["sec-notifications", "Local Notifications"],
+      ["sec-notifications", "Notifications"],
       ["sec-years", "Budget Years"],
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
@@ -555,7 +585,19 @@
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Local Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => { if (v) enableNotifications(); else setNotifyEnabled(false); }, label: "Enable local notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Alerts you when your forecast balance dips below your threshold, or when bills are due within 7 days. These are local, in-browser notifications only — this app has no backend server, so they can only fire while this tab is open, and never when the app or browser is closed."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+      if (v) enableNotifications();
+      else disableNotifications();
+    }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "notify-hour-select",
+        value: notifyHour,
+        onChange: (e) => setNotifyHour(parseInt(e.target.value, 10)),
+        className: "autolock-select"
+      },
+      HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
+    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "You'll be alerted when bills are due today, when bills are due within 7 days, and when your forecast balance is heading below your threshold. With background delivery active these arrive as ordinary system notifications on your phone, at the time set above, whether or not the app is open — otherwise they only show while it is."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",

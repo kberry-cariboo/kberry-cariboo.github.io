@@ -224,6 +224,59 @@ create table if not exists receipts (
   unique (household_id, owner_key)
 );
 
+-- Push notifications -----------------------------------------------------------
+--
+-- One row per subscribed browser/device (not per user — the same person's
+-- phone and laptop are separate endpoints and can want different delivery
+-- times). `endpoint` is the push service's URL for that device and is the
+-- natural key; it also rotates occasionally, which is why the app re-registers
+-- its subscription on every launch.
+create table if not exists push_subscriptions (
+  endpoint text primary key,
+  household_id uuid not null references households(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  p256dh text not null,                     -- client public key (payload encryption)
+  auth text not null,                       -- client auth secret (payload encryption)
+  timezone text not null default 'UTC',     -- IANA name, e.g. 'America/Vancouver'
+  notify_hour int not null default 8,       -- local hour-of-day to deliver at (0-23)
+  failure_count int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_subscriptions_household_idx on push_subscriptions (household_id);
+
+-- Alerts the app has precomputed for upcoming dates. The client owns all the
+-- money math (recurrence expansion, overrides, carry-forward balances) and
+-- publishes a flat "on this date, say this" list covering the next ~90 days;
+-- the Edge Function just looks up today's rows. See the long comment on
+-- buildNotificationSchedule in src/lib/push.js for why the split falls here.
+--
+-- occurrence_ids lets the sender drop bills that were marked paid after the
+-- schedule was written — that's the one part that can't be precomputed.
+create table if not exists notification_schedule (
+  household_id uuid not null references households(id) on delete cascade,
+  for_date date not null,
+  kind text not null,                       -- 'bills_today' | 'low_balance'
+  title text not null,
+  body text not null default '',
+  occurrence_ids text[] not null default '{}',
+  url text not null default './',
+  created_at timestamptz not null default now(),
+  primary key (household_id, for_date, kind)
+);
+create index if not exists notification_schedule_date_idx on notification_schedule (for_date);
+
+-- Delivery ledger. The cron runs hourly (it has to, to hit every timezone's
+-- chosen hour), so this is what stops a device being notified twice for the
+-- same alert.
+create table if not exists notification_sends (
+  endpoint text not null,
+  for_date date not null,
+  kind text not null,
+  sent_at timestamptz not null default now(),
+  primary key (endpoint, for_date, kind)
+);
+
 alter table households enable row level security;
 alter table household_members enable row level security;
 alter table household_invites enable row level security;
@@ -238,6 +291,9 @@ alter table completed_occurrences enable row level security;
 alter table goals enable row level security;
 alter table household_settings enable row level security;
 alter table receipts enable row level security;
+alter table push_subscriptions enable row level security;
+alter table notification_schedule enable row level security;
+alter table notification_sends enable row level security;
 
 -- Helper: is the calling user a member of household `hid`?
 -- security definer + a fixed search_path so it can be used inside RLS policies
@@ -361,6 +417,21 @@ create policy "member read household_settings" on household_settings
 drop policy if exists "member read receipts" on receipts;
 create policy "member read receipts" on receipts
   for select using (is_household_member(household_id));
+
+-- Push subscriptions: you can see your own devices (Settings lists how many
+-- are registered), but not other household members' — an endpoint URL is a
+-- send capability, so it stays scoped to the user who created it.
+drop policy if exists "read own push subscriptions" on push_subscriptions;
+create policy "read own push subscriptions" on push_subscriptions
+  for select using (user_id = auth.uid());
+
+drop policy if exists "member read notification_schedule" on notification_schedule;
+create policy "member read notification_schedule" on notification_schedule
+  for select using (is_household_member(household_id));
+
+-- notification_sends is written only by the Edge Function (service role, which
+-- bypasses RLS) and read by nobody else — no policy means no access for
+-- anon/authenticated, which is exactly right.
 
 -- Invites: members can see invites for their own household (to display
 -- pending/used codes); creation and redemption go through the RPCs below,
@@ -1067,6 +1138,94 @@ set search_path = public
 as $$
 begin
   delete from receipts where household_id = cf_my_household() and owner_key = p_owner_key;
+end $$;
+
+-- Push notification RPCs -------------------------------------------------------
+
+-- Register (or re-register) this browser's push subscription. Upserting on the
+-- endpoint means a device that re-subscribes with the same endpoint updates in
+-- place, and one whose endpoint rotated simply adds a new row — the old one is
+-- pruned by the sender the first time the push service rejects it with 404/410.
+create or replace function save_push_subscription(
+  p_endpoint text,
+  p_p256dh text,
+  p_auth text,
+  p_timezone text,
+  p_notify_hour int
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hid uuid := cf_my_household();
+begin
+  if coalesce(p_endpoint, '') = '' or coalesce(p_p256dh, '') = '' or coalesce(p_auth, '') = '' then
+    raise exception 'A push subscription needs an endpoint and both keys.';
+  end if;
+  insert into push_subscriptions (endpoint, household_id, user_id, p256dh, auth, timezone, notify_hour)
+  values (
+    p_endpoint, hid, auth.uid(), p_p256dh, p_auth,
+    coalesce(nullif(p_timezone, ''), 'UTC'),
+    least(23, greatest(0, coalesce(p_notify_hour, 8)))
+  )
+  on conflict (endpoint) do update set
+    -- Re-key to the caller: if someone moved households (or a shared device
+    -- changed hands), the subscription must follow them, not keep delivering
+    -- the old household's balances.
+    household_id = excluded.household_id,
+    user_id = excluded.user_id,
+    p256dh = excluded.p256dh,
+    auth = excluded.auth,
+    timezone = excluded.timezone,
+    notify_hour = excluded.notify_hour,
+    failure_count = 0,
+    updated_at = now();
+end $$;
+
+create or replace function delete_push_subscription(p_endpoint text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from push_subscriptions where endpoint = p_endpoint and user_id = auth.uid();
+end $$;
+
+-- Replace the household's whole upcoming-alert schedule. The rows are fully
+-- derived from budget data, so a wholesale swap is both simpler and less
+-- error-prone than diffing — and it means a deleted bill's alert disappears
+-- rather than lingering.
+create or replace function save_notification_schedule(p_rows jsonb)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hid uuid := cf_my_household();
+  n int;
+begin
+  delete from notification_schedule where household_id = hid;
+  insert into notification_schedule (household_id, for_date, kind, title, body, occurrence_ids, url)
+  select
+    hid,
+    cf_date(r->>'for_date'),
+    r->>'kind',
+    coalesce(r->>'title', 'CashFlow'),
+    coalesce(r->>'body', ''),
+    cf_text_array(r->'occurrence_ids'),
+    coalesce(nullif(r->>'url', ''), './')
+  from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) as r
+  where cf_date(r->>'for_date') is not null
+    and coalesce(r->>'kind', '') <> ''
+  -- The client builds one row per (date, kind); this guards against a
+  -- duplicate slipping through and aborting the whole publish.
+  on conflict (household_id, for_date, kind) do nothing;
+  get diagnostics n = row_count;
+  return n;
 end $$;
 
 -- Household lifecycle RPCs ----------------------------------------------------

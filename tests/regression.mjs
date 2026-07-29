@@ -457,7 +457,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.waitForTimeout(300);
   });
 
-  await test('B23 settings: local notifications toggle requests permission', async () => {
+  await test('B23 settings: notifications toggle requests permission', async () => {
     // grantPermissions(['notifications']) needs the Notification API to
     // actually exist in this browser build — some headless Chromium builds
     // (e.g. the one CI downloads fresh, vs. a pinned local build) don't
@@ -488,17 +488,18 @@ await test('A1 built-in self-test suite passes', async () => {
         const d = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
         sessionStorage.setItem('cf_notified_lowbal', d);
         sessionStorage.setItem('cf_notified_duebills', d);
+        sessionStorage.setItem('cf_notified_duetoday', d);
       } catch (e) {
       }
     });
     await page.waitForTimeout(800);
-    await step('heading', () => page.getByText('Local Notifications', { exact: false }).first().waitFor(V));
+    await step('heading', () => page.locator('#sec-notifications').first().waitFor(V));
     const notifSupported = await page.evaluate(() => typeof Notification !== 'undefined');
     if (!notifSupported) {
       await step('unsupported-msg', () => page.getByText("doesn't support notifications", { exact: false }).first().waitFor(V));
       return;
     }
-    const toggle = page.getByRole('switch', { name: 'Enable local notifications' });
+    const toggle = page.getByRole('switch', { name: 'Enable notifications' });
     await step('toggle-visible', () => toggle.waitFor(V));
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('expected notifications to start off');
     await step('click-on', () => toggle.click());
@@ -512,9 +513,19 @@ await test('A1 built-in self-test suite passes', async () => {
         throw new Error('label mismatch, sec=' + JSON.stringify(secText.slice(0, 60)));
       }
     });
+    // Turning it on reveals the background-delivery controls: the per-device
+    // alert time, and a line saying whether alerts can reach a closed app.
+    await step('delivery-time', () => page.locator('#notify-hour-select').waitFor(V));
+    await step('push-status', async () => {
+      const txt = await page.locator('#sec-notifications').innerText();
+      if (!/while the app is open|background delivery/i.test(txt)) {
+        throw new Error('no background-delivery status, sec=' + JSON.stringify(txt.slice(0, 120)));
+      }
+    });
     await step('click-off', () => toggle.click());
     await page.waitForTimeout(200);
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('toggle did not turn back off');
+    if (await page.locator('#notify-hour-select').count() !== 0) throw new Error('delivery time still shown after turning notifications off');
   });
 
   await test('B24 modal: backdrop click no longer dismisses, only X/Cancel do', async () => {

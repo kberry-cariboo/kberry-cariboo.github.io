@@ -718,49 +718,119 @@
     const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
     const todayKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
-    // This is a static, backend-less app — there's no server to wake the
-    // browser when it's closed, so these are "local" Notification-API alerts
-    // only: they can fire while this tab is open, never in the background.
-    // Real push (working when the app/browser is fully closed) would need a
-    // push server + service worker subscription, which is out of scope here.
+    // Notifications come from two places, and both go through the service
+    // worker registration (see src/lib/push.js for why the `new Notification()`
+    // constructor is never used — it doesn't exist on Android):
+    //
+    //   foreground — the effect below, fired while the app is open. Instant,
+    //                needs no server, works even without push configured.
+    //   background — Web Push. The app publishes a rolling 90-day schedule of
+    //                upcoming alerts to Supabase; a cron'd Edge Function sends
+    //                the ones due today to each subscribed device. This is what
+    //                reaches the phone with the app and browser both closed.
+    const [notifyHour, setNotifyHour] = useLS("cf_notify_hour", DEFAULT_NOTIFY_HOUR);
+    const [pushState, setPushState] = useState({ status: "idle", detail: "" });
     const enableNotifications = async () => {
       try {
         if (typeof Notification === "undefined") return;
-        const perm = await Notification.requestPermission();
+        const perm = await requestNotificationPermission();
         setNotifPerm(perm);
         setNotifyEnabled(perm === "granted");
+        if (perm !== "granted") return;
+        setPushState({ status: "working", detail: "" });
+        const res = await subscribeToPush(notifyHour);
+        setPushState(res.ok ? { status: "subscribed", detail: "" } : { status: "unavailable", detail: res.reason || "" });
       } catch (e) {
         setNotifyEnabled(false);
+        setPushState({ status: "unavailable", detail: e.message || "" });
       }
     };
+    const disableNotifications = async () => {
+      setNotifyEnabled(false);
+      setPushState({ status: "idle", detail: "" });
+      await unsubscribeFromPush();
+    };
+    // Push endpoints get rotated by the push service, and a reinstalled PWA
+    // subscribes afresh — re-registering on launch (and whenever the delivery
+    // hour changes) keeps the server's row pointing at this device.
+    useEffect(() => {
+      if (!notifyEnabled || notifPerm !== "granted" || !household) return;
+      let live = true;
+      refreshPushSubscription(notifyHour).then((res) => {
+        if (!live) return;
+        setPushState(res.ok ? { status: "subscribed", detail: "" } : { status: "unavailable", detail: res.reason || "" });
+      });
+      return () => {
+        live = false;
+      };
+    }, [notifyEnabled, notifPerm, household, notifyHour]);
+    // Republish the schedule whenever the underlying money changes. Debounced
+    // because entry edits arrive in bursts while typing.
+    useEffect(() => {
+      if (!notifyEnabled || !household || !supabaseClient) return;
+      const id = setTimeout(() => {
+        try {
+          const rows = buildNotificationSchedule({ yearFlows, completed, alertThreshold: alertThresh });
+          publishNotificationSchedule(rows);
+        } catch (e) {
+          // A schedule we couldn't build isn't worth breaking the app over —
+          // the previous rows stay in place until the next successful publish.
+        }
+      }, 2500);
+      return () => clearTimeout(id);
+    }, [notifyEnabled, household, yearFlows, completed, alertThresh]);
     useEffect(() => {
       if (!notifyEnabled) return;
       if (typeof Notification === "undefined" || notifPerm !== "granted") return;
       if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
-      try {
-        if (navLowInfo && sessionStorage.getItem("cf_notified_lowbal") !== todayKey) {
-          new Notification("Low balance forecast", {
-            body: `Balance forecast to dip to ${fmt(navLowInfo.min)} around ${MONTHS[navLowInfo.month]} ${navLowInfo.day}.`,
-            tag: "cf-lowbal"
-          });
-          sessionStorage.setItem("cf_notified_lowbal", todayKey);
+      // Once per day per alert. sessionStorage throws outright in some
+      // privacy modes, so treat an unreadable store as "already notified"
+      // rather than re-notifying on every render.
+      const seen = (k) => {
+        try {
+          return sessionStorage.getItem(k) === todayKey;
+        } catch (e) {
+          return true;
         }
-      } catch (e) {
+      };
+      const markSeen = (k) => {
+        try {
+          sessionStorage.setItem(k, todayKey);
+        } catch (e) {
+        }
+      };
+      if (navLowInfo && !seen("cf_notified_lowbal")) {
+        showLocalNotification("Low balance forecast", {
+          body: `Balance forecast to dip to ${fmt(navLowInfo.min)} around ${MONTHS[navLowInfo.month]} ${navLowInfo.day}.`,
+          tag: "cf-lowbal"
+        });
+        markSeen("cf_notified_lowbal");
       }
-      try {
-        const today = startOfToday();
-        const in7 = new Date(today);
-        in7.setDate(today.getDate() + 7);
-        const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date >= today && ev.date <= in7 && !completed[ev.id]);
-        if (dueSoon.length > 0 && sessionStorage.getItem("cf_notified_duebills") !== todayKey) {
-          const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
-          new Notification("Bills due this week", {
-            body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
-            tag: "cf-duebills"
-          });
-          sessionStorage.setItem("cf_notified_duebills", todayKey);
-        }
-      } catch (e) {
+      const today = startOfToday();
+      const dueToday = activeFlow.filter((ev) => ev.type === "expense" && ev.month === today.getMonth() && ev.day === today.getDate() && !completed[ev.id]);
+      if (dueToday.length > 0 && !seen("cf_notified_duetoday")) {
+        const total = dueToday.reduce((s, ev) => s + ev.amount, 0);
+        showLocalNotification(
+          dueToday.length === 1 ? `${dueToday[0].desc} is due today` : `${dueToday.length} bills due today`,
+          {
+            body: dueToday.length === 1 ? `${fmt(dueToday[0].amount)} due today.` : `${fmt(total)} total due today.`,
+            tag: "cf-duetoday"
+          }
+        );
+        markSeen("cf_notified_duetoday");
+      }
+      const in7 = new Date(today);
+      in7.setDate(today.getDate() + 7);
+      // Strictly after today — "due today" already has its own notification
+      // above, and counting those twice made the weekly total look wrong.
+      const dueSoon = activeFlow.filter((ev) => ev.type === "expense" && ev.date > today && ev.date <= in7 && !completed[ev.id]);
+      if (dueSoon.length > 0 && !seen("cf_notified_duebills")) {
+        const total = dueSoon.reduce((s, ev) => s + ev.amount, 0);
+        showLocalNotification("Bills due this week", {
+          body: `${dueSoon.length} bill${dueSoon.length !== 1 ? "s" : ""} due in the next 7 days, totaling ${fmt(total)}.`,
+          tag: "cf-duebills"
+        });
+        markSeen("cf_notified_duebills");
       }
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
@@ -1191,7 +1261,11 @@
         notifyEnabled,
         setNotifyEnabled,
         enableNotifications,
+        disableNotifications,
         notifPerm,
+        notifyHour,
+        setNotifyHour,
+        pushState,
         yearConfigs,
         setYearConfigs,
         activeYear,
