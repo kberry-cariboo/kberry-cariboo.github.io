@@ -26,9 +26,12 @@ src/App.js                  The root App component + ReactDOM.render call
 
 `build.js` produces **two** files at the repo root: `index.html` and `sw.js`.
 The service worker can't be inlined — a worker has to be fetched from a real
-same-origin URL — so it's built separately, with its cache name stamped from
-`CF_VERSION` in `src/bootstrap-head.js`. Both are generated; don't hand-edit
-either.
+same-origin URL — so it's built separately. Its cache name is
+`cf-<CF_VERSION>-<hash>`, where the hash is of the built `index.html`: that's
+what makes `sw.js` differ between builds, which is in turn the only signal a
+browser has that there's an update to install. Deriving it from content means
+you can't ship a change that installed apps never pick up. Both files are
+generated; don't hand-edit either.
 
 `build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
 

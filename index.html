@@ -1959,7 +1959,16 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 <script>// Bumping this invalidates the service worker's cache. build.js reads the
 // literal out of this line to stamp the generated sw.js, so the worker and the
 // bundle it caches can never disagree about which version they are.
-const CF_VERSION='v177';
+//
+// BUMP THIS WITH EVERY USER-VISIBLE CHANGE. It isn't decoration: it's the only
+// signal an installed PWA gets that there's anything new. Leave it alone and
+// the generated sw.js is byte-identical, so the browser sees no new worker,
+// never runs the install/activate cycle, and never fires the controllerchange
+// that reloads the open app — users sit on the old bundle indefinitely. (This
+// is exactly what happened across the notification work: four rounds of
+// changes all shipped under v177, and the app kept showing the old Settings
+// copy after the new one was live.)
+const CF_VERSION='v178';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
