@@ -236,6 +236,7 @@
         return "Registering this device…";
       case "unavailable":
         if (detail === "no-vapid-key") return "Background delivery isn't set up for this deployment, so alerts only appear while the app is open. (Add a VAPID public key — see the README.)";
+        if (detail === "bad-vapid-key") return "The configured VAPID public key isn't valid — it must be the 87-character key printed by scripts/gen-vapid-keys.js. Alerts will only appear while the app is open until it's fixed.";
         if (detail === "unsupported" || detail === "no-service-worker") return "This browser can't do background delivery, so alerts only appear while the app is open.";
         if (detail === "no-supabase") return "Background delivery needs the cloud sync connection, so alerts only appear while the app is open.";
         return "Couldn't register this device for background delivery — alerts will only appear while the app is open.";

@@ -7,6 +7,11 @@
   // VAPID_PRIVATE_KEY secret and must never be committed. Leaving this empty
   // simply disables background push — the app falls back to foreground-only
   // notifications and says so in Settings.
-  const VAPID_PUBLIC_KEY = "prime256v1";
+  //
+  // The value is the 87-character base64url string the script prints under
+  // "Public key" — it always starts with "B" (the 0x04 uncompressed-point
+  // prefix), e.g. "BKN7BdVKiXrVNLcZ...". It is not the curve name, and not
+  // anything from the script's own source.
+  const VAPID_PUBLIC_KEY = "";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;

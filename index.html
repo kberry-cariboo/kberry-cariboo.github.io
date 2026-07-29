@@ -2058,6 +2058,11 @@ document.addEventListener('DOMContentLoaded',function(){
   // VAPID_PRIVATE_KEY secret and must never be committed. Leaving this empty
   // simply disables background push — the app falls back to foreground-only
   // notifications and says so in Settings.
+  //
+  // The value is the 87-character base64url string the script prints under
+  // "Public key" — it always starts with "B" (the 0x04 uncompressed-point
+  // prefix), e.g. "BKN7BdVKiXrVNLcZ...". It is not the curve name, and not
+  // anything from the script's own source.
   const VAPID_PUBLIC_KEY = "";
   const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -3362,6 +3367,21 @@ document.addEventListener('DOMContentLoaded',function(){
     return out;
   }
 
+  // A VAPID application server key is an uncompressed P-256 point: 65 bytes
+  // (0x04 || X || Y), which is 87 base64url characters. Checking here turns a
+  // mistyped or half-pasted key into a clear message in Settings, instead of
+  // an opaque "applicationServerKey is not valid" from deep inside subscribe()
+  // — or worse, a key that decodes to *something* and fails only at send time.
+  function vapidKeyLooksValid(key) {
+    if (!key) return false;
+    if (!/^[A-Za-z0-9\-_]+=*$/.test(key)) return false;
+    try {
+      return urlBase64ToUint8Array(key).length === 65;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function bufferToBase64Url(buf) {
     const bytes = new Uint8Array(buf);
     let bin = "";
@@ -3412,6 +3432,7 @@ document.addEventListener('DOMContentLoaded',function(){
   async function subscribeToPush(notifyHour = DEFAULT_NOTIFY_HOUR) {
     if (!pushSupported()) return { ok: false, reason: "unsupported" };
     if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "no-vapid-key" };
+    if (!vapidKeyLooksValid(VAPID_PUBLIC_KEY)) return { ok: false, reason: "bad-vapid-key" };
     if (!supabaseClient) return { ok: false, reason: "no-supabase" };
     const reg = await swRegistration();
     if (!reg || !reg.pushManager) return { ok: false, reason: "no-service-worker" };
@@ -3478,6 +3499,7 @@ document.addEventListener('DOMContentLoaded',function(){
   async function refreshPushSubscription(notifyHour) {
     if (!pushSupported()) return { ok: false, reason: "unsupported" };
     if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "no-vapid-key" };
+    if (!vapidKeyLooksValid(VAPID_PUBLIC_KEY)) return { ok: false, reason: "bad-vapid-key" };
     if (!supabaseClient) return { ok: false, reason: "no-supabase" };
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
       return { ok: false, reason: "not-granted" };
@@ -9465,6 +9487,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         return "Registering this device…";
       case "unavailable":
         if (detail === "no-vapid-key") return "Background delivery isn't set up for this deployment, so alerts only appear while the app is open. (Add a VAPID public key — see the README.)";
+        if (detail === "bad-vapid-key") return "The configured VAPID public key isn't valid — it must be the 87-character key printed by scripts/gen-vapid-keys.js. Alerts will only appear while the app is open until it's fixed.";
         if (detail === "unsupported" || detail === "no-service-worker") return "This browser can't do background delivery, so alerts only appear while the app is open.";
         if (detail === "no-supabase") return "Background delivery needs the cloud sync connection, so alerts only appear while the app is open.";
         return "Couldn't register this device for background delivery — alerts will only appear while the app is open.";
@@ -10985,10 +11008,18 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         add([
           { name: "Service worker registered + active", ok: !!reg.active, detail: reg.scope },
           { name: "showNotification available (Android's only path)", ok: typeof reg.showNotification === "function", detail: "" },
-          { name: "Push subscriptions supported", ok: !!reg.pushManager, detail: "" }
-          // Whether a VAPID key is configured is deliberately not a check —
-          // an install without background push is a valid configuration, not
-          // a fault. Settings → Notifications reports that state instead.
+          { name: "Push subscriptions supported", ok: !!reg.pushManager, detail: "" },
+          // An install with no VAPID key is a valid configuration (foreground
+          // notifications only), so an empty key passes. A key that's present
+          // but malformed is a real fault — it means someone intended
+          // background push and it silently won't work.
+          {
+            name: "Push server key valid (or intentionally unset)",
+            ok: !VAPID_PUBLIC_KEY || vapidKeyLooksValid(VAPID_PUBLIC_KEY),
+            detail: VAPID_PUBLIC_KEY && !vapidKeyLooksValid(VAPID_PUBLIC_KEY)
+              ? "VAPID_PUBLIC_KEY is not an 87-char base64url P-256 point — re-run scripts/gen-vapid-keys.js"
+              : ""
+          }
         ]);
       }).catch((e) => {
         add([{ name: "Service worker registered + active", ok: false, detail: e.message }]);

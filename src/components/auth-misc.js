@@ -654,10 +654,18 @@
         add([
           { name: "Service worker registered + active", ok: !!reg.active, detail: reg.scope },
           { name: "showNotification available (Android's only path)", ok: typeof reg.showNotification === "function", detail: "" },
-          { name: "Push subscriptions supported", ok: !!reg.pushManager, detail: "" }
-          // Whether a VAPID key is configured is deliberately not a check —
-          // an install without background push is a valid configuration, not
-          // a fault. Settings → Notifications reports that state instead.
+          { name: "Push subscriptions supported", ok: !!reg.pushManager, detail: "" },
+          // An install with no VAPID key is a valid configuration (foreground
+          // notifications only), so an empty key passes. A key that's present
+          // but malformed is a real fault — it means someone intended
+          // background push and it silently won't work.
+          {
+            name: "Push server key valid (or intentionally unset)",
+            ok: !VAPID_PUBLIC_KEY || vapidKeyLooksValid(VAPID_PUBLIC_KEY),
+            detail: VAPID_PUBLIC_KEY && !vapidKeyLooksValid(VAPID_PUBLIC_KEY)
+              ? "VAPID_PUBLIC_KEY is not an 87-char base64url P-256 point — re-run scripts/gen-vapid-keys.js"
+              : ""
+          }
         ]);
       }).catch((e) => {
         add([{ name: "Service worker registered + active", ok: false, detail: e.message }]);

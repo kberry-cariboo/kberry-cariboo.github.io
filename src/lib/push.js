@@ -29,6 +29,21 @@
     return out;
   }
 
+  // A VAPID application server key is an uncompressed P-256 point: 65 bytes
+  // (0x04 || X || Y), which is 87 base64url characters. Checking here turns a
+  // mistyped or half-pasted key into a clear message in Settings, instead of
+  // an opaque "applicationServerKey is not valid" from deep inside subscribe()
+  // — or worse, a key that decodes to *something* and fails only at send time.
+  function vapidKeyLooksValid(key) {
+    if (!key) return false;
+    if (!/^[A-Za-z0-9\-_]+=*$/.test(key)) return false;
+    try {
+      return urlBase64ToUint8Array(key).length === 65;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function bufferToBase64Url(buf) {
     const bytes = new Uint8Array(buf);
     let bin = "";
@@ -79,6 +94,7 @@
   async function subscribeToPush(notifyHour = DEFAULT_NOTIFY_HOUR) {
     if (!pushSupported()) return { ok: false, reason: "unsupported" };
     if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "no-vapid-key" };
+    if (!vapidKeyLooksValid(VAPID_PUBLIC_KEY)) return { ok: false, reason: "bad-vapid-key" };
     if (!supabaseClient) return { ok: false, reason: "no-supabase" };
     const reg = await swRegistration();
     if (!reg || !reg.pushManager) return { ok: false, reason: "no-service-worker" };
@@ -145,6 +161,7 @@
   async function refreshPushSubscription(notifyHour) {
     if (!pushSupported()) return { ok: false, reason: "unsupported" };
     if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "no-vapid-key" };
+    if (!vapidKeyLooksValid(VAPID_PUBLIC_KEY)) return { ok: false, reason: "bad-vapid-key" };
     if (!supabaseClient) return { ok: false, reason: "no-supabase" };
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
       return { ok: false, reason: "not-granted" };
