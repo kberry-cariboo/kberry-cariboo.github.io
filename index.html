@@ -9713,7 +9713,10 @@ Fill every field of the response schema. Rules:
       }
     };
     if (!delta) return null;
-    return /* @__PURE__ */ React.createElement(Card, null,
+    // mb-16 like every other full-width widget: .cf-card carries no margin of
+    // its own, so the gap before whatever renders next is each widget's own
+    // job. Without it this card sat flush against the Monthly Summary heading.
+    return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" },
       /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" },
         /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "What changed in ", MONTHS[thisMonth]),
         /* @__PURE__ */ React.createElement("button", {
