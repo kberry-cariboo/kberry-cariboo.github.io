@@ -185,6 +185,18 @@
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:14px;}
         .content-area{padding:28px 24px;margin-top:0;outline:none;}
+        /* The backup nudge is position:fixed, so it floats over whatever is
+           at the bottom of the page — on a short page there's nothing to
+           scroll and the covered controls are simply unreachable (at 320px it
+           lands squarely on the API key input in Settings). Reserve enough
+           room underneath for the content to clear it: the nudge sits 80px up
+           and runs ~141px tall here, so ~240px of padding guarantees the last
+           row can scroll out from under it. Only applied while it's shown.
+
+           Doubled-up class + !important because several breakpoints set the
+           `padding` shorthand on .content-area with !important, which would
+           otherwise reset the bottom value back. */
+        .content-area.content-area--nudged{padding-bottom:240px!important;}
         /* The pale tint alone is invisible against the page: --redLt (#FFF0EE)
            on --bg (#F7F4EF) measures 1.01:1, and the old 33%-alpha border only
            reached 1.61:1 — under the 3:1 that a meaningful UI boundary needs.
@@ -368,7 +380,17 @@
         .recur-onetime{color:var(--amberInk);font-size:13px;}
         .entries-col-type{padding:10px 12px;}
         .entries-type-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;text-transform:uppercase;}
-        .entries-col-amount{font-weight:600;padding:10px 12px;}
+        /* Money reads right-aligned: the mono digits are fixed-width, so
+           aligning the trailing edge lines the decimals up and magnitudes
+           become comparable at a glance. Left-aligned, -$1,650.00 and
+           -$55.00 start at the same x and you have to read both. Matches
+           .budget-amount-td / .forecast-td-amount-mobile and the mobile
+           entries cards, which already right-align. Keyed to the column
+           name, not a position — see the header className in entries.js. */
+        .entries-col-amount{font-weight:600;padding:10px 12px;text-align:right;}
+        /* Doubled-up class so it outranks .entries-th--col's text-align:left,
+           which is defined further down the file. */
+        .entries-th.entries-th--amount{text-align:right;}
         .entries-col-date{font-size:13px;padding:10px 12px;white-space:nowrap;}
         .entries-col-sched{font-size:13px;padding:10px 12px;white-space:nowrap;}
         .entries-col-until{font-size:13px;padding:10px 12px;white-space:nowrap;}
@@ -383,7 +405,16 @@
         .entries-mobile-filter-btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;}
         .entries-filter-count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;}
         .entries-allyears-label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--textMid);cursor:pointer;white-space:nowrap;}
-        .entries-search-input{font-size:13px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--bgCard);color:var(--text);outline:none;width:200px;}
+        /* The placeholder is deliberately empty unless a header search is
+           active, which left this as an unlabelled empty pill — the aria-label
+           covers screen readers but sighted users got no cue at all. The
+           magnifier carries the meaning instead, same pairing the header
+           search uses, so the placeholder can stay empty. */
+        .entries-search-wrap{display:flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--border);
+          border-radius:20px;background:var(--bgCard);}
+        .entries-search-wrap:focus-within{border-color:var(--primary);}
+        .entries-search-icon{color:var(--textLt);flex-shrink:0;}
+        .entries-search-input{font-size:13px;padding:6px 0;border:none;border-radius:0;background:transparent;color:var(--text);outline:none;width:200px;max-width:100%;min-width:0;}
         .entries-headersearch-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);width:100%;margin-top:6px;}
         .entries-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         .entries-mobilefilters-stack{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
@@ -544,7 +575,12 @@
         .alert-section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
         .settings-toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px;}
         .settings-pill-btn{font-size:12px;font-weight:600;padding:8px 20px;border-radius:9px;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;display:inline-flex;align-items:center;gap:7px;}
-        .build-version-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--textLt);}
+        /* Sat as bare mono text against the page, which read as debug output
+           left in by accident rather than a deliberate build stamp. Same
+           chip treatment the rest of the app uses for small metadata. */
+        .build-version-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--textLt);
+          background:var(--stripe);border:1px solid var(--border);border-radius:12px;
+          padding:2px 10px;align-self:center;white-space:nowrap;}
         .quicklink-pill{font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);text-decoration:none;white-space:nowrap;flex-shrink:0;}
         .ai-key-input{flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .cf-btn--showhide{font-size:12px;padding:8px 14px;white-space:nowrap;}
@@ -989,6 +1025,15 @@
           .cf-btn{min-height:40px;}
           .cf-pill,.cf-pill--dashed{min-height:36px;}
           .cf-footer-link{display:inline-block;padding:10px 4px;}
+          /* These two rows scroll horizontally with the scrollbar explicitly
+             hidden (see .settings-page-pills::-webkit-scrollbar above) and no
+             edge fade, so at 320px "Templates" just clips mid-word with
+             nothing to suggest it's reachable. There are only a handful of
+             pills, so let them wrap instead — nothing is hidden and no
+             affordance is needed. The month strip keeps its scroll + fade:
+             twelve months genuinely can't wrap into a usable row. */
+          .settings-page-pills{flex-wrap:wrap;overflow-x:visible;width:auto;justify-content:flex-start;}
+          .settings-quicklinks{flex-wrap:wrap;overflow-x:visible;row-gap:6px;}
           .settings-page-pills button{min-height:40px;}
           .settings-quicklinks a{min-height:40px;display:inline-flex;align-items:center;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
@@ -1232,6 +1277,9 @@
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
           .backup-nudge{left:12px!important;right:12px!important;
             width:auto!important;max-width:none!important;}
+          /* Full-width here and the message wraps to more lines, so it grows
+             to ~176px at 320px — 80px offset + 176px + gap. */
+          .content-area.content-area--nudged{padding-bottom:280px!important;}
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
