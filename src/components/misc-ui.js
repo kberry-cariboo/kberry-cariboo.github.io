@@ -201,7 +201,7 @@
       it.label
     )));
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
     const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
@@ -225,6 +225,47 @@
       e.target.value = "";
     };
     const [lightbox, setLightbox] = useState(false);
+    const [scanBusy, setScanBusy] = useState(false);
+    const [scanErr, setScanErr] = useState("");
+    const [scanNote, setScanNote] = useState("");
+    // Reads the attached photo and fills the form in from it. Nothing is
+    // saved: the extracted values land in the same fields the user was already
+    // editing, so a misread costs a correction rather than a bad entry.
+    const readReceipt = async () => {
+      setScanBusy(true);
+      setScanErr("");
+      setScanNote("");
+      try {
+        const got = await aiExtractReceipt({ dataUrl: attachment, categories, apiKey });
+        const filled = [];
+        if (got.merchant && got.merchant.trim()) {
+          setDesc(got.merchant.trim());
+          filled.push("description");
+        }
+        if (Number.isFinite(got.total) && got.total > 0) {
+          setAmount(String(got.total));
+          filled.push("amount");
+        }
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(got.date || "");
+        if (m) {
+          const mo = parseInt(m[2], 10) - 1;
+          const dy = parseInt(m[3], 10);
+          // The occurrence is pinned to its own year — a receipt dated in a
+          // different one is almost certainly a misread, and silently moving
+          // the occurrence would be worse than leaving the date alone.
+          if (parseInt(m[1], 10) === evYear && mo >= 0 && mo <= 11 && dy >= 1 && dy <= daysInMonth(mo, evYear)) {
+            setMonth(String(mo));
+            setDay(String(dy));
+            filled.push("date");
+          }
+        }
+        setScanNote(filled.length ? `Filled in ${filled.join(", ")} from the receipt — check before saving.` : "Couldn't make out any usable fields on that receipt.");
+      } catch (e) {
+        setScanErr(aiErrorMessage(e));
+      } finally {
+        setScanBusy(false);
+      }
+    };
     const inpCls = (isErr) => "field-input" + (isErr ? " field-error" : "");
     const lblCls = "field-label";
     const save = () => {
@@ -380,7 +421,7 @@
               if (e.key === "Enter") save();
             }
           }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement(
           "img",
           {
             src: attachment,
@@ -388,6 +429,16 @@
             className: "oem-attach-img",
             onClick: () => setLightbox(true)
           }
+        ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: readReceipt,
+            disabled: scanBusy || isOffline || !aiCanRun(apiKey),
+            title: isOffline ? "You're offline — reading a receipt needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+            className: "cf-btn cf-btn--secondary cf-btn--tiny"
+          },
+          scanBusy ? "Reading…" : "✦ Read receipt"
         ), /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -396,7 +447,7 @@
             className: "oem-remove-btn"
           },
           "Remove"
-        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
+        )), (scanErr || scanNote) && /* @__PURE__ */ React.createElement("div", { className: scanErr ? "field-error-text" : "field-hint-text", style: { flexBasis: "100%" } }, scanErr || scanNote), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
         (() => {
           // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
           // (the flexbox trick .oem-footer-row's justify-content:flex-end

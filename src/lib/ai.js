@@ -141,6 +141,51 @@
     };
   }
 
+  // Splits a data: URL into the shape the Messages API wants for an image
+  // block. Receipts are stored as compressed data URLs (see
+  // compressReceiptImage), so this is the only conversion needed to send one.
+  function aiImageBlockFromDataUrl(dataUrl) {
+    const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(String(dataUrl || ""));
+    if (!m) return null;
+    return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
+  }
+
+  // Reads a photographed receipt and returns what it says. Deliberately
+  // returns values for the caller to prefill a form with rather than writing
+  // anything: OCR of a crumpled receipt is a guess, and the user is already in
+  // an edit dialog where checking three fields costs nothing.
+  async function aiExtractReceipt({ dataUrl, categories = [], apiKey = "" }) {
+    const image = aiImageBlockFromDataUrl(dataUrl);
+    if (!image) throw aiFail("bad_image", "That attachment isn't an image this can read.");
+    const properties = {
+      readable: { type: "boolean", description: "false if this is not a legible receipt or invoice." },
+      merchant: { type: "string", description: "Business name as printed, or an empty string if unreadable." },
+      date: { type: "string", description: "Transaction date as YYYY-MM-DD, or an empty string if unreadable." },
+      total: { type: "number", description: "Grand total actually paid, in dollars, including tax and tip. 0 if unreadable." }
+    };
+    const required = ["readable", "merchant", "date", "total"];
+    if (categories.length) {
+      properties.category = { type: "string", enum: categories, description: "Best-fitting category from the list." };
+      required.push("category");
+    }
+    const { data } = await callClaude({
+      system: "You read receipts and invoices. Report only what the image actually shows. If a field is illegible, leave it empty rather than guessing.",
+      messages: [{
+        role: "user",
+        content: [
+          image,
+          { type: "text", text: `Extract this receipt's merchant, date and grand total (the amount actually paid, after tax and tip).${categories.length ? `\n\nAlso pick the best-fitting category from: ${categories.join(", ")}` : ""}` }
+        ]
+      }],
+      schema: { type: "object", properties, required, additionalProperties: false },
+      maxTokens: 2e3,
+      effort: "low",
+      apiKey
+    });
+    if (!data || !data.readable) throw aiFail("unreadable", "Couldn't read that image as a receipt. Try a clearer photo.");
+    return data;
+  }
+
   // Runs a request through whichever transport is available.
   //
   // Returns { data, text, truncated, usage, via } where `data` is the parsed

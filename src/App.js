@@ -1249,6 +1249,8 @@
         setEntries,
         saveEntryEdit,
         addEntry,
+        apiKey: aiApiKey,
+        isOffline,
         budgetSub,
         setBudgetSub,
         monthIdx: budgetMonth,
