@@ -18,7 +18,17 @@
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
-  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(centsToDollars(v)) / 1e3).toFixed(0) + "k";
+  // Rolls over to millions rather than running the k tier forever — without
+  // it a $15M axis tick reads "$15000k". (mini-recharts' own defaultFmt
+  // already tiers this way; the charts pass this formatter instead, so it
+  // needs to agree.)
+  const fmtAxisK = (v) => {
+    const d = Math.abs(centsToDollars(v));
+    const sign = v < 0 ? "-$" : "$";
+    // The zero line read "$0k" before — the suffix was unconditional.
+    if (d === 0) return "$0";
+    return d >= 1e6 ? sign + (d / 1e6).toFixed(1) + "M" : sign + (d / 1e3).toFixed(0) + "k";
+  };
   function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
@@ -70,7 +80,7 @@
       const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);
       if (!vals.length) return "Variable";
       const mn = Math.min(...vals), mx = Math.max(...vals);
-      const k = (v) => v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
+      const k = (v) => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
       return mn === mx ? "\u2248 " + k(mn) : k(mn) + "\u2013" + k(mx);
     } catch (err) {
       return "Variable";

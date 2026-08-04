@@ -302,6 +302,31 @@
       document.addEventListener("keydown", trap, true);
       return () => document.removeEventListener("keydown", trap, true);
     }, []);
+    // Going offline used to change nothing on screen. The sync layer already
+    // handles it correctly — it skips the save and retries on reconnect (see
+    // the `online` listener in household-sync.js) — but a phone with no signal
+    // looked exactly like a phone that had just saved, which is the wrong
+    // thing to be unsure about in a budget app. `unsaved` is the same marker
+    // the Settings sync card reads, so the chip and that card can't disagree.
+    const [isOffline, setIsOffline] = useState(() => {
+      try {
+        return navigator.onLine === false;
+      } catch (e) {
+        // Some browsers don't expose onLine at all — assume online rather
+        // than showing a permanent offline chip we can't clear.
+        return false;
+      }
+    });
+    useEffect(() => {
+      const goOff = () => setIsOffline(true);
+      const goOn = () => setIsOffline(false);
+      window.addEventListener("offline", goOff);
+      window.addEventListener("online", goOn);
+      return () => {
+        window.removeEventListener("offline", goOff);
+        window.removeEventListener("online", goOn);
+      };
+    }, []);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
@@ -957,7 +982,7 @@
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
-    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
+    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "global-search",
