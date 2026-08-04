@@ -1,4 +1,4 @@
-  function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
+  function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, apiKey = "", isOffline = false, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_ENTRIES_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
@@ -436,6 +436,8 @@
       onClose: () => setShowCsvImport(false),
       onImport: handleCsvImport,
       categories,
-      existingEntries: entries
+      existingEntries: entries,
+      apiKey,
+      isOffline
     }));
   }

@@ -1230,7 +1230,9 @@
         setDashHidden,
         dashOrder,
         setDashOrder,
-        debtData
+        debtData,
+        apiKey: aiApiKey,
+        isOffline
       }
     ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
@@ -1277,6 +1279,8 @@
         categories,
         categoryColors,
         activeYear,
+        apiKey: aiApiKey,
+        isOffline,
         onDeleted: (e) => pushUndo(e),
         templates,
         setTemplates,
