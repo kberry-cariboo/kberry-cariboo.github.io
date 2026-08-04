@@ -1368,7 +1368,7 @@
         className: "cf-footer-link"
       },
       "Privacy"
-    ), /* @__PURE__ */ React.createElement("span", { className: "footer-sep" }, "|"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("span", { className: "footer-sep", "aria-hidden": "true" }, "|"), /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "terms.html",

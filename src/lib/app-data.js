@@ -159,7 +159,14 @@
     primary: "#4E729C",
     // `primary` doubles as an interactive fill here, so it can't just be
     // lightened — that would wash out active pills and buttons. Links rendered
-    // *in* that colour need their own value (#4E729C on a card is 3.09:1).
+    // *in* that colour need their own value (#4E729C on a card is 3.09:1, and
+    // 3.55:1 on the page bg — under AA on every dark surface).
+    //
+    // So the split is: --primary paints things (fills, borders, accent-color,
+    // icons — all non-text, which only need 3:1 under 1.4.11), --primaryInk
+    // colours text. Any new `color:var(--primary)` on a text node is a dark-mode
+    // AA violation waiting to happen; use --primaryInk. In light mode the two
+    // are the same navy, so the swap is invisible there.
     primaryInk: "#7C97B6",
     chipKeep: "60%",
     coral: "#FF8A7A"
