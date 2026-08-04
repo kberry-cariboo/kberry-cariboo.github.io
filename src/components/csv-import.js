@@ -93,7 +93,13 @@
   // columns are date/description/amount (pre-guessed from the header row),
   // then review a preview (with likely duplicates flagged against existing
   // entries) before anything is actually added.
-  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [] }) {
+  // Rows per classification request. Descriptions are short, so the limit that
+  // matters is the reply: one {index, category} pair per row, all of which has
+  // to fit inside max_tokens. 60 keeps a batch comfortably inside the 4000 we
+  // ask for while still importing a year of transactions in a handful of
+  // calls.
+  const CSV_AI_BATCH = 60;
+  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], apiKey = "", isOffline = false }) {
     const [step, setStep] = useState("upload");
     const [fileName, setFileName] = useState("");
     const [headers, setHeaders] = useState([]);
@@ -117,6 +123,14 @@
     });
     const [skipDuplicates, setSkipDuplicates] = useState(true);
     const [excludedRows, setExcludedRows] = useState(() => /* @__PURE__ */ new Set());
+    // Per-row category overrides, keyed by row index. Empty means "use the
+    // bulk category chosen on the mapping step", so the import works exactly
+    // as before if nothing here is ever touched.
+    const [rowCats, setRowCats] = useState({});
+    const [catBusy, setCatBusy] = useState(false);
+    const [catErr, setCatErr] = useState("");
+    const [catCount, setCatCount] = useState(0);
+    const sortedCats = useMemo(() => [...categories].sort((a, b) => a.localeCompare(b)), [categories]);
     const reset = () => {
       setStep("upload");
       setFileName("");
@@ -131,6 +145,9 @@
       setCreditCol(-1);
       setFlipSign(false);
       setExcludedRows(/* @__PURE__ */ new Set());
+      setRowCats({});
+      setCatErr("");
+      setCatCount(0);
     };
     const close = () => {
       reset();
@@ -211,13 +228,73 @@
       return next;
     });
     const rowsToImport = parsedRows.filter((r) => r.valid && !excludedRows.has(r.i) && !(skipDuplicates && r.isDuplicate));
+    // Classifies each row's description against the household's own category
+    // list. Everything lands in the preview as an editable dropdown rather
+    // than being applied on import, so a wrong guess costs one click and the
+    // user still reviews every row before anything is written.
+    const autoCategorize = async () => {
+      const rows = parsedRows.filter((r) => r.valid);
+      if (!rows.length || !sortedCats.length) return;
+      setCatBusy(true);
+      setCatErr("");
+      const validIndices = new Set(rows.map((r) => r.i));
+      const schema = {
+        type: "object",
+        properties: {
+          assignments: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                index: { type: "integer", description: "The row number given in the list." },
+                // Constraining to an enum is what stops the model inventing a
+                // category that doesn't exist in this household — the reply
+                // can only name one the user already has.
+                category: { type: "string", enum: sortedCats }
+              },
+              required: ["index", "category"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["assignments"],
+        additionalProperties: false
+      };
+      const next = {};
+      try {
+        for (let start = 0; start < rows.length; start += CSV_AI_BATCH) {
+          const batch = rows.slice(start, start + CSV_AI_BATCH);
+          const list = batch.map((r) => `${r.i}. ${r.desc} — ${r.type} ${fmt(r.amountCents)}`).join("\n");
+          const { data } = await callClaude({
+            system: "You categorise personal bank transactions. Use only the categories you are given. Where a description is ambiguous, pick the closest fit rather than a generic catch-all.",
+            messages: [{ role: "user", content: `Assign exactly one category to each transaction below. Return one assignment per transaction, using the row number shown.\n\nAvailable categories: ${sortedCats.join(", ")}\n\nTransactions:\n${list}` }],
+            schema,
+            maxTokens: 4e3,
+            effort: "low",
+            apiKey
+          });
+          ((data && data.assignments) || []).forEach((a) => {
+            // Guard the index too: the schema pins the category to a real one,
+            // but nothing stops a row number being echoed back wrong, and a
+            // stray key would silently categorise a row the user never saw.
+            if (validIndices.has(a.index) && sortedCats.includes(a.category)) next[a.index] = a.category;
+          });
+        }
+        setRowCats((prev) => ({ ...prev, ...next }));
+        setCatCount(Object.keys(next).length);
+      } catch (e) {
+        setCatErr(aiErrorMessage(e));
+      } finally {
+        setCatBusy(false);
+      }
+    };
     const doImport = () => {
       const newEntries = rowsToImport.map((r) => ({
         id: genId(),
         desc: r.desc,
         type: r.type,
         amount: r.amountCents,
-        category,
+        category: rowCats[r.i] || category,
         notes: "",
         startDate: r.date,
         repeats: false,
@@ -273,11 +350,11 @@
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
           ),
-          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category for imported entries"),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Default category"),
             /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
-              [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+              sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
             ),
-            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Applied to every imported row — recategorize individual entries afterward in Entries.")
+            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Starting point for every row. On the next step you can set categories per row, or have Claude suggest them from the descriptions.")
           ),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
             /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
@@ -298,9 +375,23 @@
             /* @__PURE__ */ React.createElement("span", { className: "txl" }, rowsToImport.length, " of ", parsedRows.length, " row", parsedRows.length !== 1 ? "s" : "", " will be imported"),
             /* @__PURE__ */ React.createElement("label", { className: "cf-row cf-gap-6", style: { fontSize: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: skipDuplicates, onChange: (e) => setSkipDuplicates(e.target.checked) }), "Skip likely duplicates")
           ),
+          /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap mb-12" },
+            /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                onClick: autoCategorize,
+                disabled: catBusy || isOffline || !aiCanRun(apiKey) || !parsedRows.some((r) => r.valid),
+                title: isOffline ? "You're offline — categorising needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+                className: "cf-btn cf-btn--secondary"
+              },
+              catBusy ? "Categorising…" : "✦ Suggest categories"
+            ),
+            catCount > 0 && !catBusy && /* @__PURE__ */ React.createElement("span", { className: "field-hint-text" }, "Claude set ", catCount, " categor", catCount === 1 ? "y" : "ies", " — review them below before importing.")
+          ),
+          catErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mb-12" }, catErr),
           /* @__PURE__ */ React.createElement("div", { className: "hscroll csvimport-preview-wrap", role: "region", "aria-label": "Import preview" },
             /* @__PURE__ */ React.createElement("table", { className: "forecast-table" },
-              /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
+              /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type", "Category"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
               /* @__PURE__ */ React.createElement("tbody", null, parsedRows.map((r) => {
                 const excluded = excludedRows.has(r.i) || (skipDuplicates && r.isDuplicate) || !r.valid;
                 return /* @__PURE__ */ React.createElement("tr", { key: r.i, className: "forecast-tr", style: { opacity: excluded ? 0.45 : 1 } },
@@ -308,7 +399,17 @@
                   /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, r.date || "—"),
                   /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell" }, r.desc || "—", !r.valid && /* @__PURE__ */ React.createElement("span", { className: "field-error-text" }, " Couldn't parse this row"), r.isDuplicate && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Possible duplicate")),
                   /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13" }, r.amountCents != null ? fmt(r.amountCents) : "—"),
-                  /* @__PURE__ */ React.createElement("td", null, r.type)
+                  /* @__PURE__ */ React.createElement("td", null, r.type),
+                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement(
+                    "select",
+                    {
+                      className: "field-input csvimport-cat-select",
+                      "aria-label": `Category for ${r.desc || "row " + (r.i + 1)}`,
+                      value: rowCats[r.i] || category,
+                      onChange: (e) => setRowCats((prev) => ({ ...prev, [r.i]: e.target.value }))
+                    },
+                    sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+                  ))
                 );
               }))
             )

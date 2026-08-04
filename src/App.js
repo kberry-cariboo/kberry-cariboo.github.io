@@ -327,6 +327,23 @@
         window.removeEventListener("online", goOn);
       };
     }, []);
+    // Probe for the ai-proxy Edge Function once, here rather than in each
+    // feature. aiCanRun() reads a module-level flag that only the probe sets,
+    // so a component that never probes sees "no AI configured" and disables
+    // its button even when the function is deployed — the CSV modal and the
+    // entry form would each have had to probe on mount to avoid that. Doing it
+    // at the root means one probe per load, and the setState is what re-renders
+    // the tree so every button re-reads the flag once the answer is in.
+    const [, setAiProxyReady] = useState(false);
+    useEffect(() => {
+      let live = true;
+      aiProbeProxy().then((ok) => {
+        if (live) setAiProxyReady(ok);
+      });
+      return () => {
+        live = false;
+      };
+    }, [session]);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
@@ -1230,7 +1247,9 @@
         setDashHidden,
         dashOrder,
         setDashOrder,
-        debtData
+        debtData,
+        apiKey: aiApiKey,
+        isOffline
       }
     ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
@@ -1247,6 +1266,8 @@
         setEntries,
         saveEntryEdit,
         addEntry,
+        apiKey: aiApiKey,
+        isOffline,
         budgetSub,
         setBudgetSub,
         monthIdx: budgetMonth,
@@ -1267,7 +1288,7 @@
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       EntriesView,
       {
         entries,
@@ -1277,6 +1298,8 @@
         categories,
         categoryColors,
         activeYear,
+        apiKey: aiApiKey,
+        isOffline,
         onDeleted: (e) => pushUndo(e),
         templates,
         setTemplates,
@@ -1316,7 +1339,7 @@
         planSub,
         setPlanSub
       }
-    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,

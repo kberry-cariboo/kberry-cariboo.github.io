@@ -2,7 +2,7 @@
   // see a new component type each render and remount their DOM.
   const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
   const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
-  function BudgetView({ flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -737,6 +737,8 @@
               setEditingEntry(null);
             },
             categories,
+            apiKey,
+            isOffline,
             templates,
             onSaveTemplate: (t) => {
               setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t]);
@@ -746,6 +748,9 @@
       ), showOccurrenceForm && editingEv && /* @__PURE__ */ React.createElement(
         OccurrenceEditModal,
         {
+          apiKey,
+          isOffline,
+          categories,
           ev: editingEv,
           orig: entries.find((e) => e.id === editingEv.entryId) || {},
           onSave: handleOccurrenceSave,

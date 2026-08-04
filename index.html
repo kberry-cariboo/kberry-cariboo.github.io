@@ -732,6 +732,7 @@
           color:var(--textMid);font-size:13px;font-weight:600;transition:border-color 0.15s,color 0.15s;}
         .csvimport-drop-zone:hover{border-color:var(--primary);color:var(--text);}
         .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
+        .csvimport-cat-select{min-width:120px;font-size:12px;padding:4px 6px;height:auto;}
         .daily-today-wrap{display:flex;align-items:center;gap:8px;margin:4px 16px;}
         .daily-day-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
         .daily-day-number{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--primary);line-height:1;}
@@ -4405,6 +4406,244 @@ document.addEventListener('DOMContentLoaded',function(){
     "#8F8A26",
     "#8E4585"
   ];
+  // Single call path to Claude for every AI feature in the app.
+  //
+  // Two transports, in preference order:
+  //
+  //   1. The `ai-proxy` Edge Function, which holds ANTHROPIC_API_KEY as a
+  //      Supabase secret. The key never reaches the browser, one deployment
+  //      serves every device and household member, and the function is the
+  //      one place a rate limit or an audit log can live.
+  //   2. A direct browser -> api.anthropic.com call using a key the user
+  //      pasted into Settings. This is the original (and only) transport the
+  //      app had; it stays as a fallback so the AI features keep working for
+  //      anyone who hasn't deployed the function, and so the app is usable
+  //      without a household account at all.
+  //
+  // Transport 2 necessarily exposes the key to anything that can run script on
+  // the page, which is why 1 exists and is tried first. Which one served a
+  // given call comes back as `via` so the UI can say so.
+  const AI_MODEL = "claude-opus-5";
+  const AI_PROXY_FN = "ai-proxy";
+  // Probed once per page load and remembered here: null = not yet asked,
+  // true/false = the answer. A missing function is a 404 on every call, so
+  // there's no point re-probing it per feature.
+  let _aiProxyAvailable = null;
+  let _aiProxyProbe = null;
+
+  function aiSignedIn() {
+    return !!(supabaseClient && supabaseClient.auth);
+  }
+
+  // Asks the Edge Function whether it's deployed and configured, without
+  // spending any Anthropic tokens — the function answers `{ping:true}` from
+  // its own process. Resolves false (never throws) so callers can treat it as
+  // a plain capability flag.
+  async function aiProbeProxy() {
+    if (_aiProxyAvailable !== null) return _aiProxyAvailable;
+    if (_aiProxyProbe) return _aiProxyProbe;
+    // Not signed in is not an answer about the function — it's an answer about
+    // right now. Caching it would leave the proxy permanently written off for
+    // anyone who signs in after the app loads, so this path returns false
+    // without recording it and the caller can ask again later.
+    if (!aiSignedIn()) return false;
+    _aiProxyProbe = (async () => {
+      try {
+        const { data: sess } = await supabaseClient.auth.getSession();
+        // The function verifies the caller's JWT, so a signed-out visitor
+        // can't use it even if it is deployed.
+        if (!sess || !sess.session) {
+          _aiProxyProbe = null;
+          return false;
+        }
+        const { data, error } = await supabaseClient.functions.invoke(AI_PROXY_FN, { body: { ping: true } });
+        _aiProxyAvailable = !error && !!(data && data.ok);
+      } catch (e) {
+        _aiProxyAvailable = false;
+      }
+      _aiProxyProbe = null;
+      return _aiProxyAvailable === true;
+    })();
+    return _aiProxyProbe;
+  }
+
+  // True when *some* transport can serve a call. The UI uses this to decide
+  // whether to nag for an API key: with the proxy deployed, no key is needed.
+  function aiCanRun(apiKey) {
+    return !!(apiKey && apiKey.trim()) || _aiProxyAvailable === true;
+  }
+
+  function aiErrorMessage(e) {
+    const msg = (e && e.message) || "Unknown error";
+    if (e && e.code === "no_transport") {
+      return "No AI access configured. Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function.";
+    }
+    if (e && e.code === "refusal") {
+      return "Claude declined to answer this one. Try again, or adjust the data you're sending.";
+    }
+    if (e && e.code === "bad_json") {
+      return "Claude's reply wasn't in the expected format. Try again.";
+    }
+    if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+      return "Couldn't reach the AI service. Check your connection and try again.";
+    }
+    return msg;
+  }
+
+  function aiFail(code, message) {
+    const err = new Error(message);
+    err.code = code;
+    return err;
+  }
+
+  // Pulls the answer out of a Messages API response, applying the checks every
+  // caller would otherwise repeat: a refusal is a successful HTTP 200 with an
+  // empty `content`, and a truncated reply is only visible via stop_reason —
+  // both look like "it worked" if you go straight for content[0].text.
+  function aiReadResponse(body, schema) {
+    if (!body || !Array.isArray(body.content)) {
+      throw aiFail("bad_response", "The AI service returned an unexpected response.");
+    }
+    if (body.stop_reason === "refusal") {
+      const cat = body.stop_details && body.stop_details.category;
+      throw aiFail("refusal", cat ? `Claude declined this request (${cat}).` : "Claude declined this request.");
+    }
+    const text = body.content.filter((b) => b.type === "text").map((b) => b.text || "").join("");
+    const truncated = body.stop_reason === "max_tokens";
+    let data = null;
+    if (schema) {
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        // With output_config.format the reply is schema-constrained, so the
+        // realistic cause is truncation partway through the JSON rather than
+        // the model free-styling. Say which.
+        throw aiFail(
+          "bad_json",
+          truncated
+            ? "Claude's reply was cut off before it finished. Try again."
+            : "Claude's reply wasn't valid JSON."
+        );
+      }
+    }
+    return { data, text, truncated, usage: body.usage || null };
+  }
+
+  // Builds the Messages API request body. Kept in one place because the proxy
+  // and the direct call must send byte-identical requests — otherwise the two
+  // transports quietly produce different output.
+  //
+  // Thinking is left on (adaptive) everywhere. Claude Opus 5 thinks by default
+  // and disabling it is only permitted at effort `high` or below; `effort` is
+  // the intended dial for cost, and a lower effort is both cheaper and safer
+  // than turning thinking off.
+  function aiBuildRequest({ system, messages, schema, maxTokens = 2048, effort = "high" }) {
+    const outputConfig = { effort };
+    if (schema) outputConfig.format = { type: "json_schema", schema };
+    return {
+      model: AI_MODEL,
+      max_tokens: maxTokens,
+      thinking: { type: "adaptive" },
+      output_config: outputConfig,
+      ...(system ? { system } : {}),
+      messages
+    };
+  }
+
+  // Splits a data: URL into the shape the Messages API wants for an image
+  // block. Receipts are stored as compressed data URLs (see
+  // compressReceiptImage), so this is the only conversion needed to send one.
+  function aiImageBlockFromDataUrl(dataUrl) {
+    const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(String(dataUrl || ""));
+    if (!m) return null;
+    return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
+  }
+
+  // Reads a photographed receipt and returns what it says. Deliberately
+  // returns values for the caller to prefill a form with rather than writing
+  // anything: OCR of a crumpled receipt is a guess, and the user is already in
+  // an edit dialog where checking three fields costs nothing.
+  async function aiExtractReceipt({ dataUrl, categories = [], apiKey = "" }) {
+    const image = aiImageBlockFromDataUrl(dataUrl);
+    if (!image) throw aiFail("bad_image", "That attachment isn't an image this can read.");
+    const properties = {
+      readable: { type: "boolean", description: "false if this is not a legible receipt or invoice." },
+      merchant: { type: "string", description: "Business name as printed, or an empty string if unreadable." },
+      date: { type: "string", description: "Transaction date as YYYY-MM-DD, or an empty string if unreadable." },
+      total: { type: "number", description: "Grand total actually paid, in dollars, including tax and tip. 0 if unreadable." }
+    };
+    const required = ["readable", "merchant", "date", "total"];
+    if (categories.length) {
+      properties.category = { type: "string", enum: categories, description: "Best-fitting category from the list." };
+      required.push("category");
+    }
+    const { data } = await callClaude({
+      system: "You read receipts and invoices. Report only what the image actually shows. If a field is illegible, leave it empty rather than guessing.",
+      messages: [{
+        role: "user",
+        content: [
+          image,
+          { type: "text", text: `Extract this receipt's merchant, date and grand total (the amount actually paid, after tax and tip).${categories.length ? `\n\nAlso pick the best-fitting category from: ${categories.join(", ")}` : ""}` }
+        ]
+      }],
+      schema: { type: "object", properties, required, additionalProperties: false },
+      maxTokens: 2e3,
+      effort: "low",
+      apiKey
+    });
+    if (!data || !data.readable) throw aiFail("unreadable", "Couldn't read that image as a receipt. Try a clearer photo.");
+    return data;
+  }
+
+  // Runs a request through whichever transport is available.
+  //
+  // Returns { data, text, truncated, usage, via } where `data` is the parsed
+  // object when a schema was supplied. Throws an Error carrying a `.code` —
+  // pass it through aiErrorMessage() for something worth showing a user.
+  async function callClaude({ system, messages, schema, maxTokens = 2048, effort = "high", apiKey = "" }) {
+    const request = aiBuildRequest({ system, messages, schema, maxTokens, effort });
+    const proxyReady = await aiProbeProxy();
+    if (proxyReady) {
+      const { data, error } = await supabaseClient.functions.invoke(AI_PROXY_FN, { body: { request } });
+      if (!error) return { ...aiReadResponse(data, schema), via: "proxy" };
+      // The proxy answered and said no. That's a real error (bad key on the
+      // server, rate limited, Anthropic down) — falling back to the user's own
+      // key here would hide a server problem and silently spend their money,
+      // so surface it instead. The one exception is the function having gone
+      // away since we probed, which is worth re-checking.
+      const status = error.context && error.context.status;
+      if (status === 404) {
+        _aiProxyAvailable = false;
+      } else {
+        let detail = "";
+        try {
+          const body = error.context && (await error.context.json());
+          detail = (body && (body.error || body.message)) || "";
+        } catch (e) {
+          // Non-JSON error body (a gateway HTML page, say). The status line
+          // below is still worth showing.
+        }
+        throw aiFail("proxy_error", detail || error.message || "The AI service rejected the request.");
+      }
+    }
+    const key = (apiKey || "").trim();
+    if (!key) throw aiFail("no_transport", "No AI transport available.");
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify(request)
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw aiFail("api_error", (e && e.error && e.error.message) || `API error ${res.status}`);
+    }
+    return { ...aiReadResponse(await res.json(), schema), via: "direct" };
+  }
   function getCatColor(category, categories, categoryColors = {}) {
     if (categoryColors && categoryColors[category]) return categoryColors[category];
     const sorted = [...categories].sort((a, b) => a.localeCompare(b));
@@ -4763,7 +5002,7 @@ document.addEventListener('DOMContentLoaded',function(){
     onClick: () => onChange(!value),
     className: "cf-switch"
   }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), className: "toggle-label" }, label));
-  function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
+  function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     var _a, _b, _c, _d, _e;
     const today = todayStr();
     const blank = {
@@ -4796,6 +5035,71 @@ document.addEventListener('DOMContentLoaded',function(){
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
     const set = (patch) => setF((p) => __spreadValues(__spreadValues({}, p), patch));
+    const [nlText, setNlText] = useState("");
+    const [nlBusy, setNlBusy] = useState(false);
+    const [nlErr, setNlErr] = useState("");
+    const [nlNote, setNlNote] = useState("");
+    // Turns "hydro $180 every second Tuesday" into the fields below. It fills
+    // the form rather than saving, because the recurrence model has more
+    // corners than a sentence usually specifies — the user confirms the
+    // schedule the same way they would if they had typed it in by hand.
+    const fillFromText = async () => {
+      const text = nlText.trim();
+      if (!text) return;
+      setNlBusy(true);
+      setNlErr("");
+      setNlNote("");
+      try {
+        const sortedCats = [...categories].sort((a, b) => a.localeCompare(b));
+        const properties = {
+          desc: { type: "string", description: "Short label for the entry, usually the payee or purpose." },
+          type: { type: "string", enum: ["income", "expense"] },
+          amount: { type: "number", description: "Amount in dollars, always positive. 0 when the text doesn't say." },
+          start_date: { type: "string", description: "Date it first applies, as YYYY-MM-DD. Use today when the text doesn't say." },
+          repeats: { type: "boolean", description: "true only when the text describes something recurring." },
+          recur_every: { type: "integer", description: "Interval between repeats, e.g. 2 for 'every second week'. 1 otherwise." },
+          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth"] },
+          recur_days: { type: "array", description: "Weekly repeats only: weekday numbers, 0 = Sunday through 6 = Saturday.", items: { type: "integer" } },
+          recur_end: { type: "string", description: "Last date as YYYY-MM-DD, or an empty string when ongoing." },
+          notes: { type: "string", description: "Anything in the text that doesn't fit the other fields. Empty string if none." }
+        };
+        const required = ["desc", "type", "amount", "start_date", "repeats", "recur_every", "recur_unit", "recur_days", "recur_end", "notes"];
+        if (sortedCats.length) {
+          properties.category = { type: "string", enum: sortedCats };
+          required.push("category");
+        }
+        const { data } = await callClaude({
+          system: "You convert short notes about money into structured budget entries. Use only what the text states — never invent an amount, a date or a schedule that isn't there.",
+          messages: [{ role: "user", content: `Today is ${today}. Turn this into a single budget entry:\n\n${text}` }],
+          schema: { type: "object", properties, required, additionalProperties: false },
+          maxTokens: 2e3,
+          effort: "low",
+          apiKey
+        });
+        const patch = {};
+        if (data.desc && data.desc.trim()) patch.desc = data.desc.trim();
+        if (data.type === "income" || data.type === "expense") patch.type = data.type;
+        if (Number.isFinite(data.amount) && data.amount > 0) patch.amount = String(data.amount);
+        if (data.category && sortedCats.includes(data.category)) patch.category = data.category;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(data.start_date || "")) patch.startDate = data.start_date;
+        patch.repeats = !!data.repeats;
+        if (patch.repeats) {
+          patch.recurUnit = ["day", "week", "month", "year", "semimonth"].includes(data.recur_unit) ? data.recur_unit : "month";
+          patch.recurEvery = Number.isInteger(data.recur_every) && data.recur_every > 0 ? data.recur_every : 1;
+          // recurDays is only meaningful for weekly repeats, and the form's
+          // own weekday toggles assume clean 0-6 values.
+          patch.recurDays = patch.recurUnit === "week" && Array.isArray(data.recur_days) ? data.recur_days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(data.recur_end || "")) patch.recurEnd = data.recur_end;
+        }
+        if (data.notes && data.notes.trim()) patch.notes = data.notes.trim();
+        set(patch);
+        setNlNote("Filled the form in from your description — check it over before saving.");
+      } catch (e) {
+        setNlErr(aiErrorMessage(e));
+      } finally {
+        setNlBusy(false);
+      }
+    };
     const startD = f.startDate ? parseDate(f.startDate) : null;
     const startWD = startD ? startD.getDay() : null;
     const setStartDate = (val) => {
@@ -4848,7 +5152,36 @@ document.addEventListener('DOMContentLoaded',function(){
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
+      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
+        /* @__PURE__ */ React.createElement("input", {
+          id: "entry-nl",
+          className: "field-input",
+          style: { flex: "1 1 220px" },
+          placeholder: "hydro $180 every second Tuesday",
+          value: nlText,
+          disabled: nlBusy,
+          onChange: (e) => setNlText(e.target.value),
+          onKeyDown: (e) => {
+            // Enter inside a form would otherwise submit it; here it should
+            // run the parse the user is obviously asking for.
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!nlBusy && nlText.trim() && !isOffline && aiCanRun(apiKey)) fillFromText();
+            }
+          }
+        }),
+        /* @__PURE__ */ React.createElement("button", {
+          type: "button",
+          onClick: fillFromText,
+          disabled: nlBusy || !nlText.trim() || isOffline || !aiCanRun(apiKey),
+          title: isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+          className: "cf-btn cf-btn--secondary"
+        }, nlBusy ? "Reading…" : "✦ Fill in")
+      ),
+      (nlErr || nlNote) && /* @__PURE__ */ React.createElement("div", { className: nlErr ? "field-error-text" : "field-hint-text" }, nlErr || nlNote)
+    ), templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
       setF((p) => __spreadProps(__spreadValues({}, p), {
         desc: t.desc,
         type: t.type,
@@ -4998,7 +5331,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
   // open a blank entry form.
-  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null }) {
+  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
     if (!show) return null;
     return /* @__PURE__ */ React.createElement(
       "div",
@@ -5018,6 +5351,8 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           onCancel: onClose,
           categories,
+          apiKey,
+          isOffline,
           templates,
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
@@ -5267,7 +5602,13 @@ document.addEventListener('DOMContentLoaded',function(){
   // columns are date/description/amount (pre-guessed from the header row),
   // then review a preview (with likely duplicates flagged against existing
   // entries) before anything is actually added.
-  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [] }) {
+  // Rows per classification request. Descriptions are short, so the limit that
+  // matters is the reply: one {index, category} pair per row, all of which has
+  // to fit inside max_tokens. 60 keeps a batch comfortably inside the 4000 we
+  // ask for while still importing a year of transactions in a handful of
+  // calls.
+  const CSV_AI_BATCH = 60;
+  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], apiKey = "", isOffline = false }) {
     const [step, setStep] = useState("upload");
     const [fileName, setFileName] = useState("");
     const [headers, setHeaders] = useState([]);
@@ -5291,6 +5632,14 @@ document.addEventListener('DOMContentLoaded',function(){
     });
     const [skipDuplicates, setSkipDuplicates] = useState(true);
     const [excludedRows, setExcludedRows] = useState(() => /* @__PURE__ */ new Set());
+    // Per-row category overrides, keyed by row index. Empty means "use the
+    // bulk category chosen on the mapping step", so the import works exactly
+    // as before if nothing here is ever touched.
+    const [rowCats, setRowCats] = useState({});
+    const [catBusy, setCatBusy] = useState(false);
+    const [catErr, setCatErr] = useState("");
+    const [catCount, setCatCount] = useState(0);
+    const sortedCats = useMemo(() => [...categories].sort((a, b) => a.localeCompare(b)), [categories]);
     const reset = () => {
       setStep("upload");
       setFileName("");
@@ -5305,6 +5654,9 @@ document.addEventListener('DOMContentLoaded',function(){
       setCreditCol(-1);
       setFlipSign(false);
       setExcludedRows(/* @__PURE__ */ new Set());
+      setRowCats({});
+      setCatErr("");
+      setCatCount(0);
     };
     const close = () => {
       reset();
@@ -5385,13 +5737,73 @@ document.addEventListener('DOMContentLoaded',function(){
       return next;
     });
     const rowsToImport = parsedRows.filter((r) => r.valid && !excludedRows.has(r.i) && !(skipDuplicates && r.isDuplicate));
+    // Classifies each row's description against the household's own category
+    // list. Everything lands in the preview as an editable dropdown rather
+    // than being applied on import, so a wrong guess costs one click and the
+    // user still reviews every row before anything is written.
+    const autoCategorize = async () => {
+      const rows = parsedRows.filter((r) => r.valid);
+      if (!rows.length || !sortedCats.length) return;
+      setCatBusy(true);
+      setCatErr("");
+      const validIndices = new Set(rows.map((r) => r.i));
+      const schema = {
+        type: "object",
+        properties: {
+          assignments: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                index: { type: "integer", description: "The row number given in the list." },
+                // Constraining to an enum is what stops the model inventing a
+                // category that doesn't exist in this household — the reply
+                // can only name one the user already has.
+                category: { type: "string", enum: sortedCats }
+              },
+              required: ["index", "category"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["assignments"],
+        additionalProperties: false
+      };
+      const next = {};
+      try {
+        for (let start = 0; start < rows.length; start += CSV_AI_BATCH) {
+          const batch = rows.slice(start, start + CSV_AI_BATCH);
+          const list = batch.map((r) => `${r.i}. ${r.desc} — ${r.type} ${fmt(r.amountCents)}`).join("\n");
+          const { data } = await callClaude({
+            system: "You categorise personal bank transactions. Use only the categories you are given. Where a description is ambiguous, pick the closest fit rather than a generic catch-all.",
+            messages: [{ role: "user", content: `Assign exactly one category to each transaction below. Return one assignment per transaction, using the row number shown.\n\nAvailable categories: ${sortedCats.join(", ")}\n\nTransactions:\n${list}` }],
+            schema,
+            maxTokens: 4e3,
+            effort: "low",
+            apiKey
+          });
+          ((data && data.assignments) || []).forEach((a) => {
+            // Guard the index too: the schema pins the category to a real one,
+            // but nothing stops a row number being echoed back wrong, and a
+            // stray key would silently categorise a row the user never saw.
+            if (validIndices.has(a.index) && sortedCats.includes(a.category)) next[a.index] = a.category;
+          });
+        }
+        setRowCats((prev) => ({ ...prev, ...next }));
+        setCatCount(Object.keys(next).length);
+      } catch (e) {
+        setCatErr(aiErrorMessage(e));
+      } finally {
+        setCatBusy(false);
+      }
+    };
     const doImport = () => {
       const newEntries = rowsToImport.map((r) => ({
         id: genId(),
         desc: r.desc,
         type: r.type,
         amount: r.amountCents,
-        category,
+        category: rowCats[r.i] || category,
         notes: "",
         startDate: r.date,
         repeats: false,
@@ -5447,11 +5859,11 @@ document.addEventListener('DOMContentLoaded',function(){
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
           ),
-          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category for imported entries"),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Default category"),
             /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
-              [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+              sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
             ),
-            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Applied to every imported row — recategorize individual entries afterward in Entries.")
+            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Starting point for every row. On the next step you can set categories per row, or have Claude suggest them from the descriptions.")
           ),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
             /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
@@ -5472,9 +5884,23 @@ document.addEventListener('DOMContentLoaded',function(){
             /* @__PURE__ */ React.createElement("span", { className: "txl" }, rowsToImport.length, " of ", parsedRows.length, " row", parsedRows.length !== 1 ? "s" : "", " will be imported"),
             /* @__PURE__ */ React.createElement("label", { className: "cf-row cf-gap-6", style: { fontSize: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: skipDuplicates, onChange: (e) => setSkipDuplicates(e.target.checked) }), "Skip likely duplicates")
           ),
+          /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap mb-12" },
+            /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                onClick: autoCategorize,
+                disabled: catBusy || isOffline || !aiCanRun(apiKey) || !parsedRows.some((r) => r.valid),
+                title: isOffline ? "You're offline — categorising needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+                className: "cf-btn cf-btn--secondary"
+              },
+              catBusy ? "Categorising…" : "✦ Suggest categories"
+            ),
+            catCount > 0 && !catBusy && /* @__PURE__ */ React.createElement("span", { className: "field-hint-text" }, "Claude set ", catCount, " categor", catCount === 1 ? "y" : "ies", " — review them below before importing.")
+          ),
+          catErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mb-12" }, catErr),
           /* @__PURE__ */ React.createElement("div", { className: "hscroll csvimport-preview-wrap", role: "region", "aria-label": "Import preview" },
             /* @__PURE__ */ React.createElement("table", { className: "forecast-table" },
-              /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
+              /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type", "Category"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
               /* @__PURE__ */ React.createElement("tbody", null, parsedRows.map((r) => {
                 const excluded = excludedRows.has(r.i) || (skipDuplicates && r.isDuplicate) || !r.valid;
                 return /* @__PURE__ */ React.createElement("tr", { key: r.i, className: "forecast-tr", style: { opacity: excluded ? 0.45 : 1 } },
@@ -5482,7 +5908,17 @@ document.addEventListener('DOMContentLoaded',function(){
                   /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, r.date || "—"),
                   /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell" }, r.desc || "—", !r.valid && /* @__PURE__ */ React.createElement("span", { className: "field-error-text" }, " Couldn't parse this row"), r.isDuplicate && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Possible duplicate")),
                   /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13" }, r.amountCents != null ? fmt(r.amountCents) : "—"),
-                  /* @__PURE__ */ React.createElement("td", null, r.type)
+                  /* @__PURE__ */ React.createElement("td", null, r.type),
+                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement(
+                    "select",
+                    {
+                      className: "field-input csvimport-cat-select",
+                      "aria-label": `Category for ${r.desc || "row " + (r.i + 1)}`,
+                      value: rowCats[r.i] || category,
+                      onChange: (e) => setRowCats((prev) => ({ ...prev, [r.i]: e.target.value }))
+                    },
+                    sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
+                  ))
                 );
               }))
             )
@@ -5500,7 +5936,7 @@ document.addEventListener('DOMContentLoaded',function(){
       )
     );
   }
-  function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, onDeleted = () => {
+  function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, apiKey = "", isOffline = false, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_ENTRIES_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
@@ -5821,6 +6257,8 @@ document.addEventListener('DOMContentLoaded',function(){
           onSave: handleSave,
           onCancel: close,
           categories,
+          apiKey,
+          isOffline,
           templates: templates || [],
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
@@ -5938,7 +6376,9 @@ document.addEventListener('DOMContentLoaded',function(){
       onClose: () => setShowCsvImport(false),
       onImport: handleCsvImport,
       categories,
-      existingEntries: entries
+      existingEntries: entries,
+      apiKey,
+      isOffline
     }));
   }
   // Shown only when this device has edits the server never received *and* the
@@ -6144,7 +6584,7 @@ document.addEventListener('DOMContentLoaded',function(){
       it.label
     )));
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null }) {
+  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
     const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
@@ -6168,6 +6608,47 @@ document.addEventListener('DOMContentLoaded',function(){
       e.target.value = "";
     };
     const [lightbox, setLightbox] = useState(false);
+    const [scanBusy, setScanBusy] = useState(false);
+    const [scanErr, setScanErr] = useState("");
+    const [scanNote, setScanNote] = useState("");
+    // Reads the attached photo and fills the form in from it. Nothing is
+    // saved: the extracted values land in the same fields the user was already
+    // editing, so a misread costs a correction rather than a bad entry.
+    const readReceipt = async () => {
+      setScanBusy(true);
+      setScanErr("");
+      setScanNote("");
+      try {
+        const got = await aiExtractReceipt({ dataUrl: attachment, categories, apiKey });
+        const filled = [];
+        if (got.merchant && got.merchant.trim()) {
+          setDesc(got.merchant.trim());
+          filled.push("description");
+        }
+        if (Number.isFinite(got.total) && got.total > 0) {
+          setAmount(String(got.total));
+          filled.push("amount");
+        }
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(got.date || "");
+        if (m) {
+          const mo = parseInt(m[2], 10) - 1;
+          const dy = parseInt(m[3], 10);
+          // The occurrence is pinned to its own year — a receipt dated in a
+          // different one is almost certainly a misread, and silently moving
+          // the occurrence would be worse than leaving the date alone.
+          if (parseInt(m[1], 10) === evYear && mo >= 0 && mo <= 11 && dy >= 1 && dy <= daysInMonth(mo, evYear)) {
+            setMonth(String(mo));
+            setDay(String(dy));
+            filled.push("date");
+          }
+        }
+        setScanNote(filled.length ? `Filled in ${filled.join(", ")} from the receipt — check before saving.` : "Couldn't make out any usable fields on that receipt.");
+      } catch (e) {
+        setScanErr(aiErrorMessage(e));
+      } finally {
+        setScanBusy(false);
+      }
+    };
     const inpCls = (isErr) => "field-input" + (isErr ? " field-error" : "");
     const lblCls = "field-label";
     const save = () => {
@@ -6323,7 +6804,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement(
           "img",
           {
             src: attachment,
@@ -6331,6 +6812,16 @@ document.addEventListener('DOMContentLoaded',function(){
             className: "oem-attach-img",
             onClick: () => setLightbox(true)
           }
+        ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: readReceipt,
+            disabled: scanBusy || isOffline || !aiCanRun(apiKey),
+            title: isOffline ? "You're offline — reading a receipt needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+            className: "cf-btn cf-btn--secondary cf-btn--tiny"
+          },
+          scanBusy ? "Reading…" : "✦ Read receipt"
         ), /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -6339,7 +6830,7 @@ document.addEventListener('DOMContentLoaded',function(){
             className: "oem-remove-btn"
           },
           "Remove"
-        ), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
+        )), (scanErr || scanNote) && /* @__PURE__ */ React.createElement("div", { className: scanErr ? "field-error-text" : "field-hint-text", style: { flexBasis: "100%" } }, scanErr || scanNote), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
         (() => {
           // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
           // (the flexbox trick .oem-footer-row's justify-content:flex-end
@@ -6477,7 +6968,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // see a new component type each render and remount their DOM.
   const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
   const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
-  function BudgetView({ flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -7212,6 +7703,8 @@ document.addEventListener('DOMContentLoaded',function(){
               setEditingEntry(null);
             },
             categories,
+            apiKey,
+            isOffline,
             templates,
             onSaveTemplate: (t) => {
               setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t]);
@@ -7221,6 +7714,9 @@ document.addEventListener('DOMContentLoaded',function(){
       ), showOccurrenceForm && editingEv && /* @__PURE__ */ React.createElement(
         OccurrenceEditModal,
         {
+          apiKey,
+          isOffline,
+          categories,
           ev: editingEv,
           orig: entries.find((e) => e.id === editingEv.entryId) || {},
           onSave: handleOccurrenceSave,
@@ -7519,7 +8015,7 @@ document.addEventListener('DOMContentLoaded',function(){
       })()
     );
   }
-  function ForecastView({ yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
+  function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
@@ -7574,6 +8070,8 @@ document.addEventListener('DOMContentLoaded',function(){
         onClose: () => setShowAddEntry(false),
         onSave: addEntry || (() => {}),
         categories,
+        apiKey,
+        isOffline,
         templates,
         setTemplates
       }
@@ -7732,22 +8230,37 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   // Hoisted out of AIInsightsView (was remounted every parent render).
   const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, className: "vizrow-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-toprow" }, /* @__PURE__ */ React.createElement("span", { className: "txm vizrow-label" }, label), /* @__PURE__ */ React.createElement("span", { className: "mno vizrow-value" }, value, sub && /* @__PURE__ */ React.createElement("span", { className: "vizrow-sub" }, " ", sub))), /* @__PURE__ */ React.createElement("div", { className: "vizrow-track" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-fill", style: { width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor } })));
-  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, setTab = () => {
+  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, isOffline = false, setTab = () => {
   } }) {
     const [loading, setLoading] = useState(false);
     const [report, setReport] = useState(null);
-    const [rawText, setRawText] = useState("");
     const [err, setErr] = useState("");
+    const [truncated, setTruncated] = useState(false);
     const [lastRun, setLastRun] = useState(null);
-    const CACHE_KEY = `cf_ai_report_${activeYear}`;
+    const [proxyReady, setProxyReady] = useState(false);
+    // v2 because the cached shape changed: reports used to be markdown text
+    // that got re-parsed on load, and are now the structured object the model
+    // returns. An old v1 entry can't be rendered by the current code, so it
+    // gets a new key rather than a migration — the report is a cache, and the
+    // cost of a miss is one button press.
+    const CACHE_KEY = `cf_ai_report_v2_${activeYear}`;
+    useEffect(() => {
+      let alive = true;
+      aiProbeProxy().then((ok) => {
+        if (alive) setProxyReady(ok);
+      });
+      return () => {
+        alive = false;
+      };
+    }, []);
     useEffect(() => {
       try {
+        localStorage.removeItem(`cf_ai_report_${activeYear}`);
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
-          const { text, ts } = JSON.parse(cached);
-          if (text) {
-            setRawText(text);
-            setReport(parseReport(text));
+          const { report: saved, ts } = JSON.parse(cached);
+          if (saved && typeof saved === "object") {
+            setReport(saved);
             setLastRun(new Date(ts));
           }
         }
@@ -7758,9 +8271,9 @@ document.addEventListener('DOMContentLoaded',function(){
         // notifyStorageWriteFailure.
       }
     }, [activeYear]);
-    const saveReport = (text) => {
+    const saveReport = (saved) => {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ text, ts: (/* @__PURE__ */ new Date()).toISOString() }));
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ report: saved, ts: (/* @__PURE__ */ new Date()).toISOString() }));
       } catch (e) {
         // Storage can throw outright in private/partitioned modes. Nothing
         // here is essential to the current interaction, so a failure is
@@ -7863,39 +8376,52 @@ document.addEventListener('DOMContentLoaded',function(){
         }))
       };
     };
-    const parseReport = (text) => {
-      const sections = [];
-      const lines = text.split("\n");
-      let current = null;
-      lines.forEach((line) => {
-        const h2 = line.match(/^##\s+(.+)/);
-        const h3 = line.match(/^###\s+(.+)/);
-        if (h2) {
-          if (current) sections.push(current);
-          current = { title: h2[1], level: 2, items: [] };
-        } else if (h3) {
-          if (current) sections.push(current);
-          current = { title: h3[1], level: 3, items: [] };
-        } else if (current) {
-          current.items.push(line);
-        } else if (line.trim()) {
-          if (!sections.length) sections.push({ title: "Overview", level: 2, items: [] });
-          sections[0].items.push(line);
-        }
+    // One entry per section of the report. This list is the single source of
+    // truth for three things that used to be maintained separately and could
+    // drift: the JSON schema the model must fill, the order sections render
+    // in, and their on-screen titles.
+    //
+    // It replaces splitting the reply on `##` headers. That approach had the
+    // model responsible for the document's structure as well as its content —
+    // a renamed header produced an unstyled section, a dropped one vanished
+    // silently, and the order had to be re-imposed afterwards because cached
+    // reports predated the ordering instruction. A schema makes the shape the
+    // API's job instead: every key arrives, spelled correctly, every time.
+    const AI_SECTIONS = [
+      { key: "executive_summary", title: "Executive Summary", wide: true, numbered: false, prompt: "2-4 bullets summarising the overall position." },
+      { key: "priority_actions", title: "Priority Action Items", wide: true, numbered: true, prompt: "Exactly the top 5 actions, most important first, each with a concrete dollar target where possible." },
+      { key: "cash_flow_risk", title: "Cash Flow & Risk", wide: false, numbered: false, prompt: "2-4 bullets on cash flow timing and the risk of running low." },
+      { key: "budget_performance", title: "Budget Performance", wide: false, numbered: false, prompt: "2-4 bullets on actual spending against budget targets." },
+      { key: "spending_analysis", title: "Spending Analysis", wide: false, numbered: false, prompt: "2-4 bullets on where the money goes and what stands out." },
+      { key: "debt_management", title: "Debt Management", wide: false, numbered: false, prompt: "2-4 bullets on debt balances, rates and payoff priority." },
+      { key: "income_analysis", title: "Income Analysis", wide: false, numbered: false, prompt: "2-4 bullets on income sources, stability and concentration." },
+      { key: "savings_goals", title: "Savings Goals", wide: false, numbered: false, prompt: "One bullet per goal: percent funded, on or off track for its target date, and the exact monthly adjustment if off track." }
+    ];
+    const AI_REPORT_SCHEMA = (() => {
+      const properties = {
+        score: { type: "integer", description: "Overall financial health from 1 (severe distress) to 10 (excellent)." },
+        score_rationale: { type: "string", description: "One sentence justifying the score." }
+      };
+      AI_SECTIONS.forEach((s) => {
+        properties[s.key] = { type: "array", description: s.prompt, items: { type: "string" } };
       });
-      if (current) sections.push(current);
-      return sections.filter((s) => s.items.some((l) => l.trim()));
-    };
+      return {
+        type: "object",
+        properties,
+        required: ["score", "score_rationale"].concat(AI_SECTIONS.map((s) => s.key)),
+        additionalProperties: false
+      };
+    })();
     const runAssessment = async () => {
-      var _a, _b, _c;
-      if (!apiKey.trim()) {
+      var _a;
+      if (!aiCanRun(apiKey)) {
         setErr("No API key configured. Please add your Anthropic API key in Settings \u2192 General.");
         return;
       }
       setLoading(true);
       setErr("");
       setReport(null);
-      setRawText("");
+      setTruncated(false);
       const ctx = buildContext();
       const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
 
@@ -7926,59 +8452,28 @@ ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${centsToDollars(d.bala
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
 ${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
 
-Provide your assessment using these EXACT section headers, in this order (markdown ## format):
-## Executive Summary
-## Priority Action Items
-## Cash Flow & Risk
-## Budget Performance
-## Spending Analysis
-## Debt Management
-## Income Analysis
-## Savings Goals
-
-Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
-- 2-4 bullets (- ) per section, one short sentence each (under ~18 words), every bullet anchored to a specific dollar amount or category from the data.
+Fill every field of the response schema. Rules:
+- Each bullet is one short sentence (under ~18 words), anchored to a specific dollar amount or category from the data above.
 - No preamble, no restating the data tables, no generic advice, no hedging filler ("consider", "you may want to").
-- Savings Goals: one bullet per goal \u2014 percent funded, on/off track for its target date, and the exact monthly adjustment if off track.
-- Priority Action Items: exactly the top 5 as a numbered list, one line each, with a concrete dollar target where possible.
-- Finish with "Score: N/10" and one sentence of justification.`;
+- Plain text only in every string: no markdown, no leading bullet characters, no numbering.`;
       try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey.trim(),
-            "anthropic-version": "2023-06-01",
-            "anthropic-dangerous-direct-browser-access": "true"
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-5",
-            max_tokens: 1200,
-            // This report is a short, structured dashboard blurb on a tight
-            // token budget — thinking would spend from max_tokens, so keep it off.
-            thinking: { type: "disabled" },
-            system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Be blunt and brief: short, numbers-first bullets, no filler. Format responses in clean Markdown.",
-            messages: [{ role: "user", content: prompt }]
-          })
+        const { data, truncated: cut } = await callClaude({
+          system: "You are a certified financial planner specialising in personal budgeting and cash flow management. Be blunt and brief: short, numbers-first bullets, no filler.",
+          messages: [{ role: "user", content: prompt }],
+          schema: AI_REPORT_SCHEMA,
+          // Adaptive thinking draws on the same budget as the visible answer,
+          // so this has to cover both. The old 1200 was sized for a
+          // thinking-off model and would truncate the report itself now.
+          maxTokens: 4e3,
+          effort: "high",
+          apiKey
         });
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          throw new Error(((_b = e == null ? void 0 : e.error) == null ? void 0 : _b.message) || `API error ${res.status}`);
-        }
-        const data = await res.json();
-        if (data.stop_reason === "refusal") {
-          throw new Error("The model declined to analyse this data. Try again, or adjust your entries.");
-        }
-        const text = ((_c = data.content) == null ? void 0 : _c.filter((b) => b.type === "text").map((b) => b.text || "").join("")) || "";
-        if (data.stop_reason === "max_tokens") {
-          console.warn("AI report truncated at max_tokens");
-        }
-        setRawText(text);
-        setReport(parseReport(text));
+        setReport(data);
+        setTruncated(cut);
         setLastRun(/* @__PURE__ */ new Date());
-        saveReport(text);
+        saveReport(data);
       } catch (e) {
-        setErr(`Analysis failed: ${e.message}. Check your API key and internet connection.`);
+        setErr(aiErrorMessage(e));
       } finally {
         setLoading(false);
       }
@@ -8004,16 +8499,19 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       "Cash Flow & Risk": "var(--amberInk)",
       "Priority Action Items": "var(--greenDk)"
     };
-    // Sections render most-actionable-first regardless of the order the model
-    // produced (older cached reports predate the ordered prompt).
-    const SECTION_ORDER = ["Executive Summary", "Priority Action Items", "Cash Flow & Risk", "Budget Performance", "Spending Analysis", "Debt Management", "Income Analysis", "Savings Goals"];
-    const orderedReport = useMemo(() => {
+    // AI_SECTIONS already fixes the order, so there is nothing to re-sort: the
+    // model fills named fields and can't return them out of sequence. Sections
+    // it had nothing to say about are dropped rather than rendered as an empty
+    // card.
+    const reportSections = useMemo(() => {
       if (!report) return null;
-      const rank = (t) => {
-        const i = SECTION_ORDER.indexOf(t);
-        return i < 0 ? 99 : i;
-      };
-      return [...report].sort((a, b) => rank(a.title) - rank(b.title));
+      return AI_SECTIONS.map((s) => ({
+        key: s.key,
+        title: s.title,
+        wide: s.wide,
+        numbered: s.numbered,
+        items: (Array.isArray(report[s.key]) ? report[s.key] : []).filter((t) => t && String(t).trim())
+      })).filter((s) => s.items.length);
     }, [report]);
     // The same numbers the model was given, used to draw charts next to its
     // bullets — the visual carries the data, the text carries the judgement.
@@ -8059,113 +8557,158 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       }
       return null;
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "ai-title" }, "\u2726 AI Financial Assessment \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { className: "ai-subtitle" }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health. Requires an Anthropic API key.")), lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())), !apiKey.trim() && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner" }, /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "No API key configured. Add your Anthropic API key in", " ", /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setTab("settings"),
-        className: "ai-settings-link"
-      },
-      "Settings \u2192 General"
-    ), ".")), apiKey.trim() && /* @__PURE__ */ React.createElement("div", { className: "ai-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Running this sends your budget data and API key straight to Anthropic from your browser.")), /* @__PURE__ */ React.createElement("div", { className: "ai-actionrow" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: runAssessment,
-        disabled: loading || !apiKey.trim(),
-        className: "ai-generate-btn",
-        style: {
-          cursor: loading || !apiKey.trim() ? "not-allowed" : "pointer",
-          background: loading || !apiKey.trim() ? "var(--border)" : "var(--primary)",
-          color: loading || !apiKey.trim() ? "var(--textMid)" : "#fff"
-        }
-      },
-      loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "ai-spinner" }, "\u27F3"), " Analysing your finances\u2026") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", null, "\u2726"), " Generate AI Assessment")
-    ), report && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setReport(null);
-          setRawText("");
-          setLastRun(null);
-          try {
-            localStorage.removeItem(CACHE_KEY);
-          } catch (e) {
-            // Storage can throw outright in private/partitioned modes.
-            // Nothing here is essential to the current interaction, so a
-            // failure is genuinely ignorable — real save failures surface
-            // via notifyStorageWriteFailure.
-          }
-        },
-        className: "cf-btn cf-btn--secondary cf-btn--wide"
-      },
-      "Clear"
-    )), err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "\u26A0 ", err)), loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, ["Executive Summary", "Income Analysis", "Spending Analysis", "Debt Management", "Priority Action Items"].map((s) => /* @__PURE__ */ React.createElement(Card, { key: s }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: {
-      width: `${w}%`
-    } }))))), report && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks ai-quicklinks" }, (orderedReport || report).map((section) => {
-      const anchorId = slugifySection(section.title);
-      return /* @__PURE__ */ React.createElement(
-        "a",
-        {
-          key: anchorId,
-          href: `#${anchorId}`,
-          onClick: (e) => {
-            e.preventDefault();
-            const el = document.getElementById(anchorId);
-            if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-          },
-          className: "quicklink-pill"
-        },
-        section.title
-      );
-    })), (() => {
-      const match = rawText.match(/\b([1-9]|10)\s*\/\s*10\b|\bscore[:\s]+([1-9]|10)\b/i);
-      if (!match) return null;
-      const score = parseInt(match[1] || match[2]);
-      const color = score >= 7 ? "var(--greenDk)" : score >= 4 ? "var(--amberInk)" : "var(--red)";
-      return /* @__PURE__ */ React.createElement("div", { className: "ai-score-badge", style: {
-        border: `2px solid ${color}`,
-        boxShadow: `0 0 0 4px ${color}22`
-      } }, /* @__PURE__ */ React.createElement("div", { className: "ai-score-number", style: { color } }, score, /* @__PURE__ */ React.createElement("span", { className: "ai-score-outof" }, "/10")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "ai-score-label" }, "Financial Health Score"), /* @__PURE__ */ React.createElement("div", { className: "txm" }, score >= 8 ? "Strong financial position \u2014 keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention \u2014 see action items below." : "Significant financial stress detected \u2014 prioritise the action items.")));
-    })(), vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }), /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in \u00B7 ${fmt(vizCtx.totalExpenses)} out` }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })), /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, (orderedReport || report).map((section, si) => /* @__PURE__ */ React.createElement(Card, { key: si, id: slugifySection(section.title), className: "ai-section-card", style: { gridColumn: section.title === "Executive Summary" || section.title === "Priority Action Items" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" }, /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: {
-      color: sectionColor[section.title] || "var(--primary)"
-    } }, section.title)), sectionViz(section.title), section.items.map((line, li) => {
-      const raw = line.trim();
-      if (!raw) return null;
-      if (/^[-*_]{3,}$/.test(raw)) return /* @__PURE__ */ React.createElement("hr", { key: li, className: "ai-hr" });
-      if (/^#{1,3}\s+/.test(raw)) {
-        const txt = raw.replace(/^#{1,3}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
-        return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-item-heading" }, txt);
-      }
-      const isBold = raw.match(/^\*\*(.+)\*\*$/);
-      const isNumbered = raw.match(/^\d+\.\s+/);
-      const isBullet = raw.match(/^[-*]\s+/);
-      const text = raw.replace(/^\*\*|\*\*$/g, "").replace(/^(\d+\.|[-*])\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
-      if (isBold) return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-item-bold" }, text);
-      if (isNumbered) return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-numbered-row" }, /* @__PURE__ */ React.createElement("div", { className: "ai-numbered-badge" }, raw.match(/^(\d+)\./)[1]), /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, /* @__PURE__ */ React.createElement(BoldText, { text })));
-      if (isBullet) {
-        const isIndented = line.match(/^\s{2,}/);
-        const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt|shortfall|danger|critical|problem|unsustainable)/i.test(text);
-        const isPositive = /(well|strong|excellent|good|under budget|saving|positive|recommendation)/i.test(text);
-        const dot = isWarning ? "var(--amberInk)" : isPositive ? "var(--greenDk)" : "var(--navyLt)";
-        return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-bullet-row", style: {
-          marginBottom: isIndented ? 4 : 8,
-          paddingLeft: isIndented ? 16 : 0
-        } }, /* @__PURE__ */ React.createElement("div", { className: "ai-bullet-dot", style: {
-          width: isIndented ? 4 : 6,
-          height: isIndented ? 4 : 6,
-          background: isIndented ? "var(--border)" : dot,
-          marginTop: isIndented ? 8 : 7
-        } }), /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, /* @__PURE__ */ React.createElement(BoldText, { text })));
-      }
-      const plain = raw.replace(/\*([^*]+)\*/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1");
-      return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-plain-text" }, /* @__PURE__ */ React.createElement(BoldText, { text: plain }));
-    })))), /* @__PURE__ */ React.createElement("div", { className: "ai-footer-disclaimer" }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")), !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "ai-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "ai-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, "Ready to analyse your finances"), /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, "Enter your Anthropic API key above and click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."), /* @__PURE__ */ React.createElement("div", { className: "ai-empty-feature-grid" }, [
-      { icon: "chart-bar", label: "Executive Summary" },
-      { icon: "banknote", label: "Income Analysis" },
-      { icon: "chart-down", label: "Spending Analysis" },
-      { icon: "credit-card", label: "Debt Management" },
-      { icon: "target", label: "Budget vs Actual" },
-      { icon: "check-circle", label: "Priority Actions" }
-    ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, className: "ai-feature-card" }, /* @__PURE__ */ React.createElement("div", { className: "ai-feature-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-feature-label" }, label)))))));
+    // Three separate reasons the button can't run, each worth its own message:
+    // no transport configured at all, no network, or a run already in flight.
+    // Previously only the key was checked, so an offline tap failed with
+    // "check your API key and internet connection" after a pointless round
+    // trip.
+    const canRun = aiCanRun(apiKey);
+    const disabled = loading || !canRun || isOffline;
+    const blockedReason = isOffline ? "You're offline — generating an assessment needs a connection." : !canRun ? "No AI access configured yet." : "";
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" },
+      /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
+        /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" },
+          /* @__PURE__ */ React.createElement("div", null,
+            /* @__PURE__ */ React.createElement("div", { className: "ai-title" }, "✦ AI Financial Assessment — ", activeYear),
+            /* @__PURE__ */ React.createElement("div", { className: "ai-subtitle" }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health.")
+          ),
+          lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())
+        ),
+        !canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner" },
+          /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })),
+          /* @__PURE__ */ React.createElement("div", { className: "txm" }, "No AI access configured. Add your Anthropic API key in", " ",
+            /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("settings"), className: "ai-settings-link" }, "Settings → General"),
+            ", or deploy the ai-proxy Edge Function so this household shares one server-side key."
+          )
+        ),
+        canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-disclaimer-row" },
+          /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })),
+          /* @__PURE__ */ React.createElement("span", null, proxyReady ? "Running this sends your budget data to Claude through your project's ai-proxy function. Your API key stays on the server." : "Running this sends your budget data and API key straight to Anthropic from this browser.")
+        ),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-actionrow" },
+          /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: runAssessment,
+              disabled,
+              title: blockedReason || void 0,
+              className: "ai-generate-btn",
+              style: {
+                cursor: disabled ? "not-allowed" : "pointer",
+                background: disabled ? "var(--border)" : "var(--primary)",
+                color: disabled ? "var(--textMid)" : "#fff"
+              }
+            },
+            loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "ai-spinner" }, "⟳"), " Analysing your finances…") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", null, "✦"), " Generate AI Assessment")
+          ),
+          report && /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              onClick: () => {
+                setReport(null);
+                setTruncated(false);
+                setLastRun(null);
+                try {
+                  localStorage.removeItem(CACHE_KEY);
+                } catch (e) {
+                  // Storage can throw outright in private/partitioned modes.
+                  // Nothing here is essential to the current interaction, so a
+                  // failure is genuinely ignorable — real save failures surface
+                  // via notifyStorageWriteFailure.
+                }
+              },
+              className: "cf-btn cf-btn--secondary cf-btn--wide"
+            },
+            "Clear"
+          )
+        ),
+        blockedReason && !loading && /* @__PURE__ */ React.createElement("div", { className: "field-hint-text mt-8" }, blockedReason),
+        err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "⚠ ", err),
+        truncated && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "status" }, "⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.")
+      ),
+      loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, AI_SECTIONS.slice(0, 5).map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.key }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: { width: `${w}%` } }))))),
+      reportSections && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null,
+        /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks ai-quicklinks" }, reportSections.map((section) => {
+          const anchorId = slugifySection(section.title);
+          return /* @__PURE__ */ React.createElement(
+            "a",
+            {
+              key: anchorId,
+              href: `#${anchorId}`,
+              onClick: (e) => {
+                e.preventDefault();
+                const el = document.getElementById(anchorId);
+                if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+              },
+              className: "quicklink-pill"
+            },
+            section.title
+          );
+        })),
+        // The score is a field on the response now, not something scraped back
+        // out of the prose with a regex that had to guess between "8/10" and
+        // "Score: 8".
+        Number.isFinite(report.score) && (() => {
+          const score = Math.max(1, Math.min(10, Math.round(report.score)));
+          const color = score >= 7 ? "var(--greenDk)" : score >= 4 ? "var(--amberInk)" : "var(--red)";
+          return /* @__PURE__ */ React.createElement("div", { className: "ai-score-badge", style: { border: `2px solid ${color}`, boxShadow: `0 0 0 4px ${color}22` } },
+            /* @__PURE__ */ React.createElement("div", { className: "ai-score-number", style: { color } }, score, /* @__PURE__ */ React.createElement("span", { className: "ai-score-outof" }, "/10")),
+            /* @__PURE__ */ React.createElement("div", null,
+              /* @__PURE__ */ React.createElement("div", { className: "ai-score-label" }, "Financial Health Score"),
+              /* @__PURE__ */ React.createElement("div", { className: "txm" }, report.score_rationale || (score >= 8 ? "Strong financial position — keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention — see action items below." : "Significant financial stress detected — prioritise the action items."))
+            )
+          );
+        })(),
+        vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" },
+          /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }),
+          /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in · ${fmt(vizCtx.totalExpenses)} out` }),
+          /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }),
+          /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })
+        ),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, reportSections.map((section) => /* @__PURE__ */ React.createElement(
+          Card,
+          { key: section.key, id: slugifySection(section.title), className: "ai-section-card", style: { gridColumn: section.wide ? "1 / -1" : "auto" } },
+          /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" },
+            /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })),
+            /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: { color: sectionColor[section.title] || "var(--primary)" } }, section.title)
+          ),
+          sectionViz(section.title),
+          // Items are plain sentences from a schema-constrained reply, so the
+          // markdown handling this used to do — stripping **bold**, spotting
+          // "1." and "- " prefixes, detecting indentation — has nothing left to
+          // parse. Numbering comes from the section definition instead of from
+          // characters the model happened to emit.
+          section.items.map((text, li) => section.numbered ? /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-numbered-row" },
+            /* @__PURE__ */ React.createElement("div", { className: "ai-numbered-badge" }, li + 1),
+            /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, /* @__PURE__ */ React.createElement(BoldText, { text }))
+          ) : (() => {
+            const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt|danger|critical|problem|unsustainable)/i.test(text);
+            const isPositive = /(well|strong|excellent|good|under budget|saving|positive|recommendation)/i.test(text);
+            return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-bullet-row", style: { marginBottom: 8 } },
+              /* @__PURE__ */ React.createElement("div", { className: "ai-bullet-dot", style: { width: 6, height: 6, background: isWarning ? "var(--amberInk)" : isPositive ? "var(--greenDk)" : "var(--navyLt)", marginTop: 7 } }),
+              /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, /* @__PURE__ */ React.createElement(BoldText, { text }))
+            );
+          })())
+        ))),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-footer-disclaimer" }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")
+      ),
+      !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "ai-empty-wrap" },
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, "Ready to analyse your finances"),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, "Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-feature-grid" }, [
+          { icon: "chart-bar", label: "Executive Summary" },
+          { icon: "banknote", label: "Income Analysis" },
+          { icon: "chart-down", label: "Spending Analysis" },
+          { icon: "credit-card", label: "Debt Management" },
+          { icon: "target", label: "Budget vs Actual" },
+          { icon: "check-circle", label: "Priority Actions" }
+        ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, className: "ai-feature-card" },
+          /* @__PURE__ */ React.createElement("div", { className: "ai-feature-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })),
+          /* @__PURE__ */ React.createElement("div", { className: "ai-feature-label" }, label)
+        )))
+      ))
+    );
   }
   // Shared between PlanView (plan.js) and DashboardView (dashboard.js) —
   // chart-tick styling and the debt-payoff amortization projection used by
@@ -9080,7 +9623,117 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
   // Hoisted out of DashboardView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
   const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
-  function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
+  // "What changed this month" — the smallest useful AI surface in the app.
+  // Everything it reports is computed here from the same flow the rest of the
+  // dashboard draws; the model is only asked to say which of the differences
+  // matter and why, never to do the arithmetic.
+  function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }) {
+    const [brief, setBrief] = useState(null);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const now = /* @__PURE__ */ new Date();
+    const thisMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
+    const CACHE_KEY = `cf_ai_brief_${activeYear}_${thisMonth}`;
+    useEffect(() => {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.brief) setBrief(parsed.brief);
+          else setBrief(null);
+        } else setBrief(null);
+      } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
+      }
+    }, [CACHE_KEY]);
+    // Both months' totals, plus per-category movement. Categories with no
+    // activity in either month are dropped so the prompt carries signal
+    // instead of a wall of zeroes.
+    const delta = useMemo(() => {
+      if (thisMonth < 1) return null;
+      const prevMonth = thisMonth - 1;
+      const totals = (mi, type) => flow.filter((ev) => ev.month === mi && ev.type === type).reduce((sum, ev) => sum + ev.amount, 0);
+      const byCat = (mi) => {
+        const o = {};
+        flow.filter((ev) => ev.month === mi && ev.type === "expense").forEach((ev) => {
+          o[ev.category] = (o[ev.category] || 0) + ev.amount;
+        });
+        return o;
+      };
+      const currCats = byCat(thisMonth), prevCats = byCat(prevMonth);
+      const cats = [.../* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(prevCats)])].map((cat) => ({
+        cat,
+        now: currCats[cat] || 0,
+        before: prevCats[cat] || 0,
+        change: (currCats[cat] || 0) - (prevCats[cat] || 0)
+      })).filter((c) => c.now || c.before).sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 10);
+      return {
+        prevMonth,
+        income: { now: totals(thisMonth, "income"), before: totals(prevMonth, "income") },
+        expense: { now: totals(thisMonth, "expense"), before: totals(prevMonth, "expense") },
+        cats
+      };
+    }, [flow, thisMonth]);
+    const run = async () => {
+      if (!delta) return;
+      setBusy(true);
+      setErr("");
+      try {
+        const line = (label, d) => `${label}: ${fmt(d.now)} this month vs ${fmt(d.before)} last month (${d.now - d.before >= 0 ? "+" : ""}${fmt(d.now - d.before, true)})`;
+        const catLines = delta.cats.map((c) => `  ${c.cat}: ${fmt(c.now)} vs ${fmt(c.before)} (${c.change >= 0 ? "+" : ""}${fmt(c.change, true)})`).join("\n");
+        const { data } = await callClaude({
+          system: "You explain month-to-month changes in a household budget. Be concrete and brief. Never restate a number without saying what it means.",
+          messages: [{ role: "user", content: `${MONTHS[thisMonth]} ${activeYear} compared with ${MONTHS[delta.prevMonth]}.\n\n${line("Income", delta.income)}\n${line("Expenses", delta.expense)}\n\nExpense categories (this month vs last):\n${catLines}\n\nSay what actually changed and whether it matters. Skip anything that moved trivially.` }],
+          schema: {
+            type: "object",
+            properties: {
+              headline: { type: "string", description: "One sentence, under 15 words, on the month's main change." },
+              bullets: { type: "array", description: "2-4 short observations, each naming a category and a dollar change.", items: { type: "string" } }
+            },
+            required: ["headline", "bullets"],
+            additionalProperties: false
+          },
+          maxTokens: 1500,
+          effort: "low",
+          apiKey
+        });
+        setBrief(data);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ brief: data }));
+        } catch (e) {
+          notifyStorageWriteFailure(e);
+        }
+      } catch (e) {
+        setErr(aiErrorMessage(e));
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (!delta) return null;
+    return /* @__PURE__ */ React.createElement(Card, null,
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" },
+        /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "What changed in ", MONTHS[thisMonth]),
+        /* @__PURE__ */ React.createElement("button", {
+          onClick: run,
+          disabled: busy || isOffline || !aiCanRun(apiKey),
+          title: isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+          className: "cf-btn cf-btn--secondary cf-btn--tiny"
+        }, busy ? "Thinking…" : brief ? "Refresh" : "✦ Summarise")
+      ),
+      err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mb-8" }, err),
+      brief ? /* @__PURE__ */ React.createElement(React.Fragment, null,
+        /* @__PURE__ */ React.createElement("div", { className: "txm mb-8", style: { fontWeight: 600 } }, brief.headline),
+        (brief.bullets || []).map((b, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-bullet-row", style: { marginBottom: 6 } },
+          /* @__PURE__ */ React.createElement("div", { className: "ai-bullet-dot", style: { width: 6, height: 6, background: "var(--navyLt)", marginTop: 7 } }),
+          /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, b)
+        ))
+      ) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Compare ", MONTHS[thisMonth], " with ", MONTHS[delta.prevMonth], " and have Claude pick out what moved.")
+    );
+  }
+  function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {
@@ -9203,6 +9856,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       { id: "upcoming", label: "Upcoming this week", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
       { id: "insight", label: "Spending insight", size: "full" },
+      { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "balanceChart", label: "Balance chart", size: "half" },
       { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
@@ -9336,6 +9990,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
           } }, fmt(ev.balance)))), barDiv);
         })));
       })()),
+      monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
       insight: () => {
         if (!insight) return null;
         const above = insight.pct > 0;
@@ -10301,7 +10956,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "quicklink-pill"
       },
       label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Required for the AI Insights tab. Your key is saved with your household's data in Supabase (so it's shared across your own devices and household members) and sent directly to Anthropic from your browser when you run a report \u2014 never to any third party. Anyone able to run script in this page could read it, same as any other browser-side API key. Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Powers the AI features: the yearly assessment, receipt scanning, CSV categorisation and natural-language entry capture. The key is stored on this device only \u2014 it is deliberately never synced to Supabase or shared with household members, because it bills your account, so enter it again on each device you use. Anyone able to run script in this page could read it, same as any other browser-side API key. To avoid holding a key in the browser at all, deploy the ai-proxy Edge Function (see the README) \u2014 the app prefers it automatically when it's available. Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
@@ -10334,7 +10989,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         className: "clear-key-btn"
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored with your household data and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, "$"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -11993,6 +12648,23 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         window.removeEventListener("online", goOn);
       };
     }, []);
+    // Probe for the ai-proxy Edge Function once, here rather than in each
+    // feature. aiCanRun() reads a module-level flag that only the probe sets,
+    // so a component that never probes sees "no AI configured" and disables
+    // its button even when the function is deployed — the CSV modal and the
+    // entry form would each have had to probe on mount to avoid that. Doing it
+    // at the root means one probe per load, and the setState is what re-renders
+    // the tree so every button re-reads the flag once the answer is in.
+    const [, setAiProxyReady] = useState(false);
+    useEffect(() => {
+      let live = true;
+      aiProbeProxy().then((ok) => {
+        if (live) setAiProxyReady(ok);
+      });
+      return () => {
+        live = false;
+      };
+    }, [session]);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
@@ -12896,7 +13568,9 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setDashHidden,
         dashOrder,
         setDashOrder,
-        debtData
+        debtData,
+        apiKey: aiApiKey,
+        isOffline
       }
     ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
@@ -12913,6 +13587,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         setEntries,
         saveEntryEdit,
         addEntry,
+        apiKey: aiApiKey,
+        isOffline,
         budgetSub,
         setBudgetSub,
         monthIdx: budgetMonth,
@@ -12933,7 +13609,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       EntriesView,
       {
         entries,
@@ -12943,6 +13619,8 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         categories,
         categoryColors,
         activeYear,
+        apiKey: aiApiKey,
+        isOffline,
         onDeleted: (e) => pushUndo(e),
         templates,
         setTemplates,
@@ -12982,7 +13660,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
         planSub,
         setPlanSub
       }
-    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,

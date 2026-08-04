@@ -704,6 +704,7 @@
           color:var(--textMid);font-size:13px;font-weight:600;transition:border-color 0.15s,color 0.15s;}
         .csvimport-drop-zone:hover{border-color:var(--primary);color:var(--text);}
         .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
+        .csvimport-cat-select{min-width:120px;font-size:12px;padding:4px 6px;height:auto;}
         .daily-today-wrap{display:flex;align-items:center;gap:8px;margin:4px 16px;}
         .daily-day-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
         .daily-day-number{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--primary);line-height:1;}

@@ -17,8 +17,9 @@ src/bootstrap-head.js      Service worker registration + error boundary setup
 src/bootstrap-tail.js      Closes the bootstrap wrapper
 src/sw.js                   Service worker source — caching + Web Push handlers
 src/lib/                    Shared constants, formatting/date helpers, hooks,
-                            Supabase config, notification/push helpers, and the
-                            household auth/sync hooks
+                            Supabase config, notification/push helpers, the
+                            household auth/sync hooks, and `ai.js` — the single
+                            call path every AI feature goes through
 src/components/            UI components, grouped by area (forms, register,
                             budget, plan/dashboard, settings, auth, etc.)
 src/App.js                  The root App component + ReactDOM.render call
@@ -120,6 +121,56 @@ images into `receipts`) the first time it runs. The legacy `household_data`
 table is left untouched as a backup — verify your data in the app, then drop it
 whenever you like. The earlier GitHub Gist sync/backup feature has been removed
 entirely; use **Settings → Backup** for local JSON export/import.
+
+## AI features
+
+Five places in the app call Claude:
+
+| Where | What it does |
+| --- | --- |
+| **AI Insights** tab | Full assessment of the year: cash flow, budget performance, debt, goals, and a 1–10 health score. |
+| **Dashboard → What changed this month** | Compares this month with last and says which movements matter. |
+| **Import CSV → Suggest categories** | Classifies the description column against your own category list, per row. |
+| **Occurrence editor → Read receipt** | Reads an attached receipt photo for merchant, date and total. |
+| **Add entry → Describe it** | Turns "hydro $180 every second Tuesday" into a filled-in entry form. |
+
+Nothing is ever written on the model's say-so: every feature fills in fields
+you then confirm, and the assessment is a report. All five go through
+`callClaude` in `src/lib/ai.js`, which has two transports.
+
+### Transport 1: the `ai-proxy` Edge Function (recommended)
+
+The key lives in Supabase secrets and never reaches the browser. One deployment
+serves every device and household member, and the function is the single place
+to add a quota or an audit log later.
+
+```bash
+supabase functions deploy ai-proxy
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Deploy it **without** `--no-verify-jwt` (unlike `send-notifications`): the JWT
+check is what stops the function being an open relay to your Anthropic account.
+It only answers signed-in household members, rebuilds each request from an
+allowlist — so a caller can't choose its own model or ask for a 128k-token
+reply on your bill — and caps request size.
+
+The app probes for it once per page load and prefers it automatically. When
+it's deployed, no one needs to enter a key at all.
+
+### Transport 2: a browser-held key (fallback)
+
+Paste a key into **Settings → General**. It is stored in that device's
+`localStorage` and sent straight from the browser to Anthropic. It is
+deliberately **not** synced to Supabase — `household_settings` is readable by
+every member, so syncing it would hand your key (and your bill) to everyone you
+share a budget with. Enter it per device.
+
+This transport necessarily exposes the key to anything that can run script on
+the page, which is why the proxy exists. It stays supported so the AI features
+work without a Supabase deployment, and without a household account at all.
+
+If neither is configured, the AI features disable themselves and say why.
 
 ## Notifications
 
