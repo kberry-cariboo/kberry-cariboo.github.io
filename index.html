@@ -169,6 +169,14 @@
         .header-search{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);
           border-radius:20px;padding:5px 12px;border:1px solid rgba(255,255,255,0.12);}
         .header-search-icon{color:rgba(255,255,255,0.4);flex-shrink:0;}
+        /* Offline chip. Amber rather than red: being offline is a state to
+           know about, not a failure — the edit is safely on the device. Sits
+           in the header cluster so it survives the ≤900px breakpoint that
+           hides .header-search, where it matters most. */
+        .offline-chip{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;
+          background:rgba(245,166,35,0.16);border:1px solid var(--amber);border-radius:20px;
+          padding:4px 10px;font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;}
+        .offline-chip-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex-shrink:0;}
         .header-search-input{font-size:13px;background:transparent;border:none;outline:none;
           color:#fff;width:130px;caret-color:var(--amberInk);}
         .header-search-clear{background:transparent;border:none;cursor:pointer;
@@ -944,8 +952,14 @@
           padding:16px 20px;min-width:0;}
         .kpi-card .kpi-label{font-size:11px;color:var(--textMid);text-transform:uppercase;
           letter-spacing:0.1em;margin-bottom:6px;}
+        /* overflow-wrap is the containment net, not the plan: a currency
+           string is one unbreakable token, so without it a six-figure value
+           in a 109px-wide card at 320px simply spills out past the card
+           border instead of wrapping. The font step-down at ≤360px below is
+           what actually keeps realistic amounts on one line; this only stops
+           an absurd one from escaping the card. */
         .kpi-card .kpi-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;
-          font-size:20px;font-weight:700;color:var(--text);line-height:1;}
+          font-size:20px;font-weight:700;color:var(--text);line-height:1;overflow-wrap:anywhere;}
         .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
         /* Value + sparkline row inside the annual KPI tiles: wrap instead of
            squeezing the sparkline against the card edge on narrow phones */
@@ -1357,6 +1371,25 @@
           .entries-filter-row{flex-wrap:wrap!important;gap:6px!important;}
           /* Forecast confidence column: hide on phone to save width */
           .forecast-conf-col{display:none!important;}
+        }
+
+        /* ── Very narrow phones ─────────────────────────────────────────── */
+        /* The KPI grid stays two-up here, which leaves ~109px of content
+           width per card. At 20px a six-figure amount with cents needs ~135px
+           and overflows the card; 15px brings it back inside with room to
+           spare. Only the value shrinks — labels stay put. */
+        @media(max-width:360px){
+          .kpi-card{padding:14px 14px!important;}
+          .kpi-card .kpi-value{font-size:15px!important;}
+          /* "Surplus/Shortfall" is a single unbreakable token, so the label
+             overruns the card here too — the tracking is what costs it the
+             last few pixels. */
+          .kpi-card .kpi-label{font-size:10px!important;letter-spacing:0.04em!important;}
+          /* The full chip crowds the avatar off the header at this width, so
+             drop the qualifier — "Offline" alone still carries it, and the
+             chip's title attribute keeps the full sentence. */
+          .offline-chip{padding:3px 8px!important;font-size:10px!important;}
+          .offline-chip-more{display:none!important;}
         }
 
 
@@ -2025,7 +2058,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v182';
+const CF_VERSION='v183';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -2795,7 +2828,17 @@ document.addEventListener('DOMContentLoaded',function(){
     if (showSign && n > 0) return `+$${abs}`;
     return `$${abs}`;
   };
-  const fmtAxisK = (v) => (v < 0 ? "-$" : "$") + (Math.abs(centsToDollars(v)) / 1e3).toFixed(0) + "k";
+  // Rolls over to millions rather than running the k tier forever — without
+  // it a $15M axis tick reads "$15000k". (mini-recharts' own defaultFmt
+  // already tiers this way; the charts pass this formatter instead, so it
+  // needs to agree.)
+  const fmtAxisK = (v) => {
+    const d = Math.abs(centsToDollars(v));
+    const sign = v < 0 ? "-$" : "$";
+    // The zero line read "$0k" before — the suffix was unconditional.
+    if (d === 0) return "$0";
+    return d >= 1e6 ? sign + (d / 1e6).toFixed(1) + "M" : sign + (d / 1e3).toFixed(0) + "k";
+  };
   function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
@@ -2847,7 +2890,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);
       if (!vals.length) return "Variable";
       const mn = Math.min(...vals), mx = Math.max(...vals);
-      const k = (v) => v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
+      const k = (v) => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
       return mn === mx ? "\u2248 " + k(mn) : k(mn) + "\u2013" + k(mx);
     } catch (err) {
       return "Variable";
@@ -5629,7 +5672,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const arcMeta = { color: archived ? "var(--textLt)" : "var(--textMid)", textDecoration: archived ? "line-through" : "none" };
       switch (col) {
         case "desc":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-desc-cell", style: arcText }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-desc-cell", style: arcText, title: e.desc }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"));
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "entries-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
         case "amount":
@@ -11925,6 +11968,31 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
       document.addEventListener("keydown", trap, true);
       return () => document.removeEventListener("keydown", trap, true);
     }, []);
+    // Going offline used to change nothing on screen. The sync layer already
+    // handles it correctly — it skips the save and retries on reconnect (see
+    // the `online` listener in household-sync.js) — but a phone with no signal
+    // looked exactly like a phone that had just saved, which is the wrong
+    // thing to be unsure about in a budget app. `unsaved` is the same marker
+    // the Settings sync card reads, so the chip and that card can't disagree.
+    const [isOffline, setIsOffline] = useState(() => {
+      try {
+        return navigator.onLine === false;
+      } catch (e) {
+        // Some browsers don't expose onLine at all — assume online rather
+        // than showing a permanent offline chip we can't clear.
+        return false;
+      }
+    });
+    useEffect(() => {
+      const goOff = () => setIsOffline(true);
+      const goOn = () => setIsOffline(false);
+      window.addEventListener("offline", goOff);
+      window.addEventListener("online", goOn);
+      return () => {
+        window.removeEventListener("offline", goOff);
+        window.removeEventListener("online", goOn);
+      };
+    }, []);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
@@ -12580,7 +12648,7 @@ Keep it tight and scannable \u2014 this renders on a dashboard, not in a letter:
     }
     return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
-    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
+    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "global-search",

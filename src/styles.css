@@ -141,6 +141,14 @@
         .header-search{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);
           border-radius:20px;padding:5px 12px;border:1px solid rgba(255,255,255,0.12);}
         .header-search-icon{color:rgba(255,255,255,0.4);flex-shrink:0;}
+        /* Offline chip. Amber rather than red: being offline is a state to
+           know about, not a failure — the edit is safely on the device. Sits
+           in the header cluster so it survives the ≤900px breakpoint that
+           hides .header-search, where it matters most. */
+        .offline-chip{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;
+          background:rgba(245,166,35,0.16);border:1px solid var(--amber);border-radius:20px;
+          padding:4px 10px;font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;}
+        .offline-chip-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex-shrink:0;}
         .header-search-input{font-size:13px;background:transparent;border:none;outline:none;
           color:#fff;width:130px;caret-color:var(--amberInk);}
         .header-search-clear{background:transparent;border:none;cursor:pointer;
@@ -916,8 +924,14 @@
           padding:16px 20px;min-width:0;}
         .kpi-card .kpi-label{font-size:11px;color:var(--textMid);text-transform:uppercase;
           letter-spacing:0.1em;margin-bottom:6px;}
+        /* overflow-wrap is the containment net, not the plan: a currency
+           string is one unbreakable token, so without it a six-figure value
+           in a 109px-wide card at 320px simply spills out past the card
+           border instead of wrapping. The font step-down at ≤360px below is
+           what actually keeps realistic amounts on one line; this only stops
+           an absurd one from escaping the card. */
         .kpi-card .kpi-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;
-          font-size:20px;font-weight:700;color:var(--text);line-height:1;}
+          font-size:20px;font-weight:700;color:var(--text);line-height:1;overflow-wrap:anywhere;}
         .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
         /* Value + sparkline row inside the annual KPI tiles: wrap instead of
            squeezing the sparkline against the card edge on narrow phones */
@@ -1329,6 +1343,25 @@
           .entries-filter-row{flex-wrap:wrap!important;gap:6px!important;}
           /* Forecast confidence column: hide on phone to save width */
           .forecast-conf-col{display:none!important;}
+        }
+
+        /* ── Very narrow phones ─────────────────────────────────────────── */
+        /* The KPI grid stays two-up here, which leaves ~109px of content
+           width per card. At 20px a six-figure amount with cents needs ~135px
+           and overflows the card; 15px brings it back inside with room to
+           spare. Only the value shrinks — labels stay put. */
+        @media(max-width:360px){
+          .kpi-card{padding:14px 14px!important;}
+          .kpi-card .kpi-value{font-size:15px!important;}
+          /* "Surplus/Shortfall" is a single unbreakable token, so the label
+             overruns the card here too — the tracking is what costs it the
+             last few pixels. */
+          .kpi-card .kpi-label{font-size:10px!important;letter-spacing:0.04em!important;}
+          /* The full chip crowds the avatar off the header at this width, so
+             drop the qualifier — "Offline" alone still carries it, and the
+             chip's title attribute keeps the full sentence. */
+          .offline-chip{padding:3px 8px!important;font-size:10px!important;}
+          .offline-chip-more{display:none!important;}
         }
 
 
