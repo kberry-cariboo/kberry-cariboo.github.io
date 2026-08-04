@@ -22,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "26"
 
@@ -39,7 +39,7 @@ jobs:
       - name: Lint source
         run: |
           node scripts/lint-bundle.js
-          npx --yes eslint@9 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js .eslint-bundle.js
+          npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js .eslint-bundle.js
 
       # Global install (not a package.json dependency) matches how the rest of
       # this repo has no node_modules — tests/regression.mjs resolves it via
