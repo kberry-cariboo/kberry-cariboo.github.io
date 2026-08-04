@@ -185,8 +185,17 @@
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:14px;}
         .content-area{padding:28px 24px;margin-top:0;outline:none;}
+        /* The pale tint alone is invisible against the page: --redLt (#FFF0EE)
+           on --bg (#F7F4EF) measures 1.01:1, and the old 33%-alpha border only
+           reached 1.61:1 — under the 3:1 that a meaningful UI boundary needs.
+           The boundary is what makes this read as an alert, so the border runs
+           at full token opacity and a 5px bar anchors the left edge (4.9:1
+           against the page in light, 5.8:1 in dark). Both are set inline in
+           App.js from the same red/amber token the severity picks. */
         .low-balance-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;
-          padding:10px 14px;margin-bottom:18px;font-size:13px;color:var(--text);}
+          padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--text);
+          box-shadow:var(--shadowSm);}
+        .low-balance-icon{font-size:15px;line-height:1;flex-shrink:0;}
         .low-balance-msg{flex:1;min-width:200px;}
         .app-footer{text-align:center;padding:18px 16px 28px;font-size:11px;
           color:rgba(255,255,255,0.25);background:var(--headerBg);margin-top:auto;}

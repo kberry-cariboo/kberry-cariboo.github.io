@@ -826,19 +826,27 @@
       if (!notifyEnabled) return;
       if (typeof Notification === "undefined" || notifPerm !== "granted") return;
       if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
-      // Once per day per alert. sessionStorage throws outright in some
-      // privacy modes, so treat an unreadable store as "already notified"
-      // rather than re-notifying on every render.
+      // Once per day per alert, and it has to be localStorage: sessionStorage
+      // is scoped to the tab session, which an installed PWA tears down every
+      // time it's closed. On mobile that made "once per day" mean "once per
+      // app launch" — reopening the app re-fired the same low-balance and
+      // bills-due notifications all day long.
+      //
+      // The stored value is todayKey, so a stale entry from a previous day
+      // simply doesn't match and the alert fires once more; there's nothing to
+      // expire or clean up. Storage throws outright in some privacy modes, so
+      // treat an unreadable store as "already notified" rather than
+      // re-notifying on every render.
       const seen = (k) => {
         try {
-          return sessionStorage.getItem(k) === todayKey;
+          return localStorage.getItem(k) === todayKey;
         } catch (e) {
           return true;
         }
       };
       const markSeen = (k) => {
         try {
-          sessionStorage.setItem(k, todayKey);
+          localStorage.setItem(k, todayKey);
         } catch (e) {
           // Storage can throw outright in private/partitioned modes.
           // Nothing here is essential to the current interaction, so a
@@ -1170,8 +1178,9 @@
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
     } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
-      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}55`
-    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
+      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
+      borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
+    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "low-balance-icon" }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
