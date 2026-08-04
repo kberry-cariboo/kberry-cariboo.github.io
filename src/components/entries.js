@@ -319,6 +319,8 @@
           onSave: handleSave,
           onCancel: close,
           categories,
+          apiKey,
+          isOffline,
           templates: templates || [],
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }

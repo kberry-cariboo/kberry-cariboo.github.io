@@ -1,4 +1,4 @@
-  function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null }) {
+  function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     var _a, _b, _c, _d, _e;
     const today = todayStr();
     const blank = {
@@ -31,6 +31,71 @@
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
     const set = (patch) => setF((p) => __spreadValues(__spreadValues({}, p), patch));
+    const [nlText, setNlText] = useState("");
+    const [nlBusy, setNlBusy] = useState(false);
+    const [nlErr, setNlErr] = useState("");
+    const [nlNote, setNlNote] = useState("");
+    // Turns "hydro $180 every second Tuesday" into the fields below. It fills
+    // the form rather than saving, because the recurrence model has more
+    // corners than a sentence usually specifies — the user confirms the
+    // schedule the same way they would if they had typed it in by hand.
+    const fillFromText = async () => {
+      const text = nlText.trim();
+      if (!text) return;
+      setNlBusy(true);
+      setNlErr("");
+      setNlNote("");
+      try {
+        const sortedCats = [...categories].sort((a, b) => a.localeCompare(b));
+        const properties = {
+          desc: { type: "string", description: "Short label for the entry, usually the payee or purpose." },
+          type: { type: "string", enum: ["income", "expense"] },
+          amount: { type: "number", description: "Amount in dollars, always positive. 0 when the text doesn't say." },
+          start_date: { type: "string", description: "Date it first applies, as YYYY-MM-DD. Use today when the text doesn't say." },
+          repeats: { type: "boolean", description: "true only when the text describes something recurring." },
+          recur_every: { type: "integer", description: "Interval between repeats, e.g. 2 for 'every second week'. 1 otherwise." },
+          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth"] },
+          recur_days: { type: "array", description: "Weekly repeats only: weekday numbers, 0 = Sunday through 6 = Saturday.", items: { type: "integer" } },
+          recur_end: { type: "string", description: "Last date as YYYY-MM-DD, or an empty string when ongoing." },
+          notes: { type: "string", description: "Anything in the text that doesn't fit the other fields. Empty string if none." }
+        };
+        const required = ["desc", "type", "amount", "start_date", "repeats", "recur_every", "recur_unit", "recur_days", "recur_end", "notes"];
+        if (sortedCats.length) {
+          properties.category = { type: "string", enum: sortedCats };
+          required.push("category");
+        }
+        const { data } = await callClaude({
+          system: "You convert short notes about money into structured budget entries. Use only what the text states — never invent an amount, a date or a schedule that isn't there.",
+          messages: [{ role: "user", content: `Today is ${today}. Turn this into a single budget entry:\n\n${text}` }],
+          schema: { type: "object", properties, required, additionalProperties: false },
+          maxTokens: 2e3,
+          effort: "low",
+          apiKey
+        });
+        const patch = {};
+        if (data.desc && data.desc.trim()) patch.desc = data.desc.trim();
+        if (data.type === "income" || data.type === "expense") patch.type = data.type;
+        if (Number.isFinite(data.amount) && data.amount > 0) patch.amount = String(data.amount);
+        if (data.category && sortedCats.includes(data.category)) patch.category = data.category;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(data.start_date || "")) patch.startDate = data.start_date;
+        patch.repeats = !!data.repeats;
+        if (patch.repeats) {
+          patch.recurUnit = ["day", "week", "month", "year", "semimonth"].includes(data.recur_unit) ? data.recur_unit : "month";
+          patch.recurEvery = Number.isInteger(data.recur_every) && data.recur_every > 0 ? data.recur_every : 1;
+          // recurDays is only meaningful for weekly repeats, and the form's
+          // own weekday toggles assume clean 0-6 values.
+          patch.recurDays = patch.recurUnit === "week" && Array.isArray(data.recur_days) ? data.recur_days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(data.recur_end || "")) patch.recurEnd = data.recur_end;
+        }
+        if (data.notes && data.notes.trim()) patch.notes = data.notes.trim();
+        set(patch);
+        setNlNote("Filled the form in from your description — check it over before saving.");
+      } catch (e) {
+        setNlErr(aiErrorMessage(e));
+      } finally {
+        setNlBusy(false);
+      }
+    };
     const startD = f.startDate ? parseDate(f.startDate) : null;
     const startWD = startD ? startD.getDay() : null;
     const setStartDate = (val) => {
@@ -83,7 +148,36 @@
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
+      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
+        /* @__PURE__ */ React.createElement("input", {
+          id: "entry-nl",
+          className: "field-input",
+          style: { flex: "1 1 220px" },
+          placeholder: "hydro $180 every second Tuesday",
+          value: nlText,
+          disabled: nlBusy,
+          onChange: (e) => setNlText(e.target.value),
+          onKeyDown: (e) => {
+            // Enter inside a form would otherwise submit it; here it should
+            // run the parse the user is obviously asking for.
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!nlBusy && nlText.trim() && !isOffline && aiCanRun(apiKey)) fillFromText();
+            }
+          }
+        }),
+        /* @__PURE__ */ React.createElement("button", {
+          type: "button",
+          onClick: fillFromText,
+          disabled: nlBusy || !nlText.trim() || isOffline || !aiCanRun(apiKey),
+          title: isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+          className: "cf-btn cf-btn--secondary"
+        }, nlBusy ? "Reading…" : "✦ Fill in")
+      ),
+      (nlErr || nlNote) && /* @__PURE__ */ React.createElement("div", { className: nlErr ? "field-error-text" : "field-hint-text" }, nlErr || nlNote)
+    ), templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
       setF((p) => __spreadProps(__spreadValues({}, p), {
         desc: t.desc,
         type: t.type,
@@ -233,7 +327,7 @@
   // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
   // open a blank entry form.
-  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null }) {
+  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
     if (!show) return null;
     return /* @__PURE__ */ React.createElement(
       "div",
@@ -253,6 +347,8 @@
           },
           onCancel: onClose,
           categories,
+          apiKey,
+          isOffline,
           templates,
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }

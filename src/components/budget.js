@@ -737,6 +737,8 @@
               setEditingEntry(null);
             },
             categories,
+            apiKey,
+            isOffline,
             templates,
             onSaveTemplate: (t) => {
               setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t]);
