@@ -47,6 +47,33 @@ committing. (Opening `index.html` from the filesystem still works for most of
 the app, but the service worker — and therefore offline caching and
 notifications — needs a real `http://` or `https://` origin.)
 
+### Updating the vendored libraries
+
+`src/vendor/` is checked in rather than installed, so there's no manifest saying
+where those files came from. Both are reproducible from npm — regenerate them
+with the recipes below, then run `node build.js` and `node tests/regression.mjs`
+(test A1 runs the app's own React render checks, which is what actually catches
+a bad bundle).
+
+```bash
+# src/vendor/react-bundle.js — React + ReactDOM, minified into window.React /
+# window.ReactDOM. The entry pulls react-dom/client (not react-dom): that's why
+# ReactDOM.createRoot exists but ReactDOM.flushSync is absent, which the
+# self-test harness in src/components/auth-misc.js feature-detects around.
+npm install react@<version> react-dom@<version> esbuild
+printf 'import React from "react";\nimport ReactDOM from "react-dom/client";\nwindow.React = React;\nwindow.ReactDOM = ReactDOM;\n' > entry.js
+npx esbuild entry.js --bundle --minify --format=iife --legal-comments=eof \
+  --define:process.env.NODE_ENV='"production"' --outfile=src/vendor/react-bundle.js
+
+# src/vendor/supabase-client.js — a verbatim copy of the published UMD build.
+npm pack @supabase/supabase-js@<version>
+tar xzf supabase-supabase-js-<version>.tgz package/dist/umd/supabase.js
+cp package/dist/umd/supabase.js src/vendor/supabase-client.js
+```
+
+`src/vendor/mini-recharts.js` is hand-written, not a copy of the Recharts
+package — there's no upstream version to track.
+
 A GitHub Actions workflow (`.github/workflows/build.yml`) rebuilds the generated files automatically:
 - On pull requests, it **fails the check** if `index.html` or `sw.js` don't match what `node build.js` produces from `src/` — run the build locally and commit the result before merging.
 - On pushes to `main`, it rebuilds and commits them back automatically if they're out of sync, so GitHub Pages (serving straight from the branch root) always reflects `src/`.

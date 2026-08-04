@@ -3,7 +3,7 @@
 // style rules would be pure noise — this config enables only the rules that
 // catch real, silent bugs in hand-edited compiled code (a duplicate object
 // key once disabled a touch target with no error anywhere).
-// Run: npx --yes eslint@9 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js
+// Run: npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js
 //
 // no-undef/no-unused-vars are deliberately NOT enabled here: every src/ file
 // freely references functions/consts defined in sibling files (they only
