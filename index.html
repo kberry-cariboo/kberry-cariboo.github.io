@@ -9622,7 +9622,117 @@ Fill every field of the response schema. Rules:
   // Hoisted out of DashboardView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
   const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
-  function DashboardView({ flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
+  // "What changed this month" — the smallest useful AI surface in the app.
+  // Everything it reports is computed here from the same flow the rest of the
+  // dashboard draws; the model is only asked to say which of the differences
+  // matter and why, never to do the arithmetic.
+  function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }) {
+    const [brief, setBrief] = useState(null);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const now = /* @__PURE__ */ new Date();
+    const thisMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
+    const CACHE_KEY = `cf_ai_brief_${activeYear}_${thisMonth}`;
+    useEffect(() => {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.brief) setBrief(parsed.brief);
+          else setBrief(null);
+        } else setBrief(null);
+      } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
+      }
+    }, [CACHE_KEY]);
+    // Both months' totals, plus per-category movement. Categories with no
+    // activity in either month are dropped so the prompt carries signal
+    // instead of a wall of zeroes.
+    const delta = useMemo(() => {
+      if (thisMonth < 1) return null;
+      const prevMonth = thisMonth - 1;
+      const totals = (mi, type) => flow.filter((ev) => ev.month === mi && ev.type === type).reduce((sum, ev) => sum + ev.amount, 0);
+      const byCat = (mi) => {
+        const o = {};
+        flow.filter((ev) => ev.month === mi && ev.type === "expense").forEach((ev) => {
+          o[ev.category] = (o[ev.category] || 0) + ev.amount;
+        });
+        return o;
+      };
+      const currCats = byCat(thisMonth), prevCats = byCat(prevMonth);
+      const cats = [.../* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(prevCats)])].map((cat) => ({
+        cat,
+        now: currCats[cat] || 0,
+        before: prevCats[cat] || 0,
+        change: (currCats[cat] || 0) - (prevCats[cat] || 0)
+      })).filter((c) => c.now || c.before).sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 10);
+      return {
+        prevMonth,
+        income: { now: totals(thisMonth, "income"), before: totals(prevMonth, "income") },
+        expense: { now: totals(thisMonth, "expense"), before: totals(prevMonth, "expense") },
+        cats
+      };
+    }, [flow, thisMonth]);
+    const run = async () => {
+      if (!delta) return;
+      setBusy(true);
+      setErr("");
+      try {
+        const line = (label, d) => `${label}: ${fmt(d.now)} this month vs ${fmt(d.before)} last month (${d.now - d.before >= 0 ? "+" : ""}${fmt(d.now - d.before, true)})`;
+        const catLines = delta.cats.map((c) => `  ${c.cat}: ${fmt(c.now)} vs ${fmt(c.before)} (${c.change >= 0 ? "+" : ""}${fmt(c.change, true)})`).join("\n");
+        const { data } = await callClaude({
+          system: "You explain month-to-month changes in a household budget. Be concrete and brief. Never restate a number without saying what it means.",
+          messages: [{ role: "user", content: `${MONTHS[thisMonth]} ${activeYear} compared with ${MONTHS[delta.prevMonth]}.\n\n${line("Income", delta.income)}\n${line("Expenses", delta.expense)}\n\nExpense categories (this month vs last):\n${catLines}\n\nSay what actually changed and whether it matters. Skip anything that moved trivially.` }],
+          schema: {
+            type: "object",
+            properties: {
+              headline: { type: "string", description: "One sentence, under 15 words, on the month's main change." },
+              bullets: { type: "array", description: "2-4 short observations, each naming a category and a dollar change.", items: { type: "string" } }
+            },
+            required: ["headline", "bullets"],
+            additionalProperties: false
+          },
+          maxTokens: 1500,
+          effort: "low",
+          apiKey
+        });
+        setBrief(data);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ brief: data }));
+        } catch (e) {
+          notifyStorageWriteFailure(e);
+        }
+      } catch (e) {
+        setErr(aiErrorMessage(e));
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (!delta) return null;
+    return /* @__PURE__ */ React.createElement(Card, null,
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" },
+        /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "What changed in ", MONTHS[thisMonth]),
+        /* @__PURE__ */ React.createElement("button", {
+          onClick: run,
+          disabled: busy || isOffline || !aiCanRun(apiKey),
+          title: isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
+          className: "cf-btn cf-btn--secondary cf-btn--tiny"
+        }, busy ? "Thinking…" : brief ? "Refresh" : "✦ Summarise")
+      ),
+      err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mb-8" }, err),
+      brief ? /* @__PURE__ */ React.createElement(React.Fragment, null,
+        /* @__PURE__ */ React.createElement("div", { className: "txm mb-8", style: { fontWeight: 600 } }, brief.headline),
+        (brief.bullets || []).map((b, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-bullet-row", style: { marginBottom: 6 } },
+          /* @__PURE__ */ React.createElement("div", { className: "ai-bullet-dot", style: { width: 6, height: 6, background: "var(--navyLt)", marginTop: 7 } }),
+          /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, b)
+        ))
+      ) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Compare ", MONTHS[thisMonth], " with ", MONTHS[delta.prevMonth], " and have Claude pick out what moved.")
+    );
+  }
+  function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {
@@ -9745,6 +9855,7 @@ Fill every field of the response schema. Rules:
       { id: "upcoming", label: "Upcoming this week", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
       { id: "insight", label: "Spending insight", size: "full" },
+      { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "balanceChart", label: "Balance chart", size: "half" },
       { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
@@ -9878,6 +9989,7 @@ Fill every field of the response schema. Rules:
           } }, fmt(ev.balance)))), barDiv);
         })));
       })()),
+      monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
       insight: () => {
         if (!insight) return null;
         const above = insight.pct > 0;
