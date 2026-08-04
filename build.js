@@ -21,6 +21,7 @@ const APP_MODULES = [
   "src/lib/household-sync.js",
   "src/lib/push.js",
   "src/lib/app-data.js",
+  "src/lib/ai.js",
   "src/components/primitives.js",
   "src/components/forms.js",
   "src/components/csv-import.js",
