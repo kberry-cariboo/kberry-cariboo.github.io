@@ -260,7 +260,7 @@
       },
       "\u2699\ufe0f Filters",
       activeFilterCount > 0 && /* @__PURE__ */ React.createElement("span", { className: "entries-filter-count-badge" }, activeFilterCount)
-    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement(
+    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement("div", { className: "entries-search-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 13, className: "entries-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
         placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "",
@@ -272,7 +272,7 @@
         type: "search",
         className: "entries-search-input"
       }
-    ), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(
       "button",
       { onClick: () => setShowCsvImport(true), className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--nowrap" },
       "Import CSV"
@@ -327,7 +327,10 @@
       "th",
       {
         key: col,
-        className: "entries-th entries-th--col",
+        // Per-column modifier so a column can be styled by identity rather
+        // than position — the columns are drag-reorderable, so nth-child
+        // would follow whatever slot the user dragged it into.
+        className: "entries-th entries-th--col entries-th--" + col,
         draggable: true,
         tabIndex: 0,
         "aria-label": `${ENTRIES_COL_LABELS[col] || col} column — press left or right arrow to reorder`,
