@@ -34,17 +34,18 @@
   async function aiProbeProxy() {
     if (_aiProxyAvailable !== null) return _aiProxyAvailable;
     if (_aiProxyProbe) return _aiProxyProbe;
-    if (!aiSignedIn()) {
-      _aiProxyAvailable = false;
-      return false;
-    }
+    // Not signed in is not an answer about the function — it's an answer about
+    // right now. Caching it would leave the proxy permanently written off for
+    // anyone who signs in after the app loads, so this path returns false
+    // without recording it and the caller can ask again later.
+    if (!aiSignedIn()) return false;
     _aiProxyProbe = (async () => {
       try {
         const { data: sess } = await supabaseClient.auth.getSession();
         // The function verifies the caller's JWT, so a signed-out visitor
         // can't use it even if it is deployed.
         if (!sess || !sess.session) {
-          _aiProxyAvailable = false;
+          _aiProxyProbe = null;
           return false;
         }
         const { data, error } = await supabaseClient.functions.invoke(AI_PROXY_FN, { body: { ping: true } });
@@ -53,7 +54,7 @@
         _aiProxyAvailable = false;
       }
       _aiProxyProbe = null;
-      return _aiProxyAvailable;
+      return _aiProxyAvailable === true;
     })();
     return _aiProxyProbe;
   }

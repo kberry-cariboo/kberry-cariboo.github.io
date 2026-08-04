@@ -4442,17 +4442,18 @@ document.addEventListener('DOMContentLoaded',function(){
   async function aiProbeProxy() {
     if (_aiProxyAvailable !== null) return _aiProxyAvailable;
     if (_aiProxyProbe) return _aiProxyProbe;
-    if (!aiSignedIn()) {
-      _aiProxyAvailable = false;
-      return false;
-    }
+    // Not signed in is not an answer about the function — it's an answer about
+    // right now. Caching it would leave the proxy permanently written off for
+    // anyone who signs in after the app loads, so this path returns false
+    // without recording it and the caller can ask again later.
+    if (!aiSignedIn()) return false;
     _aiProxyProbe = (async () => {
       try {
         const { data: sess } = await supabaseClient.auth.getSession();
         // The function verifies the caller's JWT, so a signed-out visitor
         // can't use it even if it is deployed.
         if (!sess || !sess.session) {
-          _aiProxyAvailable = false;
+          _aiProxyProbe = null;
           return false;
         }
         const { data, error } = await supabaseClient.functions.invoke(AI_PROXY_FN, { body: { ping: true } });
@@ -4461,7 +4462,7 @@ document.addEventListener('DOMContentLoaded',function(){
         _aiProxyAvailable = false;
       }
       _aiProxyProbe = null;
-      return _aiProxyAvailable;
+      return _aiProxyAvailable === true;
     })();
     return _aiProxyProbe;
   }
@@ -12647,6 +12648,23 @@ Fill every field of the response schema. Rules:
         window.removeEventListener("online", goOn);
       };
     }, []);
+    // Probe for the ai-proxy Edge Function once, here rather than in each
+    // feature. aiCanRun() reads a module-level flag that only the probe sets,
+    // so a component that never probes sees "no AI configured" and disables
+    // its button even when the function is deployed — the CSV modal and the
+    // entry form would each have had to probe on mount to avoid that. Doing it
+    // at the root means one probe per load, and the setState is what re-renders
+    // the tree so every button re-reads the flag once the answer is in.
+    const [, setAiProxyReady] = useState(false);
+    useEffect(() => {
+      let live = true;
+      aiProbeProxy().then((ok) => {
+        if (live) setAiProxyReady(ok);
+      });
+      return () => {
+        live = false;
+      };
+    }, [session]);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {

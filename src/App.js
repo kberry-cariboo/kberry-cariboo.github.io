@@ -327,6 +327,23 @@
         window.removeEventListener("online", goOn);
       };
     }, []);
+    // Probe for the ai-proxy Edge Function once, here rather than in each
+    // feature. aiCanRun() reads a module-level flag that only the probe sets,
+    // so a component that never probes sees "no AI configured" and disables
+    // its button even when the function is deployed — the CSV modal and the
+    // entry form would each have had to probe on mount to avoid that. Doing it
+    // at the root means one probe per load, and the setState is what re-renders
+    // the tree so every button re-reads the flag once the answer is in.
+    const [, setAiProxyReady] = useState(false);
+    useEffect(() => {
+      let live = true;
+      aiProbeProxy().then((ok) => {
+        if (live) setAiProxyReady(ok);
+      });
+      return () => {
+        live = false;
+      };
+    }, [session]);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
