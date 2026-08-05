@@ -725,6 +725,7 @@
   }
   function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
+    const roving = useRovingTabs();
     useEffect(() => {
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
@@ -738,11 +739,16 @@
       { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
       { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
         "data-active": value === s.id,
+        // data-active styles the pill; aria-pressed is what actually tells a
+        // screen reader which sub-tab is showing. Matches the month pills.
+        "aria-pressed": value === s.id,
+        // One tab stop for the strip; arrow keys move within it.
+        tabIndex: value === s.id ? 0 : -1,
         className: "budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : ""),
         onClick: () => {
           haptic();
@@ -767,6 +773,7 @@
   }
   function PlanSubTabs({ value, onChange }) {
     const ref = useRef(null);
+    const roving = useRovingTabs();
     useEffect(() => {
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
@@ -778,11 +785,16 @@
       { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
       { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
         "data-active": value === s.id,
+        // data-active styles the pill; aria-pressed is what actually tells a
+        // screen reader which sub-tab is showing. Matches the month pills.
+        "aria-pressed": value === s.id,
+        // One tab stop for the strip; arrow keys move within it.
+        tabIndex: value === s.id ? 0 : -1,
         className: "budget-subtab-pill budget-subtab-btn",
         onClick: () => {
           haptic();

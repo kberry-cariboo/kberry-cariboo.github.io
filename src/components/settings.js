@@ -25,7 +25,7 @@
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
     );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setTab("dashboard"),
@@ -497,7 +497,7 @@
       [arr[i], arr[j]] = [arr[j], arr[i]];
       setCategories(arr);
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
       className: "settings-page-pills"
     }, [
       { id: "general", icon: "settings", label: "General" },
@@ -518,7 +518,7 @@
       },
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
+    ))), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
       // Order matches the sections as they appear down the page.
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
@@ -826,6 +826,9 @@
           type: "color",
           value: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
           onChange: (e) => setEditColor(e.target.value),
+          // Eleven of these on the General page, all announced as an unnamed
+          // "color picker" — the visible label is the swatch itself.
+          "aria-label": `Colour for ${cat}`,
           className: "color-swatch-input"
         }
       )), /* @__PURE__ */ React.createElement(
@@ -848,6 +851,7 @@
           type: "color",
           value: getCatColor(cat, categories, categoryColors),
           onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
+          "aria-label": `Colour for ${cat}`,
           className: "color-swatch-input"
         }
       )), /* @__PURE__ */ React.createElement("span", { className: "tx flex-1" }, cat), /* @__PURE__ */ React.createElement("div", { className: "cat-actions-row" }, /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} up`, className: "wm-arrow", disabled: i === 0, style: { opacity: i === 0 ? 0.3 : 1 }, onClick: () => moveCat(i, -1) }, "↑"), /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} down`, className: "wm-arrow", disabled: i === categories.length - 1, style: { opacity: i === categories.length - 1 ? 0.3 : 1 }, onClick: () => moveCat(i, 1) }, "↓"), categoryColors[cat] && /* @__PURE__ */ React.createElement(
@@ -875,6 +879,7 @@
         type: "color",
         value: newCatColor || "#888888",
         onChange: (e) => setNewCatColor(e.target.value),
+        "aria-label": "Colour for the new category",
         className: "color-swatch-input"
       }
     )), /* @__PURE__ */ React.createElement(

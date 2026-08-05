@@ -268,6 +268,7 @@
   };
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
+    const roving = useRovingTabs(".month-pill");
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
     // visible scrollbar, so nothing hints that more months sit off-screen.
     // Recomputed on scroll and on resize/value change (month pills reflow at
@@ -298,7 +299,7 @@
         window.removeEventListener("resize", updateFade);
       };
     }, [value, matchingMonths]);
-    return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", onKeyDown: roving.onKeyDown },/* @__PURE__ */ React.createElement(
       "button",
       {
         className: "month-nav-arrow",
@@ -341,6 +342,7 @@
           onClick: () => onChange(i),
           className: "cf-pill month-pill",
           "aria-pressed": isActive,
+          tabIndex: isActive ? 0 : -1,
           "data-active": isActive ? "true" : "false",
           "data-match": hasMatch ? "true" : "false"
         },

@@ -11,7 +11,9 @@ hit targets; at desktop width the space is there, so the questions are whether
 you can drive the app from the keyboard, whether long tables stay readable as
 you scroll, and whether a 1120px-wide row still reads as one row.
 
-Nothing here changes behaviour — this is the audit.
+**Status: all 11 items are implemented.** The audit text below is unchanged
+from the original survey, so the "before" numbers still read as findings;
+§6 records what each one measures now and what it cost.
 
 ---
 
@@ -299,3 +301,109 @@ Worth recording so it does not get "fixed":
 9. `max-width` on explanatory prose (§3.2)
 10. Take the dashboard toolbar merge out of the mobile-only block (§3.3)
 11. Two-column Settings for the short cards (§3.4)
+
+---
+
+## 6. Outcomes
+
+Re-measured with the same scripts, on the same seeded data, after the fixes.
+
+### Tier 1 — correctness
+
+| § | before | after |
+| --- | --- | --- |
+| 1.1 sticky headers | header scrolls away on all three tables | Monthly, Entries and Forecast all pin: `thead top 360 → 0 after scrolling 600px` |
+| 1.2 focus on close | focus fell to `<body>` | returns to the trigger: *was "+ Add Entry", after close focus is on `<button>` "+ Add Entry"* |
+| 1.3 context menu | opened without focus, arrow keys dead | takes focus on open, Up/Down/Home/End and a Tab trap, `role="menu"` |
+| 1.4 Daily semantics | strikethrough bound to `isPast(day)` | bound to `completed[ev.id]`, and Daily now has the paid checkbox it was missing |
+
+§1.1 took three attempts. Making the table wrappers `overflow:visible` was not
+enough: `.cf-card--flush` uses `overflow:hidden` to clip the table to its
+rounded corners, and `hidden` is a scroll container too, so it pinned the
+header just as firmly. `overflow:clip` keeps the corner clipping without
+creating a scroll container. Entries then still failed because the media block
+sat *above* `.entries-table-wrap{overflow-x:auto}` — media queries carry no
+extra specificity, so the later base rule won. Moving the block below its base
+rules fixed it.
+
+§1.2 also took two attempts. The first version recorded the trigger inside the
+`MutationObserver`, which runs as a microtask *after* the commit — by then the
+dialog's own autoFocus had already claimed `activeElement`, so it recorded the
+dialog. It now tracks the last element focused outside any overlay via
+`focusin`, which is immune to that ordering.
+
+### Tier 2 — keyboard and AT
+
+| § | before | after |
+| --- | --- | --- |
+| 2.1 colour inputs | 10 unnamed `input[type=color]` | 0 — all three call sites carry `aria-label` |
+| 2.2 active state | sub-tabs and year pills announced nothing | `aria-pressed` on both, matching the month pills |
+| 2.3 tab stops | 32 stops to the first row of data | **9** stops to reach main content |
+
+§2.3 uses a `useRovingTabs` hook: one tab stop per group, arrow keys within it,
+`Home`/`End` to the ends, and `tabIndex: isActive ? 0 : -1` so re-entering the
+group lands on the current selection. Applied to the month strip (12 → 1), both
+sub-tab strips (5 → 1) and the year pills (2 → 1).
+
+Two details worth recording:
+
+- The handler calls `stopPropagation()` as well as `preventDefault()`. The app
+  has a window-level Arrow←/→ shortcut for stepping the month, so without it
+  one press would both move focus *and* change the month. Verified: focus moves
+  Aug → Sep while the active month stays Aug.
+- **The primary nav was deliberately left alone.** It is a `<nav>` landmark
+  using `aria-current="page"`, where the convention is that every destination
+  stays reachable by Tab, and the skip link already jumps past it. That is four
+  of the remaining nine stops.
+
+### Tier 3 — desktop layout
+
+| § | before | after |
+| --- | --- | --- |
+| 3.1 BvA rows | 826px empty run (77%) | ~130px (13%); the progress bar moved into the middle column |
+| 3.1 goal rows | 741px empty run (69%), three stacked lines | one 42px line: name / bar / amounts / kebab |
+| 3.1 Upcoming | 648px empty run (61%) | date, description, chip and amounts each on their own axis |
+| 3.2 prose | up to 154ch measured | 68ch, every block |
+| 3.3 dash toolbar | mobile-only rule | unconditional |
+| 3.4 Settings height | 2782px | 2330px at 1440px (−16%) |
+
+The layout work uses `display:contents` on the existing flex rows so their
+children become items of a grid on the wrapper. Nothing in the markup moved,
+and below 1000px the flex layout is untouched — the phone treatment was already
+right.
+
+One correctness point came out of §3.1 that the audit had not spotted. The
+first BvA grid sized the note columns with `auto`; because each row is its own
+grid, that made the bar column narrower on rows carrying an overage note, so
+two categories at the same percentage rendered bars of different lengths. Every
+track is now fixed or `fr`, and all nine bars measure `210–754`.
+
+Two smaller things fixed on the way through, both found by re-running the audit
+script rather than by reading:
+
+- The BvA totals row is not part of the row grid, so it needed the kebab
+  column's width back as padding to land on the same right edge as the
+  category amounts. Both now end at x=1050.
+- A category with no target has no bar, which would have put that row straight
+  back to a label and a number at opposite ends. It gets an empty dashed track
+  instead — the same dashed convention the add-pills use, and it says what is
+  true: nothing is set here.
+
+### Still open
+
+- **§3.5 unused width.** Content is still 1120px inside the 1200px measure, so
+  a 2560px display leaves 1440px unused. That is the measure you asked for and
+  §3.2 argues for keeping it; §3.4 spends some of it on columns instead.
+- **The `!` on the year pill** in the tab-order dump is a probe artifact, not a
+  finding — see §4. The pills animate `transition:all 0.15s`, so a probe that
+  reads `outline-width` immediately after focusing catches it mid-animation at
+  0px. Measured after a 400ms settle it is 2px solid accent at 4.55:1.
+- **`TALL-GAP 181px at y=0`** on the two sparse Plan sub-pages is the same kind
+  of artifact: the script measures from y=0, so it is counting the header. A
+  probe anchored to the top of the content area finds no gap over 60px.
+
+### Verification
+
+`node tests/regression.mjs` 37/37, `npx eslint .eslint-bundle.js` clean, the
+mobile suite 19/19 with 0 page errors, and the desktop audit script reports no
+`NO-NAME`, `LONG-LINE` or overflow findings on any page.
