@@ -489,13 +489,13 @@ content-box left edges now agree exactly at every width:
 | 1440 | 153 | 153 | 153 | 153 |
 | 1920 | 393 | 393 | 393 | 393 |
 
-The mobile measure is a real cap, not a fallback: below 430px it never binds
-(essentially every phone), and between 430 and the 768px breakpoint it stops
-the card layouts from stretching into something that is neither a phone view
-nor a desktop one. Chrome that spans the window keeps its full-bleed
-background and centres its *contents* on the same measure — the header bar,
-the bottom nav's buttons, the FAB's offset and the backup nudge all track the
-column rather than the window edge.
+`--container-w-mobile` is the width the phone layout is *designed* at (430px,
+the largest common phone), not a ceiling. Applying it as a `max-width` was
+tried and reverted: it letterboxed everything between 430px and the 768px
+breakpoint, so a 600px window rendered a 430px column with ~85px of dead
+gutter either side — worse than the stretched cards it was avoiding. The
+mobile column is fluid and fills what it's given; the token stays as the
+reference the card layouts are tuned against.
 
 ## 9. Density, after
 

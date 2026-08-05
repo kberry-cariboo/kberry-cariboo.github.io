@@ -43,13 +43,13 @@
            with 1160px content nested inside it and the sub-tab strip
            agreeing with neither.
 
-           The mobile measure is a real cap, not a fallback: below 430px it
-           never binds (that covers essentially every phone), and between
-           430px and the 768px breakpoint it stops the card layouts from
-           stretching into something that is neither a phone nor a desktop
-           view. Chrome that spans the window — the header bar, the bottom
-           nav — keeps its full-bleed background and centres its *contents*
-           on the same measure, so nothing sits off-axis. */
+           --container-w-mobile is the width the phone layout is *designed*
+           at (430px — the largest common phone), not a ceiling. Applying it
+           as a max-width letterboxed everything between 430px and the 768px
+           breakpoint: a 600px window rendered a 430px column with ~85px of
+           dead gutter either side. The mobile column is fluid instead and
+           fills what it's given, with the token left as the reference the
+           card layouts are tuned against. */
         :root{--container-w:1200px;--container-w-mobile:430px;--container-gutter:24px;}
         @media(min-width:1400px){:root{--container-gutter:40px;}}
         @media(max-width:768px){:root{--container-gutter:12px;}}
@@ -1253,11 +1253,7 @@
              resolves against the padded content box. */
           .app-scroll{padding-bottom:calc(72px + env(safe-area-inset-bottom));}
           .content-area{padding-bottom:20px!important;}
-          /* Fixed chrome tracks the content column, not the window edge —
-             otherwise the FAB drifts off on its own once the 430px cap
-             starts binding (600px+, where the column is centred). */
-          .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;
-            right:max(18px, calc((100% - var(--container-w-mobile)) / 2 + 18px))!important;}
+          .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
         }
         /* The bulk-action bar is centred at the bottom and the FAB sits at the
@@ -1459,18 +1455,12 @@
           input,select,textarea{font-size:16px!important;}
           .wm-arrow{width:44px!important;height:44px!important;line-height:42px!important;font-size:16px!important;}
           .entries-table-wrap{display:none!important;}
-          /* Everything that carries the measure switches to the mobile one
-             together: the page/main/banners (.cf-page), the header bar's
-             contents, the sub-tab strip, and the bottom nav's buttons. The
-             nav and header keep their full-bleed backgrounds — only what's
-             inside them is centred, so the whole column lines up. */
-          .cf-page{max-width:var(--container-w-mobile)!important;}
-          .budget-subtabs-row{max-width:var(--container-w-mobile)!important;}
-          .cf-bottomnav{padding-left:max(0px,calc((100% - var(--container-w-mobile)) / 2));
-            padding-right:max(0px,calc((100% - var(--container-w-mobile)) / 2));}
+          /* No mobile max-width: the column fills the window all the way to
+             the 768px breakpoint, so the header, the content and the nav all
+             span the same full width and the gutter token is the only thing
+             holding them off the edge. */
           /* Header: single fixed row — never wraps */
-          .header-inner{flex-wrap:nowrap!important;height:56px!important;gap:8px;
-            max-width:var(--container-w-mobile)!important;}
+          .header-inner{flex-wrap:nowrap!important;height:56px!important;gap:8px;}
           .logo-area img{height:23px!important;}
           /* Tab bar: scrollable, no scrollbar visible */
           .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
@@ -1533,8 +1523,8 @@
              above still apply where the tables actually render. */
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          .backup-nudge{left:50%!important;right:auto!important;transform:translateX(-50%);
-            width:calc(min(100vw, var(--container-w-mobile)) - 24px)!important;max-width:none!important;}
+          .backup-nudge{left:12px!important;right:12px!important;
+            width:auto!important;max-width:none!important;}
           /* Full-width here and the message wraps to more lines, so it grows
              to ~176px at 320px — 80px offset + 176px + gap. */
           .content-area.content-area--nudged{padding-bottom:280px!important;}
