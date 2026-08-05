@@ -6,6 +6,26 @@
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/plexmono-600.woff2') format('woff2');}
         @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/plexmono-700.woff2') format('woff2');}
         *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+        /* ── Container widths ────────────────────────────────────────────
+           One measure for the whole app, declared once. Before this there
+           were three: .cf-page and .header-inner at 1160px, and a ≥1400px
+           override that widened .content-area to 1400px — but .content-area
+           *is* a .cf-page (same element carries both classes) and the views
+           it wraps are .cf-page too, so a wide screen showed a 1400px main
+           with 1160px content nested inside it and the sub-tab strip
+           agreeing with neither.
+
+           --container-w-mobile is the width the phone layout is *designed*
+           at (430px — the largest common phone), not a ceiling. Applying it
+           as a max-width letterboxed everything between 430px and the 768px
+           breakpoint: a 600px window rendered a 430px column with ~85px of
+           dead gutter either side. The mobile column is fluid instead and
+           fills what it's given, with the token left as the reference the
+           card layouts are tuned against. */
+        :root{--container-w:1200px;--container-w-mobile:430px;--container-gutter:24px;}
+        @media(min-width:1400px){:root{--container-gutter:40px;}}
+        @media(max-width:768px){:root{--container-gutter:12px;}}
+        @media(max-width:480px){:root{--container-gutter:10px;}}
         /* ── Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) ── */
         .field-label{font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--textMid);
           display:block;margin-bottom:6px;}
@@ -58,7 +78,7 @@
         .cf-wrap{flex-wrap:wrap;}
         .flex-1{flex:1;}
         .min-w-0{min-width:0;}
-        .cf-page{max-width:1160px;width:100%;margin:0 auto;}
+        .cf-page{max-width:var(--container-w);width:100%;margin:0 auto;}
         /* Spacing scale — dedupes the most repeated one-off margin/padding
            values found across components (audit round 6, inline-style pass) */
         .mb-0{margin-bottom:0;}
@@ -130,8 +150,8 @@
         .cf-btn--tiny{font-size:12px;padding:5px 12px;}
         /* ── App.js ── */
         .app-scroll{background:var(--bg);min-height:100vh;color:var(--text);display:flex;flex-direction:column;}
-        .tab-bar-outer{background:var(--headerBg);padding:0 24px;padding-bottom:0;line-height:0;font-size:0;}
-        .header-inner{max-width:1160px;margin:0 auto;display:flex;align-items:center;
+        .tab-bar-outer{background:var(--headerBg);padding:0;line-height:0;font-size:0;}
+        .header-inner{max-width:var(--container-w);margin:0 auto;padding:0 var(--container-gutter);display:flex;align-items:center;
           justify-content:space-between;height:64px;font-size:initial;line-height:initial;}
         .logo-area{display:flex;align-items:center;gap:12px;min-width:0;flex-shrink:0;}
         .header-logo-img{height:33px;object-fit:contain;display:block;image-rendering:auto;flex-shrink:0;}
@@ -175,7 +195,7 @@
         .form-err-text{color:var(--red);font-size:12px;margin-bottom:10px;}
         .form-ok-text{color:var(--greenDk);font-size:12px;margin-bottom:10px;}
         .mt-6{margin-top:6px;}
-        .tab-bar{display:flex;gap:2px;font-size:initial;line-height:initial;}
+        .tab-bar{display:flex;gap:2px;font-size:initial;line-height:initial;padding:0 var(--container-gutter);}
         .tab-bar-btn{font-size:13px;font-weight:600;padding:12px 18px;border:none;cursor:pointer;
           background:transparent;transition:color 0.15s,border-color 0.15s;}
         .tab-alert-dot{margin-left:6px;color:#fff;border-radius:10px;padding:1px 6px;
@@ -192,7 +212,7 @@
           font-size:12px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s;
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:14px;}
-        .content-area{padding:28px 24px;margin-top:0;outline:none;}
+        .content-area{padding:28px var(--container-gutter);margin-top:0;outline:none;}
         /* The backup nudge is position:fixed, so it floats over whatever is
            at the bottom of the page — on a short page there's nothing to
            scroll and the covered controls are simply unreachable (at 320px it
@@ -336,8 +356,18 @@
         .selftest-mark{font-weight:700;width:18px;}
         .selftest-detail{color:var(--textLt);font-size:11px;}
         .selftest-back-link{display:inline-block;margin-top:20px;font-size:13px;color:var(--primaryInk);}
-        .budget-subtabs-row{display:flex;gap:8px;max-width:1160px;margin:0 auto 16px;
-          flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
+        /* This strip used to borrow .hscroll for its hidden-scrollbar
+           horizontal overflow, which quietly cost it its layout: .hscroll
+           sets display:block and is declared ~1000 lines further down, so at
+           equal specificity it won and the row was never a flex container at
+           all. `gap` is inert on a block box, so the five sub-tabs sat flush
+           against each other at every width, and the mobile rule giving them
+           `flex:1 1 0` did nothing either. It owns its overflow now — the
+           other .hscroll users all wrap tables and genuinely want block. */
+        .budget-subtabs-row{display:flex;gap:8px;max-width:var(--container-w);margin:0 auto 16px;
+          flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
+        .budget-subtabs-row::-webkit-scrollbar{display:none;}
         .budget-subtab-btn{font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;
           border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;}
         /* Short labels ride along in the markup and only surface on mobile,
@@ -1123,15 +1153,6 @@
           .ai-settings-link,.strat-suggest-btn{display:inline-block;padding:12px 0;}
           .link-btn-sm{min-width:44px;min-height:44px;}
           .cf-footer-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;}
-          /* These two rows scroll horizontally with the scrollbar explicitly
-             hidden (see .settings-page-pills::-webkit-scrollbar above) and no
-             edge fade, so at 320px "Templates" just clips mid-word with
-             nothing to suggest it's reachable. There are only a handful of
-             pills, so let them wrap instead — nothing is hidden and no
-             affordance is needed. The month strip keeps its scroll + fade:
-             twelve months genuinely can't wrap into a usable row. */
-          .settings-page-pills{flex-wrap:wrap;overflow-x:visible;width:auto;justify-content:flex-start;}
-          .settings-quicklinks{flex-wrap:wrap;overflow-x:visible;row-gap:6px;}
           .settings-page-pills button{min-height:44px;}
           .settings-quicklinks a{min-height:44px;display:inline-flex;align-items:center;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
@@ -1166,13 +1187,33 @@
           border-color:var(--accent)!important;
         }
         /* ── UI polish ─────────────────────────────────────────────────── */
-        /* Bottom navigation: touch devices only */
+        /* ── One axis for layout ──────────────────────────────────────────
+           Which *layout* you get is decided by width alone (768px, the same
+           threshold useIsMobile() reads). `pointer:coarse` is reserved for
+           things that are genuinely about the input device — hit-target
+           sizes, camera capture, menus as bottom sheets, the app-shell
+           scroll lock that stops a touch browser's URL bar animating fixed
+           chrome, and affordances for gestures touch can't perform.
+
+           Splitting them the other way is what produced the two undesigned
+           combinations this app used to ship: an 820px tablet got the phone
+           bottom nav with desktop tables, and a 700px desktop window got
+           phone cards with the desktop tab bar. Now a narrow window is a
+           narrow window whatever is pointing at it, and a wide tablet gets
+           the wide layout. */
         .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
           background:var(--bgCard);border-top:1px solid var(--border);
           padding-bottom:env(safe-area-inset-bottom);
           box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
-        @media (pointer:coarse){
+        .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
+          width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;
+          font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
+          box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;
+          transition:transform 0.18s ease, opacity 0.18s ease;}
+        .cf-fab--hidden{transform:translateY(96px);opacity:0;pointer-events:none;}
+        @media(max-width:768px){
           .cf-bottomnav{display:flex;}
+          .cf-fab{display:flex;align-items:center;justify-content:center;}
           .tab-bar{display:none!important;}
           /* Nav clearance belongs to the scroll container, not to <main>: the
              footer is a *sibling* of <main> inside .app-scroll, so padding on
@@ -1187,14 +1228,6 @@
           .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
         }
-        /* FAB: touch devices only, thumb-reach primary action */
-        .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
-          width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;
-          font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
-          box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;
-          transition:transform 0.18s ease, opacity 0.18s ease;}
-        .cf-fab--hidden{transform:translateY(96px);opacity:0;pointer-events:none;}
-        @media (pointer:coarse){.cf-fab{display:flex;align-items:center;justify-content:center;}}
         /* The bulk-action bar is centred at the bottom and the FAB sits at the
            same height on the right, so they collide on a phone. The bulk bar
            is a transient mode with its own primary action; the FAB stands
@@ -1304,6 +1337,13 @@
         }
         .mobile-year-badge--btn{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
         .mobile-year-badge-caret{font-size:9px;color:var(--textLt);}
+        /* Header variant: the page-surface tokens the badge normally uses are
+           invisible on navy, so it borrows the same translucent-white
+           treatment as the search pill and the avatar. */
+        .mobile-year-badge--header{background:rgba(255,255,255,0.08);
+          border-color:rgba(255,255,255,0.16);color:rgba(255,255,255,0.85);
+          margin-bottom:0;flex-shrink:0;border-radius:22px;padding:5px 14px;}
+        .mobile-year-badge--header .mobile-year-badge-caret{color:rgba(255,255,255,0.5);}
         /* ── Print stylesheet (PDF export via window.print()) ───────────
            Goal: only the report content prints — no header, nav, footer,
            FAB, or transient banners — and it always prints in the light
@@ -1387,8 +1427,12 @@
           input,select,textarea{font-size:16px!important;}
           .wm-arrow{width:44px!important;height:44px!important;line-height:42px!important;font-size:16px!important;}
           .entries-table-wrap{display:none!important;}
+          /* No mobile max-width: the column fills the window all the way to
+             the 768px breakpoint, so the header, the content and the nav all
+             span the same full width and the gutter token is the only thing
+             holding them off the edge. */
           /* Header: single fixed row — never wraps */
-          .header-inner{flex-wrap:nowrap!important;height:56px!important;padding:0 12px!important;gap:8px;}
+          .header-inner{flex-wrap:nowrap!important;height:56px!important;gap:8px;}
           .logo-area img{height:23px!important;}
           /* Tab bar: scrollable, no scrollbar visible */
           .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
@@ -1399,9 +1443,9 @@
              value set above (a padding-bottom set here as part of the
              shorthand would silently win over it and re-collapse the gap
              above the fixed bottom nav). */
-          .content-area{padding-top:12px!important;padding-left:8px!important;padding-right:8px!important;margin-top:0!important;}
+          .content-area{padding-top:12px!important;margin-top:0!important;}
           /* Kill any residual navy gap between tab-bar and content on mobile */
-          .tab-bar-outer{padding-bottom:0!important;overflow:hidden!important;}
+          .tab-bar-outer{overflow:hidden!important;}
           /* KPI grids: 2-column on tablet/mobile */
           .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
           .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
@@ -1472,8 +1516,8 @@
           /* Hide ‹ › arrows on mobile — month buttons are tappable directly */
           .month-nav-arrow{display:none!important;}
           .month-today-pill{display:none!important;}
-          .content-area{padding-top:10px!important;padding-left:6px!important;padding-right:6px!important;margin-top:0!important;}
-          .tab-bar-outer{padding-left:8px!important;padding-right:8px!important;padding-bottom:0!important;overflow:hidden!important;}
+          .content-area{padding-top:10px!important;margin-top:0!important;}
+          .tab-bar-outer{overflow:hidden!important;}
           .tab-bar{margin:0!important;padding:0!important;}
           .tab-bar button{padding:10px 8px!important;font-size:10px!important;}
           /* The Budget Monthly table's phone column widths used to live here,
@@ -1493,6 +1537,15 @@
           .bva-amounts{flex-wrap:wrap!important;justify-content:flex-end;row-gap:0;}
           /* Entries filter row: stack on phone */
           .entries-filter-row{flex-wrap:wrap!important;gap:6px!important;}
+          /* These two rows scroll horizontally with the scrollbar explicitly
+             hidden and no edge fade, so at 320px "Templates" just clips
+             mid-word with nothing to suggest it's reachable. There are only a
+             handful of pills, so let them wrap — that's a function of the
+             width available, not of what's pointing at them. The month strip
+             keeps its scroll + fade: twelve months can't wrap into a usable
+             row. */
+          .settings-page-pills{flex-wrap:wrap;overflow-x:visible;width:auto;justify-content:flex-start;}
+          .settings-quicklinks{flex-wrap:wrap;overflow-x:visible;row-gap:6px;}
           /* Three stacked toolbar rows put ~250px between the top of the tab
              and the first entry. The search takes the rest of the Filters
              line, and Import CSV — a desktop-shaped job whose own preview is
@@ -1529,6 +1582,12 @@
              chip's title attribute keeps the full sentence. */
           .offline-chip{padding:3px 8px!important;font-size:10px!important;}
           .offline-chip-more{display:none!important;}
+          /* Four equal-width sub-tabs leave ~70px each here, and icon + gap +
+             padding eats 36 of it — "Monthly" was ellipsised to "Month…".
+             The label is the part that carries the meaning (icons alone are
+             what this replaced), so the icon steps aside, not the word. */
+          .budget-subtab-pill svg{display:none;}
+          .budget-subtab-pill{padding:0 6px!important;gap:0!important;}
         }
 
 
@@ -1538,10 +1597,12 @@
         .modal-card{background:var(--bgCard);border-radius:14px;box-shadow:var(--shadowXl);animation:slideUp 0.2s ease-out;}
         @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}
 
-        /* ── Two-column dashboard at ≥1400px ───────────────────────────── */
-        @media(min-width:1400px){
-          .content-area{max-width:1400px!important;padding:28px 40px!important;}
-        }
+        /* Wide screens get more gutter, not a wider measure — widening only
+           .content-area used to leave its .cf-page children centred at a
+           narrower width inside it. */
+        /* Wide screens get more gutter via --container-gutter, not a wider
+           measure — widening only .content-area used to leave its .cf-page
+           children centred at a narrower width inside it. */
 
         /* ── Entries table: card view on mobile ─────────────────────────── */
         /* Entries: table on desktop, cards on mobile */

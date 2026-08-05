@@ -231,16 +231,21 @@
   // Mobile-only "which year am I on" indicator — desktop already shows the
   // year pills in the header, which are hidden on mobile to save space.
   // Tapping it opens the same year switcher the header pills provide.
-  const MobileYearBadge = ({ year, years = [], onSelect = () => {
+  // `inHeader` puts it in the navy header bar beside the logo, which is where
+  // it lives on mobile: below 768px the year pills and the search are both
+  // hidden, so the header had ~195px of empty navy while this cost a whole
+  // row of content underneath it.
+  const MobileYearBadge = ({ year, years = [], inHeader = false, onSelect = () => {
   } }) => {
     const [ctx, setCtx] = useState(null);
+    const cls = "mobile-year-badge" + (inHeader ? " mobile-year-badge--header" : "");
     if (years.length < 2) {
-      return /* @__PURE__ */ React.createElement("div", { className: "mobile-year-badge" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
+      return /* @__PURE__ */ React.createElement("div", { className: cls }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
     }
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "button",
       {
-        className: "mobile-year-badge mobile-year-badge--btn",
+        className: cls + " mobile-year-badge--btn",
         "aria-label": "Switch year",
         "aria-haspopup": "menu",
         onClick: (e) => {

@@ -439,7 +439,7 @@ and the existing 37-test regression suite.
 | 18 | Pull-to-refresh listener churn (§4.6) | Progress mirrored into a ref; the effect mounts once instead of re-subscribing every frame |
 | 19 | `aria-label` "Home" (§4.7) | "Dashboard", matching the rest of the app; the nav still *shows* "Home" |
 | 20 | "All Categorys" (§20) | Plural is a property of the label now, not derived from it |
-| 21 | Two responsive axes (§ context) | Width and `pointer:coarse` no longer disagree about layout: everything that assumes the bottom nav exists is gated with the nav itself, and the card/table swap is width-only |
+| 21 | Two responsive axes (§ context) | Layout is now width-only at 768px — nav variant, FAB, card/table swap, container measure. `pointer:coarse` is reserved for input ergonomics: hit targets, camera capture, menus as sheets, the app-shell scroll lock, and affordances for gestures touch can't perform |
 
 Two things were deliberately **not** changed:
 
@@ -454,3 +454,71 @@ Two things were deliberately **not** changed:
 
 Remaining sub-44px targets are the inline prose link to `console.anthropic.com`
 (covered by the WCAG inline exception) and the keyboard-only skip link.
+
+---
+
+## 8. Container system
+
+The measure was the last thing still inconsistent. There were three of them:
+`.cf-page` and `.header-inner` at 1160px, plus a ≥1400px override widening
+`.content-area` to 1400px — but `.content-area` *is* a `.cf-page` (one element
+carries both classes) and the views it wraps are `.cf-page` too, so a wide
+screen rendered a 1400px main with 1160px content nested inside it and the
+sub-tab strip agreeing with neither. The horizontal gutter made it worse: it
+sat on `.tab-bar-outer` (the full-bleed navy band) while `<main>` took its own
+padding from inside the measure, so the logo sat a full gutter-width outside
+the content column at every width.
+
+Both are single tokens now:
+
+```
+:root{--container-w:1200px; --container-w-mobile:430px; --container-gutter:24px;}
+@media(min-width:1400px){:root{--container-gutter:40px;}}
+@media(max-width:768px) {:root{--container-gutter:12px;}}
+@media(max-width:480px) {:root{--container-gutter:10px;}}
+```
+
+`--container-w` is carried by `.cf-page`, `.header-inner` and
+`.budget-subtabs-row`; the gutter is carried by the same three. Measured
+content-box left edges now agree exactly at every width:
+
+| viewport | header | main | tab strip | sub-tabs |
+| --- | --- | --- | --- | --- |
+| 320 | 10 | 10 | — | 10 |
+| 820 | 24 | 24 | 24 | 24 |
+| 1440 | 153 | 153 | 153 | 153 |
+| 1920 | 393 | 393 | 393 | 393 |
+
+`--container-w-mobile` is the width the phone layout is *designed* at (430px,
+the largest common phone), not a ceiling. Applying it as a `max-width` was
+tried and reverted: it letterboxed everything between 430px and the 768px
+breakpoint, so a 600px window rendered a 430px column with ~85px of dead
+gutter either side — worse than the stretched cards it was avoiding. The
+mobile column is fluid and fills what it's given; the token stays as the
+reference the card layouts are tuned against.
+
+## 9. Density, after
+
+§6 measured how much chrome sat above the first piece of content at 390px.
+Moving the year badge into the header — which is where the ~195px of empty
+navy was, and which cost a whole row underneath — closed most of the gap:
+
+| | audit | now |
+| --- | --- | --- |
+| Dashboard → first number | ~330px | **120px** |
+| Entries → first entry | ~500px | **289px** |
+| Budget Monthly → first row | ~700px | **489px** |
+
+Budget Monthly is the one still worth a look: the remaining 489px is five
+genuine functional bands (sub-tabs, month strip, 2×2 KPI grid, export
+toolbar, opening balance) rather than dead space, so shrinking it further
+means cutting a feature rather than tightening a layout.
+
+## 10. Still open
+
+**§2.5 — blob download on iOS.** The code is hardened (anchor appended to the
+document, revoke deferred past navigation, failure surfaced as a toast
+instead of silently doing nothing), but it has not been exercised on a real
+iOS device in an installed PWA, which is the case that was suspect. Worth one
+manual Export Backup from an installed iOS home-screen app before trusting
+it as the backup path Settings says it is.

@@ -738,7 +738,7 @@
       { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
       { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
@@ -778,7 +778,7 @@
       { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
       { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,

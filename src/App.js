@@ -655,12 +655,19 @@
     // compare two numbers.
     const [fabHidden, setFabHidden] = useState(false);
     useEffect(() => {
+      // Which element scrolls depends on the *pointer*, not the width: the
+      // app-shell scroll lock (.app-scroll as a fixed-height scroller) exists
+      // to stop a touch browser's URL bar animating fixed chrome, so it stays
+      // on pointer:coarse — while the FAB itself is width-gated. A narrow
+      // desktop window therefore gets the FAB with ordinary body scrolling.
+      // Listening to both covers either arrangement; whichever isn't the
+      // scrolling context simply never fires.
       const sc = document.querySelector(".app-scroll");
-      if (!sc) return;
-      let last = sc.scrollTop;
+      const posOf = () => (sc && sc.scrollTop) || window.scrollY || 0;
+      let last = posOf();
       let idle = null;
       const onScroll = () => {
-        const y = sc.scrollTop;
+        const y = posOf();
         // 6px of slack so a jittery finger doesn't flicker the button.
         if (y > last + 6) setFabHidden(true);
         else if (y < last - 6) setFabHidden(false);
@@ -668,10 +675,12 @@
         clearTimeout(idle);
         idle = setTimeout(() => setFabHidden(false), 900);
       };
-      sc.addEventListener("scroll", onScroll, { passive: true });
+      if (sc) sc.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true });
       return () => {
         clearTimeout(idle);
-        sc.removeEventListener("scroll", onScroll);
+        if (sc) sc.removeEventListener("scroll", onScroll);
+        window.removeEventListener("scroll", onScroll);
       };
     }, [tab]);
     const [installPrompt, setInstallPrompt] = useState(null);
@@ -1031,7 +1040,7 @@
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -1307,7 +1316,7 @@
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -1374,7 +1383,7 @@
     )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
       setTab("budget");
       setBudgetSub("forecast");
-    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
+    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
       PlanView,
       {
         flow: activeFlow,
