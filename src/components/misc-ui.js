@@ -172,8 +172,12 @@
     }
   }
   function BottomNav({ tab, setTab, lowAlert = false }) {
+    // "Dashboard", not "Home": the tab bar, the keyboard shortcut list, the
+    // hash route and the Settings copy all call this view Dashboard, so an
+    // aria-label of "Home" gave screen-reader users a name that appears
+    // nowhere else in the app. `short` is what the 5-up nav can fit.
     const items = [
-      { id: "dashboard", icon: "home", label: "Home" },
+      { id: "dashboard", icon: "home", label: "Dashboard", short: "Home" },
       { id: "budget", icon: "calendar", label: "Budget" },
       { id: "plan", icon: "target", label: "Plan" },
       { id: "ai", icon: "sparkle", label: "AI" },
@@ -198,7 +202,7 @@
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-icon-wrap", style: {
         background: tab === it.id ? "var(--accentLt)" : "transparent"
       } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { className: "bottomnav-alert-dot" })),
-      it.label
+      it.short || it.label
     )));
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
@@ -322,6 +326,7 @@
           className: "modal-card oem-card",
           onClick: (e) => e.stopPropagation()
         },
+        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
@@ -336,7 +341,7 @@
           "input",
           {
             id: "oem-desc",
-            autoFocus: true,
+            autoFocus: autoFocusOnDesktop(),
             className: inpCls(false),
             value: desc,
             onChange: (e) => setDesc(e.target.value),

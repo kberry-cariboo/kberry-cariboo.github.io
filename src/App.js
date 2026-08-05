@@ -374,11 +374,7 @@
         // data and re-centsified (100x-inflated) on import.
         const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `CashFlow_Backup_${todayStr()}.json`;
-        a.click();
-        URL.revokeObjectURL(a.href);
+        downloadBlob(`CashFlow_Backup_${todayStr()}.json`, blob);
       }
     };
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
@@ -604,7 +600,18 @@
     useEffect(() => {
       houseLoadRef.current = houseLoad;
     }, [houseLoad]);
+    // `progress` is mirrored into a ref because the end-of-gesture handler
+    // needs to read the latest value. Reading it from state instead put
+    // pullProgress in this effect's dependency list, and since every
+    // touchmove sets it, the effect tore down and re-added three window
+    // listeners on every frame of the gesture — the hottest path on the
+    // device with the least CPU to spare. The effect now mounts once.
+    const pullProgressRef = useRef(0);
     useEffect(() => {
+      const setProgress = (v) => {
+        pullProgressRef.current = v;
+        setPullProgress(v);
+      };
       const onStart = (e) => {
         const sc = document.querySelector(".app-scroll");
         if (window.scrollY > 10 || sc && sc.scrollTop > 10) return;
@@ -614,12 +621,12 @@
       const onMove = (e) => {
         if (!ptrRef.current.active) return;
         const dy = e.touches[0].clientY - ptrRef.current.startY;
-        if (dy > 0) setPullProgress(Math.min(1, dy / 80));
+        if (dy > 0) setProgress(Math.min(1, dy / 80));
       };
       const onEnd = () => {
         if (!ptrRef.current.active) return;
         ptrRef.current.active = false;
-        if (pullProgress >= 1) {
+        if (pullProgressRef.current >= 1) {
           setPullActive(true);
           setTimeout(() => setPullActive(false), 2500);
           try {
@@ -629,7 +636,7 @@
             // this guard only stops a throw escaping the event handler.
           }
         }
-        setPullProgress(0);
+        setProgress(0);
       };
       window.addEventListener("touchstart", onStart, { passive: true });
       window.addEventListener("touchmove", onMove, { passive: true });
@@ -639,7 +646,34 @@
         window.removeEventListener("touchmove", onMove);
         window.removeEventListener("touchend", onEnd);
       };
-    }, [pullProgress]);
+    }, []);
+    // A FAB parked over the balance column hides one row's running balance for
+    // as long as the user leaves it there. Retracting while scrolling *down*
+    // (reading) and returning on any upward scroll or pause is the standard
+    // answer, and it means the button is never over content the user is
+    // actively working through. The listener is passive and does nothing but
+    // compare two numbers.
+    const [fabHidden, setFabHidden] = useState(false);
+    useEffect(() => {
+      const sc = document.querySelector(".app-scroll");
+      if (!sc) return;
+      let last = sc.scrollTop;
+      let idle = null;
+      const onScroll = () => {
+        const y = sc.scrollTop;
+        // 6px of slack so a jittery finger doesn't flicker the button.
+        if (y > last + 6) setFabHidden(true);
+        else if (y < last - 6) setFabHidden(false);
+        last = y;
+        clearTimeout(idle);
+        idle = setTimeout(() => setFabHidden(false), 900);
+      };
+      sc.addEventListener("scroll", onScroll, { passive: true });
+      return () => {
+        clearTimeout(idle);
+        sc.removeEventListener("scroll", onScroll);
+      };
+    }, [tab]);
     const [installPrompt, setInstallPrompt] = useState(null);
     const [showInstall, setShowInstall] = useState(false);
     useEffect(() => {
@@ -1218,7 +1252,29 @@
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (showBackupNudge ? " content-area--nudged" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null),
+    // Quick-add, thumb-reach. The styling for this has been in the sheet
+    // since the bottom nav landed (.cf-fab, sized and offset to clear it)
+    // but nothing ever rendered it, so adding an entry from a phone meant
+    // Budget \u2192 Entries \u2192 past three toolbar rows \u2192 "+ Add Entry". It reuses
+    // the existing cf:quickadd event, which is also what the desktop `n`
+    // shortcut fires. Shown on the two tabs where "add an entry" is the
+    // obvious next action \u2014 Plan and Settings have their own add buttons for
+    // their own object types, and a generic one there would just be wrong.
+    (tab === "dashboard" || tab === "budget") && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "cf-fab" + (fabHidden ? " cf-fab--hidden" : ""),
+        "aria-label": "Add entry",
+        title: "Add entry",
+        "data-noprint": true,
+        onClick: () => {
+          haptic();
+          window.dispatchEvent(new CustomEvent("cf:quickadd"));
+        }
+      },
+      "+"
+    ), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (showBackupNudge ? " content-area--nudged" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
       borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
@@ -1288,7 +1344,7 @@
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       EntriesView,
       {
         entries,
@@ -1318,7 +1374,7 @@
     )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
       setTab("budget");
       setBudgetSub("forecast");
-    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
+    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear }), /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
       PlanView,
       {
         flow: activeFlow,

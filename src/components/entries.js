@@ -34,6 +34,7 @@
     };
     const isMobile = useIsMobile();
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const isCoarsePointer = useIsCoarsePointer();
     const [search, setSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
@@ -194,6 +195,8 @@
       FilterPill,
       {
         label: "Category",
+        allLabel: "All categories",
+        inline: isMobile,
         selected: filterCats,
         onChange: setFilterCats,
         options: [...categories].sort((a, b) => a.localeCompare(b)).map((c) => ({ value: c, label: c }))
@@ -202,6 +205,8 @@
       FilterPill,
       {
         label: "Schedule",
+        allLabel: "All schedules",
+        inline: isMobile,
         selected: filterScheds,
         onChange: setFilterScheds,
         options: [{ value: "recurring", label: "Recurring" }, { value: "onetime", label: "One-time" }]
@@ -210,42 +215,52 @@
       FilterPill,
       {
         label: "Status",
+        allLabel: "All statuses",
+        inline: isMobile,
         selected: filterStatus,
         onChange: setFilterStatus,
         options: [{ value: "active", label: "Active" }, { value: "historical", label: "Historical" }]
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-4 cf-wrap" }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, "From"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "date",
-        value: dateFrom,
-        onChange: (e) => setDateFrom(e.target.value),
-        // The adjacent "From" text is a plain span, not a <label for>, so it
-        // gives screen readers nothing — without this the field is announced
-        // as an unnamed date picker.
-        "aria-label": "Filter entries from date",
-        className: "entries-date-input"
-      }
-    ), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "To"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "date",
-        value: dateTo,
-        onChange: (e) => setDateTo(e.target.value),
-        "aria-label": "Filter entries to date",
-        className: "entries-date-input"
-      }
-    ), (dateFrom || dateTo) && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setDateFrom("");
-          setDateTo("");
+    ),
+    // Real <label>s wrapping their own field, not floating spans. As two
+    // siblings in a wrapping flex row the labels drifted away from their
+    // inputs at phone width — "To" ended up stranded on the line above the
+    // field it names, beside the *From* input. A label that wraps its control
+    // can't come apart from it, and screen readers stop needing the
+    // aria-label crutch.
+    /* @__PURE__ */ React.createElement("div", { className: "entries-daterange" },
+      /* @__PURE__ */ React.createElement("label", { className: "entries-daterange-field" },
+        /* @__PURE__ */ React.createElement("span", { className: "txl" }, "From"),
+        /* @__PURE__ */ React.createElement("input", {
+          type: "date",
+          value: dateFrom,
+          onChange: (e) => setDateFrom(e.target.value),
+          className: "entries-date-input"
+        })
+      ),
+      /* @__PURE__ */ React.createElement("label", { className: "entries-daterange-field" },
+        /* @__PURE__ */ React.createElement("span", { className: "txl" }, "To"),
+        /* @__PURE__ */ React.createElement("input", {
+          type: "date",
+          value: dateTo,
+          onChange: (e) => setDateTo(e.target.value),
+          className: "entries-date-input"
+        })
+      ),
+      (dateFrom || dateTo) && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setDateFrom("");
+            setDateTo("");
+          },
+          "aria-label": "Clear date range",
+          title: "Clear date range",
+          className: "link-btn-sm"
         },
-        className: "link-btn-sm"
-      },
-      "✕"
-    )));
+        "✕"
+      )
+    ));
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "entries-toptools-row" }, /* @__PURE__ */ React.createElement(PillToggle, { options: [{ id: "all", label: "All Types" }, { id: "income", label: "Income" }, { id: "expense", label: "Expenses" }], value: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "entries-filter-row" }, !isMobile && filterControls, isMobile && /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -263,11 +278,14 @@
     ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement("div", { className: "entries-search-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 13, className: "entries-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "",
+        // The placeholder used to be empty whenever the header search was
+        // idle, on the grounds that the magnifier carried the meaning. It
+        // doesn't at phone width: the header search is hidden below 768px, so
+        // this is the *only* search in the app there, and it rendered as a
+        // wide unlabelled pill sitting next to "Filters".
+        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search entries\u2026",
         value: search,
         onChange: (e) => setSearch(e.target.value),
-        // Placeholder is empty by design when there's no header search, so
-        // there is no implicit name to fall back on either.
         "aria-label": "Search entries",
         type: "search",
         className: "entries-search-input"
@@ -288,7 +306,24 @@
         "aria-modal": "true",
         "aria-label": "Filters"
       },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", className: "shortcuts-close" }, "\u2715")), /* @__PURE__ */ React.createElement("div", { className: "entries-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowMobileFilters(false) }), /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("span", { className: "csv-title" }, "Filters"),
+        // The button that opens this sheet shows a count badge, but there was
+        // no way to act on it \u2014 clearing meant reopening each pill and
+        // unticking. Only offered when something is actually set.
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, activeFilterCount > 0 && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => {
+              setFilterCats([]);
+              setFilterScheds([]);
+              setFilterStatus([]);
+              setDateFrom("");
+              setDateTo("");
+            },
+            className: "cf-btn cf-btn--secondary cf-btn--sm"
+          },
+          "Clear all"
+        ), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowMobileFilters(false), "aria-label": "Close filters", title: "Close filters", className: "cf-close-x" }, "\u2715"))), /* @__PURE__ */ React.createElement("div", { className: "entries-mobilefilters-stack" }, filterControls), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setShowMobileFilters(false),
@@ -304,7 +339,7 @@
         "aria-modal": "true",
         "aria-label": editing ? "Edit entry" : "Add entry"
       },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: close }), /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, editing ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: close,
@@ -333,9 +368,9 @@
         // than position — the columns are drag-reorderable, so nth-child
         // would follow whatever slot the user dragged it into.
         className: "entries-th entries-th--col entries-th--" + col,
-        draggable: true,
         tabIndex: 0,
-        "aria-label": `${ENTRIES_COL_LABELS[col] || col} column — press left or right arrow to reorder`,
+        "aria-label": `${ENTRIES_COL_LABELS[col] || col} column${isCoarsePointer ? "" : " — press left or right arrow to reorder"}`,
+        draggable: !isCoarsePointer,
         "aria-sort": sortCol === col ? sortDir === "asc" ? "ascending" : "descending" : void 0,
         onKeyDown: (e) => {
           if (e.key === "ArrowLeft") {
@@ -368,7 +403,7 @@
         },
         ENTRIES_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "entries-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
-      ) : /* @__PURE__ */ React.createElement(React.Fragment, null, ENTRIES_COL_LABELS[col], col !== "actions" && col !== "notes" ? " \u283F" : "")
+      ) : /* @__PURE__ */ React.createElement(React.Fragment, null, ENTRIES_COL_LABELS[col], col !== "actions" && col !== "notes" ? /* @__PURE__ */ React.createElement("span", { className: "entries-th-drag-hint" }, " \u283F") : "")
     )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "entries-th entries-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "entries-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",

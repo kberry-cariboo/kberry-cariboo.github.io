@@ -148,6 +148,74 @@
       /* @__PURE__ */ React.createElement("span", { className: "template-item-amount" }, t.type === "income" ? "+" : "-", fmt(t.amount))
     ))));
   }
+  // Drag handle for the mobile bottom sheets, and the swipe-down-to-dismiss
+  // gesture that makes it honest. The touch context menu has drawn a handle
+  // for a while, but it was an inert <div> — an affordance promising a gesture
+  // the app didn't implement, on sheets that also don't close on a backdrop
+  // tap (deliberately: a slightly-off tap shouldn't discard a half-filled
+  // form). Swiping the handle is the mis-tap-proof way to give that gesture
+  // back, so every sheet now has the same one.
+  //
+  // Pointer events, not touch events: they cover pen and mouse for free, and
+  // setPointerCapture keeps the drag alive if the finger leaves the handle.
+  // The card follows the finger so the gesture reads as direct manipulation,
+  // and snaps back below the dismiss threshold.
+  const SheetHandle = ({ onDismiss }) => {
+    const ref = useRef(null);
+    const drag = useRef(null);
+    if (!onDismiss) return null;
+    const cardOf = (el) => el && el.closest && el.closest(".modal-card");
+    const move = (card, dy) => {
+      if (!card) return;
+      card.style.transition = "none";
+      card.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+    };
+    const release = (card, dismiss) => {
+      if (!card) return;
+      card.style.transition = "transform 0.18s ease-out";
+      card.style.transform = "";
+    };
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        ref,
+        className: "sheet-handle",
+        "aria-hidden": "true",
+        onPointerDown: (e) => {
+          drag.current = { y: e.clientY, card: cardOf(e.currentTarget) };
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch (err) {
+            // Capture is an enhancement; the drag still tracks without it.
+          }
+        },
+        onPointerMove: (e) => {
+          if (!drag.current) return;
+          move(drag.current.card, e.clientY - drag.current.y);
+        },
+        onPointerUp: (e) => {
+          if (!drag.current) return;
+          const dy = e.clientY - drag.current.y;
+          const card = drag.current.card;
+          drag.current = null;
+          release(card);
+          // ~90px, or a quarter of the sheet, whichever is smaller — a short
+          // sheet shouldn't need a longer swipe than a tall one.
+          const threshold = card ? Math.min(90, card.offsetHeight * 0.25) : 90;
+          if (dy > threshold) {
+            haptic();
+            onDismiss();
+          }
+        },
+        onPointerCancel: () => {
+          if (!drag.current) return;
+          release(drag.current.card);
+          drag.current = null;
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "sheet-handle-bar" })
+    );
+  };
   const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
   const SectionTitle = ({ children, action, className }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
@@ -343,7 +411,7 @@
     // default) is for destructive actions (delete/reset); "primary" is for
     // a plain yes/no confirmation of a safe, additive action, where a red
     // button would misrepresent risk.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       haptic();
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
