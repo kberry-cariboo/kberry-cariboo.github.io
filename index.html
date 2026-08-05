@@ -984,13 +984,14 @@
         /* Customize and the my-entries/all-users toggle each took a full row
            to themselves above the first number — ~150px, a fifth of a phone
            screen, spent on two settings-grade controls before any content.
-           They share one row on mobile instead. */
-        @media(max-width:768px){
-          .dash-toolbar{display:flex;align-items:center;justify-content:space-between;
-            gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-          .dash-toolbar>.dash-customize-row{margin-bottom:0;}
-          .dash-toolbar>.dash-customize-row+.dash-customize-row{margin-left:auto;}
-        }
+           They share one row instead. This started life mobile-only, but on a
+           1200px container the two controls are ~230px of content on two
+           otherwise-empty rows, so desktop wants the same treatment even more
+           than the phone does. */
+        .dash-toolbar{display:flex;align-items:center;justify-content:space-between;
+          gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+        .dash-toolbar>.dash-customize-row{margin-bottom:0;}
+        .dash-toolbar>.dash-customize-row+.dash-customize-row{margin-left:auto;}
         .customize-modal-card{padding:24px;width:min(400px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;}
         .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
         .customize-subtitle{font-size:12px;color:var(--textLt);margin-bottom:16px;}
@@ -1652,6 +1653,140 @@
         /* Entries wrap: horizontal overflow only — paginated, so no vertical scrollport */
         .entries-table-wrap{display:block;overflow-x:auto;}
         .entries-table thead .entries-th{position:sticky;top:0;z-index:5;}
+        /* ── Sticky column headers ────────────────────────────────────────
+           These wrappers declared `position:sticky; top:0` on their thead and
+           none of it worked: `overflow-x:auto` forces the other axis's
+           `visible` to compute as `auto`, so each wrapper was silently a
+           *vertical* scroll container, and with no height cap its scrollport
+           was exactly as tall as its content — zero room for sticky to move
+           in. Measured: Forecast's header left the viewport entirely partway
+           down a 1972px table.
+
+           The sticky context has to be something that actually scrolls, so
+           above the width where these tables fit without horizontal scrolling
+           the wrapper stops being a scroll container at all and the header
+           sticks to the page instead. Below that it keeps the horizontal
+           scroll (and, as before, no sticky) — the tables are card layouts
+           under 768px anyway, so that band is narrow desktop windows only. */
+        @media(min-width:1000px){
+          .hscroll--paged,.entries-table-wrap{overflow:visible;}
+          /* The card is the other half of it: .cf-card--flush uses
+             overflow:hidden to clip the table to its rounded corners, and
+             `hidden` is a scroll container too — with no scroll room it
+             pinned the header just as firmly as the wrapper did. `clip`
+             keeps the corner clipping without being a scroll container, so
+             sticky resolves against the page: the header pins to the top of
+             the viewport while the card is in view and is clipped away with
+             the card once it scrolls past, which is what you want. */
+          .cf-card--flush:has(.hscroll--paged),
+          .cf-card--flush:has(.entries-table-wrap){overflow:clip;}
+          .hscroll--paged>table>thead>tr>th,
+          .entries-table thead .entries-th{position:sticky;top:0;z-index:6;}
+        }
+        /* ── Prose measure ─────────────────────────────────────────────────
+           Explanatory copy on Settings and AI is 13px inside a 1070px card,
+           which puts it at 130–154 characters a line. Comfortable reading is
+           45–75ch; past ~90 the eye stops finding the next line reliably.
+           These blocks are paragraphs, not data, so they do not need the card
+           measure — 68ch caps them without moving anything else. Below
+           1000px the card is already narrower than the cap, so it is inert. */
+        /* ── Desktop row columns ───────────────────────────────────────────
+           Budget vs Actual, savings goals and Upcoming were all designed at
+           phone width, where a label hard-left and a number hard-right is
+           exactly right. At a 1070px card the same rule leaves 600–830px of
+           nothing between the two, and pairing a row's label with its number
+           costs a deliberate horizontal eye movement.
+
+           The fix is columns, not a narrower card: the label gets a fixed
+           measure, the middle column carries whatever the row already had to
+           show (the progress bar for BvA and goals, the meta line for
+           Upcoming) instead of leaving it stranded on its own line, and the
+           numbers keep their right axis. `display:contents` is what makes it
+           possible without touching the markup — the flex row stops
+           generating a box and its children become items of the grid on the
+           wrapper, so mobile keeps the flex layout untouched. */
+        @media(min-width:1000px){
+          /* Every track is either fixed or fr — nothing is content-sized.
+             That matters more here than tidiness: each row is its own grid,
+             so a content-sized track would make the bar column narrower on
+             rows that also carry an overage note, and two categories at the
+             same percentage would render bars of different lengths. */
+          .bva-body>.context-menu-cursor{
+            display:grid;grid-template-columns:170px minmax(90px,1fr) 280px 28px;
+            align-items:center;column-gap:16px;}
+          .bva-body>.context-menu-cursor>.bva-row{display:contents;}
+          .bva-body>.context-menu-cursor>.bva-row>.cat-chip{grid-area:1/1;justify-self:start;}
+          .bva-body>.context-menu-cursor>.bva-progress-track{grid-area:1/2;}
+          .bva-body>.context-menu-cursor>.bva-row>.bva-amounts{grid-area:1/3;flex:0 0 auto;}
+          .bva-body>.context-menu-cursor>.bva-row>.row-menu-btn{grid-area:1/4;}
+          /* The totals row is not part of the grid, so it needs the kebab
+             column's width back as padding to land on the same right edge. */
+          .bva-totals-row{padding-right:44px;}
+          /* A category with no target has no bar, which would leave the
+             middle column blank and put that row back to a label and a number
+             at opposite ends. An empty dashed track holds the column and says
+             what is true — nothing is set here — using the same dashed
+             convention the add-pills use. */
+          .bva-body>.context-menu-cursor:not(:has(.bva-progress-track))>.bva-row::before{
+            content:"";grid-area:1/2;height:6px;border-radius:3px;
+            border:1px dashed var(--border);}
+
+          /* Savings goals were three stacked lines — title/amounts, then the
+             bar on its own line, then the funding note. The bar moves up into
+             the middle column, which both fills the gap and halves the row
+             height; the funding note keeps its own line under the numbers. */
+          .goal-row-cursor{display:grid;
+            grid-template-columns:minmax(180px,260px) minmax(120px,1fr) auto;
+            column-gap:16px;row-gap:4px;align-items:center;}
+          .goal-row-cursor>.goal-title-row{display:contents;}
+          .goal-row-cursor>.goal-title-row>.tx-sb{grid-area:1/1;}
+          .goal-row-cursor>.goal-title-row>.goal-amounts-row{grid-area:1/3;justify-content:flex-end;}
+          .goal-row-cursor>.progress-track-8{grid-area:1/2;}
+          .goal-row-cursor>.goal-footer-row{grid-area:2/1/auto/4;margin-top:0;}
+
+          /* Upcoming has no bar to promote — a date, a description and an
+             amount really are three short things. What it was missing is
+             alignment: the date was content-width, so every description
+             started at a different x and the eye had no column to run down.
+             Fixed date column, description takes the slack, chip and amounts
+             each get their own axis. */
+          .upcoming-desktop-row{display:grid;
+            grid-template-columns:auto 92px minmax(0,1fr) auto auto;
+            column-gap:12px;align-items:center;}
+          .upcoming-desktop-row>.upcoming-desktop-left{display:contents;}
+          .upcoming-desktop-row>.upcoming-desktop-left>.paid-btn{grid-area:1/1;}
+          .upcoming-desktop-row>.upcoming-desktop-left>.upcoming-desktop-date{grid-area:1/2;}
+          .upcoming-desktop-row>.upcoming-desktop-left>.upcoming-desktop-desc{grid-area:1/3;}
+          .upcoming-desktop-row>.upcoming-desktop-left>.cat-chip{grid-area:1/4;justify-self:start;}
+          .upcoming-desktop-row>.upcoming-desktop-amts{grid-area:1/5;}
+        }
+        @media(min-width:1000px){
+          .settings-page .txl,
+          .settings-page .hint,
+          .settings-page .txm,
+          .settings-page .key-disclaimer-row,
+          .ai-subtitle{max-width:68ch;}
+        }
+        /* ── Settings: two columns for the short cards ─────────────────────
+           Settings was one column of full-width cards on a 1200px measure,
+           several of which hold a single control — Appearance is one toggle
+           and two words in a 1070px card — which made the page ~2780px of
+           scroll on a 900px viewport.
+
+           The cards that carry a list, a table or a paragraph keep the full
+           measure; the one-control cards pair up. The pairing is declared per
+           card rather than derived from height so the reading order stays
+           the source order and the quicklink anchors still land where the
+           labels say they will. */
+        @media(min-width:1100px){
+          .settings-cards{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;}
+          .settings-cards>.settings-quicklinks,
+          .settings-cards>#sec-ai-key,
+          .settings-cards>#sec-notifications,
+          .settings-cards>#sec-years,
+          .settings-cards>#sec-categories,
+          .settings-cards>#sec-danger{grid-column:1/-1;}
+        }
         .entries-table{width:100%;border-collapse:collapse;min-width:540px;}
         /* Entries desc: fill available space, truncate */
         .entries-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;padding:10px 12px;width:40%;min-width:120px;}
@@ -4571,6 +4706,42 @@ document.addEventListener('DOMContentLoaded',function(){
   // The user can still tap the field; they just aren't forced into it.
   // Read at render time rather than through a hook so it can be dropped into
   // an element's props without restructuring the component.
+  // Roving tabindex for a set of mutually exclusive options — the month strip,
+  // the Budget/Plan sub-tabs, the top tabs, the year pills.
+  //
+  // Each of those used to put every option in the tab order, so reaching the
+  // first row of data on Budget → Monthly took 32 Tab presses, 21 of them
+  // spent walking past twelve months, five sub-tabs and four tabs. The
+  // convention for this is one stop for the group and arrow keys inside it,
+  // which is also what a screen reader user expects from something announced
+  // as a group of pressed/unpressed buttons.
+  //
+  // Returns the props for the container. Children opt in with
+  // `tabIndex: isActive ? 0 : -1` so the one stop always lands on the current
+  // selection — the group is re-entered where it was left.
+  function useRovingTabs(itemSelector = "button") {
+    const onKeyDown = (e) => {
+      const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+      const box = e.currentTarget;
+      if (!keys.includes(e.key) || !box) return;
+      const items = [...box.querySelectorAll(itemSelector)]
+        .filter((el) => el.offsetParent !== null && !el.disabled);
+      if (items.length < 2) return;
+      const at = items.indexOf(document.activeElement);
+      if (at < 0) return;
+      e.preventDefault();
+      // The app has a global window-level ArrowLeft/Right shortcut for
+      // stepping the month. Without this the same press would both move
+      // focus and change the month.
+      e.stopPropagation();
+      const next = e.key === "Home" ? 0
+        : e.key === "End" ? items.length - 1
+        : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (at - 1 + items.length) % items.length
+        : (at + 1) % items.length;
+      items[next].focus();
+    };
+    return { onKeyDown };
+  }
   function autoFocusOnDesktop() {
     try {
       return !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
@@ -5181,6 +5352,7 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
     const stripRef = useRef(null);
+    const roving = useRovingTabs(".month-pill");
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
     // visible scrollbar, so nothing hints that more months sit off-screen.
     // Recomputed on scroll and on resize/value change (month pills reflow at
@@ -5211,7 +5383,7 @@ document.addEventListener('DOMContentLoaded',function(){
         window.removeEventListener("resize", updateFade);
       };
     }, [value, matchingMonths]);
-    return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month" }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", onKeyDown: roving.onKeyDown },/* @__PURE__ */ React.createElement(
       "button",
       {
         className: "month-nav-arrow",
@@ -5254,6 +5426,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onClick: () => onChange(i),
           className: "cf-pill month-pill",
           "aria-pressed": isActive,
+          tabIndex: isActive ? 0 : -1,
           "data-active": isActive ? "true" : "false",
           "data-match": hasMatch ? "true" : "false"
         },
@@ -5730,6 +5903,13 @@ document.addEventListener('DOMContentLoaded',function(){
         y: Math.max(8, Math.min(y, window.innerHeight - r.height - 8))
       });
     }, [x, y, items.length]);
+    // Focus the first item on open (pointer devices only — on touch this is a
+    // bottom sheet and focusing an item would raise nothing useful).
+    useEffect(() => {
+      if (isTouch || !menuRef.current) return;
+      const first = menuRef.current.querySelector("button");
+      if (first) first.focus({ preventScroll: true });
+    }, [isTouch]);
     const ax = pos.x, ay = pos.y;
     if (isTouch) {
       return /* @__PURE__ */ React.createElement(
@@ -5771,15 +5951,39 @@ document.addEventListener('DOMContentLoaded',function(){
       {
         ref: menuRef,
         className: "ctx-menu-desktop",
+        role: "menu",
         style: { left: ax, top: ay },
         onContextMenu: (e) => e.preventDefault(),
-        onClick: (e) => e.stopPropagation()
+        onClick: (e) => e.stopPropagation(),
+        // The menu opened but never took focus, so it was mouse-only: no
+        // arrow keys, Enter did nothing, and Tab walked the page *behind* it.
+        // Escape only appeared to work because that handler is on window.
+        onKeyDown: (e) => {
+          const btns = menuRef.current ? [...menuRef.current.querySelectorAll("button")] : [];
+          if (!btns.length) return;
+          const at = btns.indexOf(document.activeElement);
+          const go = (i) => {
+            e.preventDefault();
+            btns[(i + btns.length) % btns.length].focus();
+          };
+          if (e.key === "ArrowDown") go(at + 1);
+          else if (e.key === "ArrowUp") go(at <= 0 ? btns.length - 1 : at - 1);
+          else if (e.key === "Home") go(0);
+          else if (e.key === "End") go(btns.length - 1);
+          else if (e.key === "Tab") {
+            // A menu is a modal surface — Tab must not walk out of it into
+            // the page underneath.
+            e.preventDefault();
+            go(e.shiftKey ? at - 1 : at + 1);
+          }
+        }
       },
       items.map(
         (item, i) => item === "---" ? /* @__PURE__ */ React.createElement("div", { key: i, className: "ctx-menu-divider" }) : /* @__PURE__ */ React.createElement(
           "button",
           {
             key: i,
+            role: "menuitem",
             onClick: () => {
               item.action();
               onClose();
@@ -8202,7 +8406,32 @@ document.addEventListener('DOMContentLoaded',function(){
         }
       )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "daily-today-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
         background: di % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-col" }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-number" }, dayObj.day), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "caption-10-nomargin" }, "\u2713")), /* @__PURE__ */ React.createElement("div", { className: "daily-events-pad" }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "daily-row-wrap" }, /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-col" }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-number" }, dayObj.day), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "caption-10-nomargin" }, "\u2713")), /* @__PURE__ */ React.createElement("div", { className: "daily-events-pad" }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "daily-row-wrap" },
+        // Daily was the only money view with no way to see or set payment
+        // status — it inferred "done" from the date instead. Same control,
+        // wording and colours as the Monthly cards and the Upcoming list.
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: (e) => {
+              e.stopPropagation();
+              haptic();
+              toggleComplete(ev.id);
+            },
+            role: "checkbox",
+            "aria-checked": !!completed[ev.id],
+            "aria-label": (completed[ev.id] ? "Mark unpaid: " : "Mark paid: ") + ev.desc,
+            title: completed[ev.id] ? "Paid \u2014 click to mark unpaid" : "Mark paid",
+            className: "cf-checkbtn paid-btn daily-paid-btn",
+            style: {
+              border: completed[ev.id] ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
+              background: completed[ev.id] ? "var(--greenLt)" : "transparent"
+            }
+          },
+          completed[ev.id] ? "\u2713" : ""
+        ),
+        /* @__PURE__ */ React.createElement(
         "button",
         {
           type: "button",
@@ -8214,13 +8443,13 @@ document.addEventListener('DOMContentLoaded',function(){
           className: "daily-row-btn"
         },
         /* @__PURE__ */ React.createElement("span", { className: "daily-row-desc", style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : "var(--text)",
-          textDecoration: isPast(dayObj.day) ? "line-through" : "none"
+          color: completed[ev.id] ? "var(--textLt)" : "var(--text)",
+          textDecoration: completed[ev.id] ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
         /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
-          textDecoration: isPast(dayObj.day) ? "line-through" : "none"
+          color: completed[ev.id] ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
+          textDecoration: completed[ev.id] ? "line-through" : "none"
         } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
       ), /* @__PURE__ */ React.createElement(
         "button",
@@ -10922,7 +11151,7 @@ Fill every field of the response schema. Rules:
       } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
       /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
     );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setTab("dashboard"),
@@ -11394,7 +11623,7 @@ Fill every field of the response schema. Rules:
       [arr[i], arr[j]] = [arr[j], arr[i]];
       setCategories(arr);
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
       className: "settings-page-pills"
     }, [
       { id: "general", icon: "settings", label: "General" },
@@ -11415,7 +11644,7 @@ Fill every field of the response schema. Rules:
       },
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
+    ))), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
       // Order matches the sections as they appear down the page.
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
@@ -11723,6 +11952,9 @@ Fill every field of the response schema. Rules:
           type: "color",
           value: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
           onChange: (e) => setEditColor(e.target.value),
+          // Eleven of these on the General page, all announced as an unnamed
+          // "color picker" — the visible label is the swatch itself.
+          "aria-label": `Colour for ${cat}`,
           className: "color-swatch-input"
         }
       )), /* @__PURE__ */ React.createElement(
@@ -11745,6 +11977,7 @@ Fill every field of the response schema. Rules:
           type: "color",
           value: getCatColor(cat, categories, categoryColors),
           onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
+          "aria-label": `Colour for ${cat}`,
           className: "color-swatch-input"
         }
       )), /* @__PURE__ */ React.createElement("span", { className: "tx flex-1" }, cat), /* @__PURE__ */ React.createElement("div", { className: "cat-actions-row" }, /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} up`, className: "wm-arrow", disabled: i === 0, style: { opacity: i === 0 ? 0.3 : 1 }, onClick: () => moveCat(i, -1) }, "↑"), /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} down`, className: "wm-arrow", disabled: i === categories.length - 1, style: { opacity: i === categories.length - 1 ? 0.3 : 1 }, onClick: () => moveCat(i, 1) }, "↓"), categoryColors[cat] && /* @__PURE__ */ React.createElement(
@@ -11772,6 +12005,7 @@ Fill every field of the response schema. Rules:
         type: "color",
         value: newCatColor || "#888888",
         onChange: (e) => setNewCatColor(e.target.value),
+        "aria-label": "Colour for the new category",
         className: "color-swatch-input"
       }
     )), /* @__PURE__ */ React.createElement(
@@ -12739,6 +12973,7 @@ Fill every field of the response schema. Rules:
   }
   function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
+    const roving = useRovingTabs();
     useEffect(() => {
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
@@ -12752,11 +12987,16 @@ Fill every field of the response schema. Rules:
       { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
       { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
         "data-active": value === s.id,
+        // data-active styles the pill; aria-pressed is what actually tells a
+        // screen reader which sub-tab is showing. Matches the month pills.
+        "aria-pressed": value === s.id,
+        // One tab stop for the strip; arrow keys move within it.
+        tabIndex: value === s.id ? 0 : -1,
         className: "budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : ""),
         onClick: () => {
           haptic();
@@ -12781,6 +13021,7 @@ Fill every field of the response schema. Rules:
   }
   function PlanSubTabs({ value, onChange }) {
     const ref = useRef(null);
+    const roving = useRovingTabs();
     useEffect(() => {
       const el = ref.current;
       if (!el || el.scrollWidth <= el.clientWidth) return;
@@ -12792,11 +13033,16 @@ Fill every field of the response schema. Rules:
       { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
       { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
         "data-active": value === s.id,
+        // data-active styles the pill; aria-pressed is what actually tells a
+        // screen reader which sub-tab is showing. Matches the month pills.
+        "aria-pressed": value === s.id,
+        // One tab stop for the strip; arrow keys move within it.
+        tabIndex: value === s.id ? 0 : -1,
         className: "budget-subtab-pill budget-subtab-btn",
         onClick: () => {
           haptic();
@@ -13091,6 +13337,55 @@ Fill every field of the response schema. Rules:
         // navigation.
       }
     }, [tab, budgetSub, planSub]);
+    // Dialogs already move focus in (autoFocus / the trap below) and Escape
+    // already closes every one of them, but on close focus fell to <body> —
+    // so a keyboard user was returned to the very top of the tab order, ~32
+    // stops from where they had been. Remembering the trigger is the missing
+    // half of the contract.
+    //
+    // Done once here with a MutationObserver rather than in each of the
+    // fifteen modal call sites: they are rendered inline by nine different
+    // components with no shared wrapper, and a rule that lives in one place
+    // covers the ones that don't exist yet. The stack handles a dialog opened
+    // from inside another (a confirm over the entry form).
+    useEffect(() => {
+      const OVERLAY = ".modal-overlay,.ctx-menu-desktop,.ctx-menu-backdrop";
+      // The trigger has to be recorded as focus moves, not when the overlay
+      // appears: MutationObserver runs as a microtask after the commit, by
+      // which point the dialog's own autoFocus has already claimed
+      // activeElement and the trigger is gone. Tracking the last thing
+      // focused *outside* any overlay is immune to that ordering — focus
+      // landing inside a dialog never overwrites it.
+      let lastOutside = null;
+      const onFocusIn = (e) => {
+        const el = e.target;
+        if (el && el.closest && el !== document.body && !el.closest(OVERLAY)) lastOutside = el;
+      };
+      document.addEventListener("focusin", onFocusIn);
+      let open = document.querySelectorAll(OVERLAY).length;
+      const obs = new MutationObserver(() => {
+        const now = document.querySelectorAll(OVERLAY).length;
+        if (now < open) {
+          // Only take focus back if the dialog still owns it — if something
+          // else has claimed focus since, leave it alone.
+          const stray = !document.activeElement || document.activeElement === document.body;
+          if (lastOutside && stray && document.contains(lastOutside)) {
+            try {
+              lastOutside.focus({ preventScroll: true });
+            } catch (e) {
+              // A trigger that has since unmounted or become unfocusable is
+              // not worth breaking the close on.
+            }
+          }
+        }
+        open = now;
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      return () => {
+        obs.disconnect();
+        document.removeEventListener("focusin", onFocusIn);
+      };
+    }, []);
     useEffect(() => {
       const trap = (e) => {
         if (e.key !== "Tab") return;
@@ -13277,6 +13572,7 @@ Fill every field of the response schema. Rules:
       return flows;
     }, [entries, yearConfigs, overridesByYr]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
+    const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
@@ -13861,7 +14157,7 @@ Fill every field of the response schema. Rules:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",

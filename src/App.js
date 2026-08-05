@@ -270,6 +270,55 @@
         // navigation.
       }
     }, [tab, budgetSub, planSub]);
+    // Dialogs already move focus in (autoFocus / the trap below) and Escape
+    // already closes every one of them, but on close focus fell to <body> —
+    // so a keyboard user was returned to the very top of the tab order, ~32
+    // stops from where they had been. Remembering the trigger is the missing
+    // half of the contract.
+    //
+    // Done once here with a MutationObserver rather than in each of the
+    // fifteen modal call sites: they are rendered inline by nine different
+    // components with no shared wrapper, and a rule that lives in one place
+    // covers the ones that don't exist yet. The stack handles a dialog opened
+    // from inside another (a confirm over the entry form).
+    useEffect(() => {
+      const OVERLAY = ".modal-overlay,.ctx-menu-desktop,.ctx-menu-backdrop";
+      // The trigger has to be recorded as focus moves, not when the overlay
+      // appears: MutationObserver runs as a microtask after the commit, by
+      // which point the dialog's own autoFocus has already claimed
+      // activeElement and the trigger is gone. Tracking the last thing
+      // focused *outside* any overlay is immune to that ordering — focus
+      // landing inside a dialog never overwrites it.
+      let lastOutside = null;
+      const onFocusIn = (e) => {
+        const el = e.target;
+        if (el && el.closest && el !== document.body && !el.closest(OVERLAY)) lastOutside = el;
+      };
+      document.addEventListener("focusin", onFocusIn);
+      let open = document.querySelectorAll(OVERLAY).length;
+      const obs = new MutationObserver(() => {
+        const now = document.querySelectorAll(OVERLAY).length;
+        if (now < open) {
+          // Only take focus back if the dialog still owns it — if something
+          // else has claimed focus since, leave it alone.
+          const stray = !document.activeElement || document.activeElement === document.body;
+          if (lastOutside && stray && document.contains(lastOutside)) {
+            try {
+              lastOutside.focus({ preventScroll: true });
+            } catch (e) {
+              // A trigger that has since unmounted or become unfocusable is
+              // not worth breaking the close on.
+            }
+          }
+        }
+        open = now;
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      return () => {
+        obs.disconnect();
+        document.removeEventListener("focusin", onFocusIn);
+      };
+    }, []);
     useEffect(() => {
       const trap = (e) => {
         if (e.key !== "Tab") return;
@@ -456,6 +505,7 @@
       return flows;
     }, [entries, yearConfigs, overridesByYr]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
+    const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
@@ -1040,7 +1090,7 @@
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills" }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",

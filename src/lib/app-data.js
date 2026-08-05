@@ -394,6 +394,42 @@
   // The user can still tap the field; they just aren't forced into it.
   // Read at render time rather than through a hook so it can be dropped into
   // an element's props without restructuring the component.
+  // Roving tabindex for a set of mutually exclusive options — the month strip,
+  // the Budget/Plan sub-tabs, the top tabs, the year pills.
+  //
+  // Each of those used to put every option in the tab order, so reaching the
+  // first row of data on Budget → Monthly took 32 Tab presses, 21 of them
+  // spent walking past twelve months, five sub-tabs and four tabs. The
+  // convention for this is one stop for the group and arrow keys inside it,
+  // which is also what a screen reader user expects from something announced
+  // as a group of pressed/unpressed buttons.
+  //
+  // Returns the props for the container. Children opt in with
+  // `tabIndex: isActive ? 0 : -1` so the one stop always lands on the current
+  // selection — the group is re-entered where it was left.
+  function useRovingTabs(itemSelector = "button") {
+    const onKeyDown = (e) => {
+      const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+      const box = e.currentTarget;
+      if (!keys.includes(e.key) || !box) return;
+      const items = [...box.querySelectorAll(itemSelector)]
+        .filter((el) => el.offsetParent !== null && !el.disabled);
+      if (items.length < 2) return;
+      const at = items.indexOf(document.activeElement);
+      if (at < 0) return;
+      e.preventDefault();
+      // The app has a global window-level ArrowLeft/Right shortcut for
+      // stepping the month. Without this the same press would both move
+      // focus and change the month.
+      e.stopPropagation();
+      const next = e.key === "Home" ? 0
+        : e.key === "End" ? items.length - 1
+        : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (at - 1 + items.length) % items.length
+        : (at + 1) % items.length;
+      items[next].focus();
+    };
+    return { onKeyDown };
+  }
   function autoFocusOnDesktop() {
     try {
       return !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);

@@ -843,7 +843,32 @@
         }
       )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "daily-today-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
         background: di % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-col" }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-number" }, dayObj.day), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "caption-10-nomargin" }, "\u2713")), /* @__PURE__ */ React.createElement("div", { className: "daily-events-pad" }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "daily-row-wrap" }, /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-col" }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-number" }, dayObj.day), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "caption-10-nomargin" }, "\u2713")), /* @__PURE__ */ React.createElement("div", { className: "daily-events-pad" }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "daily-row-wrap" },
+        // Daily was the only money view with no way to see or set payment
+        // status — it inferred "done" from the date instead. Same control,
+        // wording and colours as the Monthly cards and the Upcoming list.
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: (e) => {
+              e.stopPropagation();
+              haptic();
+              toggleComplete(ev.id);
+            },
+            role: "checkbox",
+            "aria-checked": !!completed[ev.id],
+            "aria-label": (completed[ev.id] ? "Mark unpaid: " : "Mark paid: ") + ev.desc,
+            title: completed[ev.id] ? "Paid \u2014 click to mark unpaid" : "Mark paid",
+            className: "cf-checkbtn paid-btn daily-paid-btn",
+            style: {
+              border: completed[ev.id] ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
+              background: completed[ev.id] ? "var(--greenLt)" : "transparent"
+            }
+          },
+          completed[ev.id] ? "\u2713" : ""
+        ),
+        /* @__PURE__ */ React.createElement(
         "button",
         {
           type: "button",
@@ -855,13 +880,13 @@
           className: "daily-row-btn"
         },
         /* @__PURE__ */ React.createElement("span", { className: "daily-row-desc", style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : "var(--text)",
-          textDecoration: isPast(dayObj.day) ? "line-through" : "none"
+          color: completed[ev.id] ? "var(--textLt)" : "var(--text)",
+          textDecoration: completed[ev.id] ? "line-through" : "none"
         } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
         /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
         /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
-          color: isPast(dayObj.day) ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
-          textDecoration: isPast(dayObj.day) ? "line-through" : "none"
+          color: completed[ev.id] ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
+          textDecoration: completed[ev.id] ? "line-through" : "none"
         } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
       ), /* @__PURE__ */ React.createElement(
         "button",

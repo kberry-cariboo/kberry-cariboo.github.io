@@ -386,6 +386,13 @@
         y: Math.max(8, Math.min(y, window.innerHeight - r.height - 8))
       });
     }, [x, y, items.length]);
+    // Focus the first item on open (pointer devices only — on touch this is a
+    // bottom sheet and focusing an item would raise nothing useful).
+    useEffect(() => {
+      if (isTouch || !menuRef.current) return;
+      const first = menuRef.current.querySelector("button");
+      if (first) first.focus({ preventScroll: true });
+    }, [isTouch]);
     const ax = pos.x, ay = pos.y;
     if (isTouch) {
       return /* @__PURE__ */ React.createElement(
@@ -427,15 +434,39 @@
       {
         ref: menuRef,
         className: "ctx-menu-desktop",
+        role: "menu",
         style: { left: ax, top: ay },
         onContextMenu: (e) => e.preventDefault(),
-        onClick: (e) => e.stopPropagation()
+        onClick: (e) => e.stopPropagation(),
+        // The menu opened but never took focus, so it was mouse-only: no
+        // arrow keys, Enter did nothing, and Tab walked the page *behind* it.
+        // Escape only appeared to work because that handler is on window.
+        onKeyDown: (e) => {
+          const btns = menuRef.current ? [...menuRef.current.querySelectorAll("button")] : [];
+          if (!btns.length) return;
+          const at = btns.indexOf(document.activeElement);
+          const go = (i) => {
+            e.preventDefault();
+            btns[(i + btns.length) % btns.length].focus();
+          };
+          if (e.key === "ArrowDown") go(at + 1);
+          else if (e.key === "ArrowUp") go(at <= 0 ? btns.length - 1 : at - 1);
+          else if (e.key === "Home") go(0);
+          else if (e.key === "End") go(btns.length - 1);
+          else if (e.key === "Tab") {
+            // A menu is a modal surface — Tab must not walk out of it into
+            // the page underneath.
+            e.preventDefault();
+            go(e.shiftKey ? at - 1 : at + 1);
+          }
+        }
       },
       items.map(
         (item, i) => item === "---" ? /* @__PURE__ */ React.createElement("div", { key: i, className: "ctx-menu-divider" }) : /* @__PURE__ */ React.createElement(
           "button",
           {
             key: i,
+            role: "menuitem",
             onClick: () => {
               item.action();
               onClose();
