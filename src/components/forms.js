@@ -193,7 +193,7 @@
       "input",
       {
         id: "ef-desc",
-        autoFocus: true,
+        autoFocus: autoFocusOnDesktop(),
         className: inpCls(errors.desc),
         value: f.desc,
         placeholder: "e.g. Mortgage payment",
@@ -322,7 +322,7 @@
         notes: f.notes
       });
       toast(`Template "${f.desc || "Untitled"}" saved${templates.some((t) => t.desc === f.desc) ? " (replaced existing)" : ""}`);
-    }, className: "ef-save-template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), "Save as Template"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
+    }, className: "ef-save-template", title: "Save as Template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), /* @__PURE__ */ React.createElement("span", { className: "ef-save-template-full" }, "Save as Template"), /* @__PURE__ */ React.createElement("span", { className: "ef-save-template-short" }, "Template")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
   }
   // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
@@ -337,7 +337,7 @@
         "aria-modal": "true",
         "aria-label": "Add entry"
       },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onClose }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
         EntryForm,
         {
           initial: null,
@@ -451,7 +451,11 @@
       )
     );
   }
-  function FilterPill({ label, options, selected, onChange }) {
+  // `inline` renders the options in flow instead of as a floating popover.
+  // Inside the mobile filter sheet the popover was absolutely positioned in a
+  // scrolling card, so it escaped past the bottom of the screen and covered
+  // the date fields and the "Show results" button.
+  function FilterPill({ label, allLabel, options, selected, onChange, inline = false }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     useEffect(() => {
@@ -459,7 +463,14 @@
         if (ref.current && !ref.current.contains(e.target)) setOpen(false);
       };
       window.addEventListener("mousedown", h);
-      return () => window.removeEventListener("mousedown", h);
+      // Touch too: without this the dropdown only closed on the synthetic
+      // mouse event a tap emits ~300ms later, which is why it felt sticky.
+      // ContextMenu has always listened for both.
+      window.addEventListener("touchstart", h, { passive: true });
+      return () => {
+        window.removeEventListener("mousedown", h);
+        window.removeEventListener("touchstart", h);
+      };
     }, []);
     const allSel = selected.length === 0;
     const label2 = allSel ? label : `${label} (${selected.length})`;
@@ -478,15 +489,16 @@
       },
       label2,
       /* @__PURE__ */ React.createElement("span", { className: "filter-pill-chevron" }, open ? "\u25B2" : "\u25BC")
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" }, /* @__PURE__ */ React.createElement(
+    ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "") }, /* @__PURE__ */ React.createElement(
       "label",
       {
         className: "filter-pill-all-row"
       },
       /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => onChange([]), className: "filter-pill-checkbox" }),
-      "All ",
-      label,
-      "s"
+      // Was `"All " + label + "s"`, which rendered "All Categorys" and
+      // "All Statuss". The plural is a property of the label, not something
+      // to derive from it.
+      allLabel || `All ${label}`
     ), options.map((o) => {
       const sel = selected.includes(o.value);
       return /* @__PURE__ */ React.createElement(

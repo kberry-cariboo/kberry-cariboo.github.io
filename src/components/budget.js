@@ -10,6 +10,15 @@
   }, onAddNextYear = null, skippedOccurrences = [] }) {
     var _a, _b;
     const isMobile = useIsMobile();
+    const isCoarsePointer = useIsCoarsePointer();
+    // The Daily sub-tab is hidden on mobile (it's a per-day restatement of
+    // Monthly and the strip has no room), but `daily` persists per device and
+    // is a valid #/budget/daily deep link — so it was reachable with no tab
+    // rendered for it, leaving the sub-tab strip showing nothing selected
+    // while the Daily view was on screen. Land on Monthly instead.
+    useEffect(() => {
+      if (isMobile && budgetSub === "daily") setBudgetSub("monthly");
+    }, [isMobile, budgetSub]);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -680,9 +689,9 @@
           "th",
           {
             key: col,
-            draggable: true,
+            draggable: !isCoarsePointer,
             tabIndex: 0,
-            "aria-label": `${BUDGET_COL_LABELS[col]} column — press left or right arrow to reorder`,
+            "aria-label": `${BUDGET_COL_LABELS[col]} column${isCoarsePointer ? "" : " — press left or right arrow to reorder"}`,
             onKeyDown: (e) => {
               if (e.key === "ArrowLeft") {
                 e.preventDefault();
@@ -727,7 +736,10 @@
           "aria-modal": "true",
           "aria-label": "Entry form"
         },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => {
+          setShowEntryForm(false);
+          setEditingEntry(null);
+        } }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
           EntryForm,
           {
             initial: editingInitial || editingEntry,
@@ -920,7 +932,7 @@
           /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
             "select",
             {
-              autoFocus: true,
+              autoFocus: autoFocusOnDesktop(),
               value: bvaModalData.cat,
               onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { cat: e.target.value })),
               className: "field-input"
@@ -1019,7 +1031,12 @@
             },
             /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over"), /* @__PURE__ */ React.createElement(
+            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
+            // The kebab is a sibling of .bva-amounts, not a child of it: the
+            // amounts group wraps to a second line on a phone once the actual,
+            // the target and an overage all have to fit, and a row action that
+            // wraps with them ends up orphaned on its own line.
+            /* @__PURE__ */ React.createElement(
               "button",
               {
                 onClick: (e) => {
@@ -1030,7 +1047,7 @@
                 className: "cf-checkbtn row-menu-btn"
               },
               "\u22EE"
-            ))),
+            )),
             target > 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
               width: `${pct}%`,
               background: color

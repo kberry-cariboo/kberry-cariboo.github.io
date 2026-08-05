@@ -107,7 +107,10 @@
     const restoreArchivedGoals = () => {
       setGoals((prev) => prev.map((g) => g.archived ? __spreadProps(__spreadValues({}, g), { archived: false }) : g));
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: yearConfigs.map((yc) => yc.year), onSelect: setActiveYear }), (() => {
+    // The year badge is rendered by App.js *above* the sub-tabs, matching
+    // Budget — it used to live here, which put the same two elements in the
+    // opposite order one tap apart.
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
       const openGoalForm = (g) => {
         setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
         setGoalErrors({});
@@ -228,6 +231,10 @@
             className: "modal-card goalform-modal-card",
             onClick: (e) => e.stopPropagation()
           },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => {
+            setShowGoalForm(false);
+            setGoalForm(null);
+          } }),
           /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, goalForm.id ? "Edit Goal" : "Add Goal"),
           (() => {
             const lblCls = "field-label";
@@ -237,7 +244,7 @@
               "input",
               {
                 id: "goal-name",
-                autoFocus: true,
+                autoFocus: autoFocusOnDesktop(),
                 className: inpCls(goalErrors.name),
                 value: goalForm.name,
                 placeholder: "e.g. Property Taxes",
@@ -324,12 +331,16 @@
             className: "modal-card modal-card-360",
             onClick: (e) => e.stopPropagation()
           },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => {
+            setShowFundForm(false);
+            setFundForm(null);
+          } }),
           /* @__PURE__ */ React.createElement("div", { className: "fundform-title" }, "Add funds"),
           /* @__PURE__ */ React.createElement("div", { className: "fundform-subtitle" }, fundForm.goal.name),
           /* @__PURE__ */ React.createElement(
             MoneyInput,
             {
-              autoFocus: true,
+              autoFocus: autoFocusOnDesktop(),
               value: fundForm.amount,
               placeholder: "Amount",
               onChange: (v) => setFundForm((f) => __spreadProps(__spreadValues({}, f), { amount: v })),
@@ -711,11 +722,11 @@
           "aria-modal": "true",
           "aria-label": "Debt form"
         },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowDebtForm(false) }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, debtFormData.editKey ? "Edit Debt" : "Add Debt"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "debt-desc",
-            autoFocus: true,
+            autoFocus: autoFocusOnDesktop(),
             placeholder: "e.g. Personal Loan",
             value: debtFormData.label,
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { label: e.target.value })),

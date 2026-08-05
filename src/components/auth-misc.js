@@ -732,11 +732,11 @@
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "monthly", label: "Monthly", icon: "grid" },
-      { id: "daily", label: "Daily", icon: "day", cls: "bp-daily" },
-      { id: "bva", label: "Budget vs Actual", icon: "scale" },
-      { id: "forecast", label: "Forecast", icon: "trending-up" },
-      { id: "entries", label: "Entries", icon: "file-list" }
+      { id: "monthly", label: "Monthly", short: "Monthly", icon: "grid" },
+      { id: "daily", label: "Daily", short: "Daily", icon: "day", cls: "bp-daily" },
+      { id: "bva", label: "Budget vs Actual", short: "vs Actual", icon: "scale" },
+      { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
+      { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
@@ -751,12 +751,18 @@
         "aria-label": s.label,
         title: s.label,
         style: {
-          background: value === s.id ? "var(--primary)" : "var(--stripe)",
+          // --stripe is byte-identical to --bg in the light theme, so an
+          // inactive pill with border:none had no visible container at all —
+          // on mobile, where the labels were hidden too, the tabs read as
+          // loose glyphs floating on the page. --border is the same inactive
+          // surface .cf-pill already uses everywhere else.
+          background: value === s.id ? "var(--primary)" : "var(--border)",
           color: value === s.id ? "#fff" : "var(--textMid)"
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label),
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short || s.label)
     )));
   }
   function PlanSubTabs({ value, onChange }) {
@@ -768,9 +774,9 @@
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "debt", label: "Debt Payoff", icon: "credit-card" },
-      { id: "strategy", label: "Payoff Strategy", icon: "mountain" },
-      { id: "goals", label: "Savings Goals", icon: "target" }
+      { id: "debt", label: "Debt Payoff", short: "Debt", icon: "credit-card" },
+      { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
+      { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
@@ -785,11 +791,17 @@
         "aria-label": s.label,
         title: s.label,
         style: {
-          background: value === s.id ? "var(--primary)" : "var(--stripe)",
+          // --stripe is byte-identical to --bg in the light theme, so an
+          // inactive pill with border:none had no visible container at all —
+          // on mobile, where the labels were hidden too, the tabs read as
+          // loose glyphs floating on the page. --border is the same inactive
+          // surface .cf-pill already uses everywhere else.
+          background: value === s.id ? "var(--primary)" : "var(--border)",
           color: value === s.id ? "#fff" : "var(--textMid)"
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label),
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short || s.label)
     )));
   }

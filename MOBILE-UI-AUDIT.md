@@ -1,5 +1,9 @@
 # Mobile UI Audit — CashFlow Budget
 
+> **Status: all 21 items addressed.** The findings below are kept as written —
+> they are the record of what was wrong and why, and every fix commit points
+> back at a section number here. See §7 for the item-by-item outcome.
+
 Audited build `v183` (`3c599fd`). Findings come from reading `src/` **and** from
 running the built app in Chromium at 320 / 390 / 430 / 820 px CSS widths with
 `isMobile: true, hasTouch: true`, against ~20 realistic entries, two budget
@@ -389,43 +393,64 @@ The dashboard "Monthly Summary" table is correctly wrapped in `.hscroll`, so its
 
 ---
 
-## 7. Recommended order of work
+## 7. Outcome
 
-**Tier 1 — things that lose or hide data (small, contained fixes)**
+All 21 items are fixed. Verified by re-running the same measurement pass
+(box overflow, touch-target size, bottom-nav overlap at 320 and 390px — both
+now report zero findings across all nine views), a 19-check functional script,
+and the existing 37-test regression suite.
 
-1. `.glance-grid` → 2-up + value step-down below 480 px (§1.1)
-2. `.monthly-totals-row` stacking below ~360 px (§1.2)
-3. Move nav clearance to `.app-scroll` so the footer links are tappable (§1.3)
-4. Un-hide `.bva-target` on mobile — delete the rule and its stale comment (§2.1)
-5. `.cat-actions-row` wrap so Settings' "+ Add" is reachable at 320 px (§1.4)
+**Tier 1 — things that lost or hid data**
 
-**Tier 2 — features that exist but can't be reached from a phone**
+| # | Item | Fix |
+| --- | --- | --- |
+| 1 | Glance tiles clipped (§1.1) | `min-width:0` on the tile, 2-up below 480px with a lone third spanning, value step-down at 360px |
+| 2 | Monthly Totals cut off (§1.2) | Totals row and amounts group both wrap |
+| 3 | Footer under the nav (§1.3) | Nav clearance moved from `.content-area` to `.app-scroll`, so every child clears it |
+| 4 | BvA target hidden (§2.1) | `display:none` rule and its stale comment deleted; row wraps instead |
+| 5 | Settings "+ Add" off-screen (§1.4) | `min-width:0` on `.settings-input`, `.cat-actions-row` can shrink and wrap |
 
-6. Wire the FAB that is already styled, to `cf:quickadd` (§5)
-7. Show "Save as Template" on mobile, or fix the Settings copy (§2.2)
-8. Give the entries search a placeholder; decide whether global search comes to
-   mobile or the Entries search is promoted (§2.4)
-9. Touch fallback for column reorder, or hide the affordance on touch (§2.3)
-10. Verify blob download on a real iOS PWA (§2.5)
+**Tier 2 — features unreachable from a phone**
+
+| # | Item | Fix |
+| --- | --- | --- |
+| 6 | FAB styled but never rendered (§5) | Rendered on Dashboard and Budget, wired to the existing `cf:quickadd` event, retracts while scrolling down so it never parks over a balance |
+| 7 | Templates un-creatable (§2.2) | `.ef-save-template` unhidden; label shortens to "Template" so the sticky action bar stays one line |
+| 8 | Unlabelled mobile search (§2.4) | Real placeholder; search takes the remaining width of the Filters row |
+| 9 | Column reorder advertised but impossible on touch (§2.3) | `draggable`, the grab cursor, the ⠿ hints and the "arrow to reorder" wording all drop on coarse pointers — same for the category list, whose copy now points at its ↑/↓ buttons |
+| 10 | Fragile blob download (§2.5) | One `downloadBlob` helper: anchor appended to the document, revoke deferred, failure reported instead of silent |
 
 **Tier 3 — consistency**
 
-11. Restore a visible container for inactive sub-tab pills; add short labels
-    (§4.2)
-12. One list presentation across Monthly / Forecast / Entries (§4.1)
-13. One bottom-sheet contract: handle, backdrop dismiss, swipe-down, pinned
-    footer, one close-button class (§4.4)
-14. Raise mobile-only controls to 44 px; take the `.cf-pill` / `.cf-btn`
-    minimums to 44 (§3)
-15. Same year-badge / sub-tab order on Budget and Plan (§4.3)
-16. `dvh` for sheet heights; drop `autoFocus` on touch (§4.5)
+| # | Item | Fix |
+| --- | --- | --- |
+| 11 | Invisible inactive sub-tabs (§4.2) | Inactive surface is `--border` (was `--stripe`, identical to `--bg` in light); short labels beside the icons, pills share the row equally |
+| 12 | Three list presentations in one tab (§4.1) | Forecast uses the Budget/Entries card on mobile, with the mark-paid checkbox it was missing |
+| 13 | Bottom-sheet vocabulary (§4.4) | One `SheetHandle` on every sheet, with a real swipe-down-to-dismiss behind it; sticky action bar; one close-button class |
+| 14 | Touch targets (§3) | 44px floor for shared controls *and* the mobile-only ones that the block missed, plus a blanket rule for form controls |
+| 15 | Year badge / sub-tab order (§4.3) | Badge above the sub-tabs on both Budget and Plan |
+| 16 | `vh` sheets, forced keyboard (§4.5) | `dvh` with a `vh` fallback; `autoFocus` gated to fine pointers |
 
 **Tier 4 — hygiene**
 
-17. Delete the dead ≤768/≤480 table CSS and the comments describing behaviour
-    that no longer exists (§5)
-18. Fix the pull-to-refresh listener churn (§4.6)
-19. `aria-label` "Dashboard", not "Home" (§4.7)
-20. `"All " + label + "s"` → "All Categorys" / "All Statuss" (`forms.js:487`)
-21. Decide on one responsive axis — width, with `pointer:coarse` reserved for
-    input-related rules (§ context)
+| # | Item | Fix |
+| --- | --- | --- |
+| 17 | Dead mobile CSS (§5) | ~30 lines of unreachable table rules removed, along with the comments describing behaviour that no longer happens |
+| 18 | Pull-to-refresh listener churn (§4.6) | Progress mirrored into a ref; the effect mounts once instead of re-subscribing every frame |
+| 19 | `aria-label` "Home" (§4.7) | "Dashboard", matching the rest of the app; the nav still *shows* "Home" |
+| 20 | "All Categorys" (§20) | Plural is a property of the label now, not derived from it |
+| 21 | Two responsive axes (§ context) | Width and `pointer:coarse` no longer disagree about layout: everything that assumes the bottom nav exists is gated with the nav itself, and the card/table swap is width-only |
+
+Two things were deliberately **not** changed:
+
+- **Backdrop tap still doesn't dismiss a form sheet.** That was a considered
+  decision (a slightly-off tap shouldn't discard a half-filled form) and it
+  stands. The gesture gap it left is now filled by swipe-down, which can't be
+  triggered by a mis-tap. Menus — which have nothing to lose — keep their
+  backdrop dismiss.
+- **Forecast rows still aren't editable.** Forecast projects across year
+  boundaries and the override machinery is year-scoped, so the card offers the
+  paid checkbox and nothing else.
+
+Remaining sub-44px targets are the inline prose link to `console.anthropic.com`
+(covered by the WCAG inline exception) and the keyboard-only skip link.

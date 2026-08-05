@@ -29,18 +29,47 @@
     if (d === 0) return "$0";
     return d >= 1e6 ? sign + (d / 1e6).toFixed(1) + "M" : sign + (d / 1e3).toFixed(0) + "k";
   };
+  // One download path for every export (CSV here, JSON backup in App.js and
+  // Settings). The old inline version built a *detached* anchor and revoked
+  // the object URL on the very next line — both are fine on desktop and both
+  // are unreliable on mobile: some engines ignore a click on an element that
+  // isn't in the document, and revoking synchronously can abort a download
+  // that hasn't started yet. This appends the anchor, clicks it, and defers
+  // the revoke past the navigation. It also reports failure instead of
+  // silently doing nothing, which matters because Settings names local export
+  // as the only backup path and the app nudges for one every 30 days.
+  function downloadBlob(filename, blob) {
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(url);
+          a.remove();
+        } catch (e) {
+          // The anchor may already be gone if the page navigated; nothing
+          // to clean up and nothing the user needs to hear about.
+        }
+      }, 4e4);
+      return true;
+    } catch (e) {
+      toast("Couldn't save the file on this device. Try again from a desktop browser.");
+      return false;
+    }
+  }
   function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
       return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const lines = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    return downloadBlob(filename, new Blob([lines.join("\n")], { type: "text/csv" }));
   }
   function printView(title) {
     const prev = document.title;

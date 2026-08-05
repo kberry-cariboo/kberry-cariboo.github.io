@@ -387,6 +387,20 @@
       return false;
     }
   }
+  // Autofocus is a desktop nicety and a mobile liability: on touch it raises
+  // the software keyboard while the bottom sheet is still animating up, and
+  // on iOS — where the keyboard doesn't resize the layout viewport the sheet
+  // is positioned against — it lands on top of the sheet's own action row.
+  // The user can still tap the field; they just aren't forced into it.
+  // Read at render time rather than through a hook so it can be dropped into
+  // an element's props without restructuring the component.
+  function autoFocusOnDesktop() {
+    try {
+      return !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
+    } catch (e) {
+      return true;
+    }
+  }
   function simulateDebtStrategy(debts, extra, order) {
     try {
       let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => __spreadValues({}, d2));
