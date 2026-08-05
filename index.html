@@ -384,8 +384,18 @@
         .selftest-mark{font-weight:700;width:18px;}
         .selftest-detail{color:var(--textLt);font-size:11px;}
         .selftest-back-link{display:inline-block;margin-top:20px;font-size:13px;color:var(--primaryInk);}
+        /* This strip used to borrow .hscroll for its hidden-scrollbar
+           horizontal overflow, which quietly cost it its layout: .hscroll
+           sets display:block and is declared ~1000 lines further down, so at
+           equal specificity it won and the row was never a flex container at
+           all. `gap` is inert on a block box, so the five sub-tabs sat flush
+           against each other at every width, and the mobile rule giving them
+           `flex:1 1 0` did nothing either. It owns its overflow now — the
+           other .hscroll users all wrap tables and genuinely want block. */
         .budget-subtabs-row{display:flex;gap:8px;max-width:var(--container-w);margin:0 auto 16px;
-          flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
+          flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
+        .budget-subtabs-row::-webkit-scrollbar{display:none;}
         .budget-subtab-btn{font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;
           border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;}
         /* Short labels ride along in the markup and only surface on mobile,
@@ -1610,6 +1620,12 @@
              chip's title attribute keeps the full sentence. */
           .offline-chip{padding:3px 8px!important;font-size:10px!important;}
           .offline-chip-more{display:none!important;}
+          /* Four equal-width sub-tabs leave ~70px each here, and icon + gap +
+             padding eats 36 of it — "Monthly" was ellipsised to "Month…".
+             The label is the part that carries the meaning (icons alone are
+             what this replaced), so the icon steps aside, not the word. */
+          .budget-subtab-pill svg{display:none;}
+          .budget-subtab-pill{padding:0 6px!important;gap:0!important;}
         }
 
 
@@ -12746,7 +12762,7 @@ Fill every field of the response schema. Rules:
       { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
       { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
@@ -12786,7 +12802,7 @@ Fill every field of the response schema. Rules:
       { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
       { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs hscroll budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
