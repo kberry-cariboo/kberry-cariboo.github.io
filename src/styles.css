@@ -453,11 +453,23 @@
         .entries-date-input{font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bgCard);color:var(--text);outline:none;}
         .link-btn-sm{font-size:13px;color:var(--textLt);background:none;border:none;cursor:pointer;padding:4px;}
         .entries-toptools-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;}
-        .entries-filter-row{display:flex;justify-content:flex-start;align-items:center;margin-bottom:12px;gap:6px;flex-wrap:wrap;row-gap:8px;}
+        /* Every control here is one line tall except the date range, which
+           stacks a label over its input. Centring against that 48px block put
+           the pills, the search and the buttons at a height nothing else
+           shared — a staggered row where From sat above the pills and To
+           below them. Aligning to the bottom lands every control on the same
+           edge as the two date inputs. */
+        .entries-filter-row{display:flex;justify-content:flex-start;align-items:flex-end;margin-bottom:12px;gap:6px;flex-wrap:wrap;row-gap:8px;}
         .entries-mobile-filter-btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;}
         .entries-filter-count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;}
         .entries-allyears-label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--textMid);cursor:pointer;white-space:nowrap;}
-        .entries-daterange{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;}
+        /* The two fields stay side by side rather than wrapping inside the
+           group: as a wrapping, shrinkable item it settled at one field's
+           width and stacked From over To, which made this one item 104px tall
+           in a row of 30px controls. The fields keep flex:1 1 130px, so they
+           share whatever width the group gets; the group as a whole wraps to
+           its own line when the toolbar runs out of room. */
+        .entries-daterange{display:flex;align-items:flex-end;gap:8px;flex-wrap:nowrap;flex-shrink:0;}
         .entries-daterange-field{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 130px;}
         .entries-daterange-field .entries-date-input{width:100%;}
         /* The placeholder is deliberately empty unless a header search is
@@ -849,8 +861,12 @@
         .strat-error{font-size:12px;color:var(--red);margin-top:14px;}
         .strat-extra-slider{width:120px;accent-color:var(--primary);}
         .strat-debt-toggles{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
-        .strat-debt-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);background:var(--stripe);border-radius:14px;padding:4px 10px 4px 8px;cursor:pointer;}
-        .strat-debt-toggle input{margin:0;}
+        .strat-debt-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);background:var(--stripe);border-radius:14px;padding:6px 12px 6px 9px;cursor:pointer;}
+        /* The one checkbox in the app that was left at browser defaults: a
+           13px system-blue box in a palette that has an accent of its own,
+           and the only thing distinguishing an included debt from an excluded
+           one. accent-color matches the sliders and the filter checkboxes. */
+        .strat-debt-toggle input{margin:0;width:14px;height:14px;accent-color:var(--primary);cursor:pointer;}
         .strat-delta-banner{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--greenDk);background:rgba(16,185,129,0.1);border-radius:8px;padding:8px 12px;margin:12px 0 0;}
         .strat-suggest-btn{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--primaryInk);cursor:pointer;text-decoration:underline;}
         .strat-chart-wrap{margin-top:16px;}
@@ -1038,8 +1054,12 @@
           box-shadow:var(--shadowMd);margin-top:4px;}
         .cf-menu-item--compact{padding:8px 10px;border-radius:6px;}
         /* Month picker */
+        /* 25×23 before: a pointer target under the 24×24 WCAG 2.5.8 floor, and
+           visibly stubbier than the 29px month pills it sits in the strip
+           with. Sized to the pills instead of to its own glyph. */
         .month-nav-arrow{font-size:14px;padding:2px 9px;border-radius:6px;border:1px solid var(--border);
-          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
+          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;
+          min-width:26px;min-height:29px;display:inline-flex;align-items:center;justify-content:center;}
         .month-nav-arrow:disabled{cursor:default;color:var(--border);}
         .month-pill{position:relative;}
         .month-pill[data-match="true"]:not([data-active="true"]){background:var(--amberLt);
@@ -1153,6 +1173,9 @@
           .clear-key-btn,.copy-year-btn,.year-active-btn,.gotit-btn,
           .household-mode-btn,.debt-restore-btn,.revert-btn{min-height:44px;}
           .filter-pill-btn,.filter-pill-option-row,.filter-pill-all-row{min-height:44px;}
+          /* The label is the hit target — the checkbox inside it keeps its
+             native size, same arrangement as the filter dropdown rows. */
+          .strat-debt-toggle{min-height:44px;}
           .ctx-menu-item--touch{min-height:48px;}
           .ai-settings-link,.strat-suggest-btn{display:inline-block;padding:12px 0;}
           .link-btn-sm{min-width:44px;min-height:44px;}
@@ -1499,11 +1522,18 @@
              above still apply where the tables actually render. */
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
+          /* Full width below 768px, which puts its bottom-right corner — where
+             "Export backup", its whole point, lives — underneath the FAB. The
+             FAB is 56px tall sitting 18px off the bottom and outranks the
+             nudge on z-index, so the nudge has to clear it rather than the
+             other way round. The FAB's top edge is 122px off the bottom here
+             (66px offset + 56px tall), so 134px leaves 12px of air. */
           .backup-nudge{left:12px!important;right:12px!important;
-            width:auto!important;max-width:none!important;}
+            width:auto!important;max-width:none!important;
+            bottom:calc(134px + env(safe-area-inset-bottom))!important;}
           /* Full-width here and the message wraps to more lines, so it grows
-             to ~176px at 320px — 80px offset + 176px + gap. */
-          .content-area.content-area--nudged{padding-bottom:280px!important;}
+             to ~176px at 320px — 134px offset + 176px + gap. */
+          .content-area.content-area--nudged{padding-bottom:334px!important;}
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
@@ -1553,8 +1583,14 @@
           /* Three stacked toolbar rows put ~250px between the top of the tab
              and the first entry. The search takes the rest of the Filters
              line, and Import CSV — a desktop-shaped job whose own preview is
-             a six-column table — stops competing with Add Entry for width. */
-          .entries-search-wrap{flex:1 1 140px;min-width:0;}
+             a six-column table — stops competing with Add Entry for width.
+
+             The 140px basis left the field 118px wide at 393px, which cut its
+             own placeholder to "Search entrie:" — and below 768px this is the
+             only search in the app, so the placeholder is the label. A 200px
+             basis fits "Search entries…" and pushes Import CSV down to share
+             the row with Add Entry, so the toolbar is still two lines. */
+          .entries-search-wrap{flex:1 1 200px;min-width:0;}
           .entries-filter-row>.cf-btn--nowrap{flex:1 1 auto;justify-content:center;}
           /* The five ↑ ↓ Reset Edit Remove buttons couldn't shrink or wrap
              internally (margin-left:auto + flex-shrink:0), so at 320px they
