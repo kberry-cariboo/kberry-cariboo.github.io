@@ -886,8 +886,11 @@
         .upcoming-count{font-size:11px;color:var(--textLt);}
         .upcoming-list{display:flex;flex-direction:column;gap:8px;}
         .upcoming-item-mobile{margin-bottom:4px;}
-        .upcoming-mobile-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px;}
-        .upcoming-mobile-desc{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+        .upcoming-mobile-top{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin-bottom:2px;}
+        /* The chip belongs to the description, so the description is sized to
+           its text (shrinking to an ellipsis when it has to) and the chip
+           follows it instead of being pushed to the far edge of the row. */
+        .upcoming-mobile-desc{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto;min-width:0;}
         .upcoming-mobile-bottom{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;}
         .upcoming-mobile-date{font-size:12px;color:var(--textMid);flex-shrink:0;}
         .upcoming-mobile-amts{display:flex;gap:10px;align-items:baseline;}
@@ -1720,10 +1723,12 @@
              amount really are three short things. What it was missing is
              alignment: the date was content-width, so every description
              started at a different x and the eye had no column to run down.
-             Fixed date column, description takes the slack, chip and amounts
-             each get their own axis. */
+             Fixed date column, description sized to its text so the category
+             chip reads as part of the description rather than floating off
+             mid-row, and the chip's column takes the slack so the amounts
+             still land on their own right-hand axis. */
           .upcoming-desktop-row{display:grid;
-            grid-template-columns:auto 92px minmax(0,1fr) auto auto;
+            grid-template-columns:auto 92px minmax(0,auto) minmax(auto,1fr) auto;
             column-gap:12px;align-items:center;}
           .upcoming-desktop-row>.upcoming-desktop-left{display:contents;}
           .upcoming-desktop-row>.upcoming-desktop-left>.paid-btn{grid-area:1/1;}
