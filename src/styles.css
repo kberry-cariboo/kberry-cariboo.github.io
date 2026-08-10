@@ -294,18 +294,38 @@
         .household-signout-btn{font-size:12px;color:rgba(255,255,255,0.4);background:transparent;
           border:none;cursor:pointer;text-decoration:underline;}
         .text-center{text-align:center;}
-        /* ── auth-misc.js ── */
-        .shortcuts-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;
-          display:flex;align-items:center;justify-content:center;padding:20px;}
-        .shortcuts-card{background:var(--bgCard);border-radius:16px;padding:24px;max-width:380px;
-          width:100%;box-shadow:var(--shadowXl);}
-        .shortcuts-title{font-size:16px;font-weight:700;color:var(--text);}
-        .shortcuts-close{background:transparent;border:none;cursor:pointer;font-size:20px;color:var(--textLt);}
+        /* ── help.js ── */
+        /* The shortcut row and key cap outlived the modal they were written
+           for — they're the shortcuts section of the Help page now. */
         .shortcut-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;
           border-bottom:1px solid var(--border);}
         .shortcut-kbd{font-weight:600;padding:3px 10px;border-radius:6px;background:var(--stripe);
           border:1px solid var(--border);color:var(--text);}
-        .shortcuts-footer{font-size:11px;color:var(--textLt);margin-top:14px;text-align:center;}
+        /* Documentation is prose, so it gets a prose measure (the same 68ch
+           the desktop audit settled on) and prose line-height, not the
+           dashboard's tighter data rhythm. */
+        .help-p{font-size:13px;line-height:1.6;color:var(--textMid);max-width:68ch;margin:0 0 12px;}
+        .help-sub{font-size:13px;font-weight:700;color:var(--text);margin:18px 0 8px;
+          letter-spacing:0.01em;}
+        .help-page .cf-card>.help-sub:first-of-type{margin-top:6px;}
+        /* Term/description pairs as a two-column grid on a wide screen and a
+           stacked list on a narrow one — a definition list rather than a
+           table, because every "column" here is a sentence. */
+        .help-defs{display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr);
+          column-gap:20px;row-gap:10px;margin:0 0 12px;align-items:baseline;}
+        .help-defs dt,.help-term{font-size:13px;font-weight:600;color:var(--text);}
+        .help-defs dd,.help-desc{font-size:13px;line-height:1.6;color:var(--textMid);margin:0;
+          max-width:68ch;}
+        .help-steps{margin:0 0 12px;padding-left:20px;display:flex;flex-direction:column;gap:10px;}
+        .help-step{font-size:13px;color:var(--textMid);}
+        .help-step .help-term{display:block;}
+        .help-keys{max-width:420px;margin-bottom:12px;}
+        .help-footer{margin:4px 0 8px;text-align:right;}
+        /* Settings lost its explanatory paragraphs to the Help page, so it
+           carries a link to where they went. */
+        .settings-help-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;
+          font-weight:600;color:var(--primaryInk);text-decoration:none;padding:4px 0;}
+        .settings-help-link:hover{text-decoration:underline;}
         .feedback-toast{position:fixed;left:50%;transform:translateX(-50%);
           bottom:calc(84px + env(safe-area-inset-bottom));z-index:3000;cursor:pointer;color:#fff;
           font-size:13px;font-weight:600;padding:10px 20px;border-radius:24px;box-shadow:var(--shadowLg);
@@ -786,7 +806,6 @@
         .daily-balance-amt{font-weight:700;text-align:right;}
         .no-activity-msg{text-align:center;color:var(--textLt);padding:32px 24px;}
         .rollover-label{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);cursor:pointer;}
-        .rollover-hint{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
         .btn-pad-24{padding:9px 24px;}
         .bva-card{margin-top:20px;margin-bottom:12px;padding:0;overflow:hidden;}
         .bva-header-row{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;}
@@ -856,8 +875,10 @@
         .strat-extra-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--textMid);}
         .strat-extra-input{padding:5px 10px;width:90px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .strat-cards-row{display:flex;gap:12px;flex-wrap:wrap;}
-        .strat-footnote{font-size:10px;color:var(--textLt);}
-        .strat-footnote-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;}
+        /* Held a footnote on the left and the export buttons on the right;
+           the footnote is documentation now, so the exports keep the right
+           edge on their own. */
+        .strat-footnote-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;}
         .strat-error{font-size:12px;color:var(--red);margin-top:14px;}
         .strat-extra-slider{width:120px;accent-color:var(--primary);}
         .strat-debt-toggles{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
@@ -984,8 +1005,7 @@
         .dash-toolbar>.dash-customize-row{margin-bottom:0;}
         .dash-toolbar>.dash-customize-row+.dash-customize-row{margin-left:auto;}
         .customize-modal-card{padding:24px;width:min(400px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;}
-        .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
-        .customize-subtitle{font-size:12px;color:var(--textLt);margin-bottom:16px;}
+        .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
         .customize-list{display:flex;flex-direction:column;gap:4px;}
         .customize-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--text);}
         .customize-checkbox{width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;}
@@ -1182,6 +1202,7 @@
           .cf-footer-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;}
           .settings-page-pills button{min-height:44px;}
           .settings-quicklinks a{min-height:44px;display:inline-flex;align-items:center;}
+          .settings-help-link{min-height:44px;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
           /* Column reordering is HTML5 drag-and-drop, which never fires on
              touch. The grab cursor, the ⠿ dots and the "drag to reorder"
@@ -1569,6 +1590,11 @@
              + target + overage genuinely doesn't fit at 320px. */
           .bva-row{flex-wrap:nowrap!important;align-items:flex-start;}
           .bva-amounts{flex-wrap:wrap!important;justify-content:flex-end;row-gap:0;}
+          /* A 140px term column leaves ~190px for a sentence at 393px, which
+             turns every definition into a tall two-column sliver. Stack them:
+             the term reads as a heading for the paragraph under it. */
+          .help-defs{grid-template-columns:1fr;row-gap:2px;}
+          .help-defs dd{margin-bottom:10px;}
           /* Entries filter row: stack on phone */
           .entries-filter-row{flex-wrap:wrap!important;gap:6px!important;}
           /* These two rows scroll horizontally with the scrollbar explicitly

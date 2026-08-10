@@ -551,6 +551,25 @@ await test('A1 built-in self-test suite passes', async () => {
     }
   });
 
+  await test('B25 help: account menu opens the docs, and "?" jumps to the shortcuts', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(600);
+    await page.locator('.user-avatar-btn').click();
+    await page.getByRole('button', { name: 'Help' }).click();
+    await page.locator('#help-shortcuts').waitFor(V);
+    const sections = await page.locator('.help-page .cf-card').count();
+    if (sections < 8) throw new Error('help page rendered only ' + sections + ' sections');
+    // The shortcuts moved out of their modal into this page — the modal is
+    // gone, so "?" has to land here instead.
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(600);
+    await page.keyboard.press('?');
+    await page.locator('#help-shortcuts').waitFor(V);
+    const keys = await page.locator('#help-shortcuts .shortcut-kbd').allInnerTexts();
+    if (!keys.includes('N') || !keys.includes('?')) throw new Error('shortcut list incomplete: ' + keys.join(','));
+    if (await page.locator('.shortcuts-card').count() > 0) throw new Error('the old shortcuts modal is still being rendered');
+  });
+
   await ctx.close();
 }
 

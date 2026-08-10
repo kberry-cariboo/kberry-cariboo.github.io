@@ -21,7 +21,10 @@ src/lib/                    Shared constants, formatting/date helpers, hooks,
                             household auth/sync hooks, and `ai.js` — the single
                             call path every AI feature goes through
 src/components/            UI components, grouped by area (forms, register,
-                            budget, plan/dashboard, settings, auth, etc.)
+                            budget, plan/dashboard, settings, auth, etc.).
+                            `help.js` is the user documentation — the app's
+                            explanatory copy lives there, as data, rather
+                            than inline beside the controls it describes
 src/App.js                  The root App component + ReactDOM.render call
 ```
 

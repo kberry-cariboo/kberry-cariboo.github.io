@@ -984,7 +984,7 @@
             checked: !!bvaModalData.rollover,
             onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
             className: "mt-2"
-          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget", /* @__PURE__ */ React.createElement("span", { className: "rollover-hint" }, "Unused amounts from earlier months this year add to this month's target (envelope style).")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
+          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: saveBva,

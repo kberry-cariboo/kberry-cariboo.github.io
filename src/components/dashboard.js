@@ -723,7 +723,6 @@
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowCustomize(false) }),
         /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-subtitle" }, "Show, hide, and reorder each widget individually. Your layout syncs across devices."),
         /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;

@@ -241,7 +241,15 @@
         if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
       };
       window.addEventListener("popstate", onPopState);
-      return () => window.removeEventListener("popstate", onPopState);
+      // popstate doesn't fire for an ordinary in-page link to "#/help" or for
+      // a hash typed into the address bar — only Back/Forward reach it. The
+      // Help page is linked to as a plain <a href="#/help"> from the copy it
+      // replaced, so the same handler runs on hashchange too.
+      window.addEventListener("hashchange", onPopState);
+      return () => {
+        window.removeEventListener("popstate", onPopState);
+        window.removeEventListener("hashchange", onPopState);
+      };
     }, []);
     useEffect(() => {
       if (budgetSub === "grid") setBudgetSub("monthly");
@@ -479,7 +487,6 @@
       setUndoStack((prev) => [...prev.slice(-9), e]);
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
     };
-    const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -794,7 +801,6 @@
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
-          setShowHelp(false);
           return;
         }
         if (document.querySelector(".modal-overlay,.fab-panel")) return;
@@ -848,7 +854,14 @@
             window.dispatchEvent(new CustomEvent("cf:quickadd"));
             break;
           case "?":
-            setShowHelp((v) => !v);
+            // The shortcuts used to be a modal of their own. They're a
+            // section of the Help page now, so "?" routes there and jumps
+            // to it once the page has rendered.
+            setTab("help");
+            setTimeout(() => {
+              const el = document.getElementById("help-shortcuts");
+              if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+            }, 150);
             break;
           case "ArrowLeft":
             if (tab === "budget") setBudgetMonth((v) => Math.max(0, v - 1));
@@ -1184,10 +1197,10 @@
             if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           }, 150);
         } }] : [],
-        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
+        { label: "Help", icon: "help", action: () => {
           setMenuOpen(false);
-          setShowHelp(true);
-        } }],
+          setTab("help");
+        } },
         ...showInstall ? [{ label: "Install App", icon: "download", action: () => {
           setMenuOpen(false);
           doInstall();
@@ -1454,7 +1467,7 @@
         planSub,
         setPlanSub
       }
-    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
@@ -1514,7 +1527,7 @@
         setMemberDisabled,
         updateMemberName
       }
-    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
+    ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
         entry: undoStack[undoStack.length - 1],

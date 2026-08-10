@@ -322,18 +322,38 @@
         .household-signout-btn{font-size:12px;color:rgba(255,255,255,0.4);background:transparent;
           border:none;cursor:pointer;text-decoration:underline;}
         .text-center{text-align:center;}
-        /* ── auth-misc.js ── */
-        .shortcuts-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;
-          display:flex;align-items:center;justify-content:center;padding:20px;}
-        .shortcuts-card{background:var(--bgCard);border-radius:16px;padding:24px;max-width:380px;
-          width:100%;box-shadow:var(--shadowXl);}
-        .shortcuts-title{font-size:16px;font-weight:700;color:var(--text);}
-        .shortcuts-close{background:transparent;border:none;cursor:pointer;font-size:20px;color:var(--textLt);}
+        /* ── help.js ── */
+        /* The shortcut row and key cap outlived the modal they were written
+           for — they're the shortcuts section of the Help page now. */
         .shortcut-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;
           border-bottom:1px solid var(--border);}
         .shortcut-kbd{font-weight:600;padding:3px 10px;border-radius:6px;background:var(--stripe);
           border:1px solid var(--border);color:var(--text);}
-        .shortcuts-footer{font-size:11px;color:var(--textLt);margin-top:14px;text-align:center;}
+        /* Documentation is prose, so it gets a prose measure (the same 68ch
+           the desktop audit settled on) and prose line-height, not the
+           dashboard's tighter data rhythm. */
+        .help-p{font-size:13px;line-height:1.6;color:var(--textMid);max-width:68ch;margin:0 0 12px;}
+        .help-sub{font-size:13px;font-weight:700;color:var(--text);margin:18px 0 8px;
+          letter-spacing:0.01em;}
+        .help-page .cf-card>.help-sub:first-of-type{margin-top:6px;}
+        /* Term/description pairs as a two-column grid on a wide screen and a
+           stacked list on a narrow one — a definition list rather than a
+           table, because every "column" here is a sentence. */
+        .help-defs{display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr);
+          column-gap:20px;row-gap:10px;margin:0 0 12px;align-items:baseline;}
+        .help-defs dt,.help-term{font-size:13px;font-weight:600;color:var(--text);}
+        .help-defs dd,.help-desc{font-size:13px;line-height:1.6;color:var(--textMid);margin:0;
+          max-width:68ch;}
+        .help-steps{margin:0 0 12px;padding-left:20px;display:flex;flex-direction:column;gap:10px;}
+        .help-step{font-size:13px;color:var(--textMid);}
+        .help-step .help-term{display:block;}
+        .help-keys{max-width:420px;margin-bottom:12px;}
+        .help-footer{margin:4px 0 8px;text-align:right;}
+        /* Settings lost its explanatory paragraphs to the Help page, so it
+           carries a link to where they went. */
+        .settings-help-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;
+          font-weight:600;color:var(--primaryInk);text-decoration:none;padding:4px 0;}
+        .settings-help-link:hover{text-decoration:underline;}
         .feedback-toast{position:fixed;left:50%;transform:translateX(-50%);
           bottom:calc(84px + env(safe-area-inset-bottom));z-index:3000;cursor:pointer;color:#fff;
           font-size:13px;font-weight:600;padding:10px 20px;border-radius:24px;box-shadow:var(--shadowLg);
@@ -814,7 +834,6 @@
         .daily-balance-amt{font-weight:700;text-align:right;}
         .no-activity-msg{text-align:center;color:var(--textLt);padding:32px 24px;}
         .rollover-label{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);cursor:pointer;}
-        .rollover-hint{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
         .btn-pad-24{padding:9px 24px;}
         .bva-card{margin-top:20px;margin-bottom:12px;padding:0;overflow:hidden;}
         .bva-header-row{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;}
@@ -884,8 +903,10 @@
         .strat-extra-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--textMid);}
         .strat-extra-input{padding:5px 10px;width:90px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .strat-cards-row{display:flex;gap:12px;flex-wrap:wrap;}
-        .strat-footnote{font-size:10px;color:var(--textLt);}
-        .strat-footnote-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;}
+        /* Held a footnote on the left and the export buttons on the right;
+           the footnote is documentation now, so the exports keep the right
+           edge on their own. */
+        .strat-footnote-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;}
         .strat-error{font-size:12px;color:var(--red);margin-top:14px;}
         .strat-extra-slider{width:120px;accent-color:var(--primary);}
         .strat-debt-toggles{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
@@ -1012,8 +1033,7 @@
         .dash-toolbar>.dash-customize-row{margin-bottom:0;}
         .dash-toolbar>.dash-customize-row+.dash-customize-row{margin-left:auto;}
         .customize-modal-card{padding:24px;width:min(400px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;}
-        .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
-        .customize-subtitle{font-size:12px;color:var(--textLt);margin-bottom:16px;}
+        .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
         .customize-list{display:flex;flex-direction:column;gap:4px;}
         .customize-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--text);}
         .customize-checkbox{width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;}
@@ -1210,6 +1230,7 @@
           .cf-footer-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;}
           .settings-page-pills button{min-height:44px;}
           .settings-quicklinks a{min-height:44px;display:inline-flex;align-items:center;}
+          .settings-help-link{min-height:44px;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
           /* Column reordering is HTML5 drag-and-drop, which never fires on
              touch. The grab cursor, the ⠿ dots and the "drag to reorder"
@@ -1597,6 +1618,11 @@
              + target + overage genuinely doesn't fit at 320px. */
           .bva-row{flex-wrap:nowrap!important;align-items:flex-start;}
           .bva-amounts{flex-wrap:wrap!important;justify-content:flex-end;row-gap:0;}
+          /* A 140px term column leaves ~190px for a sentence at 393px, which
+             turns every definition into a tall two-column sliver. Stack them:
+             the term reads as a heading for the paragraph under it. */
+          .help-defs{grid-template-columns:1fr;row-gap:2px;}
+          .help-defs dd{margin-bottom:10px;}
           /* Entries filter row: stack on phone */
           .entries-filter-row{flex-wrap:wrap!important;gap:6px!important;}
           /* These two rows scroll horizontally with the scrollbar explicitly
@@ -4700,7 +4726,7 @@ document.addEventListener('DOMContentLoaded',function(){
     notes: "Notes",
     actions: ""
   };
-  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts"];
+  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts", "help"];
   const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
   const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt"];
   function parseTabHash() {
@@ -6433,7 +6459,6 @@ document.addEventListener('DOMContentLoaded',function(){
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: close }),
         /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, "Import CSV"), /* @__PURE__ */ React.createElement("button", { onClick: close, "aria-label": "Close", className: "fab-panel-close" }, "✕")),
         step === "upload" && /* @__PURE__ */ React.createElement(React.Fragment, null,
-          /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Import transactions from your bank's CSV export as one-time entries. You'll map the columns and review everything before it's added."),
           /* @__PURE__ */ React.createElement("label", { className: "csvimport-drop-zone" },
             /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 22 }),
             /* @__PURE__ */ React.createElement("span", null, "Choose a CSV file"),
@@ -7167,6 +7192,8 @@ document.addEventListener('DOMContentLoaded',function(){
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3 22 20H2z" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 9, x2: 12, y2: 13.5 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 16.5, r: 0.6, fill: "currentColor", stroke: "none" }));
       case "check-circle":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "8,12.5 11,15.5 16,9" }));
+      case "help":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("path", { d: "M9.4 9.2a2.7 2.7 0 1 1 3.4 3.1c-.6.2-.8.6-.8 1.2v.4" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 16.8, x2: 12, y2: 16.9 }));
       case "printer":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9V3h12v6" }), /* @__PURE__ */ React.createElement("rect", { x: 4, y: 9, width: 16, height: 8, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 8, y: 13, width: 8, height: 6 }));
       case "save":
@@ -7400,7 +7427,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount. Recording a different actual updates your balance and Budget vs. Actual totals, without changing the plan.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -8588,7 +8615,7 @@ document.addEventListener('DOMContentLoaded',function(){
             checked: !!bvaModalData.rollover,
             onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
             className: "mt-2"
-          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget", /* @__PURE__ */ React.createElement("span", { className: "rollover-hint" }, "Unused amounts from earlier months this year add to this month's target (envelope style).")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
+          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: saveBva,
@@ -10160,7 +10187,7 @@ Fill every field of the response schema. Rules:
           monthsDelta > 0 && ` ${monthsDelta} ${monthsDelta === 1 ? "month" : "months"}`,
           " over Snowball on this debt load."
         );
-        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement("div", { className: "strat-footnote" }, "Includes debts with a balance and payment entered. Freed-up payments roll into the next debt automatically."), /* @__PURE__ */ React.createElement(ExportBar, {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
           onCSV: () => downloadCSV(
             "CashFlow_PayoffStrategy.csv",
             [
@@ -11094,7 +11121,6 @@ Fill every field of the response schema. Rules:
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowCustomize(false) }),
         /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-subtitle" }, "Show, hide, and reorder each widget individually. Your layout syncs across devices."),
         /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;
@@ -11164,6 +11190,222 @@ Fill every field of the response schema. Rules:
       }
       return out;
     })());
+  }
+  // The app's user documentation. It replaces the explanatory paragraphs that
+  // used to sit inside the UI — a control's label says what it is, this page
+  // says how the feature works — and it is where the keyboard shortcuts live
+  // now that they aren't a modal.
+  //
+  // The prose is data, not markup: a section is a list of blocks, and the
+  // renderer below turns each block into an element. Editing the docs then
+  // means editing English in one place instead of threading text through
+  // createElement calls.
+  const HELP_SECTIONS = [
+    {
+      id: "help-start",
+      title: "Getting started",
+      blocks: [
+        { p: "CashFlow is a forward-looking budget. You describe your income and bills once — including how often each one repeats — and the app projects every occurrence across the year, carrying a running balance forward so you can see what your account looks like on any future date." },
+        { p: "Three things get you a useful forecast:" },
+        { steps: [
+          ["Set your opening balance", "Settings → Budget Years holds the starting balance for your first budget year. Every later year carries forward from the one before it, so it is only entered once."],
+          ["Add your recurring entries", "Pay, rent or mortgage, loan payments, utilities, subscriptions. Recurring entries fill the whole year from one definition."],
+          ["Set an alert threshold", "Settings → Alert Threshold. Balances below it are flagged amber on the Dashboard, in the Forecast and in the Budget grid; below zero is red."]
+        ] },
+        { p: "Everything is stored on your device first. If the app is configured with a Supabase project, your household's data also syncs to the cloud and to other devices signed in to the same household." }
+      ]
+    },
+    {
+      id: "help-entries",
+      title: "Entries and schedules",
+      blocks: [
+        { p: "An entry is a definition, not a single transaction. A monthly rent entry is one row in Entries and twelve rows in the budget." },
+        { sub: "Entry types" },
+        { defs: [
+          ["Income", "Adds to the balance and to income totals."],
+          ["Expense", "Subtracts from the balance and adds to expense totals."],
+          ["Transfer", "Moves money without counting as income or expense — it changes the running balance but is left out of the income and expense totals and out of Budget vs Actual."]
+        ] },
+        { sub: "How often it repeats" },
+        { defs: [
+          ["One-time", "A single date."],
+          ["Daily / weekly / monthly / yearly", "Every N days, weeks, months or years. Weekly repeats can name specific weekdays, so “every second Friday” and “every Monday and Thursday” are both one entry."],
+          ["Semi-monthly", "The 1st-and-15th pattern, for pay that lands twice a month."],
+          ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
+        ] },
+        { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
+        { sub: "Changing one occurrence without changing the plan" },
+        { p: "Right-click a budget row (long-press on touch, or use the ⋮ button) for the row menu:" },
+        { defs: [
+          ["Edit this occurrence", "Overrides the amount or notes for that date only. The entry itself is untouched, and Settings → Audit lists every override you have made this year with a one-click revert."],
+          ["Edit recurring entry", "Changes the entry, and so every occurrence of it."],
+          ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates can be restored from the same menu."],
+          ["Reset occurrence", "Removes an override and puts the originally scheduled amount back."],
+          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."]
+        ] },
+        { sub: "Marking things paid" },
+        { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
+        { p: "To record that a bill actually cost something different, use Reconcile from the row menu and enter the amount you really paid. Leaving it blank means “paid as scheduled”. A different actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
+        { sub: "Getting entries in faster" },
+        { defs: [
+          ["Templates", "Save a filled-in entry form as a template from the form itself, then reuse it. Settings → Templates lists what you have saved."],
+          ["Duplicate", "Copies an existing entry from the Entries row menu."],
+          ["CSV import", "Entries → Import CSV takes a bank export, maps its columns to fields, and adds the rows as one-time entries. You review everything — and can drop likely duplicates — before anything is added."],
+          ["Describe it in words", "With AI access configured, type “rent 1650 on the 1st of every month” and the entry form fills itself in for you to check."],
+          ["Scan a receipt", "With AI access configured, photograph a receipt and the amount, date and description are read off it."]
+        ] }
+      ]
+    },
+    {
+      id: "help-budget",
+      title: "The Budget tab",
+      blocks: [
+        { p: "Five views of the same year. The month strip switches months; the year pills beside the logo switch budget years." },
+        { defs: [
+          ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
+          ["Daily", "The same month grouped day by day, including the days with nothing scheduled — useful for spotting the stretch where four bills land in one week."],
+          ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
+          ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
+          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, search descriptions and notes, sort any column."]
+        ] },
+        { sub: "Rollover targets" },
+        { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
+        { sub: "The Forecast confidence column" },
+        { defs: [
+          ["✓", "Either income, or an expense that fits inside its category's monthly target."],
+          ["—", "No target is set for that category, so there is nothing to judge it against."],
+          ["A percentage", "The expense is bigger than the target for its category that month, and by how much. Amber to about 150% of target, red beyond it."]
+        ] },
+        { p: "Confidence is about your own budget targets, not about whether the bill will arrive. An unbudgeted category is not a problem — it just means the forecast can't check that row for you." }
+      ]
+    },
+    {
+      id: "help-dashboard",
+      title: "The Dashboard",
+      blocks: [
+        { p: "The Dashboard answers “am I all right?” at a glance, and every number on it is drawn from the same projection as the Budget tab." },
+        { defs: [
+          ["Balance today · Next low point · Due rest of month", "The three tiles across the top: where you are now, the lowest balance coming up and how far away it is, and what is still to be paid this month."],
+          ["Upcoming — next 7 days", "Everything scheduled in the next week with its balance after, and a circle to tick each one off."],
+          ["Annual income, expenses, surplus and lowest balance", "The year as four numbers, each with a sparkline of its shape across the months."],
+          ["What changed", "A written comparison of this month against last, generated on demand when AI access is configured."],
+          ["Charts", "Running balance, surplus or shortfall by month, income against expenses, top expense categories, income sources, and budget against actual for the year."],
+          ["Monthly summary and year-over-year", "The twelve-month table, exportable to CSV or PDF, and a comparison against your other budget years once you have more than one."]
+        ] },
+        { p: "Customize (top left) shows, hides and reorders each widget individually. Your layout is part of your data, so it syncs across your devices." },
+        { p: "When a projected balance drops below your alert threshold, a banner appears at the top of the Dashboard and Budget tabs; View alerts opens the full list, and Dismiss hides the banner until tomorrow." }
+      ]
+    },
+    {
+      id: "help-plan",
+      title: "The Plan tab",
+      blocks: [
+        { sub: "Debt payoff" },
+        { p: "Debts you already budget for are detected from your entries — anything in the Debt / Credit category shows up here automatically with its monthly payment. Add a balance and an interest rate and the tracker works out the interest still to pay and the date it clears. Debts you don't pay from this budget can be added manually." },
+        { sub: "Payoff strategy" },
+        { defs: [
+          ["Avalanche", "Highest interest rate first. Costs the least in total interest."],
+          ["Snowball", "Smallest balance first. Clears individual debts sooner, which some people find easier to stick to."]
+        ] },
+        { p: "Both simulations assume you keep paying the same total every month: when one debt clears, its payment rolls into the next one. Extra $/month adds to that total, and the chips above the chart include or exclude individual debts, so you can see what one of them is costing you. Only debts with both a balance and a payment can be simulated." },
+        { sub: "Savings goals" },
+        { p: "A goal is a target amount, what you have saved so far, and what you put aside each month. The app works out the date you reach it, says whether you are on track for a target date you set, and tells you the monthly figure that would get you there if you aren't. A goal can also add its payout to the budget as a one-time expense on the target date, so a planned purchase shows up in the forecast." }
+      ]
+    },
+    {
+      id: "help-ai",
+      title: "AI Insights",
+      blocks: [
+        { p: "The AI features are optional and off until you configure access. They cover the yearly financial assessment, the monthly “what changed” summary, receipt scanning, CSV categorisation and natural-language entry capture." },
+        { sub: "Two ways to give the app access" },
+        { defs: [
+          ["An API key on this device", "Settings → AI Insights holds an Anthropic API key. It is stored on this device only and is deliberately never synced or shared with household members, because it bills your account — so enter it again on each device you use. Anyone who can run script on the page could read it, as with any browser-side key."],
+          ["The ai-proxy Edge Function", "Deploying the proxy that ships with the project (see the README) keeps the key on the server, shares it across the whole household, and means no key is held in a browser at all. The app prefers the proxy automatically whenever it is available."]
+        ] },
+        { p: "Running an AI feature sends the relevant budget data to Anthropic — through your proxy if you have one, straight from your browser if you are using a local key. Nothing is sent until you press the button that does it." },
+        { p: "The assessment is generated by a language model. It is a second opinion on your own numbers, not professional financial advice." }
+      ]
+    },
+    {
+      id: "help-settings",
+      title: "Settings reference",
+      blocks: [
+        { sub: "General" },
+        { defs: [
+          ["Alert Threshold", "The balance you want to be warned about. Used for Dashboard alerts, Forecast warnings and the amber balances in the Budget grid."],
+          ["Appearance", "Light or dark theme. The choice is per device."],
+          ["Notifications", "One notification a day at the hour you choose, listing every bill due that day with its amount, plus a warning when your forecast balance is heading below your threshold. With background delivery configured these arrive as ordinary system notifications whether or not the app is open; without it they only appear while the app is open."],
+          ["Budget Years", "Years are added in sequence — the next one only. The first year holds your opening balance; later years carry forward automatically. Switch the active year with the pills beside the logo."],
+          ["Data Backup & Restore", "Exports everything to a JSON file, and restores one. Restoring replaces the data you have now, so export first if you are unsure."],
+          ["Supabase — Auto Sync", "Shows whether cloud sync is connected and when it last saved. Save Now and Reload from Cloud force the transfer in either direction."],
+          ["Manage Categories", "Add, rename, recolour, reorder and remove categories. Renaming applies to new entries; existing entries keep the category name they were saved with."],
+          ["Security", "Auto-lock hides the app behind a lock screen after 5, 15 or 30 minutes in the background. On a phone that supports it you can unlock with your fingerprint or face instead of your password; the registration is per device."],
+          ["Target Budget Reset", "Sets every category's monthly target to the expenses already scheduled for that month. It overwrites all existing targets for the year — a starting point to fine-tune, not an undoable tweak."],
+          ["Danger Zone", "Clears this device's local cache. Data in Supabase is not affected and the app reloads from the cloud straight after; on a device with no cloud sync this is not recoverable."]
+        ] },
+        { sub: "Household" },
+        { p: "Lists the people in your household and creates invite codes for new ones. A family member signs in, enters the code, and shares the same budget." },
+        { sub: "Templates" },
+        { p: "The entry templates you have saved, with a Remove button for each." },
+        { sub: "Audit" },
+        { p: "Every per-date override you have made this year, newest first, each with a Revert that restores the originally scheduled amount and notes." }
+      ]
+    },
+    {
+      id: "help-shortcuts",
+      title: "Keyboard shortcuts",
+      blocks: [
+        { p: "Shortcuts work whenever you are not typing in a field." },
+        { keys: [
+          ["1–5", "Switch tabs, in order"],
+          ["D / B / P / A / S", "Dashboard · Budget · Plan · AI · Settings"],
+          ["F / R", "Budget → Forecast · Entries"],
+          ["N", "Quick add entry"],
+          ["/", "Focus search"],
+          ["←  →", "Previous / next month, in Budget"],
+          ["Esc", "Clear search / close"],
+          ["?", "Open this page"]
+        ] },
+        { p: "On a phone, swipe left or right across the budget grid to change months, and pull down at the top of the page to sync." }
+      ]
+    },
+    {
+      id: "help-data",
+      title: "Your data, offline and privacy",
+      blocks: [
+        { p: "The app is a single static page with no server of its own. Your budget lives in this browser's storage, and — when the app is configured with a Supabase project — in that project's database, which you control." },
+        { defs: [
+          ["Offline", "Everything except cloud sync and the AI features works with no connection. Changes made offline are kept on the device and sync when the connection is back."],
+          ["Installing", "Install App in the account menu adds it to your home screen or desktop, where it runs in its own window."],
+          ["Two devices at once", "If a device has unsynced changes and the cloud copy changed as well, the app stops and asks which to keep rather than guessing."],
+          ["Backups", "Cloud sync is not a backup — it copies deletions too. Export a JSON backup from Settings periodically; the app reminds you when it has been more than a month."]
+        ] }
+      ]
+    }
+  ];
+  function HelpView() {
+    const renderBlock = (block, i) => {
+      if (block.p) return /* @__PURE__ */ React.createElement("p", { key: i, className: "help-p" }, block.p);
+      if (block.sub) return /* @__PURE__ */ React.createElement("h3", { key: i, className: "help-sub" }, block.sub);
+      if (block.steps) return /* @__PURE__ */ React.createElement("ol", { key: i, className: "help-steps" }, block.steps.map(([term, desc]) => /* @__PURE__ */ React.createElement("li", { key: term, className: "help-step" }, /* @__PURE__ */ React.createElement("span", { className: "help-term" }, term), /* @__PURE__ */ React.createElement("span", { className: "help-desc" }, desc))));
+      if (block.defs) return /* @__PURE__ */ React.createElement("dl", { key: i, className: "help-defs" }, block.defs.map(([term, desc]) => /* @__PURE__ */ React.createElement(React.Fragment, { key: term }, /* @__PURE__ */ React.createElement("dt", { className: "help-term" }, term), /* @__PURE__ */ React.createElement("dd", { className: "help-desc" }, desc))));
+      if (block.keys) return /* @__PURE__ */ React.createElement("div", { key: i, className: "help-keys" }, block.keys.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, className: "shortcut-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13 shortcut-kbd" }, key))));
+      return null;
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        key: s.id,
+        href: `#${s.id}`,
+        onClick: (e) => {
+          e.preventDefault();
+          const el = document.getElementById(s.id);
+          if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+        },
+        className: "quicklink-pill"
+      },
+      s.title
+    ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))), /* @__PURE__ */ React.createElement("div", { className: "help-footer txl" }, "Build ", APP_VERSION));
   }
   function AlertsPanel({ flow, alertThreshold, setTab, gotoForecast = () => {
   } }) {
@@ -11685,7 +11927,7 @@ Fill every field of the response schema. Rules:
       },
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
       // Order matches the sections as they appear down the page.
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
@@ -11711,7 +11953,7 @@ Fill every field of the response schema. Rules:
         className: "quicklink-pill"
       },
       label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Powers the AI features: the yearly assessment, receipt scanning, CSV categorisation and natural-language entry capture. The key is stored on this device only \u2014 it is deliberately never synced to Supabase or shared with household members, because it bills your account, so enter it again on each device you use. Anyone able to run script in this page could read it, same as any other browser-side API key. To avoid holding a key in the browser at all, deploy the ai-proxy Edge Function (see the README) \u2014 the app prefers it automatically when it's available. Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
@@ -11756,7 +11998,7 @@ Fill every field of the response schema. Rules:
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "Used everywhere in the app: Dashboard alerts, Forecast warnings, and Budget balance colouring.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
       if (v) enableNotifications();
       else disableNotifications();
     }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
@@ -11768,7 +12010,7 @@ Fill every field of the response schema. Rules:
         className: "autolock-select"
       },
       HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
-    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, "One notification a day, listing every bill due that day with its amount, plus a warning when your forecast balance is heading below your threshold. With background delivery active these arrive as ordinary system notifications on your phone, at the time set above, whether or not the app is open — otherwise they only show while it is."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, `Years must be added in sequence — only ${nextYear} can be added next. Opening balance for the first year is set here; subsequent years carry forward automatically.`), sortedYears.map((yc) => {
+    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -11882,7 +12124,7 @@ Fill every field of the response schema. Rules:
         },
         onCancel: () => setConfirmCopyYear(null)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-16" }, "Back up all your data to a JSON file and restore it any time. Your existing data will be replaced on restore."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
@@ -12074,7 +12316,7 @@ Fill every field of the response schema. Rules:
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" }, bioEnabled ? "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your fingerprint / face or your password." : "Locks the screen if the app stays hidden or backgrounded longer than the selected time — unlock with your password."), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" }, "Uses your device's screen-lock biometric (fingerprint on Samsung / Android, Face ID or Touch ID on Apple). Registered on this device only — you'll set it up again on any other device or browser you sign in from."), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" }), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Every time you open the app on this device it starts locked and asks for your fingerprint right away — you stay signed in underneath, so there's no password to retype.")), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Set every category's monthly budget target equal to the actual expenses scheduled for that month in ", activeYear, ". This overwrites all existing targets for ", activeYear, " with a plan that matches your current entries \u2014 a useful starting point you can then fine-tune."), /* @__PURE__ */ React.createElement(
+    )), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" })), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),
@@ -12114,7 +12356,7 @@ Fill every field of the response schema. Rules:
         },
         onCancel: () => setConfirmTgtReset(false)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-danger", className: "danger-card" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Clear this device's local cache \u2014 entries, overrides, categories, templates, budget targets, years, and local preferences. ", household ? "Your data in Supabase is not affected \u2014 the app will reload it from the cloud right after." : "Export a backup first if you might need this data again.", " This cannot be undone locally."), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-danger", className: "danger-card" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmWipe(true),
@@ -12215,14 +12457,14 @@ Fill every field of the response schema. Rules:
         className: "cf-btn cf-btn--primary"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
-    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, 'Templates let you quickly fill the entry form with common entries. Save templates from the entry form using "Save as template".'), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, t.type === "income" ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
+    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, t.type === "income" ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
         className: "cf-btn cf-btn--danger cf-btn--yearremove"
       },
       "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, "Per-date overrides you've made to recurring entries. Reverting restores the originally scheduled amount and notes for that date."), (() => {
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), (() => {
       const ovrs = overridesByYr[activeYear] || {};
       const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
       if (rows.length === 0) {
@@ -12286,19 +12528,6 @@ Fill every field of the response schema. Rules:
       }
       return this.props.children;
     }
-  }
-  function ShortcutsHelp({ onClose }) {
-    const shortcuts = [
-      ["1\u20135", "Switch tabs (in order)"],
-      ["D / B / P / A / S", "Dashboard \xB7 Budget \xB7 Plan \xB7 AI \xB7 Settings"],
-      ["F / R", "Budget \u2192 Forecast \xB7 Entries"],
-      ["N", "Quick add entry"],
-      ["/", "Focus search"],
-      ["\u2190  \u2192", "Previous / next month (Budget)"],
-      ["Esc", "Clear search / close"],
-      ["?", "Show this help"]
-    ];
-    return /* @__PURE__ */ React.createElement("div", { onClick: onClose, className: "shortcuts-backdrop" }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), className: "shortcuts-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "shortcuts-title" }, "Keyboard Shortcuts"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", className: "shortcuts-close" }, "\u2715")), shortcuts.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, className: "shortcut-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13 shortcut-kbd" }, key))), /* @__PURE__ */ React.createElement("div", { className: "shortcuts-footer" }, "Shortcuts work when not typing in a field")));
   }
   function MoneyInput(_a) {
     var _b = _a, { value, onChange, style, inputRef } = _b, rest = __objRest(_b, ["value", "onChange", "style", "inputRef"]);
@@ -13349,7 +13578,15 @@ Fill every field of the response schema. Rules:
         if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
       };
       window.addEventListener("popstate", onPopState);
-      return () => window.removeEventListener("popstate", onPopState);
+      // popstate doesn't fire for an ordinary in-page link to "#/help" or for
+      // a hash typed into the address bar — only Back/Forward reach it. The
+      // Help page is linked to as a plain <a href="#/help"> from the copy it
+      // replaced, so the same handler runs on hashchange too.
+      window.addEventListener("hashchange", onPopState);
+      return () => {
+        window.removeEventListener("popstate", onPopState);
+        window.removeEventListener("hashchange", onPopState);
+      };
     }, []);
     useEffect(() => {
       if (budgetSub === "grid") setBudgetSub("monthly");
@@ -13587,7 +13824,6 @@ Fill every field of the response schema. Rules:
       setUndoStack((prev) => [...prev.slice(-9), e]);
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
     };
-    const [showHelp, setShowHelp] = useState(false);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -13902,7 +14138,6 @@ Fill every field of the response schema. Rules:
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
-          setShowHelp(false);
           return;
         }
         if (document.querySelector(".modal-overlay,.fab-panel")) return;
@@ -13956,7 +14191,14 @@ Fill every field of the response schema. Rules:
             window.dispatchEvent(new CustomEvent("cf:quickadd"));
             break;
           case "?":
-            setShowHelp((v) => !v);
+            // The shortcuts used to be a modal of their own. They're a
+            // section of the Help page now, so "?" routes there and jumps
+            // to it once the page has rendered.
+            setTab("help");
+            setTimeout(() => {
+              const el = document.getElementById("help-shortcuts");
+              if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+            }, 150);
             break;
           case "ArrowLeft":
             if (tab === "budget") setBudgetMonth((v) => Math.max(0, v - 1));
@@ -14292,10 +14534,10 @@ Fill every field of the response schema. Rules:
             if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
           }, 150);
         } }] : [],
-        ...isCoarsePointer ? [] : [{ label: "Keyboard Shortcuts", icon: "keyboard", action: () => {
+        { label: "Help", icon: "help", action: () => {
           setMenuOpen(false);
-          setShowHelp(true);
-        } }],
+          setTab("help");
+        } },
         ...showInstall ? [{ label: "Install App", icon: "download", action: () => {
           setMenuOpen(false);
           doInstall();
@@ -14562,7 +14804,7 @@ Fill every field of the response schema. Rules:
         planSub,
         setPlanSub
       }
-    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "settings" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
@@ -14622,7 +14864,7 @@ Fill every field of the response schema. Rules:
         setMemberDisabled,
         updateMemberName
       }
-    ))), showHelp && /* @__PURE__ */ React.createElement(ShortcutsHelp, { onClose: () => setShowHelp(false) }), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
+    ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
         entry: undoStack[undoStack.length - 1],

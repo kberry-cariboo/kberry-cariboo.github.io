@@ -32,6 +32,7 @@ const APP_MODULES = [
   "src/components/plan-dashboard-shared.js",
   "src/components/plan.js",
   "src/components/dashboard.js",
+  "src/components/help.js",
   "src/components/settings.js",
   "src/components/auth-misc.js",
   "src/App.js",
