@@ -235,8 +235,23 @@
     useEffect(() => {
       const onPopState = () => {
         const parsed = parseTabHash();
+        // Not every hash is a route: the skip link is "#main-content", and
+        // in-page anchors elsewhere are their own element ids. Claiming the
+        // sync guard for one of those swallowed the *next* real tab change's
+        // hash write, which left the URL stuck on "#main-content" — a stale
+        // deep link and a Back button pointing at the wrong view.
+        if (!parsed.tab) return;
         hashSyncGuard.current = true;
-        if (parsed.tab) setTab(parsed.tab);
+        // The guard is normally consumed by the sync effect below — but that
+        // effect only re-runs when one of these setters actually changes
+        // something, and a hash naming the view you are already on doesn't.
+        // Drop it on the next tick so a no-op navigation can't leave it armed
+        // for the next real one. (Clearing early is harmless: the effect
+        // still checks location.hash before it pushes anything.)
+        setTimeout(() => {
+          hashSyncGuard.current = false;
+        }, 0);
+        setTab(parsed.tab);
         if (parsed.tab === "budget" && parsed.budgetSub) setBudgetSub(parsed.budgetSub);
         if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
       };
