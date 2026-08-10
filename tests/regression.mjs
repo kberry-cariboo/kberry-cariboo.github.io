@@ -570,6 +570,34 @@ await test('A1 built-in self-test suite passes', async () => {
     if (await page.locator('.shortcuts-card').count() > 0) throw new Error('the old shortcuts modal is still being rendered');
   });
 
+  await test('B26 a non-route hash does not swallow the next real navigation', async () => {
+    // The router listens for hashchange so plain links into #/help work. Hashes
+    // that aren't routes — the skip link's #main-content, in-page anchors —
+    // reach the same handler, and claiming the sync guard for one of those
+    // used to leave the URL stuck on it through the next tab change.
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(600);
+    await page.evaluate(() => document.querySelector('.skip-link').click());
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.querySelectorAll('.tab-bar-btn')[1].click());
+    await page.waitForTimeout(500);
+    const hash = await page.evaluate(() => location.hash);
+    if (!hash.startsWith('#/budget')) throw new Error('hash stuck at "' + hash + '" after switching to Budget');
+  });
+
+  await test('B27 Customize closes on Escape, like every other dialog', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: /Customize/i }).first().click();
+    await page.locator('.customize-modal-card').waitFor(V);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    if (await page.locator('.customize-modal-card').count() > 0) {
+      await page.getByRole('button', { name: 'Done' }).click();
+      throw new Error('Customize stayed open after Escape');
+    }
+  });
+
   await ctx.close();
 }
 

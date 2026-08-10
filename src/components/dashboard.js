@@ -126,6 +126,19 @@
     const isMobile = useIsMobile();
     const isPhone = useIsPhone();
     const [showCustomize, setShowCustomize] = useState(false);
+    // Every other dismissible dialog in the app closes on Escape — the
+    // confirm dialogs, the occurrence editor, the context menus, the receipt
+    // lightbox. Customize was the exception, and it has nothing to lose by
+    // closing: each toggle applies as you make it, so Done is a way out, not
+    // a commit.
+    useEffect(() => {
+      if (!showCustomize) return;
+      const h = (e) => {
+        if (e.key === "Escape") setShowCustomize(false);
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [showCustomize]);
     const [obDraft, setObDraft] = useState("");
     useEffect(() => {
       if (dashHidden.charts || dashHidden.incomeRow) {

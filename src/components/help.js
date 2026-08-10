@@ -42,24 +42,24 @@
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
         { sub: "Changing one occurrence without changing the plan" },
-        { p: "Right-click a budget row (long-press on touch, or use the ⋮ button) for the row menu:" },
+        { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [
-          ["Edit this occurrence", "Overrides the amount or notes for that date only. The entry itself is untouched, and Settings → Audit lists every override you have made this year with a one-click revert."],
+          ["Edit this occurrence", "Overrides the amount, notes or actual amount paid for that date only — the entry itself is untouched. It is also where a receipt photo is attached. Settings → Audit lists your twenty most recent overrides with a one-click revert."],
           ["Edit recurring entry", "Changes the entry, and so every occurrence of it."],
-          ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates can be restored from the same menu."],
+          ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates are listed above the grid for that month, each with a Restore button."],
           ["Reset occurrence", "Removes an override and puts the originally scheduled amount back."],
           ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."]
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
-        { p: "To record that a bill actually cost something different, use Reconcile from the row menu and enter the amount you really paid. Leaving it blank means “paid as scheduled”. A different actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
+        { p: "To record that a bill actually cost something different, open Edit this occurrence and fill in Actual Amount Paid. Leaving it blank means “paid as scheduled”. An actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
         { sub: "Getting entries in faster" },
         { defs: [
           ["Templates", "Save a filled-in entry form as a template from the form itself, then reuse it. Settings → Templates lists what you have saved."],
           ["Duplicate", "Copies an existing entry from the Entries row menu."],
           ["CSV import", "Entries → Import CSV takes a bank export, maps its columns to fields, and adds the rows as one-time entries. You review everything — and can drop likely duplicates — before anything is added."],
           ["Describe it in words", "With AI access configured, type “rent 1650 on the 1st of every month” and the entry form fills itself in for you to check."],
-          ["Scan a receipt", "With AI access configured, photograph a receipt and the amount, date and description are read off it."]
+          ["Scan a receipt", "Edit this occurrence takes a receipt photo. With AI access configured, Read receipt fills the merchant, date and total in from the image for you to check — nothing is saved until you save the occurrence."]
         ] }
       ]
     },
@@ -70,10 +70,10 @@
         { p: "Five views of the same year. The month strip switches months; the year pills beside the logo switch budget years." },
         { defs: [
           ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
-          ["Daily", "The same month grouped day by day, including the days with nothing scheduled — useful for spotting the stretch where four bills land in one week."],
+          ["Daily", "The same month as one card per day that has something on it, with the balance carried to the end of that day — useful for spotting the week where four bills land together. Desktop only: on a phone the Monthly cards already read day by day."],
           ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
           ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
-          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, search descriptions and notes, sort any column."]
+          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts — a bare number matches it, and \">500\" or \"<50\" filter by size."]
         ] },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
@@ -108,7 +108,7 @@
       title: "The Plan tab",
       blocks: [
         { sub: "Debt payoff" },
-        { p: "Debts you already budget for are detected from your entries — anything in the Debt / Credit category shows up here automatically with its monthly payment. Add a balance and an interest rate and the tracker works out the interest still to pay and the date it clears. Debts you don't pay from this budget can be added manually." },
+        { p: "Debts you already budget for are detected from your entries: an expense whose description or category reads like debt — loan, credit, mortgage, a card name, a vehicle payment — is picked up automatically with its monthly payment. Add a balance and an interest rate and the tracker works out the interest still to pay and the date it clears. Debts you don't pay from this budget can be added manually, and anything detected wrongly can be hidden." },
         { sub: "Payoff strategy" },
         { defs: [
           ["Avalanche", "Highest interest rate first. Costs the least in total interest."],
