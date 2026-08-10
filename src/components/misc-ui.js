@@ -151,6 +151,8 @@
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3 22 20H2z" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 9, x2: 12, y2: 13.5 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 16.5, r: 0.6, fill: "currentColor", stroke: "none" }));
       case "check-circle":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "8,12.5 11,15.5 16,9" }));
+      case "help":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("path", { d: "M9.4 9.2a2.7 2.7 0 1 1 3.4 3.1c-.6.2-.8.6-.8 1.2v.4" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 16.8, x2: 12, y2: 16.9 }));
       case "printer":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9V3h12v6" }), /* @__PURE__ */ React.createElement("rect", { x: 4, y: 9, width: 16, height: 8, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 8, y: 13, width: 8, height: 6 }));
       case "save":
@@ -384,7 +386,7 @@
               if (e.key === "Enter") save();
             }
           }
-        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount. Recording a different actual updates your balance and Budget vs. Actual totals, without changing the plan.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",

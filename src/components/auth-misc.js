@@ -1,16 +1,3 @@
-  function ShortcutsHelp({ onClose }) {
-    const shortcuts = [
-      ["1\u20135", "Switch tabs (in order)"],
-      ["D / B / P / A / S", "Dashboard \xB7 Budget \xB7 Plan \xB7 AI \xB7 Settings"],
-      ["F / R", "Budget \u2192 Forecast \xB7 Entries"],
-      ["N", "Quick add entry"],
-      ["/", "Focus search"],
-      ["\u2190  \u2192", "Previous / next month (Budget)"],
-      ["Esc", "Clear search / close"],
-      ["?", "Show this help"]
-    ];
-    return /* @__PURE__ */ React.createElement("div", { onClick: onClose, className: "shortcuts-backdrop" }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), className: "shortcuts-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "shortcuts-title" }, "Keyboard Shortcuts"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, "aria-label": "Close", title: "Close", className: "shortcuts-close" }, "\u2715")), shortcuts.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, className: "shortcut-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13 shortcut-kbd" }, key))), /* @__PURE__ */ React.createElement("div", { className: "shortcuts-footer" }, "Shortcuts work when not typing in a field")));
-  }
   function MoneyInput(_a) {
     var _b = _a, { value, onChange, style, inputRef } = _b, rest = __objRest(_b, ["value", "onChange", "style", "inputRef"]);
     const [focused, setFocused] = useState(false);
