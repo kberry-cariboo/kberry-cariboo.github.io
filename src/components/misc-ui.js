@@ -297,11 +297,22 @@
       setErr("");
       setDayErr("");
       setActualErr("");
+      // The date fields open on the effective date, which for a weekend payday
+      // is the Friday the deposit lands on rather than the payday itself.
+      // Saving that back as an override would pin this occurrence to the
+      // Friday and switch the automatic adjustment off for it — same date
+      // today, but the row would stop explaining itself, and it would no longer
+      // follow the entry if the payday later moved. Untouched date fields are
+      // written back as the scheduled date instead, so the shift stays live;
+      // an actual edit to either field is a deliberate reschedule and is saved
+      // exactly as typed.
+      const mNum = isNaN(monthNum) ? ev.month : monthNum;
+      const dateUntouched = mNum === ev.month && dNum === ev.day;
       onSave({
         desc,
         amount: a,
-        month: isNaN(monthNum) ? ev.month : monthNum,
-        day: dNum,
+        month: dateUntouched && ev.scheduledMonth !== void 0 ? ev.scheduledMonth : mNum,
+        day: dateUntouched && ev.scheduledDay !== void 0 ? ev.scheduledDay : dNum,
         notes,
         attachment,
         actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
@@ -330,6 +341,7 @@
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        ev.depositShifted && /* @__PURE__ */ React.createElement("div", { className: "oem-hint oem-hint--shift" }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "↤ "), depositShiftNote(ev), " Leave the date alone to keep that automatic; changing it pins this occurrence to the date you set."),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {

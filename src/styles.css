@@ -261,6 +261,10 @@
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
         .oem-hint{font-size:12px;color:var(--amberInk);margin-bottom:18px;}
+        /* The weekend-deposit explanation sits above the standard hint: it
+           reports what the app already did, so it reads as information rather
+           than as the amber "careful, this is per-date" note under it. */
+        .oem-hint--shift{color:var(--textMid);margin-bottom:8px;}
         .flex-55{flex:1 1 55%;}
         .flex-45{flex:1 1 45%;}
         .oem-attach-img{height:56px;border-radius:8px;border:1px solid var(--border);cursor:pointer;}
@@ -747,6 +751,10 @@
         .budget-desc-td{font-size:13px;padding:8px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .attach-indicator{margin-left:6px;display:inline-flex;}
         .override-mark{margin-left:6px;font-size:10px;color:var(--amberInk);font-weight:700;}
+        /* Marks a payday whose direct deposit was pulled back off a weekend.
+           Quiet on purpose — the date shown is the right one, so this is a
+           footnote explaining it, not a warning. */
+        .deposit-shift-mark{margin-left:5px;font-size:11px;line-height:1;color:var(--textMid);}
         .budget-amount-td{padding:8px 14px;text-align:right;font-weight:600;}
         .budget-balance-td{padding:8px 14px;text-align:right;font-weight:700;}
         .budget-spacer-td{width:30px;padding:0;box-shadow:inset 3px 0 0 0 transparent;}

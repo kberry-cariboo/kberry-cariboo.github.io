@@ -289,6 +289,10 @@
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
         .oem-hint{font-size:12px;color:var(--amberInk);margin-bottom:18px;}
+        /* The weekend-deposit explanation sits above the standard hint: it
+           reports what the app already did, so it reads as information rather
+           than as the amber "careful, this is per-date" note under it. */
+        .oem-hint--shift{color:var(--textMid);margin-bottom:8px;}
         .flex-55{flex:1 1 55%;}
         .flex-45{flex:1 1 45%;}
         .oem-attach-img{height:56px;border-radius:8px;border:1px solid var(--border);cursor:pointer;}
@@ -775,6 +779,10 @@
         .budget-desc-td{font-size:13px;padding:8px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .attach-indicator{margin-left:6px;display:inline-flex;}
         .override-mark{margin-left:6px;font-size:10px;color:var(--amberInk);font-weight:700;}
+        /* Marks a payday whose direct deposit was pulled back off a weekend.
+           Quiet on purpose — the date shown is the right one, so this is a
+           footnote explaining it, not a warning. */
+        .deposit-shift-mark{margin-left:5px;font-size:11px;line-height:1;color:var(--textMid);}
         .budget-amount-td{padding:8px 14px;text-align:right;font-weight:600;}
         .budget-balance-td{padding:8px 14px;text-align:right;font-weight:700;}
         .budget-spacer-td{width:30px;padding:0;box-shadow:inset 3px 0 0 0 transparent;}
@@ -2485,7 +2493,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v183';
+const CF_VERSION='v184';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -2977,6 +2985,46 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!e.recurEnd) return false;
     return e.recurEnd < yearStart;
   }
+  // Direct-deposit payroll never lands on a weekend: a payday that falls on a
+  // Saturday or Sunday is deposited on the Friday before it. The entry itself
+  // is left alone — "Ken - Payroll (15th)" still repeats on the 15th, and its
+  // start date, its recurrence and its occurrence keys are all unchanged. Only
+  // the date the occurrence is *shown and counted* on moves, so the running
+  // balance, the forecast and the next-7-days list put the money on the day it
+  // actually arrives.
+  //
+  // Which entries this applies to is read from the description rather than a
+  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
+  // Ken" all read as payroll to a person, and the alternative is a checkbox
+  // that every payroll entry has to have ticked by hand.
+  const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
+  // Repeating income only. A one-time entry's date was typed by hand — it is
+  // already the date the money arrived — and expenses come out when the biller
+  // pulls them, which is not this rule.
+  function isPayrollDeposit(e, desc) {
+    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+  }
+  // Sat and Sun move back to the Friday before; every weekday is returned
+  // unchanged (the same object, so callers can compare by identity).
+  //
+  // Statutory holidays are deliberately not handled: they vary by province and
+  // by employer, the payroll provider's own cutoff varies with them, and a
+  // guess that moves money on a date the user can't explain is worse than no
+  // guess at all. A holiday that does shift a deposit is a one-occurrence edit.
+  function priorBusinessDay(date) {
+    const wd = date.getDay();
+    if (wd !== 0 && wd !== 6) return date;
+    const d = new Date(date);
+    d.setDate(d.getDate() - (wd === 0 ? 2 : 1));
+    return d;
+  }
+  // Tooltip/hint text for a shifted occurrence — the whole point of moving the
+  // date automatically is that the user can see why it moved.
+  function depositShiftNote(ev) {
+    if (!ev || !ev.depositShifted) return "";
+    const sched = new Date(ev.date.getFullYear(), ev.scheduledMonth, ev.scheduledDay);
+    return `Payday ${WEEKDAYS[sched.getDay()]} ${MONTHS[ev.scheduledMonth]} ${ev.scheduledDay} falls on a weekend — direct deposit lands ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day}.`;
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3008,7 +3056,25 @@ document.addEventListener('DOMContentLoaded',function(){
         if (ov.skipped) return;
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
-        const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const schedDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const evDesc = ov.desc !== void 0 ? ov.desc : e.desc;
+        // A payday landing on a weekend is deposited the Friday before (see
+        // priorBusinessDay). Skipped when the user has placed this occurrence
+        // by hand — an explicit day/month override, from the row menu or from
+        // dragging the row, is a statement about this one date and wins — and
+        // skipped when the Friday is in the previous year, because this year's
+        // expansion is the only one that generates this occurrence: pushing it
+        // out of `year` would drop the paycheque from the ledger entirely
+        // rather than move it. Those New Year's paydays keep their date.
+        let evDate = schedDate;
+        let depositShifted = false;
+        if (ov.day === void 0 && ov.month === void 0 && isPayrollDeposit(e, evDesc)) {
+          const paid = priorBusinessDay(schedDate);
+          if (paid !== schedDate && paid.getFullYear() === year) {
+            evDate = paid;
+            depositShifted = true;
+          }
+        }
         const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
         // actualAmount is a separate, optional override recorded after the
         // fact (reconciliation) — e.g. a variable bill that was budgeted at
@@ -3020,7 +3086,7 @@ document.addEventListener('DOMContentLoaded',function(){
         events.push({
           id: eid,
           entryId: e.id,
-          desc: ov.desc !== void 0 ? ov.desc : e.desc,
+          desc: evDesc,
           type: e.type,
           // Only meaningful when type is "transfer" — money moving out of
           // this tracked account (default) vs into it. Income/expense
@@ -3032,9 +3098,20 @@ document.addEventListener('DOMContentLoaded',function(){
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
-          month: effM,
-          day: effD,
-          date: effDate,
+          // month/day/date are the effective ones — where the money actually
+          // moves, and what every grouping, total and label downstream reads.
+          month: evDate.getMonth(),
+          day: evDate.getDate(),
+          date: evDate,
+          // Where the occurrence is scheduled, before any weekend adjustment.
+          // Equal to month/day unless depositShifted is true. Anything that
+          // reasons about the recurrence pattern rather than about cash — the
+          // edit-split boundary search, the occurrence editor writing a date
+          // back — has to use these, or a shifted Friday would be mistaken for
+          // the payday itself and become the new anchor.
+          scheduledMonth: effM,
+          scheduledDay: effD,
+          depositShifted,
           // Recurrence metadata — needed for monthly-equivalent calculations
           recurUnit: e.recurUnit || "month",
           recurEvery: e.recurEvery || 1,
@@ -3160,10 +3237,17 @@ document.addEventListener('DOMContentLoaded',function(){
       const anchorDay = anchorD ? anchorD.getDate() : 1;
       const unit = data.recurUnit || "month";
       const semiSecond = anchorDay <= 14 ? anchorDay + 14 : anchorDay - 14;
-      const dayOk = (ev) => unit === "month" || unit === "year" ? ev.day === anchorDay : unit === "semimonth" ? ev.day === anchorDay || ev.day === semiSecond : true;
+      // Both tests run against the scheduled date, never the effective one: a
+      // payroll occurrence whose deposit moved to the Friday before would
+      // otherwise fail dayOk (14 !== 15) and push the boundary a month late,
+      // and taking hit.date as the new start would re-anchor the recurrence on
+      // that Friday — permanently changing the payday the split exists to
+      // preserve.
+      const dayOk = (ev) => unit === "month" || unit === "year" ? ev.scheduledDay === anchorDay : unit === "semimonth" ? ev.scheduledDay === anchorDay || ev.scheduledDay === semiSecond : true;
       for (let yr = now.getFullYear(); yr <= now.getFullYear() + 10 && !newStartD; yr++) {
-        const hit = expandEntries([probe], yr, {}).find((ev) => ev.date >= monthStart && dayOk(ev));
-        if (hit) newStartD = hit.date;
+        const schedDateOf = (ev) => new Date(yr, ev.scheduledMonth, ev.scheduledDay);
+        const hit = expandEntries([probe], yr, {}).find((ev) => schedDateOf(ev) >= monthStart && dayOk(ev));
+        if (hit) newStartD = schedDateOf(hit);
       }
       // The edited pattern has no occurrence from this month on (e.g. its end
       // date is in the past): nothing forward-looking exists to split for.
@@ -7338,11 +7422,22 @@ document.addEventListener('DOMContentLoaded',function(){
       setErr("");
       setDayErr("");
       setActualErr("");
+      // The date fields open on the effective date, which for a weekend payday
+      // is the Friday the deposit lands on rather than the payday itself.
+      // Saving that back as an override would pin this occurrence to the
+      // Friday and switch the automatic adjustment off for it — same date
+      // today, but the row would stop explaining itself, and it would no longer
+      // follow the entry if the payday later moved. Untouched date fields are
+      // written back as the scheduled date instead, so the shift stays live;
+      // an actual edit to either field is a deliberate reschedule and is saved
+      // exactly as typed.
+      const mNum = isNaN(monthNum) ? ev.month : monthNum;
+      const dateUntouched = mNum === ev.month && dNum === ev.day;
       onSave({
         desc,
         amount: a,
-        month: isNaN(monthNum) ? ev.month : monthNum,
-        day: dNum,
+        month: dateUntouched && ev.scheduledMonth !== void 0 ? ev.scheduledMonth : mNum,
+        day: dateUntouched && ev.scheduledDay !== void 0 ? ev.scheduledDay : dNum,
         notes,
         attachment,
         actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
@@ -7371,6 +7466,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        ev.depositShifted && /* @__PURE__ */ React.createElement("div", { className: "oem-hint oem-hint--shift" }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "↤ "), depositShiftNote(ev), " Leave the date alone to keep that automatic; changing it pins this occurrence to the date you set."),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -7997,13 +8093,14 @@ document.addEventListener('DOMContentLoaded',function(){
             onPointerMove: handleDragMove,
             onPointerUp: handleDragEnd,
             onPointerCancel: handleDragEnd,
-            title: "Drag up/down to reschedule within this month",
+            title: ev.depositShifted ? depositShiftNote(ev) : "Drag up/down to reschedule within this month",
             style: {
               color: isDone ? "var(--textLt)" : "var(--textMid)",
               textDecoration: isDone ? "line-through" : "none"
             }
           },
           ev.day,
+          ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "\u21A4"),
           /* @__PURE__ */ React.createElement("span", { className: "drag-dots" }, "\u283F")
         ),
         bCols.map((col) => {
@@ -8104,7 +8201,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", title: ev.depositShifted ? depositShiftNote(ev) : void 0 }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "↤")), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -8806,7 +8903,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateStr), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
+        }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { className: "txl", title: ev.depositShifted ? depositShiftNote(ev) : void 0 }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "↤")), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -8844,7 +8941,7 @@ document.addEventListener('DOMContentLoaded',function(){
       textAlign: i >= 3 ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date", title: ev.depositShifted ? depositShiftNote(ev) : void 0 }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "↤")), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), (() => {
@@ -10771,9 +10868,9 @@ Fill every field of the response schema. Rules:
           if (isMobile) {
             return /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "upcoming-item-mobile", style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-top" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-desc", style: {
               textDecoration: isPaid ? "line-through" : "none"
-            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date" }, label), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date", title: ev.depositShifted ? depositShiftNote(ev) : void 0 }, label, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "↤")), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
           }
-          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
+          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date", title: ev.depositShifted ? depositShiftNote(ev) : void 0 }, label, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "↤")), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
             textDecoration: isPaid ? "line-through" : "none"
           } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, className: "text-9" })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: amtColor
@@ -11247,6 +11344,9 @@ Fill every field of the response schema. Rules:
           ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
+        { sub: "Payday on a weekend" },
+        { p: "Direct deposit doesn't arrive on a Saturday or Sunday. A repeating income entry with “payroll” anywhere in its description is shown — and counted — on the Friday before whenever its payday lands on a weekend, so “Ken - Payroll (15th)” on Saturday 15 August appears on Friday the 14th, marked ↤ in the budget grid with the payday it moved from. When that Friday is in the previous month the row moves with it, because that is the month the money is actually in the account." },
+        { p: "The entry itself is untouched: it still repeats on the 15th, and every later occurrence — this year and next — is still worked out from the 15th. Setting a date yourself, by dragging the row or through Edit this occurrence, pins that one date and turns the adjustment off for it. Statutory holidays are not adjusted for: they differ by province and by employer, so a holiday that does move your pay is a one-date edit." },
         { sub: "Changing one occurrence without changing the plan" },
         { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [
@@ -13105,6 +13205,68 @@ Fill every field of the response schema. Rules:
         const res = moveEntryAttachmentsToOverrides([ent], {});
         const ov = res.overridesByYr[2026] && res.overridesByYr[2026]["9-2026-0-15"];
         return res.moved === 1 && res.entries[0].attachment === void 0 && !!ov && ov.attachment === "base64LEGACY";
+      });
+      // Weekend payroll deposits. 2026: the 15th is a Sunday in Feb/Mar/Nov and
+      // a Saturday in Aug; Aug 1 is a Saturday; Jan 1 2028 is a Saturday.
+      const payroll = { id: 20, desc: "Ken - Payroll (15th)", type: "income", amount: 25e4, category: "Income", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const payEvs = expandEntries([payroll], 2026, {});
+      const onMonth = (evs, mi) => evs.find((ev) => ev.scheduledMonth === mi);
+      t("payroll on a Saturday is deposited the Friday before", () => {
+        const aug = onMonth(payEvs, 7);
+        return aug.day === 14 && aug.month === 7 && aug.scheduledDay === 15 && aug.depositShifted === true;
+      });
+      t("payroll on a Sunday is deposited the Friday before", () => {
+        const feb = onMonth(payEvs, 1);
+        return feb.day === 13 && feb.scheduledDay === 15 && feb.depositShifted === true;
+      });
+      t("a weekday payday is left alone", () => {
+        const jan = onMonth(payEvs, 0);
+        return jan.day === 15 && jan.depositShifted === false && jan.scheduledDay === 15;
+      });
+      t("the entry itself keeps its payday", () => payroll.startDate === "2026-01-15" && expandEntries([payroll], 2026, {}).length === 12);
+      t("a shifted deposit keeps its occurrence key (overrides still match)", () => {
+        const aug = onMonth(payEvs, 7);
+        if (aug.id !== "20-2026-7-15") return aug.id;
+        const ov = {};
+        ov[aug.id] = { amount: 3e5 };
+        const again = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return again.amount === 3e5 && again.day === 14;
+      });
+      t("weekend rule is income-only and payroll-only", () => {
+        const rentOn15th = __spreadProps(__spreadValues({}, payroll), { id: 21, desc: "Rent", type: "expense" });
+        const payrollExpense = __spreadProps(__spreadValues({}, payroll), { id: 22, desc: "Payroll remittance", type: "expense" });
+        const onceOff = __spreadProps(__spreadValues({}, payroll), { id: 23, repeats: false, startDate: "2026-08-15" });
+        return onMonth(expandEntries([rentOn15th], 2026, {}), 7).day === 15 && onMonth(expandEntries([payrollExpense], 2026, {}), 7).day === 15 && expandEntries([onceOff], 2026, {})[0].day === 15;
+      });
+      t('"Mel - Payroll" and "PAY ROLL" both read as payroll', () => {
+        const mel = __spreadProps(__spreadValues({}, payroll), { id: 24, desc: "Mel - Payroll" });
+        const spaced = __spreadProps(__spreadValues({}, payroll), { id: 25, desc: "PAY ROLL — Ken" });
+        return onMonth(expandEntries([mel], 2026, {}), 7).day === 14 && onMonth(expandEntries([spaced], 2026, {}), 7).day === 14;
+      });
+      t("an explicit date override beats the weekend rule", () => {
+        const ov = {};
+        ov["20-2026-7-15"] = { day: 15 };
+        const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return aug.day === 15 && aug.depositShifted === false;
+      });
+      t("a deposit that crosses into the previous month follows the money", () => {
+        const firstOfMonth = __spreadProps(__spreadValues({}, payroll), { id: 26, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" });
+        const aug = onMonth(expandEntries([firstOfMonth], 2026, {}), 7);
+        return aug.month === 6 && aug.day === 31 && aug.scheduledMonth === 7 && aug.scheduledDay === 1;
+      });
+      t("a New Year's payday is never pushed out of its own year", () => {
+        const nyd = __spreadProps(__spreadValues({}, payroll), { id: 27, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" });
+        const jan = expandEntries([nyd], 2028, {})[0];
+        return jan.month === 0 && jan.day === 1 && jan.depositShifted === false;
+      });
+      t("editing a payroll entry splits on the payday, not on the shifted Friday", () => {
+        // "Now" is inside Aug 2026, whose 15th is a Saturday: the split must
+        // start the new segment on the 15th so the entry still pays monthly on
+        // the 15th, and only the deposit lands on Friday the 14th.
+        const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
+        if (!res.newId) return "no split";
+        const seg = res.entries.find((e) => e.id === res.newId);
+        return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
       });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];

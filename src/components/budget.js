@@ -366,13 +366,14 @@
             onPointerMove: handleDragMove,
             onPointerUp: handleDragEnd,
             onPointerCancel: handleDragEnd,
-            title: "Drag up/down to reschedule within this month",
+            title: ev.depositShifted ? depositShiftNote(ev) : "Drag up/down to reschedule within this month",
             style: {
               color: isDone ? "var(--textLt)" : "var(--textMid)",
               textDecoration: isDone ? "line-through" : "none"
             }
           },
           ev.day,
+          ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "\u21A4"),
           /* @__PURE__ */ React.createElement("span", { className: "drag-dots" }, "\u283F")
         ),
         bCols.map((col) => {
@@ -473,7 +474,7 @@
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl", title: ev.depositShifted ? depositShiftNote(ev) : void 0 }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-label": depositShiftNote(ev) }, "↤")), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {

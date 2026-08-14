@@ -41,6 +41,9 @@
           ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
+        { sub: "Payday on a weekend" },
+        { p: "Direct deposit doesn't arrive on a Saturday or Sunday. A repeating income entry with “payroll” anywhere in its description is shown — and counted — on the Friday before whenever its payday lands on a weekend, so “Ken - Payroll (15th)” on Saturday 15 August appears on Friday the 14th, marked ↤ in the budget grid with the payday it moved from. When that Friday is in the previous month the row moves with it, because that is the month the money is actually in the account." },
+        { p: "The entry itself is untouched: it still repeats on the 15th, and every later occurrence — this year and next — is still worked out from the 15th. Setting a date yourself, by dragging the row or through Edit this occurrence, pins that one date and turns the adjustment off for it. Statutory holidays are not adjusted for: they differ by province and by employer, so a holiday that does move your pay is a one-date edit." },
         { sub: "Changing one occurrence without changing the plan" },
         { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [

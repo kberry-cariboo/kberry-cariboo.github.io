@@ -562,6 +562,68 @@
         const ov = res.overridesByYr[2026] && res.overridesByYr[2026]["9-2026-0-15"];
         return res.moved === 1 && res.entries[0].attachment === void 0 && !!ov && ov.attachment === "base64LEGACY";
       });
+      // Weekend payroll deposits. 2026: the 15th is a Sunday in Feb/Mar/Nov and
+      // a Saturday in Aug; Aug 1 is a Saturday; Jan 1 2028 is a Saturday.
+      const payroll = { id: 20, desc: "Ken - Payroll (15th)", type: "income", amount: 25e4, category: "Income", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const payEvs = expandEntries([payroll], 2026, {});
+      const onMonth = (evs, mi) => evs.find((ev) => ev.scheduledMonth === mi);
+      t("payroll on a Saturday is deposited the Friday before", () => {
+        const aug = onMonth(payEvs, 7);
+        return aug.day === 14 && aug.month === 7 && aug.scheduledDay === 15 && aug.depositShifted === true;
+      });
+      t("payroll on a Sunday is deposited the Friday before", () => {
+        const feb = onMonth(payEvs, 1);
+        return feb.day === 13 && feb.scheduledDay === 15 && feb.depositShifted === true;
+      });
+      t("a weekday payday is left alone", () => {
+        const jan = onMonth(payEvs, 0);
+        return jan.day === 15 && jan.depositShifted === false && jan.scheduledDay === 15;
+      });
+      t("the entry itself keeps its payday", () => payroll.startDate === "2026-01-15" && expandEntries([payroll], 2026, {}).length === 12);
+      t("a shifted deposit keeps its occurrence key (overrides still match)", () => {
+        const aug = onMonth(payEvs, 7);
+        if (aug.id !== "20-2026-7-15") return aug.id;
+        const ov = {};
+        ov[aug.id] = { amount: 3e5 };
+        const again = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return again.amount === 3e5 && again.day === 14;
+      });
+      t("weekend rule is income-only and payroll-only", () => {
+        const rentOn15th = __spreadProps(__spreadValues({}, payroll), { id: 21, desc: "Rent", type: "expense" });
+        const payrollExpense = __spreadProps(__spreadValues({}, payroll), { id: 22, desc: "Payroll remittance", type: "expense" });
+        const onceOff = __spreadProps(__spreadValues({}, payroll), { id: 23, repeats: false, startDate: "2026-08-15" });
+        return onMonth(expandEntries([rentOn15th], 2026, {}), 7).day === 15 && onMonth(expandEntries([payrollExpense], 2026, {}), 7).day === 15 && expandEntries([onceOff], 2026, {})[0].day === 15;
+      });
+      t('"Mel - Payroll" and "PAY ROLL" both read as payroll', () => {
+        const mel = __spreadProps(__spreadValues({}, payroll), { id: 24, desc: "Mel - Payroll" });
+        const spaced = __spreadProps(__spreadValues({}, payroll), { id: 25, desc: "PAY ROLL — Ken" });
+        return onMonth(expandEntries([mel], 2026, {}), 7).day === 14 && onMonth(expandEntries([spaced], 2026, {}), 7).day === 14;
+      });
+      t("an explicit date override beats the weekend rule", () => {
+        const ov = {};
+        ov["20-2026-7-15"] = { day: 15 };
+        const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return aug.day === 15 && aug.depositShifted === false;
+      });
+      t("a deposit that crosses into the previous month follows the money", () => {
+        const firstOfMonth = __spreadProps(__spreadValues({}, payroll), { id: 26, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" });
+        const aug = onMonth(expandEntries([firstOfMonth], 2026, {}), 7);
+        return aug.month === 6 && aug.day === 31 && aug.scheduledMonth === 7 && aug.scheduledDay === 1;
+      });
+      t("a New Year's payday is never pushed out of its own year", () => {
+        const nyd = __spreadProps(__spreadValues({}, payroll), { id: 27, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" });
+        const jan = expandEntries([nyd], 2028, {})[0];
+        return jan.month === 0 && jan.day === 1 && jan.depositShifted === false;
+      });
+      t("editing a payroll entry splits on the payday, not on the shifted Friday", () => {
+        // "Now" is inside Aug 2026, whose 15th is a Saturday: the split must
+        // start the new segment on the 15th so the entry still pays monthly on
+        // the 15th, and only the deposit lands on Friday the 14th.
+        const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
+        if (!res.newId) return "no split";
+        const seg = res.entries.find((e) => e.id === res.newId);
+        return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
+      });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];
         const apply = (sel) => items.filter((x) => !sel.length || sel.includes(x.cat)).length;

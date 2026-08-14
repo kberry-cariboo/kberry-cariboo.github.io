@@ -769,6 +769,82 @@ await test('F1 loading a pre-v8 cloud payload (dollar-scale, no schemaVersion) u
   await ctx.close();
 });
 
+// ── G. Weekend payroll deposits ─────────────────────────────────────────────
+// Its own fixture rather than an addition to the shared one: this needs a
+// payroll entry on a date whose weekday matters (Aug 15 2026 is a Saturday),
+// and dropping one into the shared payload would move every balance the B*
+// tests read. The date maths itself is pinned by the built-in self-tests
+// (A1); what this checks is that the ledger renders the adjusted date, the
+// row explains itself, and the entry definition is left on the real payday.
+await test('G1 a payday on a Saturday shows in the ledger on the Friday before, entry untouched', async () => {
+  const payload = {
+    entries: [
+      { id: 1, desc: 'Ken - Payroll (15th)', type: 'income', amount: 250000, category: 'Income', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '' },
+      { id: 2, desc: 'Rent', type: 'expense', amount: 165000, category: 'Housing', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '' },
+    ],
+    overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 500000 }], budgetTargets: {}, templates: [],
+    completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: false, goals: [], dashHidden: {}, dashOrder: [],
+    schemaVersion: 999,
+  };
+  const stub = `
+  (() => {
+    const session = { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' };
+    const payload = ${JSON.stringify(payload)};
+    const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }];
+    const resolved = (data) => Promise.resolve({ data, error: null });
+    function chain(table) {
+      const c = {};
+      for (const m of ['select','eq','limit','order','update','insert','delete','neq','in']) {
+        c[m] = () => { if (m === 'order') return resolved(table === 'household_members' ? members : []); return c; };
+      }
+      c.maybeSingle = () => resolved(table === 'household_members' ? { household_id: 'hh-demo' } : { id: 'hh-demo', name: 'Demo Household' });
+      c.single = c.maybeSingle;
+      c.then = (res, rej) => resolved(null).then(res, rej);
+      return c;
+    }
+    const fakeClient = {
+      auth: { getSession: () => resolved({ session }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }), signOut: () => resolved(null) },
+      from: (t) => chain(t),
+      rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),
+      channel: () => { const ch = { on: () => ch, subscribe: () => ({ unsubscribe(){} }) }; return ch; },
+      removeChannel(){},
+    };
+    Object.defineProperty(window, 'supabase', { get: () => ({ createClient: () => fakeClient }), set: () => {} });
+  })();
+  `;
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.addInitScript(stub);
+
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  await page.getByRole('button', { name: /^Aug$/ }).click();
+  await page.waitForTimeout(500);
+  const payRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
+  const dayCell = payRow.locator('.budget-day-cell');
+  const dayText = (await dayCell.innerText()).trim();
+  if (!dayText.startsWith('14')) throw new Error('Aug payday did not move off the Saturday: day cell reads ' + JSON.stringify(dayText));
+  if (await dayCell.locator('.deposit-shift-mark').count() === 0) throw new Error('no marker explaining the moved date');
+  const why = await dayCell.getAttribute('title');
+  if (!/weekend/i.test(why || '')) throw new Error('day cell title does not explain the shift: ' + why);
+
+  // September's 15th is a Tuesday — that one stays put.
+  await page.getByRole('button', { name: /^Sep$/ }).click();
+  await page.waitForTimeout(500);
+  const sepDay = (await page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first().locator('.budget-day-cell').innerText()).trim();
+  if (!sepDay.startsWith('15')) throw new Error('a weekday payday was moved: ' + JSON.stringify(sepDay));
+
+  // The entry itself still pays on the 15th — only the deposit moved.
+  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(800);
+  const entryRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
+  if (!(await entryRow.innerText()).includes('2026-01-15')) throw new Error('the recurring entry\'s date was rewritten: ' + await entryRow.innerText());
+  await ctx.close();
+});
+
 await browser.close();
 server.close();
 

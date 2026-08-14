@@ -34,6 +34,46 @@
     if (!e.recurEnd) return false;
     return e.recurEnd < yearStart;
   }
+  // Direct-deposit payroll never lands on a weekend: a payday that falls on a
+  // Saturday or Sunday is deposited on the Friday before it. The entry itself
+  // is left alone — "Ken - Payroll (15th)" still repeats on the 15th, and its
+  // start date, its recurrence and its occurrence keys are all unchanged. Only
+  // the date the occurrence is *shown and counted* on moves, so the running
+  // balance, the forecast and the next-7-days list put the money on the day it
+  // actually arrives.
+  //
+  // Which entries this applies to is read from the description rather than a
+  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
+  // Ken" all read as payroll to a person, and the alternative is a checkbox
+  // that every payroll entry has to have ticked by hand.
+  const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
+  // Repeating income only. A one-time entry's date was typed by hand — it is
+  // already the date the money arrived — and expenses come out when the biller
+  // pulls them, which is not this rule.
+  function isPayrollDeposit(e, desc) {
+    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+  }
+  // Sat and Sun move back to the Friday before; every weekday is returned
+  // unchanged (the same object, so callers can compare by identity).
+  //
+  // Statutory holidays are deliberately not handled: they vary by province and
+  // by employer, the payroll provider's own cutoff varies with them, and a
+  // guess that moves money on a date the user can't explain is worse than no
+  // guess at all. A holiday that does shift a deposit is a one-occurrence edit.
+  function priorBusinessDay(date) {
+    const wd = date.getDay();
+    if (wd !== 0 && wd !== 6) return date;
+    const d = new Date(date);
+    d.setDate(d.getDate() - (wd === 0 ? 2 : 1));
+    return d;
+  }
+  // Tooltip/hint text for a shifted occurrence — the whole point of moving the
+  // date automatically is that the user can see why it moved.
+  function depositShiftNote(ev) {
+    if (!ev || !ev.depositShifted) return "";
+    const sched = new Date(ev.date.getFullYear(), ev.scheduledMonth, ev.scheduledDay);
+    return `Payday ${WEEKDAYS[sched.getDay()]} ${MONTHS[ev.scheduledMonth]} ${ev.scheduledDay} falls on a weekend — direct deposit lands ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day}.`;
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -65,7 +105,25 @@
         if (ov.skipped) return;
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
-        const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const schedDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const evDesc = ov.desc !== void 0 ? ov.desc : e.desc;
+        // A payday landing on a weekend is deposited the Friday before (see
+        // priorBusinessDay). Skipped when the user has placed this occurrence
+        // by hand — an explicit day/month override, from the row menu or from
+        // dragging the row, is a statement about this one date and wins — and
+        // skipped when the Friday is in the previous year, because this year's
+        // expansion is the only one that generates this occurrence: pushing it
+        // out of `year` would drop the paycheque from the ledger entirely
+        // rather than move it. Those New Year's paydays keep their date.
+        let evDate = schedDate;
+        let depositShifted = false;
+        if (ov.day === void 0 && ov.month === void 0 && isPayrollDeposit(e, evDesc)) {
+          const paid = priorBusinessDay(schedDate);
+          if (paid !== schedDate && paid.getFullYear() === year) {
+            evDate = paid;
+            depositShifted = true;
+          }
+        }
         const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
         // actualAmount is a separate, optional override recorded after the
         // fact (reconciliation) — e.g. a variable bill that was budgeted at
@@ -77,7 +135,7 @@
         events.push({
           id: eid,
           entryId: e.id,
-          desc: ov.desc !== void 0 ? ov.desc : e.desc,
+          desc: evDesc,
           type: e.type,
           // Only meaningful when type is "transfer" — money moving out of
           // this tracked account (default) vs into it. Income/expense
@@ -89,9 +147,20 @@
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
-          month: effM,
-          day: effD,
-          date: effDate,
+          // month/day/date are the effective ones — where the money actually
+          // moves, and what every grouping, total and label downstream reads.
+          month: evDate.getMonth(),
+          day: evDate.getDate(),
+          date: evDate,
+          // Where the occurrence is scheduled, before any weekend adjustment.
+          // Equal to month/day unless depositShifted is true. Anything that
+          // reasons about the recurrence pattern rather than about cash — the
+          // edit-split boundary search, the occurrence editor writing a date
+          // back — has to use these, or a shifted Friday would be mistaken for
+          // the payday itself and become the new anchor.
+          scheduledMonth: effM,
+          scheduledDay: effD,
+          depositShifted,
           // Recurrence metadata — needed for monthly-equivalent calculations
           recurUnit: e.recurUnit || "month",
           recurEvery: e.recurEvery || 1,
@@ -217,10 +286,17 @@
       const anchorDay = anchorD ? anchorD.getDate() : 1;
       const unit = data.recurUnit || "month";
       const semiSecond = anchorDay <= 14 ? anchorDay + 14 : anchorDay - 14;
-      const dayOk = (ev) => unit === "month" || unit === "year" ? ev.day === anchorDay : unit === "semimonth" ? ev.day === anchorDay || ev.day === semiSecond : true;
+      // Both tests run against the scheduled date, never the effective one: a
+      // payroll occurrence whose deposit moved to the Friday before would
+      // otherwise fail dayOk (14 !== 15) and push the boundary a month late,
+      // and taking hit.date as the new start would re-anchor the recurrence on
+      // that Friday — permanently changing the payday the split exists to
+      // preserve.
+      const dayOk = (ev) => unit === "month" || unit === "year" ? ev.scheduledDay === anchorDay : unit === "semimonth" ? ev.scheduledDay === anchorDay || ev.scheduledDay === semiSecond : true;
       for (let yr = now.getFullYear(); yr <= now.getFullYear() + 10 && !newStartD; yr++) {
-        const hit = expandEntries([probe], yr, {}).find((ev) => ev.date >= monthStart && dayOk(ev));
-        if (hit) newStartD = hit.date;
+        const schedDateOf = (ev) => new Date(yr, ev.scheduledMonth, ev.scheduledDay);
+        const hit = expandEntries([probe], yr, {}).find((ev) => schedDateOf(ev) >= monthStart && dayOk(ev));
+        if (hit) newStartD = schedDateOf(hit);
       }
       // The edited pattern has no occurrence from this month on (e.g. its end
       // date is in the past): nothing forward-looking exists to split for.
