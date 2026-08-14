@@ -980,12 +980,12 @@
                 if (e.key === "Enter") saveBva();
               }
             }
-          )), /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
+          )), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
             type: "checkbox",
             checked: !!bvaModalData.rollover,
             onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
             className: "mt-2"
-          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
+          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget")), /* @__PURE__ */ React.createElement(HelpTip, { label: "Roll over unspent budget", text: "Envelope-style budgeting: anything you didn't spend against this category earlier in the year is added to this month's target, so a quiet month funds a heavy one instead of being lost." }))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: saveBva,

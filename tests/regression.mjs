@@ -128,6 +128,11 @@ async function ctxPage({ touch = false, dark = false, loggedIn = true } = {}) {
 }
 
 let lastPage = null;
+// Tests are named, not numbered: a failing line has to say what broke without
+// anyone having to open this file to decode it, and the same goes for the
+// screenshot a failure leaves behind — hence the slug rather than the old
+// first-word (i.e. the test code) filename.
+const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70);
 async function test(name, fn) {
   const errBefore = pageErrors.length;
   try {
@@ -137,14 +142,14 @@ async function test(name, fn) {
     else results.push({ name, ok: true });
   } catch (e) {
     results.push({ name, ok: false, detail: String(e.message || e).split('\n')[0].slice(0, 160) });
-    try { if (lastPage) await lastPage.screenshot({ path: join(ROOT, 'tests', 'fail-' + name.split(' ')[0] + '.png') }); } catch {}
+    try { if (lastPage) await lastPage.screenshot({ path: join(ROOT, 'tests', 'fail-' + slug(name) + '.png') }); } catch {}
   }
 }
 
 const V = { timeout: 6000 };
 
-// ── A. Built-in self-test suite ─────────────────────────────────────────────
-await test('A1 built-in self-test suite passes', async () => {
+// ── The app's own in-page self-tests ─────────────────────────────────────────────
+await test('self-test: the app\'s own in-page check suite passes', async () => {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '?selftest', { waitUntil: 'load' });
   const status = await page.getByText(/checks passed/, V).textContent();
@@ -153,19 +158,19 @@ await test('A1 built-in self-test suite passes', async () => {
   await ctx.close();
 });
 
-// ── B. Desktop light ────────────────────────────────────────────────────────
+// ── Desktop, light theme ────────────────────────────────────────────────────────
 {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
 
-  await test('B1 dashboard renders KPIs + charts', async () => {
+  await test('dashboard: KPI tiles and charts render', async () => {
     for (const t of ['Balance today', 'Annual Income', 'Running Balance', 'Income vs Expenses', 'Top Expense Categories', 'Budget vs Actual']) {
       await page.getByText(t, { exact: false }).first().waitFor(V);
     }
   });
 
-  await test('B2 running-balance chart toggles area/line/bar', async () => {
+  await test('dashboard: the running-balance chart switches between area, line and bar', async () => {
     const card = page.locator('.cf-card', { hasText: 'Running Balance' }).first();
     for (const mode of ['Line', 'Bar', 'Area']) {
       await card.getByRole('button', { name: mode, exact: true }).click();
@@ -174,7 +179,7 @@ await test('A1 built-in self-test suite passes', async () => {
     }
   });
 
-  await test('B3 line-chart hover shows tooltip', async () => {
+  await test('dashboard: hovering the running-balance line shows a tooltip', async () => {
     const card = page.locator('.cf-card', { hasText: 'Running Balance' }).first();
     await card.getByRole('button', { name: 'Line', exact: true }).click();
     const svg = card.locator('svg').first();
@@ -184,27 +189,27 @@ await test('A1 built-in self-test suite passes', async () => {
     await card.getByText('Balance', { exact: false }).first().waitFor(V); // tooltip row
   });
 
-  await test('B4 income/expense line view has direct end labels', async () => {
+  await test('dashboard: the income-vs-expenses line view labels each series at its end', async () => {
     const card = page.locator('.cf-card', { hasText: 'Income vs Expenses' }).first();
     await card.getByRole('button', { name: 'Line', exact: true }).click();
     await page.waitForTimeout(300);
     await card.locator('svg text', { hasText: 'Expenses' }).first().waitFor(V);
   });
 
-  await test('B5 top-categories pie renders slices + labels', async () => {
+  await test('dashboard: the top-expense-categories pie renders its slices', async () => {
     const card = page.locator('.cf-card', { hasText: 'Top Expense Categories' }).first();
     await card.getByRole('button', { name: 'Pie', exact: true }).click();
     await page.waitForTimeout(400);
     if (await card.locator('svg path').count() < 3) throw new Error('pie has <3 slices');
   });
 
-  await test('B6 income sources grouped by entry description', async () => {
+  await test('dashboard: income sources are grouped by entry description', async () => {
     const card = page.locator('.cf-card', { hasText: 'Income Sources' }).first();
     await card.getByText('Salary — Acme Corp').waitFor(V);
     await card.getByText('Freelance design').waitFor(V);
   });
 
-  await test('B7 monthly summary heatmap/table toggle', async () => {
+  await test('dashboard: the monthly summary switches between heatmap and table', async () => {
     await page.getByRole('button', { name: 'Heatmap', exact: true }).click();
     await page.waitForTimeout(300);
     const cells = await page.locator('.cf-card table td').count();
@@ -213,7 +218,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('Annual Total', { exact: false }).first().waitFor(V);
   });
 
-  await test('B8 budget month navigation updates ledger', async () => {
+  await test('budget monthly: changing the month reloads the ledger', async () => {
     await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: /^Mar$/ }).click();
@@ -221,7 +226,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('Mar 1–14', { exact: false }).waitFor(V).catch(() => page.getByText('MAR 1', { exact: false }).first().waitFor(V));
   });
 
-  await test('B9 occurrence edit modal opens and closes', async () => {
+  await test('budget monthly: the occurrence edit modal opens and closes', async () => {
     await page.getByRole('button', { name: /^Jul$/ }).click();
     await page.waitForTimeout(400);
     await page.getByText('Rent', { exact: true }).first().click();
@@ -233,7 +238,7 @@ await test('A1 built-in self-test suite passes', async () => {
     }
   });
 
-  await test('B10 mark-occurrence-paid checkbox toggles', async () => {
+  await test('budget monthly: the mark-paid checkbox toggles', async () => {
     const cb = page.locator('table [role="checkbox"], table button[aria-checked]').first();
     const before = await cb.getAttribute('aria-checked');
     await cb.click();
@@ -242,14 +247,14 @@ await test('A1 built-in self-test suite passes', async () => {
     if (before === after) throw new Error('aria-checked did not toggle');
   });
 
-  await test('B11 BvA view shows spent/budget rows with over labels', async () => {
+  await test('budget vs actual: rows show spent against budget and flag overspend', async () => {
     await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByText('Budget vs Actual', { exact: false }).first().waitFor(V);
     await page.getByText('over', { exact: false }).first().waitFor(V);
   });
 
-  await test('B12 forecast horizon toggle 30/90 days', async () => {
+  await test('budget forecast: the horizon toggle switches between 30 and 90 days', async () => {
     await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '30 days' }).click();
@@ -259,7 +264,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('90-Day Forecast', { exact: false }).waitFor(V);
   });
 
-  await test('B13 add entry end-to-end (desktop form)', async () => {
+  await test('entries: adding an entry from the desktop form saves it and lists it', async () => {
     await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Entry' }).first().click();
@@ -277,7 +282,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('-$123.45', { exact: false }).first().waitFor(V);
   });
 
-  await test('B14 entries search filters rows', async () => {
+  await test('entries: the search box filters the rows', async () => {
     await page.locator('#global-search').fill('Rent');
     await page.waitForTimeout(400);
     await page.getByText('Rent', { exact: true }).first().waitFor(V);
@@ -285,7 +290,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.locator('#global-search').fill('');
   });
 
-  await test('B15 plan: goal modal opens', async () => {
+  await test('plan goals: the add-goal modal opens and closes', async () => {
     await page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Goal' }).click();
@@ -295,7 +300,7 @@ await test('A1 built-in self-test suite passes', async () => {
     if (await page.locator('.modal-overlay').count() > 0) throw new Error('goal modal did not close');
   });
 
-  await test('B16 settings: add category', async () => {
+  await test('settings: adding a category lists it', async () => {
     await page.goto(BASE + '#/settings', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByPlaceholder('New category name').fill('QA Category');
@@ -304,7 +309,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('QA Category', { exact: false }).first().waitFor(V);
   });
 
-  await test('B17 settings: dark-mode toggle flips theme live', async () => {
+  await test('settings: the dark-mode toggle flips the theme live', async () => {
     const before = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
     await page.getByRole('switch', { name: 'Dark Mode' }).click();
     await page.waitForTimeout(500);
@@ -313,13 +318,13 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByRole('switch', { name: 'Dark Mode' }).click(); // restore
   });
 
-  await test('B18 AI tab renders without key', async () => {
+  await test('ai insights: the tab renders without an API key configured', async () => {
     await page.goto(BASE + '#/ai', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByText('AI Financial Assessment', { exact: false }).waitFor(V);
   });
 
-  await test('B19 skip a recurring occurrence, then restore it', async () => {
+  await test('budget monthly: skipping an occurrence hides it and restoring brings it back', async () => {
     await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: /^Jul$/ }).click();
@@ -337,7 +342,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('Rent', { exact: true }).first().waitFor(V);
   });
 
-  await test('B20 CSV import: upload, auto-map, preview, and add entries', async () => {
+  await test('entries: CSV import uploads, auto-maps columns, previews and adds the rows', async () => {
     await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: 'Import CSV' }).click();
@@ -363,7 +368,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.getByText('CSV Coffee Shop', { exact: false }).first().waitFor(V);
   });
 
-  await test('B21 transfer entry: nets into balance, excluded from income/expense totals', async () => {
+  await test('entries: a transfer nets into the balance and stays out of income totals', async () => {
     await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const incomeBefore = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
@@ -385,6 +390,14 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.waitForTimeout(600);
     if (await page.getByRole('button', { name: 'Save Entry' }).count() > 0) throw new Error('form did not close (validation?)');
 
+    // Show every row before looking for it: by this point in the run the
+    // earlier tests have pushed the entry count past the 20-row page size, and
+    // a row dated today sorts onto page 2 where waitFor never sees it. (The
+    // global search box isn't the way to find it — typing in it deliberately
+    // jumps to Budget → Monthly, which is a different table with different
+    // columns.)
+    await page.getByLabel('Rows per page').first().selectOption('all');
+    await page.waitForTimeout(400);
     await page.getByText('QA Transfer In').first().waitFor(V);
     const row = page.locator('tr', { hasText: 'QA Transfer In' }).first();
     const rowText = await row.innerText();
@@ -396,7 +409,7 @@ await test('A1 built-in self-test suite passes', async () => {
     if (incomeBefore !== incomeAfter) throw new Error(`transfer leaked into Annual Income: ${incomeBefore} -> ${incomeAfter}`);
   });
 
-  await test('B22 reconcile actual amount paid: updates ledger, balance, and BvA without touching the plan', async () => {
+  await test('budget monthly: an actual amount paid updates the ledger, balance and BvA without touching the plan', async () => {
     // Read the Housing actual as a starting baseline rather than assuming
     // it's exactly Rent's $1,650 — earlier tests in this shared session
     // (B13, B21) add their own one-off "QA ..." entries dated today under
@@ -418,7 +431,9 @@ await test('A1 built-in self-test suite passes', async () => {
     await dismissBackupNudge();
     await page.getByText('Rent', { exact: true }).first().click();
     await page.locator('.modal-card').waitFor(V);
-    await page.getByLabel('Actual Amount Paid').fill('1700.00');
+    // exact: the field's help icon is named "Help: Actual Amount Paid", which a
+    // substring match picks up alongside the input itself.
+    await page.getByLabel('Actual Amount Paid', { exact: true }).fill('1700.00');
     await page.getByRole('button', { name: 'Save' }).click();
     await page.waitForTimeout(400);
 
@@ -457,7 +472,7 @@ await test('A1 built-in self-test suite passes', async () => {
     await page.waitForTimeout(300);
   });
 
-  await test('B23 settings: notifications toggle requests permission', async () => {
+  await test('settings: the notifications toggle requests browser permission and reveals delivery options', async () => {
     // grantPermissions(['notifications']) needs the Notification API to
     // actually exist in this browser build — some headless Chromium builds
     // (e.g. the one CI downloads fresh, vs. a pinned local build) don't
@@ -528,7 +543,7 @@ await test('A1 built-in self-test suite passes', async () => {
     if (await page.locator('#notify-hour-select').count() !== 0) throw new Error('delivery time still shown after turning notifications off');
   });
 
-  await test('B24 modal: backdrop click no longer dismisses, only X/Cancel do', async () => {
+  await test('modals: a backdrop click keeps the dialog open, only X and Cancel close it', async () => {
     await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Entry' }).first().click();
@@ -551,7 +566,7 @@ await test('A1 built-in self-test suite passes', async () => {
     }
   });
 
-  await test('B25 help: account menu opens the docs, and "?" jumps to the shortcuts', async () => {
+  await test('help: the account menu opens the docs and "?" jumps to the shortcuts', async () => {
     await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
     await page.waitForTimeout(600);
     await page.locator('.user-avatar-btn').click();
@@ -570,7 +585,7 @@ await test('A1 built-in self-test suite passes', async () => {
     if (await page.locator('.shortcuts-card').count() > 0) throw new Error('the old shortcuts modal is still being rendered');
   });
 
-  await test('B26 a non-route hash does not swallow the next real navigation', async () => {
+  await test('routing: a non-route hash does not swallow the next real navigation', async () => {
     // The router listens for hashchange so plain links into #/help work. Hashes
     // that aren't routes — the skip link's #main-content, in-page anchors —
     // reach the same handler, and claiming the sync guard for one of those
@@ -585,7 +600,7 @@ await test('A1 built-in self-test suite passes', async () => {
     if (!hash.startsWith('#/budget')) throw new Error('hash stuck at "' + hash + '" after switching to Budget');
   });
 
-  await test('B27 Customize closes on Escape, like every other dialog', async () => {
+  await test('dashboard: Customize closes on Escape, like every other dialog', async () => {
     await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: /Customize/i }).first().click();
@@ -601,8 +616,8 @@ await test('A1 built-in self-test suite passes', async () => {
   await ctx.close();
 }
 
-// ── C. Desktop dark spot-checks ─────────────────────────────────────────────
-await test('C1 dark: active month pill visibly styled (not surface color)', async () => {
+// ── Desktop, dark theme spot-checks ─────────────────────────────────────────────
+await test('dark mode: the active month pill stays visibly styled', async () => {
   const { ctx, page } = await ctxPage({ dark: true });
   await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
@@ -613,7 +628,7 @@ await test('C1 dark: active month pill visibly styled (not surface color)', asyn
   await ctx.close();
 });
 
-await test('C2 dark: charts render with theme colors', async () => {
+await test('dark mode: charts render with theme colours', async () => {
   const { ctx, page } = await ctxPage({ dark: true });
   await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
@@ -622,13 +637,13 @@ await test('C2 dark: charts render with theme colors', async () => {
   await ctx.close();
 });
 
-// ── D. Mobile ───────────────────────────────────────────────────────────────
+// ── Mobile ───────────────────────────────────────────────────────────────
 {
   const { ctx, page } = await ctxPage({ touch: true });
   await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
 
-  await test('D1 bottom nav navigates between tabs', async () => {
+  await test('mobile: the bottom nav switches tabs', async () => {
     await page.locator('.cf-bottomnav').getByRole('button', { name: 'Budget' }).tap();
     await page.waitForTimeout(600);
     await page.getByText('Opening Balance', { exact: false }).first().waitFor(V);
@@ -636,11 +651,11 @@ await test('C2 dark: charts render with theme colors', async () => {
     if (cur !== 'Budget') throw new Error('aria-current on ' + cur);
   });
 
-  await test('D2 mobile ledger cards show signed amounts', async () => {
+  await test('mobile: ledger cards show signed amounts', async () => {
     await page.getByText('-$1,650.00', { exact: false }).first().waitFor(V);
   });
 
-  await test('D3 swipe-tip "Got it" dismisses', async () => {
+  await test('mobile: the swipe tip dismisses with "Got it"', async () => {
     const btn = page.getByRole('button', { name: 'Got it' });
     if (await btn.count() === 0) return; // already dismissed — fine
     await btn.tap();
@@ -648,7 +663,7 @@ await test('C2 dark: charts render with theme colors', async () => {
     if (await btn.count() > 0) throw new Error('tip still visible');
   });
 
-  await test('D4 top-right Add button opens entry form on mobile', async () => {
+  await test('mobile: the top-right Add button opens the entry form', async () => {
     await page.locator('.cf-bottomnav').getByRole('button', { name: 'Budget' }).tap({ force: true });
     await page.waitForTimeout(400);
     await page.locator('button[title="Add Entry"]').first().tap({ force: true });
@@ -658,7 +673,7 @@ await test('C2 dark: charts render with theme colors', async () => {
     if (await page.locator('.modal-overlay').count() > 0) throw new Error('add-entry modal did not close');
   });
 
-  await test('D5 mobile settings hides biometric on unsupported device', async () => {
+  await test('mobile: settings hides biometric unlock on a device with no authenticator', async () => {
     await page.locator('.cf-bottomnav').getByRole('button', { name: 'Settings' }).tap();
     await page.waitForTimeout(800);
     await page.getByText('Auto-lock when in background', { exact: false }).waitFor(V);
@@ -669,7 +684,7 @@ await test('C2 dark: charts render with theme colors', async () => {
   await ctx.close();
 }
 
-await test('D6 mobile dark: active nav item is highlighted, not dimmed', async () => {
+await test('mobile dark mode: the active nav item is highlighted, not dimmed', async () => {
   const { ctx, page } = await ctxPage({ touch: true, dark: true });
   await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
@@ -680,7 +695,7 @@ await test('D6 mobile dark: active nav item is highlighted, not dimmed', async (
   await ctx.close();
 });
 
-await test('D7 mobile: Daily subtab hidden (redundant with Monthly cards)', async () => {
+await test('mobile: the Daily subtab is hidden, since Monthly cards already read day by day', async () => {
   const { ctx, page } = await ctxPage({ touch: true });
   await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
   await page.waitForTimeout(800);
@@ -691,8 +706,8 @@ await test('D7 mobile: Daily subtab hidden (redundant with Monthly cards)', asyn
   await ctx.close();
 });
 
-// ── E. Auth surfaces ────────────────────────────────────────────────────────
-await test('E1 login screen renders when signed out', async () => {
+// ── Auth surfaces ────────────────────────────────────────────────────────
+await test('auth: the login screen renders when signed out', async () => {
   const { ctx, page } = await ctxPage({ loggedIn: false });
   await page.goto(BASE, { waitUntil: 'load' });
   await page.getByText('Sign in to your account', V).waitFor(V);
@@ -700,7 +715,7 @@ await test('E1 login screen renders when signed out', async () => {
   await ctx.close();
 });
 
-await test('E2 create-account mode switches', async () => {
+await test('auth: the login screen switches to create-account mode', async () => {
   const { ctx, page } = await ctxPage({ loggedIn: false });
   await page.goto(BASE, { waitUntil: 'load' });
   await page.getByText('Create account', { exact: true }).first().click();
@@ -709,14 +724,14 @@ await test('E2 create-account mode switches', async () => {
   await ctx.close();
 });
 
-// ── F. Money schema migration (schema v8: dollars -> cents) ────────────────
+// ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
 // simulates a real existing household's save from before this migration
 // shipped — no schemaVersion field, amounts still dollar-scale — the exact
 // shape applyPayload's centsifyHouseholdPayload (household-sync.js) must
 // catch and convert on load.
-await test('F1 loading a pre-v8 cloud payload (dollar-scale, no schemaVersion) upgrades to cents on display', async () => {
+await test('migration: a pre-v8 dollar-scale cloud payload is upgraded to cents on display', async () => {
   const oldPayload = {
     entries: [{ id: 1, desc: 'Old Format Rent', type: 'expense', amount: 1234.56, category: 'Housing', repeats: false, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-05', notes: '' }],
     overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 5000 }], budgetTargets: {}, templates: [],
@@ -769,14 +784,59 @@ await test('F1 loading a pre-v8 cloud payload (dollar-scale, no schemaVersion) u
   await ctx.close();
 });
 
-// ── G. Weekend payroll deposits ─────────────────────────────────────────────
+// ── Field-level help ────────────────────────────────────────────────────────
+await test('help tips: a field explains itself on hover instead of in permanent body copy', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(1000);
+  await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+  await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+  await page.getByRole('switch', { name: 'Repeats' }).click();
+  await page.waitForTimeout(300);
+
+  const tip = page.getByRole('button', { name: 'Help: Until' });
+  await tip.waitFor(V);
+  const bubble = page.locator('#' + (await tip.getAttribute('aria-describedby')));
+  if (await bubble.isVisible()) throw new Error('the help bubble is showing before anyone asked for it');
+  // The copy it replaced must not also still be sitting under the field.
+  const form = page.locator('.modal-card').first();
+  if ((await form.innerText()).includes('Leave blank to recur indefinitely')) {
+    throw new Error('the old inline hint is still rendered as body copy');
+  }
+
+  await tip.hover();
+  await page.waitForTimeout(250);
+  if (!(await bubble.isVisible())) throw new Error('hovering the help icon did not open the bubble');
+  if (!/Leave blank to recur indefinitely/.test(await bubble.innerText())) {
+    throw new Error('bubble does not carry the field help: ' + (await bubble.innerText()).slice(0, 80));
+  }
+  if (await tip.getAttribute('aria-expanded') !== 'true') throw new Error('aria-expanded stayed false while open');
+
+  // Keyboard: focus opens it, Escape closes it — and Escape must not take the
+  // form down with it.
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(250);
+  await tip.focus();
+  await page.waitForTimeout(200);
+  if (!(await bubble.isVisible())) throw new Error('focusing the help icon did not open the bubble');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  if (await bubble.isVisible()) throw new Error('Escape did not close the bubble');
+  if (await page.getByPlaceholder('e.g. Mortgage payment').count() === 0) {
+    throw new Error('Escape closed the whole entry form, losing what was typed');
+  }
+  await page.getByRole('button', { name: 'Cancel' }).first().click();
+  await ctx.close();
+});
+
+// ── Weekend payroll deposits ─────────────────────────────────────────────
 // Its own fixture rather than an addition to the shared one: this needs a
 // payroll entry on a date whose weekday matters (Aug 15 2026 is a Saturday),
 // and dropping one into the shared payload would move every balance the B*
 // tests read. The date maths itself is pinned by the built-in self-tests
 // (A1); what this checks is that the ledger renders the adjusted date, the
 // row explains itself, and the entry definition is left on the real payday.
-await test('G1 a payday on a Saturday shows in the ledger on the Friday before, entry untouched', async () => {
+await test('payroll: a Saturday payday shows in the ledger on the Friday before, entry untouched', async () => {
   const payload = {
     entries: [
       { id: 1, desc: 'Ken - Payroll (15th)', type: 'income', amount: 250000, category: 'Income', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '' },
@@ -855,5 +915,12 @@ for (const r of results) {
   r.ok ? pass++ : fail++;
 }
 console.log(`\n${pass}/${results.length} passed, ${fail} failed`);
+// Repeat the failures under the count: on a full run the PASS lines scroll the
+// interesting ones off the top of a CI log, and "1 failed" on its own says
+// nothing about what broke.
+if (fail) {
+  console.log('\nFailed:');
+  for (const r of results.filter((x) => !x.ok)) console.log('  • ' + r.name + (r.detail ? '\n      ' + r.detail : ''));
+}
 if (pageErrors.length) console.log('total page errors seen: ' + pageErrors.length);
 process.exit(fail ? 1 : 0);

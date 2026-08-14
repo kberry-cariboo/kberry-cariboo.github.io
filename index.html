@@ -65,6 +65,44 @@
         .field-input--mono{font-family:'IBM Plex Mono',monospace;}
         .field-error-text{font-family:Inter,sans-serif;font-size:11px;color:var(--red);margin-top:4px;}
         .field-hint-text{font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);margin-top:4px;}
+        /* ── Field-level help (HelpTip) ──
+           The "?" sits inline in a label, so it must not disturb the line it
+           is in: no extra height, no baseline shift. The bubble hangs off the
+           wrapper, aligned to the icon's left edge by default because labels
+           are left-aligned and there is always room to the right; --end flips
+           it for an icon near a right edge. */
+        /* Label + its help icon on one line. The label keeps its own bottom
+           margin at zero and the row carries it instead, so a field with help
+           lines up with one without. */
+        .field-label-row{display:flex;align-items:center;margin-bottom:6px;}
+        .field-label-row .field-label{margin-bottom:0;}
+        .section-title-wrap{display:flex;align-items:center;min-width:0;}
+        /* A checkbox and its help icon: the tip sits outside the <label> (same
+           accessible-name reason as .field-label-row) but has to stay on the
+           same line as it. */
+        .checkbox-help-row{display:flex;align-items:center;}
+        .helptip-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:5px;}
+        .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
+          width:15px;height:15px;padding:0;border:none;border-radius:50%;cursor:help;
+          background:var(--stripe);color:var(--textMid);
+          font-family:Inter,sans-serif;font-size:10px;font-weight:700;line-height:1;
+          transition:background 0.12s ease,color 0.12s ease;}
+        .helptip-btn:hover,.helptip-btn[aria-expanded="true"]{background:var(--navyLt);color:#fff;}
+        .helptip-btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
+        .helptip-bubble{position:absolute;top:calc(100% + 7px);left:-6px;z-index:2600;
+          width:max-content;max-width:min(272px,calc(100vw - 32px));
+          padding:8px 10px;border-radius:8px;
+          /* The hairline is for dark mode, where the bubble's navy sits close
+             enough to the card behind it to lose its edge. */
+          background:var(--navyMid);color:#fff;box-shadow:var(--shadowXl);
+          border:1px solid rgba(255,255,255,0.16);
+          font-family:Inter,sans-serif;font-size:11px;font-weight:400;line-height:1.45;
+          letter-spacing:normal;text-transform:none;white-space:normal;text-align:left;
+          opacity:0;visibility:hidden;transform:translateY(-2px);
+          transition:opacity 0.12s ease,transform 0.12s ease,visibility 0.12s;}
+        .helptip-bubble--end{left:auto;right:-6px;}
+        .helptip-bubble.is-open{opacity:1;visibility:visible;transform:translateY(0);}
+        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
         .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
@@ -289,10 +327,6 @@
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
         .oem-hint{font-size:12px;color:var(--amberInk);margin-bottom:18px;}
-        /* The weekend-deposit explanation sits above the standard hint: it
-           reports what the app already did, so it reads as information rather
-           than as the amber "careful, this is per-date" note under it. */
-        .oem-hint--shift{color:var(--textMid);margin-bottom:8px;}
         .flex-55{flex:1 1 55%;}
         .flex-45{flex:1 1 45%;}
         .oem-attach-img{height:56px;border-radius:8px;border:1px solid var(--border);cursor:pointer;}
@@ -441,8 +475,6 @@
         .mt-12{margin-top:12px;}
         .weekday-btn-row{display:flex;gap:3px;flex-wrap:wrap;}
         .weekday-btn{font-size:11px;font-weight:700;flex:1 1 auto;min-width:34px;height:32px;border-radius:6px;}
-        .recur-hint{font-size:10px;color:var(--textLt);margin-top:4px;}
-        .recur-hint-amber{font-size:10px;color:var(--amberInk);margin-top:4px;}
         .recur-semimonth-desc{font-size:13px;color:var(--textMid);margin-bottom:10px;}
         .monthly-toggle-wrap{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
         .monthly-amounts-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
@@ -5453,7 +5485,10 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
-  const SectionTitle = ({ children, action, className }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
+  // `help` puts a HelpTip beside the heading — the section's explanatory
+  // paragraph without the paragraph. (Defined below this line but hoisted, as
+  // everything in this bundle's shared scope is.)
+  const SectionTitle = ({ children, action, className, help }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), help && /* @__PURE__ */ React.createElement(HelpTip, { label: typeof children === "string" ? children : "", text: help })), action);
   const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -5658,6 +5693,104 @@ document.addEventListener('DOMContentLoaded',function(){
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
   }
+  // Field-level help: a small "?" beside a label that shows its explanation on
+  // hover, on keyboard focus, and on tap. It replaces the sentences that used
+  // to sit permanently under the fields they described — every one of those
+  // was read once and then became furniture, pushing the actual controls apart
+  // and making a six-field form read like a page of prose. The words are the
+  // same, they're just one gesture away instead of always on screen.
+  //
+  // Not a `title` attribute: those never open on keyboard focus, are
+  // unreachable on touch, and can't be styled. This is a real tooltip —
+  // role="tooltip", wired to the button through aria-describedby, so it is
+  // announced with the control it belongs to.
+  //
+  // The bubble is always in the DOM and hidden with CSS rather than
+  // conditionally rendered: aria-describedby has to resolve to a live element
+  // for screen readers to read it, and they read a referenced element whether
+  // or not it is visually shown.
+  let HELPTIP_SEQ = 0;
+  function HelpTip({ text, label = "", align = "start" }) {
+    const [open, setOpen] = useState(false);
+    const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
+    const wrapRef = useRef(null);
+    // A tap opens the bubble; the next tap anywhere else closes it. Without
+    // this an opened tip on a touch device has no dismiss gesture at all,
+    // since there's no pointer to move away.
+    useEffect(() => {
+      if (!open) return;
+      const away = (e) => {
+        if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      };
+      const esc = (e) => {
+        // Stop here rather than letting Escape reach the dialog behind it —
+        // closing the whole form because the user dismissed a tooltip would
+        // lose everything they had typed.
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      };
+      document.addEventListener("pointerdown", away);
+      document.addEventListener("keydown", esc, true);
+      return () => {
+        document.removeEventListener("pointerdown", away);
+        document.removeEventListener("keydown", esc, true);
+      };
+    }, [open]);
+    if (!text) return null;
+    return /* @__PURE__ */ React.createElement(
+      "span",
+      { className: "helptip-wrap", ref: wrapRef },
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "helptip-btn",
+          "aria-label": label ? `Help: ${label}` : "Help",
+          "aria-expanded": open,
+          "aria-describedby": tipId,
+          onClick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((o) => !o);
+          },
+          // Mouse only: a touch tap also fires pointerenter, and letting it
+          // through would leave the bubble open with no way to dismiss it
+          // except the click handler that had just closed it.
+          onPointerEnter: (e) => {
+            if (e.pointerType === "mouse") setOpen(true);
+          },
+          onPointerLeave: (e) => {
+            if (e.pointerType === "mouse") setOpen(false);
+          },
+          onFocus: () => setOpen(true),
+          onBlur: () => setOpen(false)
+        },
+        "?"
+      ),
+      /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          id: tipId,
+          role: "tooltip",
+          className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : "")
+        },
+        text
+      )
+    );
+  }
+  // A field label with its help beside it. The tip is a *sibling* of the
+  // <label>, never a child: a control inside a label is folded into the field's
+  // accessible name, so a help button in there makes the input announce itself
+  // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
+  // user can't skip. The row keeps the two on one line anyway.
+  const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => /* @__PURE__ */ React.createElement(
+    "div",
+    { className: "field-label-row" },
+    /* @__PURE__ */ React.createElement("label", { className, htmlFor }, children),
+    help && /* @__PURE__ */ React.createElement(HelpTip, { label: helpLabel, text: help, align: helpAlign })
+  );
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
     role: "switch",
@@ -5918,7 +6051,11 @@ document.addEventListener('DOMContentLoaded',function(){
           );
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { className: "weekday-btn-row" }, WEEKDAYS.map((wd, i) => {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      className: lblCls,
+      helpLabel: "Weekdays",
+      help: f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."
+    }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { className: "weekday-btn-row" }, WEEKDAYS.map((wd, i) => {
       const isAnch = i === startWD, isSel = f.recurDays.includes(i) || isAnch, isLock = isAnch || f.recurEvery > 1;
       return /* @__PURE__ */ React.createElement(
         "button",
@@ -5936,7 +6073,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         wd.slice(0, 2)
       );
-    })), f.recurEvery === 1 && startWD !== null && /* @__PURE__ */ React.createElement("div", { className: "recur-hint" }, WEEKDAYS[startWD], " is locked to your start date."), f.recurEvery > 1 && /* @__PURE__ */ React.createElement("div", { className: "recur-hint-amber" }, "Every ", f.recurEvery, " weeks always lands on ", startWD !== null ? WEEKDAYS[startWD] : "the start day", ".")), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { className: "recur-semimonth-desc" }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-until" }, "Until (optional)"), /* @__PURE__ */ React.createElement(
+    }))), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { className: "recur-semimonth-desc" }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { className: lblCls, htmlFor: "ef-recur-until", helpLabel: "Until", help: "Leave blank to recur indefinitely. A date here is the last one the entry can land on — a loan that finishes in September stops generating occurrences after it." }, "Until (optional)"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-recur-until",
@@ -5949,7 +6086,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd }), /* @__PURE__ */ React.createElement("div", { className: "recur-hint" }, "Leave blank to recur indefinitely")), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
       Toggle,
       {
         value: showMonthly,
@@ -6566,11 +6703,10 @@ document.addEventListener('DOMContentLoaded',function(){
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
           ),
-          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Default category"),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement(FieldLabel, { helpLabel: "Default category", help: "A starting point for every row. On the next step you can set categories row by row, or have Claude suggest them from the descriptions." }, "Default category"),
             /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
               sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
             ),
-            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Starting point for every row. On the next step you can set categories per row, or have Claude suggest them from the descriptions.")
           ),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
             /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
@@ -7465,8 +7601,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onClick: (e) => e.stopPropagation()
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
-        ev.depositShifted && /* @__PURE__ */ React.createElement("div", { className: "oem-hint oem-hint--shift" }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true }, "↤ "), depositShiftNote(ev), " Leave the date alone to keep that automatic; changing it pins this occurrence to the date you set."),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-hidden": true }, "\u21a4"), ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { label: "Why this date", text: `${depositShiftNote(ev)} Leave the date alone to keep that automatic; setting one pins this occurrence to the date you choose.` })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -7505,7 +7640,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-actual-amount" }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { className: lblCls, htmlFor: "oem-actual-amount", helpLabel: "Actual Amount Paid", help: "Leave blank if you paid the scheduled amount. Filling it in records what actually left the account — the running balance and Budget vs Actual follow it, while the scheduled amount above stays as planned for every other date." }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-actual-amount",
@@ -7523,7 +7658,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), actualErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -7535,7 +7670,13 @@ document.addEventListener('DOMContentLoaded',function(){
             }
           },
           MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
-        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+          className: lblCls,
+          htmlFor: "oem-day",
+          helpLabel: "Day",
+          helpAlign: "end",
+          help: `1–${maxDay} for this month. Setting a date here moves this one occurrence and nothing else — the same as dragging the row to a new date in the grid.${ev.depositShifted ? " It also pins this date, so the weekend deposit adjustment stops applying to it." : ""}`
+        }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-day",
@@ -7554,7 +7695,12 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
+        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : monthNum !== ev.month ? (
+          // Kept inline rather than moved into the help tip: this isn't help,
+          // it's the consequence of the change the user just made to the month
+          // dropdown, and it has to be seen without going looking for it.
+          /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, `Moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}`)
+        ) : null),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-notes",
@@ -8707,12 +8853,12 @@ document.addEventListener('DOMContentLoaded',function(){
                 if (e.key === "Enter") saveBva();
               }
             }
-          )), /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
+          )), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
             type: "checkbox",
             checked: !!bvaModalData.rollover,
             onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
             className: "mt-2"
-          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
+          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget")), /* @__PURE__ */ React.createElement(HelpTip, { label: "Roll over unspent budget", text: "Envelope-style budgeting: anything you didn't spend against this category earlier in the year is added to this month's target, so a quiet month funds a heavy one instead of being lost." }))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: saveBva,
@@ -9889,7 +10035,7 @@ Fill every field of the response schema. Rules:
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { linkEntry: e.target.checked })),
                 className: "checkbox-16"
               }
-            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
+            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
               "input",
               {
                 type: "checkbox",
@@ -9897,7 +10043,7 @@ Fill every field of the response schema. Rules:
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { payoutEntry: e.target.checked })),
                 className: "checkbox-16"
               }
-            ), "Add the payout as a one-time expense on the target date (models the spending in your forecast)")));
+            ), "Add the payout as a one-time expense on the target date"), /* @__PURE__ */ React.createElement(HelpTip, { label: "Add the payout as an expense", text: "Models the spending in your forecast: on the target date the saved-up amount leaves the budget as a one-time expense, so the running balance shows the purchase actually happening." }))));
           })(),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement(
             "button",
@@ -10351,7 +10497,7 @@ Fill every field of the response schema. Rules:
             className: "field-input",
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { rate: e.target.value }))
           }
-        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
+        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "debt-payment", helpLabel: "Monthly Payment", help: "Leave blank for a debt that is already in your budget \u2014 its payment is read from the matching entry. Fill it in for a debt you pay from somewhere else, or the payoff date can't be worked out." }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             id: "debt-payment",
@@ -10360,7 +10506,7 @@ Fill every field of the response schema. Rules:
             className: "field-input",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: v }))
           }
-        ), /* @__PURE__ */ React.createElement("div", { className: "debtform-hint" }, "Leave blank for auto-detected debts from your budget entries."), (() => {
+        ), (() => {
           // Auto-detection only catches a payment whose description/category
           // happens to contain a debt-ish keyword (loan, mortgage, visa…) —
           // anything else (e.g. "Costco Mastercard") is silently missed. This
@@ -12326,7 +12472,7 @@ Fill every field of the response schema. Rules:
       },
       /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
       "Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, isCoarse ? "Use the arrows to reorder. Changes apply to all new entries; existing entries keep their category name." : "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -12496,7 +12642,7 @@ Fill every field of the response schema. Rules:
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => {
+    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everyone listed here signs in with their own email and password and shares this budget." }, "Household Members"), members.map((m) => {
       const isEditing = editMemberId === m.user_id;
       return /* @__PURE__ */ React.createElement("div", { key: m.user_id, className: "member-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, isEditing ? /* @__PURE__ */ React.createElement(
         "input",
@@ -12553,7 +12699,7 @@ Fill every field of the response schema. Rules:
         },
         m.disabled ? "Enable" : "Disable"
       )));
-    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
+    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: async () => {
@@ -13305,6 +13451,7 @@ Fill every field of the response schema. Rules:
       };
       renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
       renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
+      renderCheck("HelpTip", React.createElement(HelpTip, { label: "Field", text: "Help copy." }));
       renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
       renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
       renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));

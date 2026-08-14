@@ -37,6 +37,44 @@
         .field-input--mono{font-family:'IBM Plex Mono',monospace;}
         .field-error-text{font-family:Inter,sans-serif;font-size:11px;color:var(--red);margin-top:4px;}
         .field-hint-text{font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);margin-top:4px;}
+        /* ── Field-level help (HelpTip) ──
+           The "?" sits inline in a label, so it must not disturb the line it
+           is in: no extra height, no baseline shift. The bubble hangs off the
+           wrapper, aligned to the icon's left edge by default because labels
+           are left-aligned and there is always room to the right; --end flips
+           it for an icon near a right edge. */
+        /* Label + its help icon on one line. The label keeps its own bottom
+           margin at zero and the row carries it instead, so a field with help
+           lines up with one without. */
+        .field-label-row{display:flex;align-items:center;margin-bottom:6px;}
+        .field-label-row .field-label{margin-bottom:0;}
+        .section-title-wrap{display:flex;align-items:center;min-width:0;}
+        /* A checkbox and its help icon: the tip sits outside the <label> (same
+           accessible-name reason as .field-label-row) but has to stay on the
+           same line as it. */
+        .checkbox-help-row{display:flex;align-items:center;}
+        .helptip-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:5px;}
+        .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
+          width:15px;height:15px;padding:0;border:none;border-radius:50%;cursor:help;
+          background:var(--stripe);color:var(--textMid);
+          font-family:Inter,sans-serif;font-size:10px;font-weight:700;line-height:1;
+          transition:background 0.12s ease,color 0.12s ease;}
+        .helptip-btn:hover,.helptip-btn[aria-expanded="true"]{background:var(--navyLt);color:#fff;}
+        .helptip-btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
+        .helptip-bubble{position:absolute;top:calc(100% + 7px);left:-6px;z-index:2600;
+          width:max-content;max-width:min(272px,calc(100vw - 32px));
+          padding:8px 10px;border-radius:8px;
+          /* The hairline is for dark mode, where the bubble's navy sits close
+             enough to the card behind it to lose its edge. */
+          background:var(--navyMid);color:#fff;box-shadow:var(--shadowXl);
+          border:1px solid rgba(255,255,255,0.16);
+          font-family:Inter,sans-serif;font-size:11px;font-weight:400;line-height:1.45;
+          letter-spacing:normal;text-transform:none;white-space:normal;text-align:left;
+          opacity:0;visibility:hidden;transform:translateY(-2px);
+          transition:opacity 0.12s ease,transform 0.12s ease,visibility 0.12s;}
+        .helptip-bubble--end{left:auto;right:-6px;}
+        .helptip-bubble.is-open{opacity:1;visibility:visible;transform:translateY(0);}
+        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
         .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
@@ -261,10 +299,6 @@
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
         .oem-title{font-size:15px;font-weight:700;color:var(--text);}
         .oem-hint{font-size:12px;color:var(--amberInk);margin-bottom:18px;}
-        /* The weekend-deposit explanation sits above the standard hint: it
-           reports what the app already did, so it reads as information rather
-           than as the amber "careful, this is per-date" note under it. */
-        .oem-hint--shift{color:var(--textMid);margin-bottom:8px;}
         .flex-55{flex:1 1 55%;}
         .flex-45{flex:1 1 45%;}
         .oem-attach-img{height:56px;border-radius:8px;border:1px solid var(--border);cursor:pointer;}
@@ -413,8 +447,6 @@
         .mt-12{margin-top:12px;}
         .weekday-btn-row{display:flex;gap:3px;flex-wrap:wrap;}
         .weekday-btn{font-size:11px;font-weight:700;flex:1 1 auto;min-width:34px;height:32px;border-radius:6px;}
-        .recur-hint{font-size:10px;color:var(--textLt);margin-top:4px;}
-        .recur-hint-amber{font-size:10px;color:var(--amberInk);margin-top:4px;}
         .recur-semimonth-desc{font-size:13px;color:var(--textMid);margin-bottom:10px;}
         .monthly-toggle-wrap{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
         .monthly-amounts-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
