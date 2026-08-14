@@ -836,11 +836,12 @@ await test('help tips: a field explains itself on hover instead of in permanent 
 // tests read. The date maths itself is pinned by the built-in self-tests
 // (A1); what this checks is that the ledger renders the adjusted date, the
 // row explains itself, and the entry definition is left on the real payday.
-await test('payroll: a Saturday payday shows in the ledger on the Friday before, entry untouched', async () => {
+await test('payroll: a payday on a weekend or a stat holiday stays put and is marked with its deposit date', async () => {
   const payload = {
     entries: [
       { id: 1, desc: 'Ken - Payroll (15th)', type: 'income', amount: 250000, category: 'Income', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '' },
-      { id: 2, desc: 'Rent', type: 'expense', amount: 165000, category: 'Housing', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '' },
+      { id: 2, desc: 'Rent', type: 'expense', amount: 165000, category: 'Housing', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-05', notes: '' },
+      { id: 3, desc: 'Mel - Payroll (1st)', type: 'income', amount: 180000, category: 'Income', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '' },
     ],
     overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 500000 }], budgetTargets: {}, templates: [],
     completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: false, goals: [], dashHidden: {}, dashOrder: [],
@@ -883,25 +884,140 @@ await test('payroll: a Saturday payday shows in the ledger on the Friday before,
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: /^Aug$/ }).click();
   await page.waitForTimeout(500);
+
+  // The row stays on the payday — moving it would drag the money into
+  // another month's totals, which is the whole reason it doesn't move.
   const payRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
   const dayCell = payRow.locator('.budget-day-cell');
   const dayText = (await dayCell.innerText()).trim();
-  if (!dayText.startsWith('14')) throw new Error('Aug payday did not move off the Saturday: day cell reads ' + JSON.stringify(dayText));
-  if (await dayCell.locator('.deposit-shift-mark').count() === 0) throw new Error('no marker explaining the moved date');
-  const why = await dayCell.getAttribute('title');
-  if (!/weekend/i.test(why || '')) throw new Error('day cell title does not explain the shift: ' + why);
+  if (!dayText.startsWith('15')) throw new Error('the payday moved off the 15th: day cell reads ' + JSON.stringify(dayText));
+  // Both paycheques are still counted in August, which is the point of not
+  // moving them: $2,500 on the 15th + $1,800 on the 1st.
+  const totalsRow = page.locator('tr', { hasText: /monthly totals/i }).first();
+  const totals = await totalsRow.innerText();
+  if (!totals.includes('4,300')) throw new Error("August's income total changed: " + totals.replace(/\s+/g, ' '));
 
-  // September's 15th is a Tuesday — that one stays put.
+  // ...and the marker beside it says when the money actually lands.
+  const mark = dayCell.locator('.helptip-btn--mark');
+  if (await mark.count() === 0) throw new Error('no deposit-date marker on a payday that falls on a Saturday');
+  const bubble = page.locator('#' + (await mark.getAttribute('aria-describedby')));
+  if (await bubble.isVisible()) throw new Error('the marker bubble is open before anyone asked');
+  await mark.hover();
+  await page.waitForTimeout(250);
+  const why = await bubble.innerText();
+  if (!/Fri Aug 14/.test(why)) throw new Error('marker does not name the deposit date: ' + why);
+  if (!/weekend/i.test(why)) throw new Error('marker does not say why: ' + why);
+
+  // September's 15th is a Tuesday — no marker at all.
   await page.getByRole('button', { name: /^Sep$/ }).click();
   await page.waitForTimeout(500);
-  const sepDay = (await page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first().locator('.budget-day-cell').innerText()).trim();
-  if (!sepDay.startsWith('15')) throw new Error('a weekday payday was moved: ' + JSON.stringify(sepDay));
+  const sepRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
+  if (!(await sepRow.locator('.budget-day-cell').innerText()).trim().startsWith('15')) throw new Error('a weekday payday moved off the 15th');
+  if (await sepRow.locator('.helptip-btn--mark').count() > 0) throw new Error('a weekday payday got a deposit marker');
 
-  // The entry itself still pays on the 15th — only the deposit moved.
+  // A BC statutory holiday counts the same as a weekend: Canada Day 2026 is a
+  // Wednesday, so a 1 July payday is in the account on Tuesday 30 June.
+  await page.getByRole('button', { name: /^Jul$/ }).click();
+  await page.waitForTimeout(500);
+  const holRow = page.locator('tr', { hasText: 'Mel - Payroll (1st)' }).first();
+  if (!(await holRow.locator('.budget-day-cell').innerText()).trim().startsWith('1')) throw new Error('the Canada Day payday moved off the 1st');
+  const holMark = holRow.locator('.helptip-btn--mark');
+  if (await holMark.count() === 0) throw new Error('no marker on a payday that falls on Canada Day');
+  await holMark.hover();
+  await page.waitForTimeout(250);
+  const holWhy = await page.locator('#' + (await holMark.getAttribute('aria-describedby'))).innerText();
+  if (!/Canada Day/.test(holWhy) || !/Tue Jun 30/.test(holWhy)) throw new Error('marker does not name the holiday and the deposit date: ' + holWhy);
+
+  // The entry itself still pays on the 15th — only the marker moved.
   await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
   await page.waitForTimeout(800);
   const entryRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
-  if (!(await entryRow.innerText()).includes('2026-01-15')) throw new Error('the recurring entry\'s date was rewritten: ' + await entryRow.innerText());
+  if (!(await entryRow.innerText()).includes('2026-01-15')) throw new Error("the recurring entry's date was rewritten: " + await entryRow.innerText());
+  await ctx.close();
+});
+
+// Published holiday dates, with the API stubbed. The computed fallback is
+// pinned by the in-page self-tests; what this covers is the wiring around it —
+// that the app actually asks canada-holidays.ca, believes the answer over its
+// own rules, and re-renders once it arrives. The stub names a date the rules
+// would never produce, so a pass can only come from the fetched list.
+await test('payroll: published BC holiday dates are fetched and override the computed ones', async () => {
+  const payload = {
+    entries: [
+      { id: 1, desc: 'Ken - Payroll (15th)', type: 'income', amount: 250000, category: 'Income', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '' },
+    ],
+    overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 500000 }], budgetTargets: {}, templates: [],
+    completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: false, goals: [], dashHidden: {}, dashOrder: [],
+    schemaVersion: 999,
+  };
+  const stub = `
+  (() => {
+    const session = { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' };
+    const payload = ${JSON.stringify(payload)};
+    const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }];
+    const resolved = (data) => Promise.resolve({ data, error: null });
+    function chain(table) {
+      const c = {};
+      for (const m of ['select','eq','limit','order','update','insert','delete','neq','in']) {
+        c[m] = () => { if (m === 'order') return resolved(table === 'household_members' ? members : []); return c; };
+      }
+      c.maybeSingle = () => resolved(table === 'household_members' ? { household_id: 'hh-demo' } : { id: 'hh-demo', name: 'Demo Household' });
+      c.single = c.maybeSingle;
+      c.then = (res, rej) => resolved(null).then(res, rej);
+      return c;
+    }
+    const fakeClient = {
+      auth: { getSession: () => resolved({ session }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }), signOut: () => resolved(null) },
+      from: (t) => chain(t),
+      rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),
+      channel: () => { const ch = { on: () => ch, subscribe: () => ({ unsubscribe(){} }) }; return ch; },
+      removeChannel(){},
+    };
+    Object.defineProperty(window, 'supabase', { get: () => ({ createClient: () => fakeClient }), set: () => {} });
+
+    // Stand in for canada-holidays.ca. 15 Sep 2026 is an ordinary Tuesday by
+    // every rule the app knows; only the published list says otherwise.
+    window.__holidayFetches = [];
+    const realFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if (url.includes('canada-holidays.ca')) {
+        window.__holidayFetches.push(url);
+        const year = Number((url.match(/year=(\\d{4})/) || [])[1]);
+        const holidays = year === 2026
+          ? [{ id: 99, date: '2026-09-15', observedDate: '2026-09-15', nameEn: 'Test Proclaimed Holiday', optional: 0 }]
+          : [];
+        return Promise.resolve(new Response(JSON.stringify({ province: { id: 'BC', holidays } }), { status: 200, headers: { 'content-type': 'application/json' } }));
+      }
+      return realFetch(input, init);
+    };
+  })();
+  `;
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.addInitScript(stub);
+
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const asked = await page.evaluate(() => window.__holidayFetches || []);
+  if (!asked.some((u) => /year=2026/.test(u) && /optional=true/.test(u))) {
+    throw new Error('the app never asked for 2026 holidays (including optional ones): ' + JSON.stringify(asked));
+  }
+  await page.getByRole('button', { name: /^Sep$/ }).click();
+  await page.waitForTimeout(600);
+  const row = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
+  const mark = row.locator('.helptip-btn--mark');
+  if (await mark.count() === 0) throw new Error('the published holiday was fetched but never reached the grid');
+  await mark.hover();
+  await page.waitForTimeout(250);
+  const why = await page.locator('#' + (await mark.getAttribute('aria-describedby'))).innerText();
+  if (!/Test Proclaimed Holiday/.test(why)) throw new Error('marker does not name the published holiday: ' + why);
+  if (!/Mon Sep 14/.test(why)) throw new Error('deposit date not worked out from the published holiday: ' + why);
+  // Still on the 15th, as ever.
+  if (!(await row.locator('.budget-day-cell').innerText()).trim().startsWith('15')) throw new Error('the occurrence moved');
   await ctx.close();
 });
 

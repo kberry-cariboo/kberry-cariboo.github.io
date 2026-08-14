@@ -163,7 +163,8 @@
     <li>No analytics or tracking scripts are used.</li>
     <li>No cookies are set by the application.</li>
     <li>No personal data is sent to any server other than Supabase (required) and,
-    if you opt into AI Insights, Anthropic&rsquo;s API.</li>
+    if you opt into AI Insights, Anthropic&rsquo;s API. The holiday lookup described
+    below sends no data at all &mdash; it only asks for a year&rsquo;s dates.</li>
     <li>No advertising networks or other third-party services are integrated.</li>
   </ul>
 
@@ -179,6 +180,11 @@
     <li><strong>Anthropic API</strong> &mdash; only if you enter your own API key for
     the optional AI Insights feature; requests go directly from your browser to
     Anthropic using your key.</li>
+    <li><strong>canada-holidays.ca</strong> &mdash; a public list of British Columbia
+    statutory holidays, used to work out when payroll that falls on a closed day is
+    actually deposited. Your browser asks it for one year&rsquo;s dates at a time and
+    sends nothing about you or your budget; the app falls back to holiday dates it
+    works out itself if the request fails.</li>
   </ul>
   <p>
     These services are governed by their own privacy policies. CashFlow does not

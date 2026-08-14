@@ -442,8 +442,13 @@
   // conditionally rendered: aria-describedby has to resolve to a live element
   // for screen readers to read it, and they read a referenced element whether
   // or not it is visually shown.
+  //
+  // `icon` swaps the "?" for another glyph, which is how the weekend-deposit
+  // marker (↤) works: it is the same object — an icon that explains itself on
+  // hover, focus or tap — and a row indicator with no way to ask what it means
+  // is just a mystery character.
   let HELPTIP_SEQ = 0;
-  function HelpTip({ text, label = "", align = "start" }) {
+  function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
     const [open, setOpen] = useState(false);
     const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
     const wrapRef = useRef(null);
@@ -479,7 +484,7 @@
         "button",
         {
           type: "button",
-          className: "helptip-btn",
+          className: "helptip-btn" + (variant ? " helptip-btn--" + variant : ""),
           "aria-label": label ? `Help: ${label}` : "Help",
           "aria-expanded": open,
           "aria-describedby": tipId,
@@ -488,6 +493,10 @@
             e.stopPropagation();
             setOpen((o) => !o);
           },
+          // Rows underneath can own the pointer (the budget grid starts a
+          // drag-to-reschedule on pointerdown) — asking what an icon means
+          // must never begin dragging the thing it sits on.
+          onPointerDown: (e) => e.stopPropagation(),
           // Mouse only: a touch tap also fires pointerenter, and letting it
           // through would leave the bubble open with no way to dismiss it
           // except the click handler that had just closed it.
@@ -500,7 +509,7 @@
           onFocus: () => setOpen(true),
           onBlur: () => setOpen(false)
         },
-        "?"
+        icon
       ),
       /* @__PURE__ */ React.createElement(
         "span",

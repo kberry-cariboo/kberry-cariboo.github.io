@@ -297,22 +297,11 @@
       setErr("");
       setDayErr("");
       setActualErr("");
-      // The date fields open on the effective date, which for a weekend payday
-      // is the Friday the deposit lands on rather than the payday itself.
-      // Saving that back as an override would pin this occurrence to the
-      // Friday and switch the automatic adjustment off for it — same date
-      // today, but the row would stop explaining itself, and it would no longer
-      // follow the entry if the payday later moved. Untouched date fields are
-      // written back as the scheduled date instead, so the shift stays live;
-      // an actual edit to either field is a deliberate reschedule and is saved
-      // exactly as typed.
-      const mNum = isNaN(monthNum) ? ev.month : monthNum;
-      const dateUntouched = mNum === ev.month && dNum === ev.day;
       onSave({
         desc,
         amount: a,
-        month: dateUntouched && ev.scheduledMonth !== void 0 ? ev.scheduledMonth : mNum,
-        day: dateUntouched && ev.scheduledDay !== void 0 ? ev.scheduledDay : dNum,
+        month: isNaN(monthNum) ? ev.month : monthNum,
+        day: dNum,
         notes,
         attachment,
         actualAmount: rawActual === null ? void 0 : dollarsToCents(actualAmount)
@@ -340,7 +329,7 @@
           onClick: (e) => e.stopPropagation()
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement("span", { className: "deposit-shift-mark", "aria-hidden": true }, "\u21a4"), ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { label: "Why this date", text: `${depositShiftNote(ev)} Leave the date alone to keep that automatic; setting one pins this occurrence to the date you choose.` })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21a4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -414,7 +403,7 @@
           htmlFor: "oem-day",
           helpLabel: "Day",
           helpAlign: "end",
-          help: `1–${maxDay} for this month. Setting a date here moves this one occurrence and nothing else — the same as dragging the row to a new date in the grid.${ev.depositShifted ? " It also pins this date, so the weekend deposit adjustment stops applying to it." : ""}`
+          help: `1–${maxDay} for this month. Setting a date here moves this one occurrence and nothing else — the same as dragging the row to a new date in the grid.`
         }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
