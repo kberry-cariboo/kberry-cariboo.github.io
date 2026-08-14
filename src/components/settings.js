@@ -245,6 +245,225 @@
     }
   }
 
+  // Settings → Statutory Holidays. Exists so the dates driving the payroll
+  // deposit marker are visible and correctable rather than an invisible rule:
+  // this is the one place that answers "what does the app think a holiday is?".
+  //
+  // A year is shown from whatever holidaysForYear resolves — the household's
+  // stored list if it has one, the computed rules if not — and the first edit
+  // to an unstored year materialises the rules into the store so nothing is
+  // lost. Rows say where they came from, because "built-in" and "I typed this"
+  // are different kinds of trust.
+  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false }) {
+    const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (/* @__PURE__ */ new Date()).getFullYear()));
+    const [form, setForm] = useState(null);
+    const [err, setErr] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [fetchMsg, setFetchMsg] = useState("");
+    const [confirmFetch, setConfirmFetch] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(null);
+    // Read straight from the prop rather than the module registry: the same
+    // resolution the budget uses (stored year, else the computed rules), with
+    // no render-time write into shared state.
+    const rows = holidayRowsForYear(year, holidays);
+    const stored = isYearStored(year, holidays);
+    const manualCount = rows.filter((r) => r.source === "manual").length;
+    const writeYear = (days) => {
+      setHolidays((prev) => __spreadProps(__spreadValues({}, prev), { [year]: days }));
+    };
+    const startAdd = () => {
+      setErr("");
+      setForm({ mode: "add", date: `${year}-01-01`, name: "", optional: false, original: null });
+    };
+    const startEdit = (row) => {
+      setErr("");
+      setForm({ mode: "edit", date: row.date, name: row.name, optional: row.optional, original: row.date });
+    };
+    const saveForm = () => {
+      const name = (form.name || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return setErr("Pick a date.");
+      if (Number(form.date.slice(0, 4)) !== Number(year)) return setErr(`That date isn't in ${year}. Switch year first, or pick a date in ${year}.`);
+      if (!name) return setErr("Give it a name — it's what the deposit marker says.");
+      const days = holidayYearForEditing(year, holidays);
+      if (form.original && form.original !== form.date) delete days[form.original];
+      days[form.date] = { name, optional: !!form.optional, source: "manual" };
+      writeYear(days);
+      setForm(null);
+      setErr("");
+      toast(form.mode === "add" ? "Holiday added" : "Holiday updated");
+    };
+    const removeDate = (date) => {
+      const days = holidayYearForEditing(year, holidays);
+      delete days[date];
+      // An emptied year would fall straight back to the computed rules, which
+      // is the opposite of what deleting the last row asks for. A tombstone
+      // entry keeps the year stored and genuinely empty.
+      writeYear(Object.keys(days).length ? days : { _none: true });
+      toast("Holiday removed");
+    };
+    const runFetch = async () => {
+      setConfirmFetch(false);
+      setBusy(true);
+      setFetchMsg("");
+      try {
+        const fetched = await fetchBCHolidayYear(year);
+        const res = mergeFetchedHolidays(stored ? holidayYearForEditing(year, holidays) : {}, fetched);
+        writeYear(res.days);
+        const bits = [`${Object.keys(res.days).length} dates for ${year}`];
+        if (res.added) bits.push(`${res.added} new`);
+        if (res.updated) bits.push(`${res.updated} changed`);
+        if (res.removed) bits.push(`${res.removed} no longer listed`);
+        if (res.kept) bits.push(`${res.kept} of your own kept`);
+        setFetchMsg("\u2705 " + bits.join(" \u00b7 "));
+      } catch (e) {
+        setFetchMsg("\u274c " + (e.message || "Couldn't fetch the holiday list."));
+      }
+      setBusy(false);
+    };
+    const sourceChip = (source) => {
+      const label = source === "manual" ? "Added here" : source === "published" ? "Published" : "Built-in";
+      return /* @__PURE__ */ React.createElement("span", { className: "holiday-chip holiday-chip--" + source }, label);
+    };
+    const weekdayOf = (dateStr) => WEEKDAYS[(parseDate(dateStr) || /* @__PURE__ */ new Date()).getDay()];
+    return /* @__PURE__ */ React.createElement(
+      Card,
+      { id: "sec-holidays", className: "mb-20" },
+      /* @__PURE__ */ React.createElement(SectionTitle, { help: "Payroll that falls on one of these is marked in the budget with the day it is actually deposited — the last banking day before. The list starts from British Columbia's rules, including the two the province lists as optional; fetch a year to replace it with the published dates, or add and edit dates yourself." }, "Statutory Holidays"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap mb-12" }, years.map((y) => /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: y,
+          onClick: () => {
+            setYear(y);
+            setForm(null);
+            setFetchMsg("");
+            setErr("");
+          },
+          className: "holiday-year-pill",
+          "aria-pressed": y === year,
+          "data-active": y === year
+        },
+        y
+      ))),
+      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : "from the built-in BC rules"),
+      rows.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "No holidays for ", year, ". Payroll on a weekday will be treated as deposited that day."),
+      rows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "holiday-list mb-12" }, rows.map((row) => /* @__PURE__ */ React.createElement(
+        "div",
+        { key: row.date, className: "holiday-row" },
+        /* @__PURE__ */ React.createElement("div", { className: "holiday-date cf-text-mono-13" }, row.date, /* @__PURE__ */ React.createElement("span", { className: "holiday-weekday" }, weekdayOf(row.date))),
+        /* @__PURE__ */ React.createElement("div", { className: "holiday-name" }, row.name, row.optional && /* @__PURE__ */ React.createElement("span", { className: "holiday-chip holiday-chip--optional" }, "Optional")),
+        sourceChip(row.source),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--tiny", "aria-label": `Edit ${row.name}` },
+          "Edit"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: () => setConfirmDelete(row), className: "holiday-remove-btn", "aria-label": `Remove ${row.name}` },
+          "Remove"
+        ))
+      ))),
+      form && /* @__PURE__ */ React.createElement(
+        "div",
+        { className: "holiday-form mb-12" },
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" },
+          /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "holiday-date" }, "Date"), /* @__PURE__ */ React.createElement("input", {
+            id: "holiday-date",
+            type: "date",
+            className: "field-input",
+            value: form.date,
+            onChange: (e) => {
+              setForm((f) => __spreadProps(__spreadValues({}, f), { date: e.target.value }));
+              setErr("");
+            }
+          })),
+          /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "holiday-name" }, "Name"), /* @__PURE__ */ React.createElement("input", {
+            id: "holiday-name",
+            className: "field-input",
+            placeholder: "e.g. Family Day",
+            value: form.name,
+            onChange: (e) => {
+              setForm((f) => __spreadProps(__spreadValues({}, f), { name: e.target.value }));
+              setErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") saveForm();
+            }
+          }))
+        ),
+        /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row mt-10" }, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement("input", {
+          type: "checkbox",
+          className: "checkbox-16",
+          checked: !!form.optional,
+          onChange: (e) => setForm((f) => __spreadProps(__spreadValues({}, f), { optional: e.target.checked }))
+        }), "Optional holiday"), /* @__PURE__ */ React.createElement(HelpTip, { label: "Optional holiday", text: "BC lists Easter Monday and Boxing Day as optional — not every employer or bank observes them. They still count for the deposit date here; the label is so you can tell them apart." })),
+        err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mt-8", role: "alert" }, err),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: saveForm, className: "cf-btn cf-btn--primary cf-btn--md" },
+          form.mode === "add" ? "Add holiday" : "Save holiday"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: () => {
+            setForm(null);
+            setErr("");
+          }, className: "cf-btn cf-btn--secondary cf-btn--md" },
+          "Cancel"
+        ))
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
+        !form && /* @__PURE__ */ React.createElement("button", { onClick: startAdd, className: "cf-btn cf-btn--secondary cf-btn--md" }, "+ Add holiday"),
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setConfirmFetch(true),
+            disabled: busy || isOffline,
+            title: isOffline ? "You're offline — fetching the published list needs a connection." : void 0,
+            className: "cf-btn cf-btn--secondary cf-btn--md"
+          },
+          busy ? "Fetching\u2026" : `Fetch ${year} from canada-holidays.ca`
+        ),
+        stored && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmReset(true), className: "cf-btn cf-btn--secondary cf-btn--md" }, "Reset to built-in")
+      ),
+      /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, fetchMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: { color: fetchMsg.startsWith("\u2705") ? "var(--greenDk)" : "var(--red)" } }, fetchMsg)),
+      confirmFetch && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+        title: `Fetch ${year} holidays?`,
+        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for British Columbia, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
+        confirmLabel: "Fetch",
+        confirmVariant: "primary",
+        onConfirm: runFetch,
+        onCancel: () => setConfirmFetch(false)
+      }),
+      confirmReset && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+        title: `Reset ${year} to the built-in rules?`,
+        message: `Drops your stored list for ${year}, including anything added or edited by hand, and goes back to the dates the app works out from British Columbia's rules.`,
+        confirmLabel: "Reset",
+        onConfirm: () => {
+          setHolidays((prev) => {
+            const next = __spreadValues({}, prev);
+            delete next[year];
+            delete next[String(year)];
+            return next;
+          });
+          setConfirmReset(false);
+          setFetchMsg("");
+          toast(`${year} reset to the built-in holidays`);
+        },
+        onCancel: () => setConfirmReset(false)
+      }),
+      confirmDelete && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+        title: "Remove this holiday?",
+        message: `${confirmDelete.name} on ${confirmDelete.date} stops counting as a closed day, so payroll dated then will show as deposited that day.`,
+        confirmLabel: "Remove",
+        onConfirm: () => {
+          removeDate(confirmDelete.date);
+          setConfirmDelete(null);
+        },
+        onCancel: () => setConfirmDelete(null)
+      })
+    );
+  }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
   }, enableNotifications = async () => {
@@ -263,7 +482,8 @@
   }, household = null, members = [], createInvite = () => {
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
-  } }) {
+  }, holidays = {}, setHolidays = () => {
+  }, isOffline = false }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -528,6 +748,7 @@
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
       ["sec-categories", "Categories"],
+      ["sec-holidays", "Holidays"],
       ["sec-security", "Security"],
       ["sec-reset", "Target Reset"],
       ["sec-danger", "Danger Zone"]
@@ -716,7 +937,7 @@
         onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, holidays, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
         try {
@@ -773,6 +994,7 @@
             if (Array.isArray(d.goals)) setGoals(d.goals);
             if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
             if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
+            if (d.holidays && typeof d.holidays === "object") setHolidays(d.holidays);
             if (d.activeYear) setActiveYear(d.activeYear);
             if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
             if (d.darkMode != null) setDarkMode(d.darkMode);
@@ -895,7 +1117,13 @@
         },
         onKeyDown: (e) => e.key === "Enter" && addCat()
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(HolidaySettings, {
+      holidays,
+      setHolidays,
+      isOffline,
+      activeYear,
+      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
+    }), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: "auto-lock-select",

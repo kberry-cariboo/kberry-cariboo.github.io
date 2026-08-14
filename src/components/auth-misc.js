@@ -663,6 +663,75 @@
         ] } }, 2026);
         return parsed["2026-07-01"].name === "Canada Day" && parsed["2026-12-28"].optional === true && parsed["2025-12-25"] === void 0;
       });
+      // These run against the same module-level registry the live budget reads,
+      // so each one puts it back before returning.
+      const withStoredHolidays = (stored, fn) => {
+        const before = getStoredHolidays();
+        try {
+          setStoredHolidays(stored);
+          return fn();
+        } finally {
+          setStoredHolidays(before);
+        }
+      };
+      t("a stored year replaces the computed one outright", () => withStoredHolidays(
+        { 2026: { "2026-03-17": { name: "QA Day", optional: false, source: "manual" } } },
+        () => {
+          const rows = holidayRowsForYear(2026);
+          // One date, theirs — not merged on top of the thirteen built-in ones,
+          // or removing a holiday would be impossible to express.
+          return rows.length === 1 && rows[0].name === "QA Day" && rows[0].source === "manual" && isYearStored(2026) === true && holidaysForYear(2026)["2026-07-01"] === void 0;
+        }
+      ));
+      t("a year with nothing stored falls back to the BC rules", () => withStoredHolidays({}, () => {
+        const rows = holidayRowsForYear(2026);
+        return rows.length > 10 && rows.every((r) => r.source === "computed") && isYearStored(2026) === false;
+      }));
+      t("an emptied year stays empty instead of reverting to the rules", () => withStoredHolidays(
+        // What Settings writes when the last row is removed.
+        { 2026: { _none: true } },
+        () => holidayRowsForYear(2026).length === 0 && isYearStored(2026) === true
+      ));
+      t("fetching keeps hand-made dates and replaces published ones", () => {
+        const existing = {
+          "2026-07-01": { name: "Canada Day", optional: false, source: "published" },
+          "2026-09-15": { name: "Ours", optional: false, source: "manual" },
+          "2026-11-11": { name: "Remembrance Day", optional: false, source: "published" }
+        };
+        const fetched = {
+          "2026-07-01": { name: "Canada Day (renamed)", optional: false },
+          "2026-12-25": { name: "Christmas Day", optional: false }
+        };
+        const res = mergeFetchedHolidays(existing, fetched);
+        return res.days["2026-09-15"].source === "manual" && res.days["2026-07-01"].name === "Canada Day (renamed)" && res.days["2026-11-11"] === void 0 && res.added === 1 && res.updated === 1 && res.removed === 1 && res.kept === 1;
+      });
+      t("a fetch never overwrites a date the user set by hand", () => {
+        const res = mergeFetchedHolidays(
+          { "2026-07-01": { name: "Our own July 1", optional: false, source: "manual" } },
+          { "2026-07-01": { name: "Canada Day", optional: false } }
+        );
+        return res.days["2026-07-01"].name === "Our own July 1" && res.kept === 1;
+      });
+      t("editing an unstored year starts from the built-in dates", () => withStoredHolidays({}, () => {
+        const seeded = holidayYearForEditing(2026);
+        // Materialised from the rules, so adding one date can't silently drop
+        // the other twelve.
+        return Object.keys(seeded).length > 10 && seeded["2026-07-01"].name === "Canada Day" && seeded["2026-07-01"].source === "computed";
+      }));
+      t("reading with an explicit list leaves the shared one alone", () => withStoredHolidays(
+        { 2026: { "2026-06-06": { name: "Live", optional: false, source: "manual" } } },
+        () => {
+          // What Settings does while showing a year. If this leaked, a panel
+          // rendered with a fixture would silently become what the budget uses.
+          holidayRowsForYear(2026, { 2026: { "2026-01-02": { name: "Fixture", optional: false, source: "manual" } } });
+          holidayYearForEditing(2026, {});
+          return holidaysForYear(2026)["2026-06-06"].name === "Live";
+        }
+      ));
+      t("editing an unstored year drops the empty-year tombstone", () => withStoredHolidays(
+        { 2026: { _none: true } },
+        () => Object.keys(holidayYearForEditing(2026)).length === 0
+      ));
       t("editing a payroll entry splits on the payday", () => {
         const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
         if (!res.newId) return "no split";
@@ -707,6 +776,7 @@
       renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
       renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
       renderCheck("HelpTip", React.createElement(HelpTip, { label: "Field", text: "Help copy." }));
+      renderCheck("HolidaySettings", React.createElement(HolidaySettings, { holidays: {}, setHolidays: noop, years: [2026], activeYear: 2026 }));
       renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
       renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
       renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));

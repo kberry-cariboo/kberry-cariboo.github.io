@@ -936,12 +936,12 @@ await test('payroll: a payday on a weekend or a stat holiday stays put and is ma
   await ctx.close();
 });
 
-// Published holiday dates, with the API stubbed. The computed fallback is
-// pinned by the in-page self-tests; what this covers is the wiring around it —
-// that the app actually asks canada-holidays.ca, believes the answer over its
-// own rules, and re-renders once it arrives. The stub names a date the rules
-// would never produce, so a pass can only come from the fetched list.
-await test('payroll: published BC holiday dates are fetched and override the computed ones', async () => {
+// ── Statutory holidays in Settings ──────────────────────────────────────────
+// One fixture, two tests: the holiday list is household data now, so what
+// matters is that Settings can see and change it and that a change reaches the
+// budget. The API is stubbed — the real one is a third party, and a suite that
+// depends on it fails for reasons that have nothing to do with this code.
+const holidayFixture = () => {
   const payload = {
     entries: [
       { id: 1, desc: 'Ken - Payroll (15th)', type: 'income', amount: 250000, category: 'Income', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '' },
@@ -950,7 +950,7 @@ await test('payroll: published BC holiday dates are fetched and override the com
     completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: false, goals: [], dashHidden: {}, dashOrder: [],
     schemaVersion: 999,
   };
-  const stub = `
+  return `
   (() => {
     const session = { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' };
     const payload = ${JSON.stringify(payload)};
@@ -976,7 +976,7 @@ await test('payroll: published BC holiday dates are fetched and override the com
     Object.defineProperty(window, 'supabase', { get: () => ({ createClient: () => fakeClient }), set: () => {} });
 
     // Stand in for canada-holidays.ca. 15 Sep 2026 is an ordinary Tuesday by
-    // every rule the app knows; only the published list says otherwise.
+    // every rule the app knows, so a marker on it can only have come from here.
     window.__holidayFetches = [];
     const realFetch = window.fetch.bind(window);
     window.fetch = (input, init) => {
@@ -993,31 +993,115 @@ await test('payroll: published BC holiday dates are fetched and override the com
     };
   })();
   `;
+};
+
+await test('holidays: Settings lists the BC dates the app is using, and a manual one reaches the budget', async () => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
-  await page.addInitScript(stub);
+  await page.addInitScript(holidayFixture());
 
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const section = page.locator('#sec-holidays');
+  await section.scrollIntoViewIfNeeded();
+  const rowCount = await section.locator('.holiday-row').count();
+  if (rowCount < 12) throw new Error('expected the BC list, got ' + rowCount + ' rows');
+  if (!(await section.innerText()).includes('Canada Day')) throw new Error('Canada Day is missing from the list');
+  if (!(await section.innerText()).includes('built-in')) throw new Error('an untouched year should say it is using the built-in rules');
+  // BC's optional holidays are in the list and labelled as such.
+  const boxing = section.locator('.holiday-row', { hasText: 'Boxing Day' }).first();
+  if (await boxing.locator('.holiday-chip--optional').count() === 0) throw new Error('Boxing Day is not marked optional');
+
+  // Add one by hand on a date the rules would never produce: 16 Sep 2026 is a
+  // Wednesday, so the 15th (a Tuesday payday) becomes the last banking day
+  // before it only if this holiday actually took effect... and 15 Sep is the
+  // payday itself, so mark the 15th and expect the deposit on the 14th.
+  await section.getByRole('button', { name: '+ Add holiday' }).click();
+  await page.locator('#holiday-date').fill('2026-09-15');
+  await page.locator('#holiday-name').fill('QA Company Shutdown');
+  await section.getByRole('button', { name: 'Add holiday' }).click();
+  await page.waitForTimeout(400);
+  const added = section.locator('.holiday-row', { hasText: 'QA Company Shutdown' }).first();
+  await added.waitFor(V);
+  if (await added.locator('.holiday-chip--manual').count() === 0) throw new Error('a hand-added holiday is not labelled as one');
+  if (!(await section.innerText()).includes('saved in your household')) throw new Error('the year did not become household-stored after an edit');
+
+  // It reaches the budget: the September payday is now marked.
   await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
-  await page.waitForTimeout(1500);
-  const asked = await page.evaluate(() => window.__holidayFetches || []);
-  if (!asked.some((u) => /year=2026/.test(u) && /optional=true/.test(u))) {
-    throw new Error('the app never asked for 2026 holidays (including optional ones): ' + JSON.stringify(asked));
-  }
+  await page.waitForTimeout(900);
   await page.getByRole('button', { name: /^Sep$/ }).click();
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(500);
   const row = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
   const mark = row.locator('.helptip-btn--mark');
-  if (await mark.count() === 0) throw new Error('the published holiday was fetched but never reached the grid');
+  if (await mark.count() === 0) throw new Error('the manual holiday never reached the budget');
   await mark.hover();
   await page.waitForTimeout(250);
   const why = await page.locator('#' + (await mark.getAttribute('aria-describedby'))).innerText();
-  if (!/Test Proclaimed Holiday/.test(why)) throw new Error('marker does not name the published holiday: ' + why);
-  if (!/Mon Sep 14/.test(why)) throw new Error('deposit date not worked out from the published holiday: ' + why);
-  // Still on the 15th, as ever.
-  if (!(await row.locator('.budget-day-cell').innerText()).trim().startsWith('15')) throw new Error('the occurrence moved');
+  if (!/QA Company Shutdown/.test(why)) throw new Error('marker does not name the manual holiday: ' + why);
+  if (!/Mon Sep 14/.test(why)) throw new Error('deposit date not worked out from the manual holiday: ' + why);
+
+  // Removing it puts the payday back to depositing on the day.
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(900);
+  await section.scrollIntoViewIfNeeded();
+  await section.locator('.holiday-row', { hasText: 'QA Company Shutdown' }).getByRole('button', { name: /Remove/ }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).last().click();
+  await page.waitForTimeout(400);
+  if (await section.locator('.holiday-row', { hasText: 'QA Company Shutdown' }).count() > 0) throw new Error('the holiday was not removed');
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: /^Sep$/ }).click();
+  await page.waitForTimeout(500);
+  if (await page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first().locator('.helptip-btn--mark').count() > 0) {
+    throw new Error('the marker survived removing the holiday');
+  }
+  await ctx.close();
+});
+
+await test('holidays: fetching a year on demand replaces the list and re-marks the budget', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.addInitScript(holidayFixture());
+
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const section = page.locator('#sec-holidays');
+  await section.scrollIntoViewIfNeeded();
+  // Nothing is fetched until asked — an automatic refresh would overwrite
+  // hand-corrected dates and sync that to the whole household.
+  if ((await page.evaluate(() => window.__holidayFetches || [])).length !== 0) {
+    throw new Error('the app fetched holidays without being asked');
+  }
+  await section.getByRole('button', { name: /Fetch 2026 from canada-holidays\.ca/ }).click();
+  await page.getByRole('button', { name: 'Fetch', exact: true }).click();
+  await page.waitForTimeout(700);
+  const asked = await page.evaluate(() => window.__holidayFetches || []);
+  if (!asked.some((u) => /year=2026/.test(u) && /optional=true/.test(u))) {
+    throw new Error('fetch did not ask for 2026 including optional holidays: ' + JSON.stringify(asked));
+  }
+  if (!/1 dates for 2026|dates for 2026/.test(await section.innerText())) throw new Error('no result reported after fetching');
+  const fetched = section.locator('.holiday-row', { hasText: 'Test Proclaimed Holiday' }).first();
+  await fetched.waitFor(V);
+  if (await fetched.locator('.holiday-chip--published').count() === 0) throw new Error('a fetched date is not labelled published');
+  // The published list replaces the computed one outright.
+  if ((await section.innerText()).includes('Canada Day')) throw new Error('the computed list survived a fetch that did not include it');
+
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: /^Sep$/ }).click();
+  await page.waitForTimeout(500);
+  const mark = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first().locator('.helptip-btn--mark');
+  if (await mark.count() === 0) throw new Error('the fetched holiday never reached the budget');
+  await mark.hover();
+  await page.waitForTimeout(250);
+  const why = await page.locator('#' + (await mark.getAttribute('aria-describedby'))).innerText();
+  if (!/Test Proclaimed Holiday/.test(why)) throw new Error('marker does not name the fetched holiday: ' + why);
   await ctx.close();
 });
 

@@ -40,7 +40,8 @@
     "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
     "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
     "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
-    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
+    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids",
+    "cf_holidays"
   ];
   function clearHouseholdLocalState() {
     try {
@@ -250,6 +251,12 @@
       if (v && typeof v === "object") set(v);
     } },
     { key: "deletedCopyIds", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    } },
+    // Statutory holidays are household data like anything else: corrected on
+    // one device, right on every device. A household that has never touched
+    // them syncs {} and every year falls back to the computed rules.
+    { key: "holidays", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
     } }
   ];

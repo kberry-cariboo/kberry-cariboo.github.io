@@ -3,31 +3,21 @@
   // process on a holiday any more than they do on a Sunday, so a payday that
   // falls on one is deposited the last banking day before it.
   //
-  // Two sources, in that order of preference:
+  // The dates are household data, kept in the same synced payload as entries
+  // and budget targets, and managed in Settings → Statutory Holidays: they can
+  // be added, edited and removed by hand, and a year can be pulled from
+  // canada-holidays.ca on demand. Nothing fetches on its own — a background
+  // request that quietly overwrote a hand-corrected date and then synced it to
+  // everyone else in the household is not a thing the app should do.
   //
-  //   1. canada-holidays.ca — the dates as published, including the ones BC
-  //      lists as optional (Easter Monday, Boxing Day). Fetched once per
-  //      budget year and cached in localStorage; holidays for a given year
-  //      don't change, so a hit is good until the TTL runs out.
-  //   2. computeBCHolidays() below — the same list worked out from the rules.
-  //      This is not a stopgap for a failed fetch, it's the floor the feature
-  //      stands on: the app is offline-first and ships as a single static
-  //      page, so the holiday rule has to work on a plane, on first run before
-  //      any fetch completes, and if that site ever moves or goes away.
-  //
-  // The two agree on ordinary years. Where they can differ is exactly where a
-  // published list earns its place — a one-off proclaimed holiday, or a rule
-  // change like BC moving Family Day from the second Monday to the third in
-  // 2019 — so the fetch is worth making even though the fallback is good.
+  // A year with nothing stored falls back to computeBCHolidays() below, which
+  // works the list out from the rules. That fallback is the floor the feature
+  // stands on rather than a stopgap: the app is offline-first and ships as a
+  // single static page, so the deposit marker has to be right on a plane, on a
+  // budget year opened for the first time, and if that site ever moves. The
+  // fetch earns its place where rules can't reach — a proclaimed one-off, or a
+  // change like BC moving Family Day to the third Monday in 2019.
   const HOLIDAY_API_URL = (year) => `https://canada-holidays.ca/api/v1/provinces/BC?year=${year}&optional=true`;
-  const HOLIDAY_CACHE_KEY = (year) => `cf_holidays_bc_${year}`;
-  // Long enough that a normal user fetches each year roughly once, short
-  // enough that a correction to a published date reaches them the same year.
-  const HOLIDAY_TTL_MS = 120 * 24 * 60 * 60 * 1000;
-  // year -> { "YYYY-MM-DD": { name, optional } }. Read synchronously by
-  // expandEntries (which is called from render-time useMemos and can't await
-  // anything), refreshed asynchronously by ensureHolidayYears.
-  const holidayRegistry = {};
 
   const nthWeekdayOfMonth = (year, month, weekday, n) => {
     const first = new Date(year, month, 1);
@@ -120,65 +110,136 @@
     });
     return Object.keys(out).length ? out : null;
   }
-  function readHolidayCache(year) {
-    try {
-      const raw = localStorage.getItem(HOLIDAY_CACHE_KEY(year));
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.days || !parsed.fetchedAt) return null;
-      if (Date.now() - Date.parse(parsed.fetchedAt) > HOLIDAY_TTL_MS) return null;
-      return parsed.days;
-    } catch (e) {
-      return null;
-    }
+  // ── Store-backed lookup ────────────────────────────────────────────────────
+  // The household's stored holidays, as { [year]: { [dateStr]: entry } }, kept
+  // here so the synchronous readers below can see them. expandEntries runs
+  // inside render-time useMemos and can't await or subscribe to anything, so
+  // App.js pushes the current state in before it recomputes (see yearFlows).
+  let storedHolidays = {};
+  // Computed years are worked out once and kept — the rules for a given year
+  // can't change, and this is read once per occurrence during expansion.
+  const computedCache = {};
+  function setStoredHolidays(stored) {
+    storedHolidays = stored && typeof stored === "object" ? stored : {};
   }
-  // Synchronous, always answers. First call for a year seeds the registry from
-  // the cache or the computed rules, so nothing downstream has to care whether
-  // a fetch has happened yet.
-  function holidaysForYear(year) {
-    if (!holidayRegistry[year]) holidayRegistry[year] = readHolidayCache(year) || computeBCHolidays(year);
-    return holidayRegistry[year];
+  // Only for callers that have to put the registry back exactly as they found
+  // it — the in-app self-tests run against the same module state the live
+  // budget is using, and must not leave a fixture behind in it.
+  function getStoredHolidays() {
+    return storedHolidays;
+  }
+  function computedHolidaysForYear(year) {
+    if (!computedCache[year]) computedCache[year] = computeBCHolidays(year);
+    return computedCache[year];
+  }
+  // A stored year replaces the computed one outright rather than merging with
+  // it. Merging would make a deleted holiday impossible to express: the rules
+  // would keep putting it back, and "remove" in the UI would silently do
+  // nothing. Storing a year means the household owns that year's list.
+  const isHolidayDateKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k);
+  // Every reader takes an optional store. Rendering a component must not have
+  // to push state into the module registry to read from it — a Settings panel
+  // rendered with a fixture (the in-app self-tests do exactly that) would leave
+  // the fixture behind for the live budget to use.
+  const resolveStore = (store) => (store && typeof store === "object" ? store : storedHolidays);
+  const yearIn = (store, year) => {
+    const s = resolveStore(store);
+    return s[year] || s[String(year)];
+  };
+  function isYearStored(year, store) {
+    const y = yearIn(store, year);
+    return !!y && Object.keys(y).length > 0;
+  }
+  function holidaysForYear(year, store) {
+    const y = yearIn(store, year);
+    return y && Object.keys(y).length ? y : computedHolidaysForYear(year);
   }
   function holidayOn(dateStr) {
     const year = Number(String(dateStr).slice(0, 4));
     if (!year) return null;
     return holidaysForYear(year)[dateStr] || null;
   }
-  // Fetches one year and returns true when the registry actually changed —
-  // the caller uses that to decide whether a re-render is needed.
-  async function refreshHolidayYear(year) {
-    try {
-      const res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
-      if (!res.ok) return false;
-      const days = parseHolidayPayload(await res.json(), year);
-      if (!days) return false;
-      const changed = JSON.stringify(days) !== JSON.stringify(holidaysForYear(year));
-      holidayRegistry[year] = days;
-      try {
-        localStorage.setItem(HOLIDAY_CACHE_KEY(year), JSON.stringify({ fetchedAt: (/* @__PURE__ */ new Date()).toISOString(), days }));
-      } catch (e) {
-        // Storage full or blocked — the dates are still in the registry for
-        // this session, they'll just be fetched again next launch.
-      }
-      return changed;
-    } catch (e) {
-      // Offline, blocked, or the site is down. The computed list is already in
-      // place; this is not worth telling the user about.
-      return false;
-    }
+  // What Settings shows: one row per date, sorted, carrying where it came from.
+  // `source` is "manual" for a hand-added or hand-edited date, "published" for
+  // one that came from a fetch, and "computed" for the rules-based fallback.
+  function holidayRowsForYear(year, store) {
+    const days = holidaysForYear(year, store);
+    const stored = isYearStored(year, store);
+    return Object.keys(days).filter(isHolidayDateKey).sort().map((date) => {
+      const h = days[date] || {};
+      return {
+        date,
+        name: h.name || "Holiday",
+        optional: !!h.optional,
+        source: stored ? h.source || "published" : "computed"
+      };
+    });
   }
-  // Call with the budget years in play. Years already cached inside the TTL
-  // cost nothing, so this is safe to run on every launch — which is what makes
-  // it "run each year": a new budget year has no cache entry and is fetched
-  // the first time the app sees it, and an old one is re-fetched once its
-  // cache goes stale. Resolves to true if any year's dates changed.
-  async function ensureHolidayYears(years) {
-    const wanted = [...new Set((years || []).map(Number).filter((y) => y >= 1970 && y <= 9999))];
-    const stale = wanted.filter((y) => !readHolidayCache(y));
-    if (!stale.length) {
-      wanted.forEach(holidaysForYear);
-      return false;
+  // ── Fetching a year on demand ──────────────────────────────────────────────
+  // Throws with a message meant to be shown as-is: this is only ever called
+  // from a button the user pressed, so a failure has to say what happened
+  // rather than fall back silently the way an automatic refresh would.
+  async function fetchBCHolidayYear(year) {
+    let res;
+    try {
+      res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
+    } catch (e) {
+      throw new Error("Couldn't reach canada-holidays.ca. Check your connection and try again.");
     }
-    const results = await Promise.all(stale.map(refreshHolidayYear));
-    return results.some(Boolean);
+    if (!res.ok) throw new Error(`canada-holidays.ca returned ${res.status}. Try again in a moment.`);
+    let json;
+    try {
+      json = await res.json();
+    } catch (e) {
+      throw new Error("canada-holidays.ca sent something this app couldn't read.");
+    }
+    const days = parseHolidayPayload(json, year);
+    if (!days) throw new Error(`canada-holidays.ca had no BC dates for ${year}.`);
+    return days;
+  }
+  // Folds a fetched year into what's already stored. Dates the user added or
+  // edited by hand survive — losing them to a button labelled "fetch" would be
+  // the same silent overwrite the automatic refresh was removed for — while
+  // published dates are replaced wholesale, so a date that has been corrected
+  // upstream, or dropped from the list entirely, follows.
+  //
+  // A published date the user deleted does come back on a re-fetch. That's the
+  // honest reading of "fetch the published list", and the confirm text says so.
+  function mergeFetchedHolidays(existing, fetched) {
+    const out = {};
+    const before = existing && typeof existing === "object" ? existing : {};
+    const manualDates = Object.keys(before).filter((d) => (before[d] || {}).source === "manual");
+    let added = 0, updated = 0;
+    Object.keys(fetched).forEach((date) => {
+      const f = fetched[date];
+      const prev = before[date];
+      if (prev && prev.source === "manual") return; // theirs wins
+      if (!prev) added++;
+      else if (prev.name !== f.name || !!prev.optional !== !!f.optional) updated++;
+      out[date] = { name: f.name, optional: !!f.optional, source: "published" };
+    });
+    manualDates.forEach((date) => {
+      out[date] = before[date];
+    });
+    const removed = Object.keys(before).filter((d) => (before[d] || {}).source !== "manual" && !out[d]).length;
+    return { days: out, added, updated, removed, kept: manualDates.length };
+  }
+  // Removing the last holiday from a year has to leave the year *stored and
+  // empty*, not absent — an absent year falls back to the computed rules, which
+  // would put every date the user just deleted straight back. That is what the
+  // non-date tombstone key in a stored year means, and why every reader here
+  // filters to date-shaped keys.
+  //
+  // Materialises a year so it can be edited: an unstored year is seeded from
+  // the computed rules first, because the alternative — starting from an empty
+  // list — would silently drop every real holiday the moment someone added one
+  // date of their own.
+  function holidayYearForEditing(year, store) {
+    const days = holidaysForYear(year, store);
+    const out = {};
+    Object.keys(days).filter(isHolidayDateKey).forEach((date) => {
+      const h = days[date];
+      out[date] = { name: h.name, optional: !!h.optional, source: h.source || (isYearStored(year, store) ? "published" : "computed") };
+    });
+    return out;
   }

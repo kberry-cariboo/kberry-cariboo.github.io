@@ -153,6 +153,11 @@
     // deliberately deleted it" — both just look like the target entry is
     // missing — and would resurrect the deleted copy on the next sync.
     const [deletedCopyIds, setDeletedCopyIds] = useLS("cf_deleted_copy_ids", {});
+    // { [year]: { "YYYY-MM-DD": { name, optional, source } } } — the household's
+    // own statutory-holiday list, managed in Settings. Empty until someone
+    // edits a year or fetches one; every year without an entry falls back to
+    // the rules in holidays.js.
+    const [holidays, setHolidays] = useLS("cf_holidays", {});
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
     const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
@@ -512,30 +517,15 @@
       // same scheme as the theme — CSS variables can't reach those.
       document.documentElement.style.colorScheme = theme === DARK ? "dark" : "light";
     }, [darkMode, sessionUser, C]);
-    // BC holiday dates are fetched once per budget year and cached (see
-    // holidays.js). expandEntries reads them synchronously out of that cache to
-    // work out deposit dates, so a fetch that lands after first paint needs a
-    // nudge to be picked up: bumping this re-runs yearFlows with the published
-    // dates in place of the computed ones. Years already cached resolve to
-    // false and never cause a re-render.
-    const [holidayVersion, setHolidayVersion] = useState(0);
-    const holidayYears = yearConfigs.map((yc) => yc.year).sort().join(",");
-    useEffect(() => {
-      let alive = true;
-      // The current calendar year matters even when it has no budget year of
-      // its own (the Forecast crosses year boundaries), and each year's
-      // predecessor matters because a New Year's payday deposits back into the
-      // previous December.
-      const listed = [...holidayYears.split(",").filter(Boolean).map(Number), (/* @__PURE__ */ new Date()).getFullYear()];
-      const years = [...new Set(listed.flatMap((y) => [y - 1, y]))];
-      ensureHolidayYears(years).then((changed) => {
-        if (alive && changed) setHolidayVersion((v) => v + 1);
-      });
-      return () => {
-        alive = false;
-      };
-    }, [holidayYears]);
+    // Holiday lookups inside expandEntries are synchronous and reach through a
+    // module-level reference rather than a prop — it's called from a dozen
+    // places that have no access to this state (settings year-copy, the debt
+    // scan, the split-edit probe). Pushing the current list in here, in the
+    // same memo that consumes it, is what keeps that reference honest: the
+    // flows can never be built against a stale list, which an effect running
+    // after render would allow for one paint.
     const yearFlows = useMemo(() => {
+      setStoredHolidays(holidays);
       const flows = {};
       let carry = null;
       const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -548,7 +538,7 @@
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr, holidayVersion]);
+    }, [entries, yearConfigs, overridesByYr, holidays]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
@@ -644,7 +634,8 @@
       dashHidden,
       dashOrder,
       debtData,
-      deletedCopyIds
+      deletedCopyIds,
+      holidays
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -676,7 +667,8 @@
       dashHidden: setDashHidden,
       dashOrder: setDashOrder,
       debtData: setDebtData,
-      deletedCopyIds: setDeletedCopyIds
+      deletedCopyIds: setDeletedCopyIds,
+      holidays: setHolidays
     }), []);
     const {
       status: houseStatus,
@@ -1509,6 +1501,9 @@
       SettingsView,
       {
         categories,
+        holidays,
+        setHolidays,
+        isOffline,
         setCategories,
         categoryColors,
         setCategoryColors,
