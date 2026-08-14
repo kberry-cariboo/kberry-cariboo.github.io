@@ -81,6 +81,36 @@
            accessible-name reason as .field-label-row) but has to stay on the
            same line as it. */
         .checkbox-help-row{display:flex;align-items:center;}
+        /* ── Settings → Statutory Holidays ── */
+        .holiday-year-pill{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+          padding:5px 12px;min-height:32px;border-radius:8px;cursor:pointer;
+          border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);}
+        .holiday-year-pill[data-active="true"]{background:var(--navy);border-color:var(--navy);color:#fff;}
+        .holiday-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+        .holiday-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+          padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bgCard);}
+        .holiday-row:last-child{border-bottom:none;}
+        .holiday-row:nth-child(even){background:var(--stripe);}
+        .holiday-date{color:var(--textMid);white-space:nowrap;}
+        .holiday-weekday{margin-left:6px;font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);}
+        .holiday-name{flex:1;min-width:140px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+        .holiday-chip{font-family:Inter,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.04em;
+          text-transform:uppercase;padding:2px 6px;border-radius:20px;white-space:nowrap;
+          background:var(--stripe);color:var(--textMid);border:1px solid var(--border);}
+        .holiday-chip--manual{background:var(--accentLt);color:var(--accent);border-color:transparent;}
+        .holiday-chip--published{background:var(--greenLt);color:var(--greenDk);border-color:transparent;}
+        .holiday-chip--optional{background:var(--amberLt);color:var(--amberInk);border-color:transparent;}
+        .holiday-remove-btn{font-family:Inter,sans-serif;font-size:11px;font-weight:600;
+          padding:4px 10px;min-height:30px;border-radius:6px;cursor:pointer;
+          border:1px solid transparent;background:transparent;color:var(--red);}
+        .holiday-remove-btn:hover{background:var(--redLt);}
+        .holiday-form{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--stripe);}
+        @media(max-width:560px){
+          /* The chips and buttons wrap under the name rather than squeezing the
+             date column to nothing on a phone. */
+          .holiday-date{flex-basis:100%;}
+          .holiday-name{flex-basis:100%;}
+        }
         .helptip-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:5px;}
         .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
           width:15px;height:15px;padding:0;border:none;border-radius:50%;cursor:help;
@@ -2988,31 +3018,21 @@ document.addEventListener('DOMContentLoaded',function(){
   // process on a holiday any more than they do on a Sunday, so a payday that
   // falls on one is deposited the last banking day before it.
   //
-  // Two sources, in that order of preference:
+  // The dates are household data, kept in the same synced payload as entries
+  // and budget targets, and managed in Settings → Statutory Holidays: they can
+  // be added, edited and removed by hand, and a year can be pulled from
+  // canada-holidays.ca on demand. Nothing fetches on its own — a background
+  // request that quietly overwrote a hand-corrected date and then synced it to
+  // everyone else in the household is not a thing the app should do.
   //
-  //   1. canada-holidays.ca — the dates as published, including the ones BC
-  //      lists as optional (Easter Monday, Boxing Day). Fetched once per
-  //      budget year and cached in localStorage; holidays for a given year
-  //      don't change, so a hit is good until the TTL runs out.
-  //   2. computeBCHolidays() below — the same list worked out from the rules.
-  //      This is not a stopgap for a failed fetch, it's the floor the feature
-  //      stands on: the app is offline-first and ships as a single static
-  //      page, so the holiday rule has to work on a plane, on first run before
-  //      any fetch completes, and if that site ever moves or goes away.
-  //
-  // The two agree on ordinary years. Where they can differ is exactly where a
-  // published list earns its place — a one-off proclaimed holiday, or a rule
-  // change like BC moving Family Day from the second Monday to the third in
-  // 2019 — so the fetch is worth making even though the fallback is good.
+  // A year with nothing stored falls back to computeBCHolidays() below, which
+  // works the list out from the rules. That fallback is the floor the feature
+  // stands on rather than a stopgap: the app is offline-first and ships as a
+  // single static page, so the deposit marker has to be right on a plane, on a
+  // budget year opened for the first time, and if that site ever moves. The
+  // fetch earns its place where rules can't reach — a proclaimed one-off, or a
+  // change like BC moving Family Day to the third Monday in 2019.
   const HOLIDAY_API_URL = (year) => `https://canada-holidays.ca/api/v1/provinces/BC?year=${year}&optional=true`;
-  const HOLIDAY_CACHE_KEY = (year) => `cf_holidays_bc_${year}`;
-  // Long enough that a normal user fetches each year roughly once, short
-  // enough that a correction to a published date reaches them the same year.
-  const HOLIDAY_TTL_MS = 120 * 24 * 60 * 60 * 1000;
-  // year -> { "YYYY-MM-DD": { name, optional } }. Read synchronously by
-  // expandEntries (which is called from render-time useMemos and can't await
-  // anything), refreshed asynchronously by ensureHolidayYears.
-  const holidayRegistry = {};
 
   const nthWeekdayOfMonth = (year, month, weekday, n) => {
     const first = new Date(year, month, 1);
@@ -3105,67 +3125,138 @@ document.addEventListener('DOMContentLoaded',function(){
     });
     return Object.keys(out).length ? out : null;
   }
-  function readHolidayCache(year) {
-    try {
-      const raw = localStorage.getItem(HOLIDAY_CACHE_KEY(year));
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.days || !parsed.fetchedAt) return null;
-      if (Date.now() - Date.parse(parsed.fetchedAt) > HOLIDAY_TTL_MS) return null;
-      return parsed.days;
-    } catch (e) {
-      return null;
-    }
+  // ── Store-backed lookup ────────────────────────────────────────────────────
+  // The household's stored holidays, as { [year]: { [dateStr]: entry } }, kept
+  // here so the synchronous readers below can see them. expandEntries runs
+  // inside render-time useMemos and can't await or subscribe to anything, so
+  // App.js pushes the current state in before it recomputes (see yearFlows).
+  let storedHolidays = {};
+  // Computed years are worked out once and kept — the rules for a given year
+  // can't change, and this is read once per occurrence during expansion.
+  const computedCache = {};
+  function setStoredHolidays(stored) {
+    storedHolidays = stored && typeof stored === "object" ? stored : {};
   }
-  // Synchronous, always answers. First call for a year seeds the registry from
-  // the cache or the computed rules, so nothing downstream has to care whether
-  // a fetch has happened yet.
-  function holidaysForYear(year) {
-    if (!holidayRegistry[year]) holidayRegistry[year] = readHolidayCache(year) || computeBCHolidays(year);
-    return holidayRegistry[year];
+  // Only for callers that have to put the registry back exactly as they found
+  // it — the in-app self-tests run against the same module state the live
+  // budget is using, and must not leave a fixture behind in it.
+  function getStoredHolidays() {
+    return storedHolidays;
+  }
+  function computedHolidaysForYear(year) {
+    if (!computedCache[year]) computedCache[year] = computeBCHolidays(year);
+    return computedCache[year];
+  }
+  // A stored year replaces the computed one outright rather than merging with
+  // it. Merging would make a deleted holiday impossible to express: the rules
+  // would keep putting it back, and "remove" in the UI would silently do
+  // nothing. Storing a year means the household owns that year's list.
+  const isHolidayDateKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k);
+  // Every reader takes an optional store. Rendering a component must not have
+  // to push state into the module registry to read from it — a Settings panel
+  // rendered with a fixture (the in-app self-tests do exactly that) would leave
+  // the fixture behind for the live budget to use.
+  const resolveStore = (store) => (store && typeof store === "object" ? store : storedHolidays);
+  const yearIn = (store, year) => {
+    const s = resolveStore(store);
+    return s[year] || s[String(year)];
+  };
+  function isYearStored(year, store) {
+    const y = yearIn(store, year);
+    return !!y && Object.keys(y).length > 0;
+  }
+  function holidaysForYear(year, store) {
+    const y = yearIn(store, year);
+    return y && Object.keys(y).length ? y : computedHolidaysForYear(year);
   }
   function holidayOn(dateStr) {
     const year = Number(String(dateStr).slice(0, 4));
     if (!year) return null;
     return holidaysForYear(year)[dateStr] || null;
   }
-  // Fetches one year and returns true when the registry actually changed —
-  // the caller uses that to decide whether a re-render is needed.
-  async function refreshHolidayYear(year) {
-    try {
-      const res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
-      if (!res.ok) return false;
-      const days = parseHolidayPayload(await res.json(), year);
-      if (!days) return false;
-      const changed = JSON.stringify(days) !== JSON.stringify(holidaysForYear(year));
-      holidayRegistry[year] = days;
-      try {
-        localStorage.setItem(HOLIDAY_CACHE_KEY(year), JSON.stringify({ fetchedAt: (/* @__PURE__ */ new Date()).toISOString(), days }));
-      } catch (e) {
-        // Storage full or blocked — the dates are still in the registry for
-        // this session, they'll just be fetched again next launch.
-      }
-      return changed;
-    } catch (e) {
-      // Offline, blocked, or the site is down. The computed list is already in
-      // place; this is not worth telling the user about.
-      return false;
-    }
+  // What Settings shows: one row per date, sorted, carrying where it came from.
+  // `source` is "manual" for a hand-added or hand-edited date, "published" for
+  // one that came from a fetch, and "computed" for the rules-based fallback.
+  function holidayRowsForYear(year, store) {
+    const days = holidaysForYear(year, store);
+    const stored = isYearStored(year, store);
+    return Object.keys(days).filter(isHolidayDateKey).sort().map((date) => {
+      const h = days[date] || {};
+      return {
+        date,
+        name: h.name || "Holiday",
+        optional: !!h.optional,
+        source: stored ? h.source || "published" : "computed"
+      };
+    });
   }
-  // Call with the budget years in play. Years already cached inside the TTL
-  // cost nothing, so this is safe to run on every launch — which is what makes
-  // it "run each year": a new budget year has no cache entry and is fetched
-  // the first time the app sees it, and an old one is re-fetched once its
-  // cache goes stale. Resolves to true if any year's dates changed.
-  async function ensureHolidayYears(years) {
-    const wanted = [...new Set((years || []).map(Number).filter((y) => y >= 1970 && y <= 9999))];
-    const stale = wanted.filter((y) => !readHolidayCache(y));
-    if (!stale.length) {
-      wanted.forEach(holidaysForYear);
-      return false;
+  // ── Fetching a year on demand ──────────────────────────────────────────────
+  // Throws with a message meant to be shown as-is: this is only ever called
+  // from a button the user pressed, so a failure has to say what happened
+  // rather than fall back silently the way an automatic refresh would.
+  async function fetchBCHolidayYear(year) {
+    let res;
+    try {
+      res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
+    } catch (e) {
+      throw new Error("Couldn't reach canada-holidays.ca. Check your connection and try again.");
     }
-    const results = await Promise.all(stale.map(refreshHolidayYear));
-    return results.some(Boolean);
+    if (!res.ok) throw new Error(`canada-holidays.ca returned ${res.status}. Try again in a moment.`);
+    let json;
+    try {
+      json = await res.json();
+    } catch (e) {
+      throw new Error("canada-holidays.ca sent something this app couldn't read.");
+    }
+    const days = parseHolidayPayload(json, year);
+    if (!days) throw new Error(`canada-holidays.ca had no BC dates for ${year}.`);
+    return days;
+  }
+  // Folds a fetched year into what's already stored. Dates the user added or
+  // edited by hand survive — losing them to a button labelled "fetch" would be
+  // the same silent overwrite the automatic refresh was removed for — while
+  // published dates are replaced wholesale, so a date that has been corrected
+  // upstream, or dropped from the list entirely, follows.
+  //
+  // A published date the user deleted does come back on a re-fetch. That's the
+  // honest reading of "fetch the published list", and the confirm text says so.
+  function mergeFetchedHolidays(existing, fetched) {
+    const out = {};
+    const before = existing && typeof existing === "object" ? existing : {};
+    const manualDates = Object.keys(before).filter((d) => (before[d] || {}).source === "manual");
+    let added = 0, updated = 0;
+    Object.keys(fetched).forEach((date) => {
+      const f = fetched[date];
+      const prev = before[date];
+      if (prev && prev.source === "manual") return; // theirs wins
+      if (!prev) added++;
+      else if (prev.name !== f.name || !!prev.optional !== !!f.optional) updated++;
+      out[date] = { name: f.name, optional: !!f.optional, source: "published" };
+    });
+    manualDates.forEach((date) => {
+      out[date] = before[date];
+    });
+    const removed = Object.keys(before).filter((d) => (before[d] || {}).source !== "manual" && !out[d]).length;
+    return { days: out, added, updated, removed, kept: manualDates.length };
+  }
+  // Removing the last holiday from a year has to leave the year *stored and
+  // empty*, not absent — an absent year falls back to the computed rules, which
+  // would put every date the user just deleted straight back. That is what the
+  // non-date tombstone key in a stored year means, and why every reader here
+  // filters to date-shaped keys.
+  //
+  // Materialises a year so it can be edited: an unstored year is seeded from
+  // the computed rules first, because the alternative — starting from an empty
+  // list — would silently drop every real holiday the moment someone added one
+  // date of their own.
+  function holidayYearForEditing(year, store) {
+    const days = holidaysForYear(year, store);
+    const out = {};
+    Object.keys(days).filter(isHolidayDateKey).forEach((date) => {
+      const h = days[date];
+      out[date] = { name: h.name, optional: !!h.optional, source: h.source || (isYearStored(year, store) ? "published" : "computed") };
+    });
+    return out;
   }
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
   const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
@@ -3779,7 +3870,8 @@ document.addEventListener('DOMContentLoaded',function(){
     "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
     "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
     "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
-    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids"
+    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids",
+    "cf_holidays"
   ];
   function clearHouseholdLocalState() {
     try {
@@ -3989,6 +4081,12 @@ document.addEventListener('DOMContentLoaded',function(){
       if (v && typeof v === "object") set(v);
     } },
     { key: "deletedCopyIds", apply: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    } },
+    // Statutory holidays are household data like anything else: corrected on
+    // one device, right on every device. A household that has never touched
+    // them syncs {} and every year falls back to the computed rules.
+    { key: "holidays", apply: (v, set) => {
       if (v && typeof v === "object") set(v);
     } }
   ];
@@ -11666,7 +11764,7 @@ Fill every field of the response schema. Rules:
         { sub: "Paydays that land on a closed day" },
         { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
         { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
-        { p: "Holidays are British Columbia's, including the two the province lists as optional (Easter Monday and Boxing Day). The dates are fetched once per budget year from canada-holidays.ca and kept on your device; the app also works them out from the rules on its own, so the marker is right offline, on a brand-new budget year, and if that site is ever unreachable. Moving a date yourself — dragging the row, or Edit this occurrence — re-checks from wherever you put it." },
+        { p: "Holidays are British Columbia's, including the two the province lists as optional (Easter Monday and Boxing Day). Settings → Statutory Holidays shows exactly which dates the app is using for a year and lets you add, edit or remove them; nothing is fetched on its own, so a date you correct stays corrected. Moving an occurrence yourself — dragging the row, or Edit this occurrence — re-checks the deposit date from wherever you put it." },
         { sub: "Changing one occurrence without changing the plan" },
         { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [
@@ -11772,6 +11870,7 @@ Fill every field of the response schema. Rules:
           ["Data Backup & Restore", "Exports everything to a JSON file, and restores one. Restoring replaces the data you have now, so export first if you are unsure."],
           ["Supabase — Auto Sync", "Shows whether cloud sync is connected and when it last saved. Save Now and Reload from Cloud force the transfer in either direction."],
           ["Manage Categories", "Add, rename, recolour, reorder and remove categories. Renaming applies to new entries; existing entries keep the category name they were saved with."],
+          ["Statutory Holidays", "The dates behind the payroll deposit marker, one budget year at a time. A year starts from British Columbia's rules — marked “built-in” — and switches to a list of your own the moment you add, edit or remove a date. “Fetch from canada-holidays.ca” pulls that year's published dates on demand, keeping anything you added by hand and replacing the rest; “Reset to built-in” throws the stored list away and goes back to the rules. The list is part of your household data, so it syncs and is included in a backup."],
           ["Security", "Auto-lock hides the app behind a lock screen after 5, 15 or 30 minutes in the background. On a phone that supports it you can unlock with your fingerprint or face instead of your password; the registration is per device."],
           ["Target Budget Reset", "Sets every category's monthly target to the expenses already scheduled for that month. It overwrites all existing targets for the year — a starting point to fine-tune, not an undoable tweak."],
           ["Danger Zone", "Clears this device's local cache. Data in Supabase is not affected and the app reloads from the cloud straight after; on a device with no cloud sync this is not recoverable."]
@@ -12087,6 +12186,225 @@ Fill every field of the response schema. Rules:
     }
   }
 
+  // Settings → Statutory Holidays. Exists so the dates driving the payroll
+  // deposit marker are visible and correctable rather than an invisible rule:
+  // this is the one place that answers "what does the app think a holiday is?".
+  //
+  // A year is shown from whatever holidaysForYear resolves — the household's
+  // stored list if it has one, the computed rules if not — and the first edit
+  // to an unstored year materialises the rules into the store so nothing is
+  // lost. Rows say where they came from, because "built-in" and "I typed this"
+  // are different kinds of trust.
+  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false }) {
+    const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (/* @__PURE__ */ new Date()).getFullYear()));
+    const [form, setForm] = useState(null);
+    const [err, setErr] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [fetchMsg, setFetchMsg] = useState("");
+    const [confirmFetch, setConfirmFetch] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(null);
+    // Read straight from the prop rather than the module registry: the same
+    // resolution the budget uses (stored year, else the computed rules), with
+    // no render-time write into shared state.
+    const rows = holidayRowsForYear(year, holidays);
+    const stored = isYearStored(year, holidays);
+    const manualCount = rows.filter((r) => r.source === "manual").length;
+    const writeYear = (days) => {
+      setHolidays((prev) => __spreadProps(__spreadValues({}, prev), { [year]: days }));
+    };
+    const startAdd = () => {
+      setErr("");
+      setForm({ mode: "add", date: `${year}-01-01`, name: "", optional: false, original: null });
+    };
+    const startEdit = (row) => {
+      setErr("");
+      setForm({ mode: "edit", date: row.date, name: row.name, optional: row.optional, original: row.date });
+    };
+    const saveForm = () => {
+      const name = (form.name || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return setErr("Pick a date.");
+      if (Number(form.date.slice(0, 4)) !== Number(year)) return setErr(`That date isn't in ${year}. Switch year first, or pick a date in ${year}.`);
+      if (!name) return setErr("Give it a name — it's what the deposit marker says.");
+      const days = holidayYearForEditing(year, holidays);
+      if (form.original && form.original !== form.date) delete days[form.original];
+      days[form.date] = { name, optional: !!form.optional, source: "manual" };
+      writeYear(days);
+      setForm(null);
+      setErr("");
+      toast(form.mode === "add" ? "Holiday added" : "Holiday updated");
+    };
+    const removeDate = (date) => {
+      const days = holidayYearForEditing(year, holidays);
+      delete days[date];
+      // An emptied year would fall straight back to the computed rules, which
+      // is the opposite of what deleting the last row asks for. A tombstone
+      // entry keeps the year stored and genuinely empty.
+      writeYear(Object.keys(days).length ? days : { _none: true });
+      toast("Holiday removed");
+    };
+    const runFetch = async () => {
+      setConfirmFetch(false);
+      setBusy(true);
+      setFetchMsg("");
+      try {
+        const fetched = await fetchBCHolidayYear(year);
+        const res = mergeFetchedHolidays(stored ? holidayYearForEditing(year, holidays) : {}, fetched);
+        writeYear(res.days);
+        const bits = [`${Object.keys(res.days).length} dates for ${year}`];
+        if (res.added) bits.push(`${res.added} new`);
+        if (res.updated) bits.push(`${res.updated} changed`);
+        if (res.removed) bits.push(`${res.removed} no longer listed`);
+        if (res.kept) bits.push(`${res.kept} of your own kept`);
+        setFetchMsg("\u2705 " + bits.join(" \u00b7 "));
+      } catch (e) {
+        setFetchMsg("\u274c " + (e.message || "Couldn't fetch the holiday list."));
+      }
+      setBusy(false);
+    };
+    const sourceChip = (source) => {
+      const label = source === "manual" ? "Added here" : source === "published" ? "Published" : "Built-in";
+      return /* @__PURE__ */ React.createElement("span", { className: "holiday-chip holiday-chip--" + source }, label);
+    };
+    const weekdayOf = (dateStr) => WEEKDAYS[(parseDate(dateStr) || /* @__PURE__ */ new Date()).getDay()];
+    return /* @__PURE__ */ React.createElement(
+      Card,
+      { id: "sec-holidays", className: "mb-20" },
+      /* @__PURE__ */ React.createElement(SectionTitle, { help: "Payroll that falls on one of these is marked in the budget with the day it is actually deposited — the last banking day before. The list starts from British Columbia's rules, including the two the province lists as optional; fetch a year to replace it with the published dates, or add and edit dates yourself." }, "Statutory Holidays"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap mb-12" }, years.map((y) => /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: y,
+          onClick: () => {
+            setYear(y);
+            setForm(null);
+            setFetchMsg("");
+            setErr("");
+          },
+          className: "holiday-year-pill",
+          "aria-pressed": y === year,
+          "data-active": y === year
+        },
+        y
+      ))),
+      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : "from the built-in BC rules"),
+      rows.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "No holidays for ", year, ". Payroll on a weekday will be treated as deposited that day."),
+      rows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "holiday-list mb-12" }, rows.map((row) => /* @__PURE__ */ React.createElement(
+        "div",
+        { key: row.date, className: "holiday-row" },
+        /* @__PURE__ */ React.createElement("div", { className: "holiday-date cf-text-mono-13" }, row.date, /* @__PURE__ */ React.createElement("span", { className: "holiday-weekday" }, weekdayOf(row.date))),
+        /* @__PURE__ */ React.createElement("div", { className: "holiday-name" }, row.name, row.optional && /* @__PURE__ */ React.createElement("span", { className: "holiday-chip holiday-chip--optional" }, "Optional")),
+        sourceChip(row.source),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--tiny", "aria-label": `Edit ${row.name}` },
+          "Edit"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: () => setConfirmDelete(row), className: "holiday-remove-btn", "aria-label": `Remove ${row.name}` },
+          "Remove"
+        ))
+      ))),
+      form && /* @__PURE__ */ React.createElement(
+        "div",
+        { className: "holiday-form mb-12" },
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" },
+          /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "holiday-date" }, "Date"), /* @__PURE__ */ React.createElement("input", {
+            id: "holiday-date",
+            type: "date",
+            className: "field-input",
+            value: form.date,
+            onChange: (e) => {
+              setForm((f) => __spreadProps(__spreadValues({}, f), { date: e.target.value }));
+              setErr("");
+            }
+          })),
+          /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "holiday-name" }, "Name"), /* @__PURE__ */ React.createElement("input", {
+            id: "holiday-name",
+            className: "field-input",
+            placeholder: "e.g. Family Day",
+            value: form.name,
+            onChange: (e) => {
+              setForm((f) => __spreadProps(__spreadValues({}, f), { name: e.target.value }));
+              setErr("");
+            },
+            onKeyDown: (e) => {
+              if (e.key === "Enter") saveForm();
+            }
+          }))
+        ),
+        /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row mt-10" }, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement("input", {
+          type: "checkbox",
+          className: "checkbox-16",
+          checked: !!form.optional,
+          onChange: (e) => setForm((f) => __spreadProps(__spreadValues({}, f), { optional: e.target.checked }))
+        }), "Optional holiday"), /* @__PURE__ */ React.createElement(HelpTip, { label: "Optional holiday", text: "BC lists Easter Monday and Boxing Day as optional — not every employer or bank observes them. They still count for the deposit date here; the label is so you can tell them apart." })),
+        err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mt-8", role: "alert" }, err),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: saveForm, className: "cf-btn cf-btn--primary cf-btn--md" },
+          form.mode === "add" ? "Add holiday" : "Save holiday"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: () => {
+            setForm(null);
+            setErr("");
+          }, className: "cf-btn cf-btn--secondary cf-btn--md" },
+          "Cancel"
+        ))
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
+        !form && /* @__PURE__ */ React.createElement("button", { onClick: startAdd, className: "cf-btn cf-btn--secondary cf-btn--md" }, "+ Add holiday"),
+        /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => setConfirmFetch(true),
+            disabled: busy || isOffline,
+            title: isOffline ? "You're offline — fetching the published list needs a connection." : void 0,
+            className: "cf-btn cf-btn--secondary cf-btn--md"
+          },
+          busy ? "Fetching\u2026" : `Fetch ${year} from canada-holidays.ca`
+        ),
+        stored && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmReset(true), className: "cf-btn cf-btn--secondary cf-btn--md" }, "Reset to built-in")
+      ),
+      /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, fetchMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: { color: fetchMsg.startsWith("\u2705") ? "var(--greenDk)" : "var(--red)" } }, fetchMsg)),
+      confirmFetch && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+        title: `Fetch ${year} holidays?`,
+        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for British Columbia, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
+        confirmLabel: "Fetch",
+        confirmVariant: "primary",
+        onConfirm: runFetch,
+        onCancel: () => setConfirmFetch(false)
+      }),
+      confirmReset && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+        title: `Reset ${year} to the built-in rules?`,
+        message: `Drops your stored list for ${year}, including anything added or edited by hand, and goes back to the dates the app works out from British Columbia's rules.`,
+        confirmLabel: "Reset",
+        onConfirm: () => {
+          setHolidays((prev) => {
+            const next = __spreadValues({}, prev);
+            delete next[year];
+            delete next[String(year)];
+            return next;
+          });
+          setConfirmReset(false);
+          setFetchMsg("");
+          toast(`${year} reset to the built-in holidays`);
+        },
+        onCancel: () => setConfirmReset(false)
+      }),
+      confirmDelete && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+        title: "Remove this holiday?",
+        message: `${confirmDelete.name} on ${confirmDelete.date} stops counting as a closed day, so payroll dated then will show as deposited that day.`,
+        confirmLabel: "Remove",
+        onConfirm: () => {
+          removeDate(confirmDelete.date);
+          setConfirmDelete(null);
+        },
+        onCancel: () => setConfirmDelete(null)
+      })
+    );
+  }
   function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
   }, enableNotifications = async () => {
@@ -12105,7 +12423,8 @@ Fill every field of the response schema. Rules:
   }, household = null, members = [], createInvite = () => {
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
-  } }) {
+  }, holidays = {}, setHolidays = () => {
+  }, isOffline = false }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -12370,6 +12689,7 @@ Fill every field of the response schema. Rules:
       ["sec-backup", "Backup"],
       ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
       ["sec-categories", "Categories"],
+      ["sec-holidays", "Holidays"],
       ["sec-security", "Security"],
       ["sec-reset", "Target Reset"],
       ["sec-danger", "Danger Zone"]
@@ -12558,7 +12878,7 @@ Fill every field of the response schema. Rules:
         onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, holidays, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
         try {
@@ -12615,6 +12935,7 @@ Fill every field of the response schema. Rules:
             if (Array.isArray(d.goals)) setGoals(d.goals);
             if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
             if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
+            if (d.holidays && typeof d.holidays === "object") setHolidays(d.holidays);
             if (d.activeYear) setActiveYear(d.activeYear);
             if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
             if (d.darkMode != null) setDarkMode(d.darkMode);
@@ -12737,7 +13058,13 @@ Fill every field of the response schema. Rules:
         },
         onKeyDown: (e) => e.key === "Enter" && addCat()
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(HolidaySettings, {
+      holidays,
+      setHolidays,
+      isOffline,
+      activeYear,
+      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
+    }), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: "auto-lock-select",
@@ -13627,6 +13954,75 @@ Fill every field of the response schema. Rules:
         ] } }, 2026);
         return parsed["2026-07-01"].name === "Canada Day" && parsed["2026-12-28"].optional === true && parsed["2025-12-25"] === void 0;
       });
+      // These run against the same module-level registry the live budget reads,
+      // so each one puts it back before returning.
+      const withStoredHolidays = (stored, fn) => {
+        const before = getStoredHolidays();
+        try {
+          setStoredHolidays(stored);
+          return fn();
+        } finally {
+          setStoredHolidays(before);
+        }
+      };
+      t("a stored year replaces the computed one outright", () => withStoredHolidays(
+        { 2026: { "2026-03-17": { name: "QA Day", optional: false, source: "manual" } } },
+        () => {
+          const rows = holidayRowsForYear(2026);
+          // One date, theirs — not merged on top of the thirteen built-in ones,
+          // or removing a holiday would be impossible to express.
+          return rows.length === 1 && rows[0].name === "QA Day" && rows[0].source === "manual" && isYearStored(2026) === true && holidaysForYear(2026)["2026-07-01"] === void 0;
+        }
+      ));
+      t("a year with nothing stored falls back to the BC rules", () => withStoredHolidays({}, () => {
+        const rows = holidayRowsForYear(2026);
+        return rows.length > 10 && rows.every((r) => r.source === "computed") && isYearStored(2026) === false;
+      }));
+      t("an emptied year stays empty instead of reverting to the rules", () => withStoredHolidays(
+        // What Settings writes when the last row is removed.
+        { 2026: { _none: true } },
+        () => holidayRowsForYear(2026).length === 0 && isYearStored(2026) === true
+      ));
+      t("fetching keeps hand-made dates and replaces published ones", () => {
+        const existing = {
+          "2026-07-01": { name: "Canada Day", optional: false, source: "published" },
+          "2026-09-15": { name: "Ours", optional: false, source: "manual" },
+          "2026-11-11": { name: "Remembrance Day", optional: false, source: "published" }
+        };
+        const fetched = {
+          "2026-07-01": { name: "Canada Day (renamed)", optional: false },
+          "2026-12-25": { name: "Christmas Day", optional: false }
+        };
+        const res = mergeFetchedHolidays(existing, fetched);
+        return res.days["2026-09-15"].source === "manual" && res.days["2026-07-01"].name === "Canada Day (renamed)" && res.days["2026-11-11"] === void 0 && res.added === 1 && res.updated === 1 && res.removed === 1 && res.kept === 1;
+      });
+      t("a fetch never overwrites a date the user set by hand", () => {
+        const res = mergeFetchedHolidays(
+          { "2026-07-01": { name: "Our own July 1", optional: false, source: "manual" } },
+          { "2026-07-01": { name: "Canada Day", optional: false } }
+        );
+        return res.days["2026-07-01"].name === "Our own July 1" && res.kept === 1;
+      });
+      t("editing an unstored year starts from the built-in dates", () => withStoredHolidays({}, () => {
+        const seeded = holidayYearForEditing(2026);
+        // Materialised from the rules, so adding one date can't silently drop
+        // the other twelve.
+        return Object.keys(seeded).length > 10 && seeded["2026-07-01"].name === "Canada Day" && seeded["2026-07-01"].source === "computed";
+      }));
+      t("reading with an explicit list leaves the shared one alone", () => withStoredHolidays(
+        { 2026: { "2026-06-06": { name: "Live", optional: false, source: "manual" } } },
+        () => {
+          // What Settings does while showing a year. If this leaked, a panel
+          // rendered with a fixture would silently become what the budget uses.
+          holidayRowsForYear(2026, { 2026: { "2026-01-02": { name: "Fixture", optional: false, source: "manual" } } });
+          holidayYearForEditing(2026, {});
+          return holidaysForYear(2026)["2026-06-06"].name === "Live";
+        }
+      ));
+      t("editing an unstored year drops the empty-year tombstone", () => withStoredHolidays(
+        { 2026: { _none: true } },
+        () => Object.keys(holidayYearForEditing(2026)).length === 0
+      ));
       t("editing a payroll entry splits on the payday", () => {
         const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
         if (!res.newId) return "no split";
@@ -13671,6 +14067,7 @@ Fill every field of the response schema. Rules:
       renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
       renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
       renderCheck("HelpTip", React.createElement(HelpTip, { label: "Field", text: "Help copy." }));
+      renderCheck("HolidaySettings", React.createElement(HolidaySettings, { holidays: {}, setHolidays: noop, years: [2026], activeYear: 2026 }));
       renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
       renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
       renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));
@@ -14031,6 +14428,11 @@ Fill every field of the response schema. Rules:
     // deliberately deleted it" — both just look like the target entry is
     // missing — and would resurrect the deleted copy on the next sync.
     const [deletedCopyIds, setDeletedCopyIds] = useLS("cf_deleted_copy_ids", {});
+    // { [year]: { "YYYY-MM-DD": { name, optional, source } } } — the household's
+    // own statutory-holiday list, managed in Settings. Empty until someone
+    // edits a year or fetches one; every year without an entry falls back to
+    // the rules in holidays.js.
+    const [holidays, setHolidays] = useLS("cf_holidays", {});
     const [goals, setGoals] = useLS("cf_goals", []);
     const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
     const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
@@ -14390,30 +14792,15 @@ Fill every field of the response schema. Rules:
       // same scheme as the theme — CSS variables can't reach those.
       document.documentElement.style.colorScheme = theme === DARK ? "dark" : "light";
     }, [darkMode, sessionUser, C]);
-    // BC holiday dates are fetched once per budget year and cached (see
-    // holidays.js). expandEntries reads them synchronously out of that cache to
-    // work out deposit dates, so a fetch that lands after first paint needs a
-    // nudge to be picked up: bumping this re-runs yearFlows with the published
-    // dates in place of the computed ones. Years already cached resolve to
-    // false and never cause a re-render.
-    const [holidayVersion, setHolidayVersion] = useState(0);
-    const holidayYears = yearConfigs.map((yc) => yc.year).sort().join(",");
-    useEffect(() => {
-      let alive = true;
-      // The current calendar year matters even when it has no budget year of
-      // its own (the Forecast crosses year boundaries), and each year's
-      // predecessor matters because a New Year's payday deposits back into the
-      // previous December.
-      const listed = [...holidayYears.split(",").filter(Boolean).map(Number), (/* @__PURE__ */ new Date()).getFullYear()];
-      const years = [...new Set(listed.flatMap((y) => [y - 1, y]))];
-      ensureHolidayYears(years).then((changed) => {
-        if (alive && changed) setHolidayVersion((v) => v + 1);
-      });
-      return () => {
-        alive = false;
-      };
-    }, [holidayYears]);
+    // Holiday lookups inside expandEntries are synchronous and reach through a
+    // module-level reference rather than a prop — it's called from a dozen
+    // places that have no access to this state (settings year-copy, the debt
+    // scan, the split-edit probe). Pushing the current list in here, in the
+    // same memo that consumes it, is what keeps that reference honest: the
+    // flows can never be built against a stale list, which an effect running
+    // after render would allow for one paint.
     const yearFlows = useMemo(() => {
+      setStoredHolidays(holidays);
       const flows = {};
       let carry = null;
       const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -14426,7 +14813,7 @@ Fill every field of the response schema. Rules:
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr, holidayVersion]);
+    }, [entries, yearConfigs, overridesByYr, holidays]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
@@ -14522,7 +14909,8 @@ Fill every field of the response schema. Rules:
       dashHidden,
       dashOrder,
       debtData,
-      deletedCopyIds
+      deletedCopyIds,
+      holidays
     };
     // Every setter here is permanently stable (useLS's setter never changes
     // identity), so this only needs to be built once — memoizing it keeps
@@ -14554,7 +14942,8 @@ Fill every field of the response schema. Rules:
       dashHidden: setDashHidden,
       dashOrder: setDashOrder,
       debtData: setDebtData,
-      deletedCopyIds: setDeletedCopyIds
+      deletedCopyIds: setDeletedCopyIds,
+      holidays: setHolidays
     }), []);
     const {
       status: houseStatus,
@@ -15387,6 +15776,9 @@ Fill every field of the response schema. Rules:
       SettingsView,
       {
         categories,
+        holidays,
+        setHolidays,
+        isOffline,
         setCategories,
         categoryColors,
         setCategoryColors,

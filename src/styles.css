@@ -53,6 +53,36 @@
            accessible-name reason as .field-label-row) but has to stay on the
            same line as it. */
         .checkbox-help-row{display:flex;align-items:center;}
+        /* ── Settings → Statutory Holidays ── */
+        .holiday-year-pill{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+          padding:5px 12px;min-height:32px;border-radius:8px;cursor:pointer;
+          border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);}
+        .holiday-year-pill[data-active="true"]{background:var(--navy);border-color:var(--navy);color:#fff;}
+        .holiday-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+        .holiday-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+          padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bgCard);}
+        .holiday-row:last-child{border-bottom:none;}
+        .holiday-row:nth-child(even){background:var(--stripe);}
+        .holiday-date{color:var(--textMid);white-space:nowrap;}
+        .holiday-weekday{margin-left:6px;font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);}
+        .holiday-name{flex:1;min-width:140px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+        .holiday-chip{font-family:Inter,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.04em;
+          text-transform:uppercase;padding:2px 6px;border-radius:20px;white-space:nowrap;
+          background:var(--stripe);color:var(--textMid);border:1px solid var(--border);}
+        .holiday-chip--manual{background:var(--accentLt);color:var(--accent);border-color:transparent;}
+        .holiday-chip--published{background:var(--greenLt);color:var(--greenDk);border-color:transparent;}
+        .holiday-chip--optional{background:var(--amberLt);color:var(--amberInk);border-color:transparent;}
+        .holiday-remove-btn{font-family:Inter,sans-serif;font-size:11px;font-weight:600;
+          padding:4px 10px;min-height:30px;border-radius:6px;cursor:pointer;
+          border:1px solid transparent;background:transparent;color:var(--red);}
+        .holiday-remove-btn:hover{background:var(--redLt);}
+        .holiday-form{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--stripe);}
+        @media(max-width:560px){
+          /* The chips and buttons wrap under the name rather than squeezing the
+             date column to nothing on a phone. */
+          .holiday-date{flex-basis:100%;}
+          .holiday-name{flex-basis:100%;}
+        }
         .helptip-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:5px;}
         .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
           width:15px;height:15px;padding:0;border:none;border-radius:50%;cursor:help;
