@@ -56,8 +56,8 @@ notifications — needs a real `http://` or `https://` origin.)
 `src/vendor/` is checked in rather than installed, so there's no manifest saying
 where those files came from. Both are reproducible from npm — regenerate them
 with the recipes below, then run `node build.js` and `node tests/regression.mjs`
-(test A1 runs the app's own React render checks, which is what actually catches
-a bad bundle).
+(the "self-test" case runs the app's own React render checks, which is what
+actually catches a bad bundle).
 
 ```bash
 # src/vendor/react-bundle.js — React + ReactDOM, minified into window.React /

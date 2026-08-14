@@ -218,7 +218,10 @@
   };
   const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
-  const SectionTitle = ({ children, action, className }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
+  // `help` puts a HelpTip beside the heading — the section's explanatory
+  // paragraph without the paragraph. (Defined below this line but hoisted, as
+  // everything in this bundle's shared scope is.)
+  const SectionTitle = ({ children, action, className, help }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), help && /* @__PURE__ */ React.createElement(HelpTip, { label: typeof children === "string" ? children : "", text: help })), action);
   const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -423,6 +426,113 @@
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
   }
+  // Field-level help: a small "?" beside a label that shows its explanation on
+  // hover, on keyboard focus, and on tap. It replaces the sentences that used
+  // to sit permanently under the fields they described — every one of those
+  // was read once and then became furniture, pushing the actual controls apart
+  // and making a six-field form read like a page of prose. The words are the
+  // same, they're just one gesture away instead of always on screen.
+  //
+  // Not a `title` attribute: those never open on keyboard focus, are
+  // unreachable on touch, and can't be styled. This is a real tooltip —
+  // role="tooltip", wired to the button through aria-describedby, so it is
+  // announced with the control it belongs to.
+  //
+  // The bubble is always in the DOM and hidden with CSS rather than
+  // conditionally rendered: aria-describedby has to resolve to a live element
+  // for screen readers to read it, and they read a referenced element whether
+  // or not it is visually shown.
+  //
+  // `icon` swaps the "?" for another glyph, which is how the weekend-deposit
+  // marker (↤) works: it is the same object — an icon that explains itself on
+  // hover, focus or tap — and a row indicator with no way to ask what it means
+  // is just a mystery character.
+  let HELPTIP_SEQ = 0;
+  function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
+    const [open, setOpen] = useState(false);
+    const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
+    const wrapRef = useRef(null);
+    // A tap opens the bubble; the next tap anywhere else closes it. Without
+    // this an opened tip on a touch device has no dismiss gesture at all,
+    // since there's no pointer to move away.
+    useEffect(() => {
+      if (!open) return;
+      const away = (e) => {
+        if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      };
+      const esc = (e) => {
+        // Stop here rather than letting Escape reach the dialog behind it —
+        // closing the whole form because the user dismissed a tooltip would
+        // lose everything they had typed.
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      };
+      document.addEventListener("pointerdown", away);
+      document.addEventListener("keydown", esc, true);
+      return () => {
+        document.removeEventListener("pointerdown", away);
+        document.removeEventListener("keydown", esc, true);
+      };
+    }, [open]);
+    if (!text) return null;
+    return /* @__PURE__ */ React.createElement(
+      "span",
+      { className: "helptip-wrap", ref: wrapRef },
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "helptip-btn" + (variant ? " helptip-btn--" + variant : ""),
+          "aria-label": label ? `Help: ${label}` : "Help",
+          "aria-expanded": open,
+          "aria-describedby": tipId,
+          onClick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((o) => !o);
+          },
+          // Rows underneath can own the pointer (the budget grid starts a
+          // drag-to-reschedule on pointerdown) — asking what an icon means
+          // must never begin dragging the thing it sits on.
+          onPointerDown: (e) => e.stopPropagation(),
+          // Mouse only: a touch tap also fires pointerenter, and letting it
+          // through would leave the bubble open with no way to dismiss it
+          // except the click handler that had just closed it.
+          onPointerEnter: (e) => {
+            if (e.pointerType === "mouse") setOpen(true);
+          },
+          onPointerLeave: (e) => {
+            if (e.pointerType === "mouse") setOpen(false);
+          },
+          onFocus: () => setOpen(true),
+          onBlur: () => setOpen(false)
+        },
+        icon
+      ),
+      /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          id: tipId,
+          role: "tooltip",
+          className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : "")
+        },
+        text
+      )
+    );
+  }
+  // A field label with its help beside it. The tip is a *sibling* of the
+  // <label>, never a child: a control inside a label is folded into the field's
+  // accessible name, so a help button in there makes the input announce itself
+  // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
+  // user can't skip. The row keeps the two on one line anyway.
+  const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => /* @__PURE__ */ React.createElement(
+    "div",
+    { className: "field-label-row" },
+    /* @__PURE__ */ React.createElement("label", { className, htmlFor }, children),
+    help && /* @__PURE__ */ React.createElement(HelpTip, { label: helpLabel, text: help, align: helpAlign })
+  );
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
     role: "switch",

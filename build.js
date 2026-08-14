@@ -15,6 +15,7 @@ const APP_MODULES = [
   "src/lib/runtime.js",
   "src/lib/supabase-config.js",
   "src/lib/migrate.js",
+  "src/lib/holidays.js",
   "src/lib/dates.js",
   "src/lib/format.js",
   "src/lib/biometric.js",

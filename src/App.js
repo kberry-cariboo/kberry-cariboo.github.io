@@ -512,6 +512,29 @@
       // same scheme as the theme — CSS variables can't reach those.
       document.documentElement.style.colorScheme = theme === DARK ? "dark" : "light";
     }, [darkMode, sessionUser, C]);
+    // BC holiday dates are fetched once per budget year and cached (see
+    // holidays.js). expandEntries reads them synchronously out of that cache to
+    // work out deposit dates, so a fetch that lands after first paint needs a
+    // nudge to be picked up: bumping this re-runs yearFlows with the published
+    // dates in place of the computed ones. Years already cached resolve to
+    // false and never cause a re-render.
+    const [holidayVersion, setHolidayVersion] = useState(0);
+    const holidayYears = yearConfigs.map((yc) => yc.year).sort().join(",");
+    useEffect(() => {
+      let alive = true;
+      // The current calendar year matters even when it has no budget year of
+      // its own (the Forecast crosses year boundaries), and each year's
+      // predecessor matters because a New Year's payday deposits back into the
+      // previous December.
+      const listed = [...holidayYears.split(",").filter(Boolean).map(Number), (/* @__PURE__ */ new Date()).getFullYear()];
+      const years = [...new Set(listed.flatMap((y) => [y - 1, y]))];
+      ensureHolidayYears(years).then((changed) => {
+        if (alive && changed) setHolidayVersion((v) => v + 1);
+      });
+      return () => {
+        alive = false;
+      };
+    }, [holidayYears]);
     const yearFlows = useMemo(() => {
       const flows = {};
       let carry = null;
@@ -525,7 +548,7 @@
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr]);
+    }, [entries, yearConfigs, overridesByYr, holidayVersion]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {

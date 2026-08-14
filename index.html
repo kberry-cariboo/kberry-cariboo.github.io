@@ -65,6 +65,50 @@
         .field-input--mono{font-family:'IBM Plex Mono',monospace;}
         .field-error-text{font-family:Inter,sans-serif;font-size:11px;color:var(--red);margin-top:4px;}
         .field-hint-text{font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);margin-top:4px;}
+        /* ── Field-level help (HelpTip) ──
+           The "?" sits inline in a label, so it must not disturb the line it
+           is in: no extra height, no baseline shift. The bubble hangs off the
+           wrapper, aligned to the icon's left edge by default because labels
+           are left-aligned and there is always room to the right; --end flips
+           it for an icon near a right edge. */
+        /* Label + its help icon on one line. The label keeps its own bottom
+           margin at zero and the row carries it instead, so a field with help
+           lines up with one without. */
+        .field-label-row{display:flex;align-items:center;margin-bottom:6px;}
+        .field-label-row .field-label{margin-bottom:0;}
+        .section-title-wrap{display:flex;align-items:center;min-width:0;}
+        /* A checkbox and its help icon: the tip sits outside the <label> (same
+           accessible-name reason as .field-label-row) but has to stay on the
+           same line as it. */
+        .checkbox-help-row{display:flex;align-items:center;}
+        .helptip-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:5px;}
+        .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
+          width:15px;height:15px;padding:0;border:none;border-radius:50%;cursor:help;
+          background:var(--stripe);color:var(--textMid);
+          font-family:Inter,sans-serif;font-size:10px;font-weight:700;line-height:1;
+          transition:background 0.12s ease,color 0.12s ease;}
+        .helptip-btn:hover,.helptip-btn[aria-expanded="true"]{background:var(--navyLt);color:#fff;}
+        /* The weekend/holiday deposit marker. Same control as the "?" — it
+           opens the same way and says the same kind of thing — but it reads as
+           a footnote on the date beside it rather than as a help affordance,
+           so it drops the filled circle until you interact with it. */
+        .helptip-btn--mark{width:auto;min-width:13px;background:transparent;color:var(--textLt);font-size:11px;font-weight:400;padding:0 1px;}
+        .helptip-btn--mark:hover,.helptip-btn--mark[aria-expanded="true"]{background:var(--navyLt);color:#fff;}
+        .helptip-btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
+        .helptip-bubble{position:absolute;top:calc(100% + 7px);left:-6px;z-index:2600;
+          width:max-content;max-width:min(272px,calc(100vw - 32px));
+          padding:8px 10px;border-radius:8px;
+          /* The hairline is for dark mode, where the bubble's navy sits close
+             enough to the card behind it to lose its edge. */
+          background:var(--navyMid);color:#fff;box-shadow:var(--shadowXl);
+          border:1px solid rgba(255,255,255,0.16);
+          font-family:Inter,sans-serif;font-size:11px;font-weight:400;line-height:1.45;
+          letter-spacing:normal;text-transform:none;white-space:normal;text-align:left;
+          opacity:0;visibility:hidden;transform:translateY(-2px);
+          transition:opacity 0.12s ease,transform 0.12s ease,visibility 0.12s;}
+        .helptip-bubble--end{left:auto;right:-6px;}
+        .helptip-bubble.is-open{opacity:1;visibility:visible;transform:translateY(0);}
+        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
         .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
@@ -437,8 +481,6 @@
         .mt-12{margin-top:12px;}
         .weekday-btn-row{display:flex;gap:3px;flex-wrap:wrap;}
         .weekday-btn{font-size:11px;font-weight:700;flex:1 1 auto;min-width:34px;height:32px;border-radius:6px;}
-        .recur-hint{font-size:10px;color:var(--textLt);margin-top:4px;}
-        .recur-hint-amber{font-size:10px;color:var(--amberInk);margin-top:4px;}
         .recur-semimonth-desc{font-size:13px;color:var(--textMid);margin-bottom:10px;}
         .monthly-toggle-wrap{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
         .monthly-amounts-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
@@ -2485,7 +2527,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v183';
+const CF_VERSION='v184';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -2941,6 +2983,190 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   }
   migrateData();
+  // British Columbia statutory holidays, used to work out the day a direct
+  // deposit actually lands (see priorBankingDay in dates.js). Banks don't
+  // process on a holiday any more than they do on a Sunday, so a payday that
+  // falls on one is deposited the last banking day before it.
+  //
+  // Two sources, in that order of preference:
+  //
+  //   1. canada-holidays.ca — the dates as published, including the ones BC
+  //      lists as optional (Easter Monday, Boxing Day). Fetched once per
+  //      budget year and cached in localStorage; holidays for a given year
+  //      don't change, so a hit is good until the TTL runs out.
+  //   2. computeBCHolidays() below — the same list worked out from the rules.
+  //      This is not a stopgap for a failed fetch, it's the floor the feature
+  //      stands on: the app is offline-first and ships as a single static
+  //      page, so the holiday rule has to work on a plane, on first run before
+  //      any fetch completes, and if that site ever moves or goes away.
+  //
+  // The two agree on ordinary years. Where they can differ is exactly where a
+  // published list earns its place — a one-off proclaimed holiday, or a rule
+  // change like BC moving Family Day from the second Monday to the third in
+  // 2019 — so the fetch is worth making even though the fallback is good.
+  const HOLIDAY_API_URL = (year) => `https://canada-holidays.ca/api/v1/provinces/BC?year=${year}&optional=true`;
+  const HOLIDAY_CACHE_KEY = (year) => `cf_holidays_bc_${year}`;
+  // Long enough that a normal user fetches each year roughly once, short
+  // enough that a correction to a published date reaches them the same year.
+  const HOLIDAY_TTL_MS = 120 * 24 * 60 * 60 * 1000;
+  // year -> { "YYYY-MM-DD": { name, optional } }. Read synchronously by
+  // expandEntries (which is called from render-time useMemos and can't await
+  // anything), refreshed asynchronously by ensureHolidayYears.
+  const holidayRegistry = {};
+
+  const nthWeekdayOfMonth = (year, month, weekday, n) => {
+    const first = new Date(year, month, 1);
+    const offset = (weekday - first.getDay() + 7) % 7;
+    return new Date(year, month, 1 + offset + (n - 1) * 7);
+  };
+  // Anonymous Gregorian computus. Easter anchors Good Friday (statutory) and
+  // Easter Monday (optional in BC).
+  const easterSunday = (year) => {
+    const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+    const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = (h + l - 7 * m + 114) % 31 + 1;
+    return new Date(year, month - 1, day);
+  };
+  const addDays = (d, n) => {
+    const out = new Date(d);
+    out.setDate(out.getDate() + n);
+    return out;
+  };
+  // A holiday landing on a weekend is observed on the next open day, and it's
+  // the observed day the banks are shut. Both days are registered: the real one
+  // so a tooltip can name it, the observed one so the deposit maths steps over
+  // the right day.
+  //
+  // `taken` is what makes Christmas week come out right. When Christmas is a
+  // Saturday, it is observed on the Monday and Boxing Day moves past it to the
+  // Tuesday rather than doubling up — two closed days, not one.
+  const observedFor = (d, taken) => {
+    let obs = d;
+    while (obs.getDay() === 0 || obs.getDay() === 6 || taken.has(localDateStr(obs))) obs = addDays(obs, 1);
+    return obs;
+  };
+  function computeBCHolidays(year) {
+    const may25 = new Date(year, 4, 25);
+    // Victoria Day is the Monday *preceding* May 25 — on a May 25 Monday the
+    // holiday is the week before, not that day.
+    const victoria = addDays(may25, -((may25.getDay() + 6) % 7 || 7));
+    const easter = easterSunday(year);
+    const fixed = [
+      [new Date(year, 0, 1), "New Year's Day", false],
+      [nthWeekdayOfMonth(year, 1, 1, 3), "Family Day", false],
+      [addDays(easter, -2), "Good Friday", false],
+      [addDays(easter, 1), "Easter Monday", true],
+      [victoria, "Victoria Day", false],
+      [new Date(year, 6, 1), "Canada Day", false],
+      [nthWeekdayOfMonth(year, 7, 1, 1), "British Columbia Day", false],
+      [nthWeekdayOfMonth(year, 8, 1, 1), "Labour Day", false],
+      [new Date(year, 8, 30), "National Day for Truth and Reconciliation", false],
+      [nthWeekdayOfMonth(year, 9, 1, 2), "Thanksgiving", false],
+      [new Date(year, 10, 11), "Remembrance Day", false],
+      [new Date(year, 11, 25), "Christmas Day", false],
+      [new Date(year, 11, 26), "Boxing Day", true]
+    ];
+    const out = {};
+    const taken = /* @__PURE__ */ new Set();
+    // In date order, so an earlier holiday claims its observed day before a
+    // later one looks for its own.
+    fixed.sort((a, b) => a[0] - b[0]).forEach(([date, name, optional]) => {
+      const dateStr = localDateStr(date);
+      if (!out[dateStr]) out[dateStr] = { name, optional };
+      const obsStr = localDateStr(observedFor(date, taken));
+      taken.add(obsStr);
+      if (!out[obsStr]) out[obsStr] = { name: `${name} (observed)`, optional };
+    });
+    return out;
+  }
+  // The API returns { province: { holidays: [{ date, observedDate, nameEn,
+  // optional }] } }. Everything here is defensive on purpose: this is a third
+  // party's shape, the payload is not something the app controls, and a
+  // surprise in it must degrade to the computed list rather than throw inside
+  // a render.
+  function parseHolidayPayload(payload, year) {
+    var _a;
+    const list = Array.isArray(payload == null ? void 0 : payload.holidays) ? payload.holidays : Array.isArray((_a = payload == null ? void 0 : payload.province) == null ? void 0 : _a.holidays) ? payload.province.holidays : null;
+    if (!list || !list.length) return null;
+    const out = {};
+    list.forEach((h) => {
+      const name = (h && (h.nameEn || h.name) || "Holiday").trim();
+      const optional = !!(h && (h.optional === true || h.optional === 1));
+      [h && h.date, h && h.observedDate].forEach((raw) => {
+        if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
+        if (Number(raw.slice(0, 4)) !== year) return;
+        if (!out[raw]) out[raw] = { name, optional };
+      });
+    });
+    return Object.keys(out).length ? out : null;
+  }
+  function readHolidayCache(year) {
+    try {
+      const raw = localStorage.getItem(HOLIDAY_CACHE_KEY(year));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.days || !parsed.fetchedAt) return null;
+      if (Date.now() - Date.parse(parsed.fetchedAt) > HOLIDAY_TTL_MS) return null;
+      return parsed.days;
+    } catch (e) {
+      return null;
+    }
+  }
+  // Synchronous, always answers. First call for a year seeds the registry from
+  // the cache or the computed rules, so nothing downstream has to care whether
+  // a fetch has happened yet.
+  function holidaysForYear(year) {
+    if (!holidayRegistry[year]) holidayRegistry[year] = readHolidayCache(year) || computeBCHolidays(year);
+    return holidayRegistry[year];
+  }
+  function holidayOn(dateStr) {
+    const year = Number(String(dateStr).slice(0, 4));
+    if (!year) return null;
+    return holidaysForYear(year)[dateStr] || null;
+  }
+  // Fetches one year and returns true when the registry actually changed —
+  // the caller uses that to decide whether a re-render is needed.
+  async function refreshHolidayYear(year) {
+    try {
+      const res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
+      if (!res.ok) return false;
+      const days = parseHolidayPayload(await res.json(), year);
+      if (!days) return false;
+      const changed = JSON.stringify(days) !== JSON.stringify(holidaysForYear(year));
+      holidayRegistry[year] = days;
+      try {
+        localStorage.setItem(HOLIDAY_CACHE_KEY(year), JSON.stringify({ fetchedAt: (/* @__PURE__ */ new Date()).toISOString(), days }));
+      } catch (e) {
+        // Storage full or blocked — the dates are still in the registry for
+        // this session, they'll just be fetched again next launch.
+      }
+      return changed;
+    } catch (e) {
+      // Offline, blocked, or the site is down. The computed list is already in
+      // place; this is not worth telling the user about.
+      return false;
+    }
+  }
+  // Call with the budget years in play. Years already cached inside the TTL
+  // cost nothing, so this is safe to run on every launch — which is what makes
+  // it "run each year": a new budget year has no cache entry and is fetched
+  // the first time the app sees it, and an old one is re-fetched once its
+  // cache goes stale. Resolves to true if any year's dates changed.
+  async function ensureHolidayYears(years) {
+    const wanted = [...new Set((years || []).map(Number).filter((y) => y >= 1970 && y <= 9999))];
+    const stale = wanted.filter((y) => !readHolidayCache(y));
+    if (!stale.length) {
+      wanted.forEach(holidaysForYear);
+      return false;
+    }
+    const results = await Promise.all(stale.map(refreshHolidayYear));
+    return results.some(Boolean);
+  }
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
   const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
   const daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
@@ -2977,6 +3203,56 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!e.recurEnd) return false;
     return e.recurEnd < yearStart;
   }
+  // Direct-deposit payroll doesn't land on a day the banks are shut: a payday
+  // that falls on a weekend or a BC statutory holiday is deposited on the last
+  // banking day before it, so pay dated Saturday 15 August is in the account on
+  // Friday the 14th.
+  //
+  // The occurrence itself does not move. It stays on the payday in the budget —
+  // same month, same running balance, same monthly totals — and carries the
+  // deposit date alongside as metadata for the UI to mark. Moving it would drag
+  // income across a month boundary whenever a 1st-of-month payday landed on a
+  // Saturday (paid 31 July, budgeted in August), quietly rewriting the totals
+  // and Budget vs Actual of two months to fix a display problem.
+  //
+  // Which entries this applies to is read from the description rather than a
+  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
+  // Ken" all read as payroll to a person, and the alternative is a checkbox
+  // that every payroll entry has to have ticked by hand.
+  const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
+  // Repeating income only. A one-time entry's date was typed by hand — it is
+  // already the date the money arrived — and expenses leave when the biller
+  // pulls them, which is not this rule.
+  function isPayrollDeposit(e, desc) {
+    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+  }
+  // The last banking day on or before `date`: steps back over Saturdays,
+  // Sundays and BC holidays (see holidays.js, which includes the two BC lists
+  // as optional — Easter Monday and Boxing Day). Returns the same object when
+  // the date is already a banking day, so callers can compare by identity.
+  //
+  // The walk is bounded: a corrupt holiday list can't spin here, and ten days
+  // is well past the longest real run of closures.
+  function priorBankingDay(date) {
+    let d = date;
+    for (let i = 0; i < 10; i++) {
+      const wd = d.getDay();
+      const closed = wd === 0 || wd === 6 || !!holidayOn(localDateStr(d));
+      if (!closed) return d;
+      d = new Date(d);
+      d.setDate(d.getDate() - 1);
+    }
+    return d;
+  }
+  // Why a row is marked. Names the holiday when there is one, because "Canada
+  // Day" explains the early deposit in a way "a closed day" doesn't.
+  function depositShiftNote(ev) {
+    if (!ev || !ev.depositShifted || !ev.depositDate) return "";
+    const paid = ev.depositDate;
+    const hol = holidayOn(localDateStr(ev.date));
+    const why = hol ? `is ${hol.name}${hol.optional ? " (an optional holiday)" : ""}` : "falls on a weekend";
+    return `Payday ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day} ${why} — direct deposit lands ${WEEKDAYS[paid.getDay()]} ${MONTHS[paid.getMonth()]} ${paid.getDate()}. The budget keeps it on the payday.`;
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3009,6 +3285,15 @@ document.addEventListener('DOMContentLoaded',function(){
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const evDesc = ov.desc !== void 0 ? ov.desc : e.desc;
+        // When the money actually arrives, for payroll landing on a day the
+        // banks are shut. Derived from the effective date, so an occurrence the
+        // user has moved by hand is measured from where they put it. Nothing
+        // downstream sorts, groups or totals by this — it exists to be shown.
+        // A deposit in the previous month, or the previous year, is fine here
+        // precisely because the occurrence is staying where it is.
+        const depositDate = isPayrollDeposit(e, evDesc) ? priorBankingDay(effDate) : effDate;
+        const depositShifted = depositDate !== effDate;
         const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
         // actualAmount is a separate, optional override recorded after the
         // fact (reconciliation) — e.g. a variable bill that was budgeted at
@@ -3020,7 +3305,7 @@ document.addEventListener('DOMContentLoaded',function(){
         events.push({
           id: eid,
           entryId: e.id,
-          desc: ov.desc !== void 0 ? ov.desc : e.desc,
+          desc: evDesc,
           type: e.type,
           // Only meaningful when type is "transfer" — money moving out of
           // this tracked account (default) vs into it. Income/expense
@@ -3035,6 +3320,12 @@ document.addEventListener('DOMContentLoaded',function(){
           month: effM,
           day: effD,
           date: effDate,
+          // The day the money reaches the account, when that isn't the payday
+          // itself. Display-only: depositShifted is what the UI marks, and
+          // depositDate is what it names. Every balance and total in the app
+          // still runs off date/month/day above.
+          depositDate,
+          depositShifted,
           // Recurrence metadata — needed for monthly-equivalent calculations
           recurUnit: e.recurUnit || "month",
           recurEvery: e.recurEvery || 1,
@@ -5369,7 +5660,10 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
-  const SectionTitle = ({ children, action, className }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), action);
+  // `help` puts a HelpTip beside the heading — the section's explanatory
+  // paragraph without the paragraph. (Defined below this line but hoisted, as
+  // everything in this bundle's shared scope is.)
+  const SectionTitle = ({ children, action, className, help }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), help && /* @__PURE__ */ React.createElement(HelpTip, { label: typeof children === "string" ? children : "", text: help })), action);
   const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -5574,6 +5868,113 @@ document.addEventListener('DOMContentLoaded',function(){
       onConfirm();
     }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
   }
+  // Field-level help: a small "?" beside a label that shows its explanation on
+  // hover, on keyboard focus, and on tap. It replaces the sentences that used
+  // to sit permanently under the fields they described — every one of those
+  // was read once and then became furniture, pushing the actual controls apart
+  // and making a six-field form read like a page of prose. The words are the
+  // same, they're just one gesture away instead of always on screen.
+  //
+  // Not a `title` attribute: those never open on keyboard focus, are
+  // unreachable on touch, and can't be styled. This is a real tooltip —
+  // role="tooltip", wired to the button through aria-describedby, so it is
+  // announced with the control it belongs to.
+  //
+  // The bubble is always in the DOM and hidden with CSS rather than
+  // conditionally rendered: aria-describedby has to resolve to a live element
+  // for screen readers to read it, and they read a referenced element whether
+  // or not it is visually shown.
+  //
+  // `icon` swaps the "?" for another glyph, which is how the weekend-deposit
+  // marker (↤) works: it is the same object — an icon that explains itself on
+  // hover, focus or tap — and a row indicator with no way to ask what it means
+  // is just a mystery character.
+  let HELPTIP_SEQ = 0;
+  function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
+    const [open, setOpen] = useState(false);
+    const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
+    const wrapRef = useRef(null);
+    // A tap opens the bubble; the next tap anywhere else closes it. Without
+    // this an opened tip on a touch device has no dismiss gesture at all,
+    // since there's no pointer to move away.
+    useEffect(() => {
+      if (!open) return;
+      const away = (e) => {
+        if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      };
+      const esc = (e) => {
+        // Stop here rather than letting Escape reach the dialog behind it —
+        // closing the whole form because the user dismissed a tooltip would
+        // lose everything they had typed.
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      };
+      document.addEventListener("pointerdown", away);
+      document.addEventListener("keydown", esc, true);
+      return () => {
+        document.removeEventListener("pointerdown", away);
+        document.removeEventListener("keydown", esc, true);
+      };
+    }, [open]);
+    if (!text) return null;
+    return /* @__PURE__ */ React.createElement(
+      "span",
+      { className: "helptip-wrap", ref: wrapRef },
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "helptip-btn" + (variant ? " helptip-btn--" + variant : ""),
+          "aria-label": label ? `Help: ${label}` : "Help",
+          "aria-expanded": open,
+          "aria-describedby": tipId,
+          onClick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((o) => !o);
+          },
+          // Rows underneath can own the pointer (the budget grid starts a
+          // drag-to-reschedule on pointerdown) — asking what an icon means
+          // must never begin dragging the thing it sits on.
+          onPointerDown: (e) => e.stopPropagation(),
+          // Mouse only: a touch tap also fires pointerenter, and letting it
+          // through would leave the bubble open with no way to dismiss it
+          // except the click handler that had just closed it.
+          onPointerEnter: (e) => {
+            if (e.pointerType === "mouse") setOpen(true);
+          },
+          onPointerLeave: (e) => {
+            if (e.pointerType === "mouse") setOpen(false);
+          },
+          onFocus: () => setOpen(true),
+          onBlur: () => setOpen(false)
+        },
+        icon
+      ),
+      /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          id: tipId,
+          role: "tooltip",
+          className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : "")
+        },
+        text
+      )
+    );
+  }
+  // A field label with its help beside it. The tip is a *sibling* of the
+  // <label>, never a child: a control inside a label is folded into the field's
+  // accessible name, so a help button in there makes the input announce itself
+  // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
+  // user can't skip. The row keeps the two on one line anyway.
+  const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => /* @__PURE__ */ React.createElement(
+    "div",
+    { className: "field-label-row" },
+    /* @__PURE__ */ React.createElement("label", { className, htmlFor }, children),
+    help && /* @__PURE__ */ React.createElement(HelpTip, { label: helpLabel, text: help, align: helpAlign })
+  );
   const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
     role: "switch",
@@ -5834,7 +6235,11 @@ document.addEventListener('DOMContentLoaded',function(){
           );
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("label", { className: lblCls }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { className: "weekday-btn-row" }, WEEKDAYS.map((wd, i) => {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      className: lblCls,
+      helpLabel: "Weekdays",
+      help: f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."
+    }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { className: "weekday-btn-row" }, WEEKDAYS.map((wd, i) => {
       const isAnch = i === startWD, isSel = f.recurDays.includes(i) || isAnch, isLock = isAnch || f.recurEvery > 1;
       return /* @__PURE__ */ React.createElement(
         "button",
@@ -5852,7 +6257,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         wd.slice(0, 2)
       );
-    })), f.recurEvery === 1 && startWD !== null && /* @__PURE__ */ React.createElement("div", { className: "recur-hint" }, WEEKDAYS[startWD], " is locked to your start date."), f.recurEvery > 1 && /* @__PURE__ */ React.createElement("div", { className: "recur-hint-amber" }, "Every ", f.recurEvery, " weeks always lands on ", startWD !== null ? WEEKDAYS[startWD] : "the start day", ".")), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { className: "recur-semimonth-desc" }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-until" }, "Until (optional)"), /* @__PURE__ */ React.createElement(
+    }))), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { className: "recur-semimonth-desc" }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { className: lblCls, htmlFor: "ef-recur-until", helpLabel: "Until", help: "Leave blank to recur indefinitely. A date here is the last one the entry can land on — a loan that finishes in September stops generating occurrences after it." }, "Until (optional)"), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-recur-until",
@@ -5865,7 +6270,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd }), /* @__PURE__ */ React.createElement("div", { className: "recur-hint" }, "Leave blank to recur indefinitely")), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
       Toggle,
       {
         value: showMonthly,
@@ -6482,11 +6887,10 @@ document.addEventListener('DOMContentLoaded',function(){
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
           ),
-          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Default category"),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement(FieldLabel, { helpLabel: "Default category", help: "A starting point for every row. On the next step you can set categories row by row, or have Claude suggest them from the descriptions." }, "Default category"),
             /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
               sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
             ),
-            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Starting point for every row. On the next step you can set categories per row, or have Claude suggest them from the descriptions.")
           ),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
             /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
@@ -7370,7 +7774,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onClick: (e) => e.stopPropagation()
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21a4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -7409,7 +7813,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-actual-amount" }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
+        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { className: lblCls, htmlFor: "oem-actual-amount", helpLabel: "Actual Amount Paid", help: "Leave blank if you paid the scheduled amount. Filling it in records what actually left the account — the running balance and Budget vs Actual follow it, while the scheduled amount above stays as planned for every other date." }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-actual-amount",
@@ -7427,7 +7831,7 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ), actualErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Leave blank if you paid the scheduled amount.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
+        ), actualErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "oem-month",
@@ -7439,7 +7843,13 @@ document.addEventListener('DOMContentLoaded',function(){
             }
           },
           MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
-        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-day" }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+          className: lblCls,
+          htmlFor: "oem-day",
+          helpLabel: "Day",
+          helpAlign: "end",
+          help: `1–${maxDay} for this month. Setting a date here moves this one occurrence and nothing else — the same as dragging the row to a new date in the grid.`
+        }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-day",
@@ -7458,7 +7868,12 @@ document.addEventListener('DOMContentLoaded',function(){
               if (e.key === "Enter") save();
             }
           }
-        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "1\u2013", maxDay, monthNum !== ev.month ? ` \xB7 moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}` : " \xB7 same as dragging this row to a new date")),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
+        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : monthNum !== ev.month ? (
+          // Kept inline rather than moved into the help tip: this isn't help,
+          // it's the consequence of the change the user just made to the month
+          // dropdown, and it has to be seen without going looking for it.
+          /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, `Moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}`)
+        ) : null),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "oem-notes",
@@ -8004,6 +8419,7 @@ document.addEventListener('DOMContentLoaded',function(){
             }
           },
           ev.day,
+          ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21A4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) }),
           /* @__PURE__ */ React.createElement("span", { className: "drag-dots" }, "\u283F")
         ),
         bCols.map((col) => {
@@ -8104,7 +8520,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -8610,12 +9026,12 @@ document.addEventListener('DOMContentLoaded',function(){
                 if (e.key === "Enter") saveBva();
               }
             }
-          )), /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
+          )), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
             type: "checkbox",
             checked: !!bvaModalData.rollover,
             onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
             className: "mt-2"
-          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
+          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget")), /* @__PURE__ */ React.createElement(HelpTip, { label: "Roll over unspent budget", text: "Envelope-style budgeting: anything you didn't spend against this category earlier in the year is added to this month's target, so a quiet month funds a heavy one instead of being lost." }))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: saveBva,
@@ -8806,7 +9222,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateStr), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
+        }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -8844,7 +9260,7 @@ document.addEventListener('DOMContentLoaded',function(){
       textAlign: i >= 3 ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), (() => {
@@ -9792,7 +10208,7 @@ Fill every field of the response schema. Rules:
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { linkEntry: e.target.checked })),
                 className: "checkbox-16"
               }
-            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
+            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
               "input",
               {
                 type: "checkbox",
@@ -9800,7 +10216,7 @@ Fill every field of the response schema. Rules:
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { payoutEntry: e.target.checked })),
                 className: "checkbox-16"
               }
-            ), "Add the payout as a one-time expense on the target date (models the spending in your forecast)")));
+            ), "Add the payout as a one-time expense on the target date"), /* @__PURE__ */ React.createElement(HelpTip, { label: "Add the payout as an expense", text: "Models the spending in your forecast: on the target date the saved-up amount leaves the budget as a one-time expense, so the running balance shows the purchase actually happening." }))));
           })(),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement(
             "button",
@@ -10254,7 +10670,7 @@ Fill every field of the response schema. Rules:
             className: "field-input",
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { rate: e.target.value }))
           }
-        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
+        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "debt-payment", helpLabel: "Monthly Payment", help: "Leave blank for a debt that is already in your budget \u2014 its payment is read from the matching entry. Fill it in for a debt you pay from somewhere else, or the payoff date can't be worked out." }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             id: "debt-payment",
@@ -10263,7 +10679,7 @@ Fill every field of the response schema. Rules:
             className: "field-input",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: v }))
           }
-        ), /* @__PURE__ */ React.createElement("div", { className: "debtform-hint" }, "Leave blank for auto-detected debts from your budget entries."), (() => {
+        ), (() => {
           // Auto-detection only catches a payment whose description/category
           // happens to contain a debt-ish keyword (loan, mortgage, visa…) —
           // anything else (e.g. "Costco Mastercard") is silently missed. This
@@ -10771,9 +11187,9 @@ Fill every field of the response schema. Rules:
           if (isMobile) {
             return /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "upcoming-item-mobile", style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-top" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-desc", style: {
               textDecoration: isPaid ? "line-through" : "none"
-            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date" }, label), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
           }
-          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
+          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
             textDecoration: isPaid ? "line-through" : "none"
           } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, className: "text-9" })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: amtColor
@@ -11247,6 +11663,10 @@ Fill every field of the response schema. Rules:
           ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
+        { sub: "Paydays that land on a closed day" },
+        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
+        { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
+        { p: "Holidays are British Columbia's, including the two the province lists as optional (Easter Monday and Boxing Day). The dates are fetched once per budget year from canada-holidays.ca and kept on your device; the app also works them out from the rules on its own, so the marker is right offline, on a brand-new budget year, and if that site is ever unreachable. Moving a date yourself — dragging the row, or Edit this occurrence — re-checks from wherever you put it." },
         { sub: "Changing one occurrence without changing the plan" },
         { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [
@@ -12226,7 +12646,7 @@ Fill every field of the response schema. Rules:
       },
       /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
       "Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, isCoarse ? "Use the arrows to reorder. Changes apply to all new entries; existing entries keep their category name." : "Drag to reorder. Changes apply to all new entries. Existing entries keep their category name."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -12396,7 +12816,7 @@ Fill every field of the response schema. Rules:
         },
         onCancel: () => setConfirmWipe(false)
       }
-    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Household Members"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Everyone listed here signs in with their own email and password and shares this budget."), members.map((m) => {
+    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everyone listed here signs in with their own email and password and shares this budget." }, "Household Members"), members.map((m) => {
       const isEditing = editMemberId === m.user_id;
       return /* @__PURE__ */ React.createElement("div", { key: m.user_id, className: "member-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, isEditing ? /* @__PURE__ */ React.createElement(
         "input",
@@ -12453,7 +12873,7 @@ Fill every field of the response schema. Rules:
         },
         m.disabled ? "Enable" : "Disable"
       )));
-    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Invite a family member"), /* @__PURE__ */ React.createElement("div", { className: "txl mb-14 lh-15" }, "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."), /* @__PURE__ */ React.createElement(
+    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: async () => {
@@ -13106,6 +13526,113 @@ Fill every field of the response schema. Rules:
         const ov = res.overridesByYr[2026] && res.overridesByYr[2026]["9-2026-0-15"];
         return res.moved === 1 && res.entries[0].attachment === void 0 && !!ov && ov.attachment === "base64LEGACY";
       });
+      // Payroll deposit dates. 2026: the 15th is a Sunday in Feb/Mar/Nov and a
+      // Saturday in Aug; Aug 1 is a Saturday; Jan 1 2028 is a Saturday.
+      const payroll = { id: 20, desc: "Ken - Payroll (15th)", type: "income", amount: 25e4, category: "Income", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const payEvs = expandEntries([payroll], 2026, {});
+      const onMonth = (evs, mi) => evs.find((ev) => ev.month === mi);
+      const depStr = (ev) => ev.depositDate ? localDateStr(ev.depositDate) : null;
+      t("the occurrence stays on the payday, whatever day that is", () => {
+        // The whole point: nothing moves. Twelve occurrences, all on the 15th,
+        // so no month's income total can shift because of a weekend.
+        return payEvs.length === 12 && payEvs.every((ev) => ev.day === 15) && payEvs.every((ev, i) => ev.month === i);
+      });
+      t("a Saturday payday is deposited the Friday before", () => {
+        const aug = onMonth(payEvs, 7);
+        return aug.depositShifted === true && depStr(aug) === "2026-08-14";
+      });
+      t("a Sunday payday is deposited the Friday before", () => {
+        const feb = onMonth(payEvs, 1);
+        return feb.depositShifted === true && depStr(feb) === "2026-02-13";
+      });
+      t("a weekday payday deposits on the day itself", () => {
+        const jan = onMonth(payEvs, 0);
+        return jan.depositShifted === false && depStr(jan) === "2026-01-15";
+      });
+      t("a payday on a stat holiday is deposited the last banking day before it", () => {
+        // Canada Day 2026 is a Wednesday — a working day but not a banking one.
+        const canadaDay = __spreadProps(__spreadValues({}, payroll), { id: 21, startDate: "2026-01-01" });
+        const jul = onMonth(expandEntries([canadaDay], 2026, {}), 6);
+        return jul.day === 1 && jul.depositShifted === true && depStr(jul) === "2026-06-30";
+      });
+      t("a payday on a holiday Monday steps back past the weekend too", () => {
+        // BC Day 2026 is Monday 3 August: back past Sun and Sat to Fri Jul 31.
+        const bcDay = __spreadProps(__spreadValues({}, payroll), { id: 22, startDate: "2026-08-03", recurUnit: "year" });
+        const aug = expandEntries([bcDay], 2026, {})[0];
+        return aug.day === 3 && depStr(aug) === "2026-07-31";
+      });
+      t("an optional BC holiday counts (Boxing Day)", () => {
+        const boxing = __spreadProps(__spreadValues({}, payroll), { id: 23, startDate: "2026-12-28", recurUnit: "year" });
+        // 26 Dec 2026 is a Saturday, so Boxing Day is observed Mon 28 Dec and
+        // Christmas Day is Fri 25 Dec: the last banking day is Thu 24 Dec.
+        const dec = expandEntries([boxing], 2026, {})[0];
+        return dec.day === 28 && depStr(dec) === "2026-12-24";
+      });
+      t("the deposit date may fall in the previous month or year", () => {
+        // Nothing moves, so this is just a label — no month's totals change.
+        const firstOfMonth = __spreadProps(__spreadValues({}, payroll), { id: 24, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" });
+        const aug = onMonth(expandEntries([firstOfMonth], 2026, {}), 7);
+        const nyd = __spreadProps(__spreadValues({}, payroll), { id: 25, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" });
+        const jan = expandEntries([nyd], 2028, {})[0];
+        return aug.month === 7 && aug.day === 1 && depStr(aug) === "2026-07-31" && jan.month === 0 && jan.day === 1 && depStr(jan) === "2027-12-31";
+      });
+      t("the entry itself keeps its payday", () => payroll.startDate === "2026-01-15" && expandEntries([payroll], 2026, {}).length === 12);
+      t("occurrence keys are unchanged by the deposit rule", () => {
+        const aug = onMonth(payEvs, 7);
+        if (aug.id !== "20-2026-7-15") return aug.id;
+        const ov = {};
+        ov[aug.id] = { amount: 3e5 };
+        const again = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return again.amount === 3e5 && again.day === 15 && again.depositShifted === true;
+      });
+      t("the rule is income-only, payroll-only and repeating-only", () => {
+        const rentOn15th = __spreadProps(__spreadValues({}, payroll), { id: 26, desc: "Rent", type: "expense" });
+        const payrollExpense = __spreadProps(__spreadValues({}, payroll), { id: 27, desc: "Payroll remittance", type: "expense" });
+        const onceOff = __spreadProps(__spreadValues({}, payroll), { id: 28, repeats: false, startDate: "2026-08-15" });
+        return onMonth(expandEntries([rentOn15th], 2026, {}), 7).depositShifted === false && onMonth(expandEntries([payrollExpense], 2026, {}), 7).depositShifted === false && expandEntries([onceOff], 2026, {})[0].depositShifted === false;
+      });
+      t('"Mel - Payroll" and "PAY ROLL" both read as payroll', () => {
+        const mel = __spreadProps(__spreadValues({}, payroll), { id: 29, desc: "Mel - Payroll" });
+        const spaced = __spreadProps(__spreadValues({}, payroll), { id: 30, desc: "PAY ROLL \u2014 Ken" });
+        return onMonth(expandEntries([mel], 2026, {}), 7).depositShifted === true && onMonth(expandEntries([spaced], 2026, {}), 7).depositShifted === true;
+      });
+      t("moving an occurrence by hand re-reads the deposit date from where you put it", () => {
+        const ov = {};
+        ov["20-2026-7-15"] = { day: 17 };
+        const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return aug.day === 17 && aug.depositShifted === false;
+      });
+      t("BC holiday rules: the computed dates for 2026", () => {
+        const h = computeBCHolidays(2026);
+        const on = (d) => (h[d] || {}).name || "\u2014";
+        return on("2026-02-16") === "Family Day" && on("2026-04-03") === "Good Friday" && on("2026-05-18") === "Victoria Day" && on("2026-08-03") === "British Columbia Day" && on("2026-09-30") === "National Day for Truth and Reconciliation" && on("2026-10-12") === "Thanksgiving" && on("2026-12-25") === "Christmas Day";
+      });
+      t("optional BC holidays are included and flagged", () => {
+        const h = computeBCHolidays(2026);
+        return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-26"] && h["2026-12-26"].optional === true && h["2026-07-01"].optional === false;
+      });
+      t("a holiday on a weekend is also registered on the day it's observed", () => {
+        // 1 Jan 2028 is a Saturday, observed Monday the 3rd.
+        const h = computeBCHolidays(2028);
+        return !!h["2028-01-01"] && /observed/.test((h["2028-01-03"] || {}).name || "");
+      });
+      t("a bad holiday payload is ignored rather than believed", () => {
+        return parseHolidayPayload({ province: { holidays: [] } }, 2026) === null && parseHolidayPayload(null, 2026) === null && parseHolidayPayload({ holidays: [{ date: "not-a-date" }] }, 2026) === null;
+      });
+      t("a holiday payload is read into dates, names and optional flags", () => {
+        const parsed = parseHolidayPayload({ province: { holidays: [
+          { date: "2026-07-01", observedDate: "2026-07-01", nameEn: "Canada Day", optional: 0 },
+          { date: "2026-12-26", observedDate: "2026-12-28", nameEn: "Boxing Day", optional: 1 },
+          { date: "2025-12-25", nameEn: "Wrong year", optional: 0 }
+        ] } }, 2026);
+        return parsed["2026-07-01"].name === "Canada Day" && parsed["2026-12-28"].optional === true && parsed["2025-12-25"] === void 0;
+      });
+      t("editing a payroll entry splits on the payday", () => {
+        const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
+        if (!res.newId) return "no split";
+        const seg = res.entries.find((e) => e.id === res.newId);
+        return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
+      });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];
         const apply = (sel) => items.filter((x) => !sel.length || sel.includes(x.cat)).length;
@@ -13143,6 +13670,7 @@ Fill every field of the response schema. Rules:
       };
       renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
       renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
+      renderCheck("HelpTip", React.createElement(HelpTip, { label: "Field", text: "Help copy." }));
       renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
       renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
       renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));
@@ -13862,6 +14390,29 @@ Fill every field of the response schema. Rules:
       // same scheme as the theme — CSS variables can't reach those.
       document.documentElement.style.colorScheme = theme === DARK ? "dark" : "light";
     }, [darkMode, sessionUser, C]);
+    // BC holiday dates are fetched once per budget year and cached (see
+    // holidays.js). expandEntries reads them synchronously out of that cache to
+    // work out deposit dates, so a fetch that lands after first paint needs a
+    // nudge to be picked up: bumping this re-runs yearFlows with the published
+    // dates in place of the computed ones. Years already cached resolve to
+    // false and never cause a re-render.
+    const [holidayVersion, setHolidayVersion] = useState(0);
+    const holidayYears = yearConfigs.map((yc) => yc.year).sort().join(",");
+    useEffect(() => {
+      let alive = true;
+      // The current calendar year matters even when it has no budget year of
+      // its own (the Forecast crosses year boundaries), and each year's
+      // predecessor matters because a New Year's payday deposits back into the
+      // previous December.
+      const listed = [...holidayYears.split(",").filter(Boolean).map(Number), (/* @__PURE__ */ new Date()).getFullYear()];
+      const years = [...new Set(listed.flatMap((y) => [y - 1, y]))];
+      ensureHolidayYears(years).then((changed) => {
+        if (alive && changed) setHolidayVersion((v) => v + 1);
+      });
+      return () => {
+        alive = false;
+      };
+    }, [holidayYears]);
     const yearFlows = useMemo(() => {
       const flows = {};
       let carry = null;
@@ -13875,7 +14426,7 @@ Fill every field of the response schema. Rules:
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr]);
+    }, [entries, yearConfigs, overridesByYr, holidayVersion]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {

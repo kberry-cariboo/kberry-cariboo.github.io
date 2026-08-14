@@ -562,6 +562,113 @@
         const ov = res.overridesByYr[2026] && res.overridesByYr[2026]["9-2026-0-15"];
         return res.moved === 1 && res.entries[0].attachment === void 0 && !!ov && ov.attachment === "base64LEGACY";
       });
+      // Payroll deposit dates. 2026: the 15th is a Sunday in Feb/Mar/Nov and a
+      // Saturday in Aug; Aug 1 is a Saturday; Jan 1 2028 is a Saturday.
+      const payroll = { id: 20, desc: "Ken - Payroll (15th)", type: "income", amount: 25e4, category: "Income", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const payEvs = expandEntries([payroll], 2026, {});
+      const onMonth = (evs, mi) => evs.find((ev) => ev.month === mi);
+      const depStr = (ev) => ev.depositDate ? localDateStr(ev.depositDate) : null;
+      t("the occurrence stays on the payday, whatever day that is", () => {
+        // The whole point: nothing moves. Twelve occurrences, all on the 15th,
+        // so no month's income total can shift because of a weekend.
+        return payEvs.length === 12 && payEvs.every((ev) => ev.day === 15) && payEvs.every((ev, i) => ev.month === i);
+      });
+      t("a Saturday payday is deposited the Friday before", () => {
+        const aug = onMonth(payEvs, 7);
+        return aug.depositShifted === true && depStr(aug) === "2026-08-14";
+      });
+      t("a Sunday payday is deposited the Friday before", () => {
+        const feb = onMonth(payEvs, 1);
+        return feb.depositShifted === true && depStr(feb) === "2026-02-13";
+      });
+      t("a weekday payday deposits on the day itself", () => {
+        const jan = onMonth(payEvs, 0);
+        return jan.depositShifted === false && depStr(jan) === "2026-01-15";
+      });
+      t("a payday on a stat holiday is deposited the last banking day before it", () => {
+        // Canada Day 2026 is a Wednesday — a working day but not a banking one.
+        const canadaDay = __spreadProps(__spreadValues({}, payroll), { id: 21, startDate: "2026-01-01" });
+        const jul = onMonth(expandEntries([canadaDay], 2026, {}), 6);
+        return jul.day === 1 && jul.depositShifted === true && depStr(jul) === "2026-06-30";
+      });
+      t("a payday on a holiday Monday steps back past the weekend too", () => {
+        // BC Day 2026 is Monday 3 August: back past Sun and Sat to Fri Jul 31.
+        const bcDay = __spreadProps(__spreadValues({}, payroll), { id: 22, startDate: "2026-08-03", recurUnit: "year" });
+        const aug = expandEntries([bcDay], 2026, {})[0];
+        return aug.day === 3 && depStr(aug) === "2026-07-31";
+      });
+      t("an optional BC holiday counts (Boxing Day)", () => {
+        const boxing = __spreadProps(__spreadValues({}, payroll), { id: 23, startDate: "2026-12-28", recurUnit: "year" });
+        // 26 Dec 2026 is a Saturday, so Boxing Day is observed Mon 28 Dec and
+        // Christmas Day is Fri 25 Dec: the last banking day is Thu 24 Dec.
+        const dec = expandEntries([boxing], 2026, {})[0];
+        return dec.day === 28 && depStr(dec) === "2026-12-24";
+      });
+      t("the deposit date may fall in the previous month or year", () => {
+        // Nothing moves, so this is just a label — no month's totals change.
+        const firstOfMonth = __spreadProps(__spreadValues({}, payroll), { id: 24, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" });
+        const aug = onMonth(expandEntries([firstOfMonth], 2026, {}), 7);
+        const nyd = __spreadProps(__spreadValues({}, payroll), { id: 25, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" });
+        const jan = expandEntries([nyd], 2028, {})[0];
+        return aug.month === 7 && aug.day === 1 && depStr(aug) === "2026-07-31" && jan.month === 0 && jan.day === 1 && depStr(jan) === "2027-12-31";
+      });
+      t("the entry itself keeps its payday", () => payroll.startDate === "2026-01-15" && expandEntries([payroll], 2026, {}).length === 12);
+      t("occurrence keys are unchanged by the deposit rule", () => {
+        const aug = onMonth(payEvs, 7);
+        if (aug.id !== "20-2026-7-15") return aug.id;
+        const ov = {};
+        ov[aug.id] = { amount: 3e5 };
+        const again = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return again.amount === 3e5 && again.day === 15 && again.depositShifted === true;
+      });
+      t("the rule is income-only, payroll-only and repeating-only", () => {
+        const rentOn15th = __spreadProps(__spreadValues({}, payroll), { id: 26, desc: "Rent", type: "expense" });
+        const payrollExpense = __spreadProps(__spreadValues({}, payroll), { id: 27, desc: "Payroll remittance", type: "expense" });
+        const onceOff = __spreadProps(__spreadValues({}, payroll), { id: 28, repeats: false, startDate: "2026-08-15" });
+        return onMonth(expandEntries([rentOn15th], 2026, {}), 7).depositShifted === false && onMonth(expandEntries([payrollExpense], 2026, {}), 7).depositShifted === false && expandEntries([onceOff], 2026, {})[0].depositShifted === false;
+      });
+      t('"Mel - Payroll" and "PAY ROLL" both read as payroll', () => {
+        const mel = __spreadProps(__spreadValues({}, payroll), { id: 29, desc: "Mel - Payroll" });
+        const spaced = __spreadProps(__spreadValues({}, payroll), { id: 30, desc: "PAY ROLL \u2014 Ken" });
+        return onMonth(expandEntries([mel], 2026, {}), 7).depositShifted === true && onMonth(expandEntries([spaced], 2026, {}), 7).depositShifted === true;
+      });
+      t("moving an occurrence by hand re-reads the deposit date from where you put it", () => {
+        const ov = {};
+        ov["20-2026-7-15"] = { day: 17 };
+        const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
+        return aug.day === 17 && aug.depositShifted === false;
+      });
+      t("BC holiday rules: the computed dates for 2026", () => {
+        const h = computeBCHolidays(2026);
+        const on = (d) => (h[d] || {}).name || "\u2014";
+        return on("2026-02-16") === "Family Day" && on("2026-04-03") === "Good Friday" && on("2026-05-18") === "Victoria Day" && on("2026-08-03") === "British Columbia Day" && on("2026-09-30") === "National Day for Truth and Reconciliation" && on("2026-10-12") === "Thanksgiving" && on("2026-12-25") === "Christmas Day";
+      });
+      t("optional BC holidays are included and flagged", () => {
+        const h = computeBCHolidays(2026);
+        return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-26"] && h["2026-12-26"].optional === true && h["2026-07-01"].optional === false;
+      });
+      t("a holiday on a weekend is also registered on the day it's observed", () => {
+        // 1 Jan 2028 is a Saturday, observed Monday the 3rd.
+        const h = computeBCHolidays(2028);
+        return !!h["2028-01-01"] && /observed/.test((h["2028-01-03"] || {}).name || "");
+      });
+      t("a bad holiday payload is ignored rather than believed", () => {
+        return parseHolidayPayload({ province: { holidays: [] } }, 2026) === null && parseHolidayPayload(null, 2026) === null && parseHolidayPayload({ holidays: [{ date: "not-a-date" }] }, 2026) === null;
+      });
+      t("a holiday payload is read into dates, names and optional flags", () => {
+        const parsed = parseHolidayPayload({ province: { holidays: [
+          { date: "2026-07-01", observedDate: "2026-07-01", nameEn: "Canada Day", optional: 0 },
+          { date: "2026-12-26", observedDate: "2026-12-28", nameEn: "Boxing Day", optional: 1 },
+          { date: "2025-12-25", nameEn: "Wrong year", optional: 0 }
+        ] } }, 2026);
+        return parsed["2026-07-01"].name === "Canada Day" && parsed["2026-12-28"].optional === true && parsed["2025-12-25"] === void 0;
+      });
+      t("editing a payroll entry splits on the payday", () => {
+        const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
+        if (!res.newId) return "no split";
+        const seg = res.entries.find((e) => e.id === res.newId);
+        return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
+      });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];
         const apply = (sel) => items.filter((x) => !sel.length || sel.includes(x.cat)).length;
@@ -599,6 +706,7 @@
       };
       renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
       renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
+      renderCheck("HelpTip", React.createElement(HelpTip, { label: "Field", text: "Help copy." }));
       renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
       renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
       renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));

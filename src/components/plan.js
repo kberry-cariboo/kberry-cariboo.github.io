@@ -291,7 +291,7 @@
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { linkEntry: e.target.checked })),
                 className: "checkbox-16"
               }
-            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
+            ), "Add monthly contribution to my budget as a recurring entry"), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
               "input",
               {
                 type: "checkbox",
@@ -299,7 +299,7 @@
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { payoutEntry: e.target.checked })),
                 className: "checkbox-16"
               }
-            ), "Add the payout as a one-time expense on the target date (models the spending in your forecast)")));
+            ), "Add the payout as a one-time expense on the target date"), /* @__PURE__ */ React.createElement(HelpTip, { label: "Add the payout as an expense", text: "Models the spending in your forecast: on the target date the saved-up amount leaves the budget as a one-time expense, so the running balance shows the purchase actually happening." }))));
           })(),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement(
             "button",
@@ -753,7 +753,7 @@
             className: "field-input",
             onChange: (e) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { rate: e.target.value }))
           }
-        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "debt-payment" }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
+        ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "debt-payment", helpLabel: "Monthly Payment", help: "Leave blank for a debt that is already in your budget \u2014 its payment is read from the matching entry. Fill it in for a debt you pay from somewhere else, or the payoff date can't be worked out." }, "Monthly Payment $ ", /* @__PURE__ */ React.createElement("span", { className: "debtform-optional" }, "(optional)")), /* @__PURE__ */ React.createElement(
           MoneyInput,
           {
             id: "debt-payment",
@@ -762,7 +762,7 @@
             className: "field-input",
             onChange: (v) => setDebtFormData((p) => __spreadProps(__spreadValues({}, p), { payment: v }))
           }
-        ), /* @__PURE__ */ React.createElement("div", { className: "debtform-hint" }, "Leave blank for auto-detected debts from your budget entries."), (() => {
+        ), (() => {
           // Auto-detection only catches a payment whose description/category
           // happens to contain a debt-ish keyword (loan, mortgage, visa…) —
           // anything else (e.g. "Costco Mastercard") is silently missed. This

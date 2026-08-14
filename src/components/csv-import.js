@@ -350,11 +350,10 @@
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
             /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
           ),
-          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Default category"),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement(FieldLabel, { helpLabel: "Default category", help: "A starting point for every row. On the next step you can set categories row by row, or have Claude suggest them from the descriptions." }, "Default category"),
             /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
               sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
             ),
-            /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, "Starting point for every row. On the next step you can set categories per row, or have Claude suggest them from the descriptions.")
           ),
           /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
             /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),

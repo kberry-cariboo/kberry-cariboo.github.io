@@ -34,6 +34,56 @@
     if (!e.recurEnd) return false;
     return e.recurEnd < yearStart;
   }
+  // Direct-deposit payroll doesn't land on a day the banks are shut: a payday
+  // that falls on a weekend or a BC statutory holiday is deposited on the last
+  // banking day before it, so pay dated Saturday 15 August is in the account on
+  // Friday the 14th.
+  //
+  // The occurrence itself does not move. It stays on the payday in the budget —
+  // same month, same running balance, same monthly totals — and carries the
+  // deposit date alongside as metadata for the UI to mark. Moving it would drag
+  // income across a month boundary whenever a 1st-of-month payday landed on a
+  // Saturday (paid 31 July, budgeted in August), quietly rewriting the totals
+  // and Budget vs Actual of two months to fix a display problem.
+  //
+  // Which entries this applies to is read from the description rather than a
+  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
+  // Ken" all read as payroll to a person, and the alternative is a checkbox
+  // that every payroll entry has to have ticked by hand.
+  const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
+  // Repeating income only. A one-time entry's date was typed by hand — it is
+  // already the date the money arrived — and expenses leave when the biller
+  // pulls them, which is not this rule.
+  function isPayrollDeposit(e, desc) {
+    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+  }
+  // The last banking day on or before `date`: steps back over Saturdays,
+  // Sundays and BC holidays (see holidays.js, which includes the two BC lists
+  // as optional — Easter Monday and Boxing Day). Returns the same object when
+  // the date is already a banking day, so callers can compare by identity.
+  //
+  // The walk is bounded: a corrupt holiday list can't spin here, and ten days
+  // is well past the longest real run of closures.
+  function priorBankingDay(date) {
+    let d = date;
+    for (let i = 0; i < 10; i++) {
+      const wd = d.getDay();
+      const closed = wd === 0 || wd === 6 || !!holidayOn(localDateStr(d));
+      if (!closed) return d;
+      d = new Date(d);
+      d.setDate(d.getDate() - 1);
+    }
+    return d;
+  }
+  // Why a row is marked. Names the holiday when there is one, because "Canada
+  // Day" explains the early deposit in a way "a closed day" doesn't.
+  function depositShiftNote(ev) {
+    if (!ev || !ev.depositShifted || !ev.depositDate) return "";
+    const paid = ev.depositDate;
+    const hol = holidayOn(localDateStr(ev.date));
+    const why = hol ? `is ${hol.name}${hol.optional ? " (an optional holiday)" : ""}` : "falls on a weekend";
+    return `Payday ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day} ${why} — direct deposit lands ${WEEKDAYS[paid.getDay()]} ${MONTHS[paid.getMonth()]} ${paid.getDate()}. The budget keeps it on the payday.`;
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -66,6 +116,15 @@
         const effM = ov.month !== void 0 ? Math.min(Math.max(0, ov.month), 11) : m;
         const effD = Math.min(Math.max(1, ov.day !== void 0 ? ov.day : d), daysInMonth(effM, year));
         const effDate = effM !== m || effD !== d ? new Date(year, effM, effD) : date;
+        const evDesc = ov.desc !== void 0 ? ov.desc : e.desc;
+        // When the money actually arrives, for payroll landing on a day the
+        // banks are shut. Derived from the effective date, so an occurrence the
+        // user has moved by hand is measured from where they put it. Nothing
+        // downstream sorts, groups or totals by this — it exists to be shown.
+        // A deposit in the previous month, or the previous year, is fine here
+        // precisely because the occurrence is staying where it is.
+        const depositDate = isPayrollDeposit(e, evDesc) ? priorBankingDay(effDate) : effDate;
+        const depositShifted = depositDate !== effDate;
         const planned = ov.amount !== void 0 ? ov.amount : amtForMonth(m);
         // actualAmount is a separate, optional override recorded after the
         // fact (reconciliation) — e.g. a variable bill that was budgeted at
@@ -77,7 +136,7 @@
         events.push({
           id: eid,
           entryId: e.id,
-          desc: ov.desc !== void 0 ? ov.desc : e.desc,
+          desc: evDesc,
           type: e.type,
           // Only meaningful when type is "transfer" — money moving out of
           // this tracked account (default) vs into it. Income/expense
@@ -92,6 +151,12 @@
           month: effM,
           day: effD,
           date: effDate,
+          // The day the money reaches the account, when that isn't the payday
+          // itself. Display-only: depositShifted is what the UI marks, and
+          // depositDate is what it names. Every balance and total in the app
+          // still runs off date/month/day above.
+          depositDate,
+          depositShifted,
           // Recurrence metadata — needed for monthly-equivalent calculations
           recurUnit: e.recurUnit || "month",
           recurEvery: e.recurEvery || 1,
