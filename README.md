@@ -141,14 +141,24 @@ deleted every holiday in 2027" from "nobody has touched 2027". Settings →
 Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
 the pair against a scratch database.
 
-`tests/sync-sql.mjs` goes further: it runs the real app in a browser against a
-real Postgres, with only Supabase auth stubbed, so the client's payload actually
-passes through `save_household` and comes back out of `load_household`. It is
-opt-in (`CF_TEST_PG=1` plus `PG*` pointing at a scratch database) and skips
-otherwise. Worth running after touching the sync payload: a field with no column
-behind it fails silently, since `cf_apply_household_payload` ignores keys it
-doesn't recognise — the regression suite's stub accepts anything it is handed
-and cannot catch that.
+Two opt-in tests cover the database itself. Both need a throwaway Postgres
+(`CF_TEST_PG=1` plus `PG*` pointing at it) and skip cleanly without one:
+
+- `tests/payload-roundtrip.mjs` saves a payload exercising every documented
+  feature through the real SQL, loads it back, and diffs the two field by field.
+- `tests/sync-sql.mjs` runs the real app in a browser against a real Postgres,
+  with only Supabase auth stubbed, so the client's payload passes through
+  `save_household` and comes back out of `load_household`.
+
+**Run the first one whenever you add a field to the sync payload**, and add the
+field to its fixture. `cf_apply_household_payload` writes the columns it knows
+about and ignores the rest, so a field with no column behind it fails silently:
+the save succeeds, the app looks right, and the next load replaces the user's
+work with a copy that never had it. The regression suite cannot catch this — its
+Supabase stub accepts any payload it is handed. Six features were lost that way
+before the round-trip test existed (transfers, skipped occurrences, reconciled
+actual amounts, occurrences moved to another month, copy provenance, and the
+per-category rollover flags).
 
 If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
 migration block at the end automatically copies each household's old

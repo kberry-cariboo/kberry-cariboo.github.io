@@ -174,6 +174,33 @@ await page.waitForTimeout(2500);
 if (await page.getByText('SQL Recurring Entry').count() === 0) fail('the recurring entry disappeared after a refresh');
 else pass('it is still there after a refresh');
 
+
+// ── A transfer has to still be a transfer after a refresh ───────────────────
+// The entries table only allowed 'income' and 'expense', so a transfer was
+// stored as an expense and lost its direction. A transfer *in* then came back
+// subtracting from the balance instead of adding to it — the same money, the
+// wrong sign, silently, one reload later.
+await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+await page.getByPlaceholder('e.g. Mortgage payment').waitFor();
+await page.getByPlaceholder('e.g. Mortgage payment').fill('SQL Transfer In');
+await page.locator('#ef-type').selectOption({ value: 'transfer' });
+await page.getByLabel('Transfer direction').selectOption({ value: 'in' });
+await page.getByPlaceholder('0.00').first().fill('50.00');
+await page.locator('#ef-category').selectOption({ index: 1 });
+await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+await page.getByRole('button', { name: 'Save Entry' }).click();
+await page.waitForTimeout(6000);
+
+const transfer = psql(`select type || ' | ' || coalesce(transfer_direction, '(none)') from entries where household_id = '${HID}' and description = 'SQL Transfer In';`);
+if (transfer !== 'transfer | in') fail('a transfer was not stored as one: ' + JSON.stringify(transfer));
+else pass('the transfer kept its type and direction: ' + transfer);
+
+await page.reload({ waitUntil: 'load' });
+await page.waitForTimeout(2500);
+const transferRow = await page.locator('tr', { hasText: 'SQL Transfer In' }).first().innerText().catch(() => '');
+if (!/\+\$50\.00/.test(transferRow)) fail('after a refresh the transfer no longer adds to the balance: ' + JSON.stringify(transferRow.replace(/\s+/g, ' ')));
+else pass('it still adds to the balance after a refresh');
+
 await page.goto(BASE + '#/settings', { waitUntil: 'load' });
 await page.waitForTimeout(2500);
 
