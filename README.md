@@ -111,7 +111,11 @@ your own instance:
 
 Budget data is stored in **normalized tables** — one row per entry, override,
 category, budget target, goal, and so on — rather than the single JSONB blob the
-app used before. Receipt photos are stored as **binary blobs (`bytea`) in the
+app used before. Row ids for entries and goals are **client-generated opaque
+text** (`crypto.randomUUID()`, or plain millisecond numbers in households
+created before that): the columns are `text`, and `load_household` hands a
+digits-only id back as a JSON number so ids stored elsewhere as numbers keep
+matching. Receipt photos are stored as **binary blobs (`bytea`) in the
 `receipts` table**, keyed to the specific dated occurrence they belong to — each
 instance of a repeating entry has its own independent receipt — so they no
 longer ride along inside every sync payload. (Legacy entry-level receipts are

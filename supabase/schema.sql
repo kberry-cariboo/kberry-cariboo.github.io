@@ -72,6 +72,31 @@ create table if not exists household_data (
   updated_by uuid references auth.users(id)
 );
 
+-- Client row ids are text, not bigint -----------------------------------------
+--
+-- These columns started as bigint because the app minted ids with Date.now().
+-- It now uses crypto.randomUUID(), and a UUID is not a bigint: every entry and
+-- goal created since that change was dropped on the way in — cf_apply_household_payload
+-- skipped any row whose id didn't parse as a number, silently, so the app
+-- looked fine until the next reload put the server's copy back. Widening the
+-- columns is the fix; the guard keeps a re-run from rewriting tables that are
+-- already text.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'entries'
+               and column_name = 'id' and data_type <> 'text') then
+    alter table entries alter column id type text using id::text;
+  end if;
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'goals'
+               and column_name = 'id' and data_type <> 'text') then
+    alter table goals alter column id type text using id::text;
+    alter table goals alter column entry_id type text using entry_id::text;
+    alter table goals alter column payout_entry_id type text using payout_entry_id::text;
+  end if;
+end $$;
+
 -- Normalized budget tables ----------------------------------------------------
 --
 -- Money columns (app schema v8+, round-9 AR5): the client stores every
@@ -86,7 +111,7 @@ create table if not exists household_data (
 -- One row per register entry (a one-off or recurring income/expense).
 create table if not exists entries (
   household_id uuid not null references households(id) on delete cascade,
-  id bigint not null,                       -- client-generated (Date.now())
+  id text not null,                         -- client-generated, opaque (see cf_id)
   sort_order int not null default 0,
   description text not null default '',
   type text not null default 'expense' check (type in ('income', 'expense')),
@@ -169,15 +194,15 @@ create table if not exists completed_occurrences (
 
 create table if not exists goals (
   household_id uuid not null references households(id) on delete cascade,
-  id bigint not null,                       -- client-generated (Date.now())
+  id text not null,                         -- client-generated, opaque (see cf_id)
   sort_order int not null default 0,
   name text not null default '',
   target numeric(14,2) not null default 0,
   saved numeric(14,2) not null default 0,
   monthly numeric(14,2) not null default 0,
   target_date date,
-  entry_id bigint,                          -- linked "monthly contribution" entry
-  payout_entry_id bigint,                   -- linked "payout" expense entry
+  entry_id text,                            -- linked "monthly contribution" entry
+  payout_entry_id text,                     -- linked "payout" expense entry
   created_at timestamptz,
   primary key (household_id, id)
 );
@@ -524,6 +549,36 @@ exception when others then
   return fallback;
 end $$;
 
+-- Client-generated row ids (entries, goals). These are opaque strings the app
+-- makes up — crypto.randomUUID() since genId() started guarding against two
+-- rows created in the same millisecond sharing an id, and plain millisecond
+-- numbers before that. Anything non-empty is a valid id; the only rows worth
+-- refusing are ones with no id at all.
+create or replace function cf_id(t text)
+returns text
+language sql
+immutable
+as $$ select nullif(btrim(coalesce(t, '')), '') $$;
+
+-- Ids go back to the client as the JSON type they arrived as. A household
+-- created before genId() switched to UUIDs holds plain numbers, and those ids
+-- are cross-referenced from places this function doesn't rewrite — a goal's
+-- entryId, `copiedFrom` inside a jsonb blob, occurrence keys built by string
+-- interpolation. Handing back "123" where the client expects 123 would break
+-- every one of those comparisons, so a digits-only id is emitted as a number
+-- and anything else (a UUID) as the string it is.
+create or replace function cf_id_json(t text)
+returns jsonb
+language sql
+immutable
+as $$
+  select case
+    when t is null then 'null'::jsonb
+    when t ~ '^\d{1,18}$' then to_jsonb(t::bigint)
+    else to_jsonb(t)
+  end
+$$;
+
 create or replace function cf_bigint(t text, fallback bigint default null)
 returns bigint language plpgsql immutable as $$
 begin
@@ -614,7 +669,7 @@ begin
                          start_date, repeats, recur_every, recur_unit, recur_days,
                          recur_end, category, notes, monthly_amounts, created_by)
     select hid,
-           cf_bigint(e.value->>'id'),
+           cf_id(e.value->>'id'),
            e.ord,
            coalesce(e.value->>'desc', ''),
            case when e.value->>'type' = 'income' then 'income' else 'expense' end,
@@ -632,7 +687,7 @@ begin
            case when (e.value->>'userId') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
                 then (e.value->>'userId')::uuid end
     from jsonb_array_elements(d->'entries') with ordinality e(value, ord)
-    where cf_bigint(e.value->>'id') is not null
+    where cf_id(e.value->>'id') is not null
     on conflict (household_id, id) do update set
       sort_order = excluded.sort_order,
       description = excluded.description,
@@ -662,7 +717,7 @@ begin
     where e.household_id = hid
       and not exists (
         select 1 from jsonb_array_elements(d->'entries') x(value)
-        where cf_bigint(x.value->>'id') = e.id
+        where cf_id(x.value->>'id') = e.id
       );
 
     -- inline receipt images riding on entries (legacy blob / backup import)
@@ -673,7 +728,7 @@ begin
            decode(regexp_replace(e.value->>'attachment', '^data:[^,]*,', ''), 'base64')
     from jsonb_array_elements(d->'entries') e(value)
     where e.value->>'attachment' like 'data:%;base64,%'
-      and cf_bigint(e.value->>'id') is not null
+      and cf_id(e.value->>'id') is not null
     on conflict (household_id, owner_key)
       do update set mime = excluded.mime, data = excluded.data, updated_at = now();
 
@@ -866,18 +921,18 @@ begin
     insert into goals (household_id, id, sort_order, name, target, saved, monthly,
                        target_date, entry_id, payout_entry_id, created_at)
     select hid,
-           cf_bigint(g.value->>'id'),
+           cf_id(g.value->>'id'),
            g.ord,
            coalesce(g.value->>'name', ''),
            coalesce(cf_num(g.value->>'target'), 0),
            coalesce(cf_num(g.value->>'saved'), 0),
            coalesce(cf_num(g.value->>'monthly'), 0),
            cf_date(g.value->>'targetDate'),
-           cf_bigint(g.value->>'entryId'),
-           cf_bigint(g.value->>'payoutEntryId'),
+           cf_id(g.value->>'entryId'),
+           cf_id(g.value->>'payoutEntryId'),
            cf_ts(g.value->>'createdAt')
     from jsonb_array_elements(d->'goals') with ordinality g(value, ord)
-    where cf_bigint(g.value->>'id') is not null
+    where cf_id(g.value->>'id') is not null
     on conflict (household_id, id) do update set
       sort_order = excluded.sort_order,
       name = excluded.name,
@@ -898,7 +953,7 @@ begin
     where g.household_id = hid
       and not exists (
         select 1 from jsonb_array_elements(d->'goals') x(value)
-        where cf_bigint(x.value->>'id') = g.id
+        where cf_id(x.value->>'id') = g.id
       );
   end if;
 
@@ -1010,6 +1065,8 @@ revoke execute on function cf_apply_household_payload(uuid, jsonb) from public, 
 revoke execute on function cf_num(text, numeric) from public, anon, authenticated;
 revoke execute on function cf_int(text, int) from public, anon, authenticated;
 revoke execute on function cf_bigint(text, bigint) from public, anon, authenticated;
+revoke execute on function cf_id(text) from public, anon, authenticated;
+revoke execute on function cf_id_json(text) from public, anon, authenticated;
 revoke execute on function cf_bool(text, boolean) from public, anon, authenticated;
 revoke execute on function cf_date(text) from public, anon, authenticated;
 revoke execute on function cf_ts(text) from public, anon, authenticated;
@@ -1113,7 +1170,7 @@ begin
   select jsonb_build_object(
     'entries', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', e.id,
+        'id', cf_id_json(e.id),
         'desc', e.description,
         'type', e.type,
         'amount', e.amount,
@@ -1180,14 +1237,14 @@ begin
       from completed_occurrences co where co.household_id = hid), '{}'::jsonb),
     'goals', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', g.id,
+        'id', cf_id_json(g.id),
         'name', g.name,
         'target', g.target,
         'saved', g.saved,
         'monthly', g.monthly,
         'targetDate', coalesce(to_char(g.target_date, 'YYYY-MM-DD'), ''),
-        'entryId', g.entry_id,
-        'payoutEntryId', g.payout_entry_id,
+        'entryId', cf_id_json(g.entry_id),
+        'payoutEntryId', cf_id_json(g.payout_entry_id),
         'createdAt', g.created_at
       ) order by g.sort_order, g.id)
       from goals g where g.household_id = hid), '[]'::jsonb),
