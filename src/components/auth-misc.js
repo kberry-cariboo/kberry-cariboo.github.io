@@ -688,7 +688,13 @@
         return rows.length > 10 && rows.every((r) => r.source === "computed") && isYearStored(2026) === false;
       }));
       t("an emptied year stays empty instead of reverting to the rules", () => withStoredHolidays(
-        // What Settings writes when the last row is removed.
+        // What Settings writes when the last row is removed, and what the
+        // database sends back for a year whose holiday_years row has no
+        // holidays rows.
+        { 2026: {} },
+        () => holidayRowsForYear(2026).length === 0 && isYearStored(2026) === true
+      ));
+      t("a year saved by an older build with a tombstone key still reads as empty", () => withStoredHolidays(
         { 2026: { _none: true } },
         () => holidayRowsForYear(2026).length === 0 && isYearStored(2026) === true
       ));
@@ -728,8 +734,8 @@
           return holidaysForYear(2026)["2026-06-06"].name === "Live";
         }
       ));
-      t("editing an unstored year drops the empty-year tombstone", () => withStoredHolidays(
-        { 2026: { _none: true } },
+      t("editing an empty stored year starts from empty, not from the rules", () => withStoredHolidays(
+        { 2026: {} },
         () => Object.keys(holidayYearForEditing(2026)).length === 0
       ));
       t("editing a payroll entry splits on the payday", () => {

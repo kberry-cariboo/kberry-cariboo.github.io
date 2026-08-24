@@ -92,7 +92,8 @@ your own instance:
    `supabase/schema.sql` — it creates the household tables plus the normalized
    budget tables (`entries`, `entry_overrides`, `categories`, `year_configs`,
    `budget_targets`, `templates`, `completed_occurrences`, `goals`,
-   `household_settings`, and `receipts`), the push-notification tables
+   `holidays`, `holiday_years`, `household_settings`, and `receipts`), the
+   push-notification tables
    (`push_subscriptions`, `notification_schedule`, `notification_sends`), Row
    Level Security policies, and the RPC functions the app talks to
    (`load_household`/`save_household`/`put_receipt`/`delete_receipt`,
@@ -116,6 +117,14 @@ instance of a repeating entry has its own independent receipt — so they no
 longer ride along inside every sync payload. (Legacy entry-level receipts are
 re-keyed onto the entry's start-date occurrence by the migration.) All reads/writes go through the
 `load_household`/`save_household` RPCs, which keep each save atomic.
+
+Statutory holidays (which decide when payroll landing on a closed day is
+actually deposited) are rows too: one per date in `holidays`, plus a
+`holiday_years` row per year the household has taken over from the built-in
+British Columbia rules — that second table is what distinguishes "this household
+deleted every holiday in 2027" from "nobody has touched 2027". Settings →
+Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
+the pair against a scratch database.
 
 If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
 migration block at the end automatically copies each household's old

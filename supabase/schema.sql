@@ -13,8 +13,8 @@
 --
 -- Storage: budget data lives in normalized tables (entries, entry_overrides,
 -- categories, year_configs, budget_targets, templates, completed_occurrences,
--- goals, household_settings) instead of the old single-JSONB-blob household_data
--- table. Receipt images are stored as binary blobs (bytea) in the receipts table.
+-- goals, holidays, holiday_years, household_settings) instead of the old
+-- single-JSONB-blob household_data table. Receipt images are stored as binary blobs (bytea) in the receipts table.
 -- The app reads/writes through the load_household / save_household /
 -- put_receipt / delete_receipt RPCs, which run as security definer and scope
 -- everything to the calling user's household.
@@ -182,6 +182,40 @@ create table if not exists goals (
   primary key (household_id, id)
 );
 
+-- Statutory holidays, one row per date. These decide when payroll that falls on
+-- a closed day is actually deposited (the budget marks the row rather than
+-- moving it — see priorBankingDay in src/lib/dates.js), and Settings →
+-- Statutory Holidays adds, edits and removes them.
+--
+-- `source` records where a date came from, which is what lets a fetch from
+-- canada-holidays.ca replace the published dates while leaving alone anything
+-- someone typed in by hand:
+--   'manual'    — added or edited in Settings
+--   'published' — from a canada-holidays.ca fetch
+--   'computed'  — seeded from British Columbia's rules when the year was first
+--                 edited (see computeBCHolidays in src/lib/holidays.js)
+create table if not exists holidays (
+  household_id uuid not null references households(id) on delete cascade,
+  holiday_date date not null,
+  name text not null default '',
+  optional boolean not null default false,   -- BC lists Easter Monday and Boxing Day as optional
+  source text not null default 'manual',
+  primary key (household_id, holiday_date)
+);
+
+-- One row per year whose holiday list the household has taken over.
+--
+-- Without this there is no way to tell "this household deleted every holiday in
+-- 2027" from "nobody has touched 2027", and the two mean opposite things: the
+-- first is an empty list, the second falls back to the built-in BC rules. A row
+-- here says the rows in `holidays` for that year are the whole truth, however
+-- few of them there are.
+create table if not exists holiday_years (
+  household_id uuid not null references households(id) on delete cascade,
+  year int not null,
+  primary key (household_id, year)
+);
+
 -- One row per household: scalar preferences that used to ride along in the blob.
 create table if not exists household_settings (
   household_id uuid primary key references households(id) on delete cascade,
@@ -308,6 +342,8 @@ alter table budget_targets enable row level security;
 alter table templates enable row level security;
 alter table completed_occurrences enable row level security;
 alter table goals enable row level security;
+alter table holidays enable row level security;
+alter table holiday_years enable row level security;
 alter table household_settings enable row level security;
 alter table receipts enable row level security;
 alter table push_subscriptions enable row level security;
@@ -427,6 +463,14 @@ create policy "member read completed_occurrences" on completed_occurrences
 
 drop policy if exists "member read goals" on goals;
 create policy "member read goals" on goals
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read holidays" on holidays;
+create policy "member read holidays" on holidays
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read holiday_years" on holiday_years;
+create policy "member read holiday_years" on holiday_years
   for select using (is_household_member(household_id));
 
 drop policy if exists "member read household_settings" on household_settings;
@@ -858,6 +902,60 @@ begin
       );
   end if;
 
+  -- statutory holidays -----------------------------------------------------
+  -- Wire shape: { "2026": { "2026-07-01": { name, optional, source }, ... } }.
+  -- A year present with an empty object is a household that deleted every
+  -- holiday in it — that year still gets a holiday_years row, which is what
+  -- stops the client falling back to the built-in rules for it.
+  if jsonb_typeof(d->'holidays') = 'object' then
+    insert into holiday_years (household_id, year)
+    select hid, y.key::int
+    from jsonb_each(d->'holidays') y(key, value)
+    where y.key ~ '^\d{4}$' and jsonb_typeof(y.value) = 'object'
+    on conflict (household_id, year) do nothing;
+
+    delete from holiday_years hy
+    where hy.household_id = hid
+      and not exists (
+        select 1 from jsonb_each(d->'holidays') y(key, value)
+        where y.key ~ '^\d{4}$' and y.key::int = hy.year
+      );
+
+    insert into holidays (household_id, holiday_date, name, optional, source)
+    select hid,
+           (h.key)::date,
+           coalesce(nullif(h.value->>'name', ''), 'Holiday'),
+           coalesce(cf_bool(h.value->>'optional'), false),
+           case when h.value->>'source' in ('manual', 'published', 'computed')
+                then h.value->>'source' else 'manual' end
+    from jsonb_each(d->'holidays') y(key, value),
+         jsonb_each(case when jsonb_typeof(y.value) = 'object'
+                         then y.value else '{}'::jsonb end) h(key, value)
+    where y.key ~ '^\d{4}$'
+      -- Date-shaped keys only: a client may carry other bookkeeping keys in a
+      -- year object, and they are not holidays.
+      and h.key ~ '^\d{4}-\d{2}-\d{2}$'
+      and jsonb_typeof(h.value) = 'object'
+    on conflict (household_id, holiday_date) do update set
+      name = excluded.name,
+      optional = excluded.optional,
+      source = excluded.source
+    where holidays.name is distinct from excluded.name
+       or holidays.optional is distinct from excluded.optional
+       or holidays.source is distinct from excluded.source;
+
+    delete from holidays x
+    where x.household_id = hid
+      and not exists (
+        select 1
+        from jsonb_each(d->'holidays') y(key, value),
+             jsonb_each(case when jsonb_typeof(y.value) = 'object'
+                             then y.value else '{}'::jsonb end) h(key, value)
+        where y.key ~ '^\d{4}$'
+          and h.key = to_char(x.holiday_date, 'YYYY-MM-DD')
+      );
+  end if;
+
   -- scalar settings (always upserted; marks the household as migrated) ----
   insert into household_settings as s
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
@@ -1092,7 +1190,24 @@ begin
         'payoutEntryId', g.payout_entry_id,
         'createdAt', g.created_at
       ) order by g.sort_order, g.id)
-      from goals g where g.household_id = hid), '[]'::jsonb)
+      from goals g where g.household_id = hid), '[]'::jsonb),
+    -- Years come from holiday_years *unioned with* the years present in
+    -- holidays, so a date inserted straight into the table (the SQL editor,
+    -- a script) still reaches the app instead of sitting there invisible.
+    'holidays', coalesce((
+      select jsonb_object_agg(y.year::text, coalesce((
+        select jsonb_object_agg(
+                 to_char(h.holiday_date, 'YYYY-MM-DD'),
+                 jsonb_build_object('name', h.name, 'optional', h.optional, 'source', h.source))
+        from holidays h
+        where h.household_id = hid
+          and extract(year from h.holiday_date)::int = y.year), '{}'::jsonb))
+      from (
+        select hy.year from holiday_years hy where hy.household_id = hid
+        union
+        select extract(year from h2.holiday_date)::int
+        from holidays h2 where h2.household_id = hid
+      ) y), '{}'::jsonb)
   ) || coalesce((
     select jsonb_strip_nulls(jsonb_build_object(
       'activeYear', s.active_year,

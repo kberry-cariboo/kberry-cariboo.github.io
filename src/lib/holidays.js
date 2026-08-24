@@ -3,12 +3,15 @@
   // process on a holiday any more than they do on a Sunday, so a payday that
   // falls on one is deposited the last banking day before it.
   //
-  // The dates are household data, kept in the same synced payload as entries
-  // and budget targets, and managed in Settings → Statutory Holidays: they can
-  // be added, edited and removed by hand, and a year can be pulled from
-  // canada-holidays.ca on demand. Nothing fetches on its own — a background
-  // request that quietly overwrote a hand-corrected date and then synced it to
-  // everyone else in the household is not a thing the app should do.
+  // The dates are household data. They live in Postgres as ordinary rows — the
+  // `holidays` and `holiday_years` tables in supabase/schema.sql, one row per
+  // date, queryable in the SQL editor like anything else — and travel in the
+  // same load_household/save_household payload as entries and budget targets.
+  // Settings → Statutory Holidays adds, edits and removes them, and can pull a
+  // year from canada-holidays.ca on demand. Nothing fetches on its own: a
+  // background request that quietly overwrote a hand-corrected date and then
+  // synced it to everyone else in the household is not a thing the app should
+  // do on its own initiative.
   //
   // A year with nothing stored falls back to computeBCHolidays() below, which
   // works the list out from the rules. That fallback is the floor the feature
@@ -146,13 +149,18 @@
     const s = resolveStore(store);
     return s[year] || s[String(year)];
   };
+  // A year *key being present* is what marks it as the household's, even when
+  // the object is empty — that is how "we deleted every holiday in 2027" comes
+  // back from the database (a holiday_years row with no holidays rows), and it
+  // has to stay distinct from "nobody has touched 2027", which falls back to
+  // the rules.
   function isYearStored(year, store) {
     const y = yearIn(store, year);
-    return !!y && Object.keys(y).length > 0;
+    return !!y && typeof y === "object";
   }
   function holidaysForYear(year, store) {
     const y = yearIn(store, year);
-    return y && Object.keys(y).length ? y : computedHolidaysForYear(year);
+    return y && typeof y === "object" ? y : computedHolidaysForYear(year);
   }
   function holidayOn(dateStr) {
     const year = Number(String(dateStr).slice(0, 4));
@@ -224,11 +232,10 @@
     const removed = Object.keys(before).filter((d) => (before[d] || {}).source !== "manual" && !out[d]).length;
     return { days: out, added, updated, removed, kept: manualDates.length };
   }
-  // Removing the last holiday from a year has to leave the year *stored and
-  // empty*, not absent — an absent year falls back to the computed rules, which
-  // would put every date the user just deleted straight back. That is what the
-  // non-date tombstone key in a stored year means, and why every reader here
-  // filters to date-shaped keys.
+  // Readers filter to date-shaped keys throughout: an empty year is written as
+  // {} today, but households saved by an earlier build carry a non-date
+  // tombstone key instead, and that must not surface as a holiday called
+  // "undefined".
   //
   // Materialises a year so it can be edited: an unstored year is seeded from
   // the computed rules first, because the alternative — starting from an empty
