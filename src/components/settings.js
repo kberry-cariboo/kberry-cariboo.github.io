@@ -483,7 +483,7 @@
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
   }, holidays = {}, setHolidays = () => {
-  }, isOffline = false }) {
+  }, isOffline = false, houseValues = {}, houseSetters = {} }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -937,7 +937,13 @@
         onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, holidays, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      // Built from the household-field table, so a new field is in the backup
+      // the moment it is marked `backup: true` — this list used to be written
+      // out by hand and drifted from what the app actually stores.
+      const data = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+        acc[f.key] = houseValues[f.key];
+        return acc;
+      }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
         try {
@@ -983,21 +989,18 @@
               Array.isArray(d.entries) ? d.entries : [],
               d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
             );
+            // Entries and overrides go in first and by hand: legacy backups
+            // carry receipt images on the entry, which moveEntryAttachmentsToOverrides
+            // above has just re-keyed onto the occurrences they belong to.
             if (Array.isArray(d.entries)) setEntries(fixed.entries);
             if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
-            if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
-            if (Array.isArray(d.categories)) setCategories(d.categories);
-            if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-            if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
-            if (Array.isArray(d.templates)) setTemplates(d.templates);
-            if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
-            if (Array.isArray(d.goals)) setGoals(d.goals);
-            if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
-            if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
-            if (d.holidays && typeof d.holidays === "object") setHolidays(d.holidays);
-            if (d.activeYear) setActiveYear(d.activeYear);
-            if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-            if (d.darkMode != null) setDarkMode(d.darkMode);
+            // The rest is the table again, vetted by the same guards a payload
+            // from the cloud goes through.
+            HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
+              if (f.key === "entries" || f.key === "overridesByYr") return;
+              const set = houseSetters[f.key];
+              if (set) houseApply(f)(d[f.key], set);
+            });
             setYearMsg("\u2705 Backup restored successfully!");
           } catch (err) {
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
