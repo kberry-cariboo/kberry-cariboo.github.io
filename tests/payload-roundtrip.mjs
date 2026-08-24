@@ -1,13 +1,19 @@
 // Does every field the app saves actually come back?
 //
-// cf_apply_household_payload writes the columns it knows about and ignores
+// cf_apply_household_payload used to write the columns it knew about and ignore
 // everything else in the payload. A field with no column behind it therefore
-// fails *silently*: the save succeeds, the app looks right, and the next load
-// replaces the user's work with a copy that never had it. Six features were
+// failed *silently*: the save succeeded, the app looked right, and the next load
+// replaced the user's work with a copy that never had it. Six features were
 // being lost that way — transfers, skipped occurrences, reconciled actual
 // amounts, occurrences moved to another month, copy provenance, and the
 // per-category rollover flags — and none of them broke a single test, because
 // tests/regression.mjs stubs Supabase and accepts any payload it is handed.
+//
+// Top-level keys are now declared on both sides and checked by
+// tests/payload-fields.mjs, and the schema refuses one it can't store. The five
+// entry/override fields in that list were never top-level keys, though — they
+// live inside an entry or an override object, where there is nothing to declare
+// them against. This test remains their only cover.
 //
 // So this test doesn't check behaviour. It saves a payload exercising every
 // documented feature through the real SQL, loads it back, and compares the two

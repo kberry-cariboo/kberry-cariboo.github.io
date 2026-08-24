@@ -3889,7 +3889,12 @@ document.addEventListener('DOMContentLoaded',function(){
   // second list left to forget. App.js destructures the bindings it happens to
   // use, but that's local convenience — an undestructured field still syncs,
   // and a misspelt one is a ReferenceError rather than silence.
-  // tests/payload-roundtrip.mjs checks the database end.
+  //
+  // The database declares the same set in cf_payload_keys() (supabase/schema.sql)
+  // — it can't derive from this table, being SQL run by hand against Supabase —
+  // so tests/payload-fields.mjs fails CI if the two ever disagree, and
+  // cf_apply_household_payload refuses a payload key it has no column for
+  // rather than dropping it. Adding a field here means adding it there too.
   //
   //   kind      how a value from the cloud or a backup file is vetted
   //     array     must be an array

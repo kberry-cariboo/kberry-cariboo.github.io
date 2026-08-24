@@ -7,11 +7,19 @@ on:
       - "src/**"
       - "index.template.html"
       - "build.js"
+      # A schema change can break the client/schema field agreement that
+      # tests/payload-fields.mjs checks, so it has to trigger CI too.
+      - "supabase/**"
+      - "tests/**"
   pull_request:
     paths:
       - "src/**"
       - "index.template.html"
       - "build.js"
+      # A schema change can break the client/schema field agreement that
+      # tests/payload-fields.mjs checks, so it has to trigger CI too.
+      - "supabase/**"
+      - "tests/**"
   workflow_dispatch: {}
 
 permissions:
@@ -48,6 +56,14 @@ jobs:
         run: |
           npm install -g playwright
           npx playwright install --with-deps chromium
+
+      # Needs neither a browser nor a database: it reads HOUSEHOLD_FIELDS out of
+      # src/lib/household-sync.js and cf_payload_keys() out of
+      # supabase/schema.sql and fails if they disagree. That pair is the one
+      # place a household field is declared twice, and a mismatch is the exact
+      # shape of failure that used to reach production silently.
+      - name: Check the client and the schema agree on the payload fields
+        run: node tests/payload-fields.mjs
 
       - name: Run UI regression suite
         run: node tests/regression.mjs

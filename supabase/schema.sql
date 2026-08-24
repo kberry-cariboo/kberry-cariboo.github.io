@@ -249,10 +249,10 @@ alter table household_settings add column if not exists deleted_copy_ids jsonb n
 
 -- Fields the client keeps that these tables originally had nowhere to put ------
 --
--- cf_apply_household_payload writes the columns it knows about and ignores the
--- rest of the payload, so a field with no column here doesn't fail — it just
--- never arrives, and the next load quietly replaces the user's work with a
--- copy that never had it. Each of these was found that way:
+-- cf_apply_household_payload used to write the columns it knew about and ignore
+-- the rest of the payload, so a field with no column here didn't fail — it just
+-- never arrived, and the next load quietly replaced the user's work with a copy
+-- that never had it. Each of these was found that way:
 --
 --   entries.transfer_direction  a "transfer" entry came back as an expense,
 --   + 'transfer' in the type    flipping its sign in the running balance
@@ -264,6 +264,13 @@ alter table household_settings add column if not exists deleted_copy_ids jsonb n
 --   entry_overrides.skipped     a skipped occurrence came back from the dead
 --   household_settings.rollover  the per-category envelope-rollover flags,
 --                               which live under budgetTargets._rollover
+--
+-- A top-level key can no longer fail this way: cf_payload_keys() below declares
+-- what the payload may carry, cf_apply_household_payload refuses anything else
+-- outright, and tests/payload-fields.mjs fails if that list and the client's
+-- HOUSEHOLD_FIELDS drift apart. Fields *inside* an entry or an override (the
+-- first five above) are still only covered by tests/payload-roundtrip.mjs —
+-- add one to its fixture whenever you add one here.
 do $$
 begin
   if exists (select 1 from pg_constraint
@@ -680,6 +687,45 @@ returns numeric[] language sql immutable as $$
   end;
 $$;
 
+-- Every top-level key of the save payload that this schema has somewhere to put.
+-- The client's own declaration of the same set is HOUSEHOLD_FIELDS in
+-- src/lib/household-sync.js, and tests/payload-fields.mjs fails if the two ever
+-- disagree — so a field added to one and not the other is caught before it
+-- ships, without needing a database to notice.
+--
+-- Keep the order and the wording identical to that table: the test compares
+-- them as sets, but a reviewer compares them by eye.
+create or replace function cf_payload_keys()
+returns text[] language sql immutable as $$
+  select array[
+    'entries', 'overridesByYr', 'yearConfigs', 'categories', 'categoryColors',
+    'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon', 'goals',
+    'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
+    'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
+    'completed', 'debtData', 'deletedCopyIds', 'holidays'
+  ]::text[];
+$$;
+
+-- Envelope keys the client adds around the household fields. Not data, so they
+-- have no row in HOUSEHOLD_FIELDS, but they are legitimately in the payload.
+create or replace function cf_payload_meta_keys()
+returns text[] language sql immutable as $$
+  select array['schemaVersion', 'savedAt']::text[];
+$$;
+
+-- Keys this schema used to store and deliberately no longer does. A browser tab
+-- opened before the change still sends them, and every legacy household_data
+-- blob contains them, so they are ignored rather than refused — unlike a key
+-- nobody has ever heard of, which means the client is newer than the database.
+-- Never delete a key from here: that would start rejecting saves from a client
+-- that is merely old.
+create or replace function cf_payload_retired_keys()
+returns text[] language sql immutable as $$
+  -- aiApiKey: a personal credential with its own billing, and every household
+  -- member can read household_settings. Dropped from the sync in schema v8.
+  select array['aiApiKey']::text[];
+$$;
+
 -- Decompose a full payload (the app's in-memory shape, or the legacy blob) into
 -- the normalized tables. Each section only runs when its key is present, so a
 -- legacy blob missing newer keys never wipes anything it doesn't know about.
@@ -692,9 +738,39 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  unknown_keys text[];
 begin
   if d is null or jsonb_typeof(d) <> 'object' then
     raise exception 'Invalid payload: expected a JSON object.';
+  end if;
+
+  -- Refuse a payload carrying a field this schema has nowhere to put. --------
+  --
+  -- Everything below writes the keys it knows about and, before this check,
+  -- ignored the rest — so a field with no column behind it failed *silently*:
+  -- the save succeeded, the app looked right, and the next load handed the
+  -- user back a copy that never had it. Seven features were lost that way
+  -- (holidays, transfers, skipped occurrences, reconciled actual amounts,
+  -- occurrences moved to another month, copy provenance, and the per-category
+  -- rollover flags), and none of them raised anything.
+  --
+  -- The realistic cause is a client newer than the database — the site
+  -- updated, this file not re-run — so failing the save is the safe outcome:
+  -- the edit stays on the device as unsaved work the app already warns about,
+  -- instead of being written to a server that quietly discards half of it.
+  --
+  -- An *older* client is the opposite case and must keep working, so keys this
+  -- schema has retired are ignored here, not refused.
+  select array_agg(k order by k) into unknown_keys
+  from jsonb_object_keys(d) k
+  where not (k = any (cf_payload_keys()))
+    and not (k = any (cf_payload_meta_keys()))
+    and not (k = any (cf_payload_retired_keys()));
+
+  if unknown_keys is not null then
+    raise exception 'This database has no column for: %. It is older than the app that sent this save — re-run supabase/schema.sql, then save again. Nothing was written.',
+      array_to_string(unknown_keys, ', ');
   end if;
 
   -- entries ---------------------------------------------------------------
@@ -1123,6 +1199,9 @@ end $$;
 
 -- Internal helpers are not part of the client API surface.
 revoke execute on function cf_apply_household_payload(uuid, jsonb) from public, anon, authenticated;
+revoke execute on function cf_payload_keys() from public, anon, authenticated;
+revoke execute on function cf_payload_meta_keys() from public, anon, authenticated;
+revoke execute on function cf_payload_retired_keys() from public, anon, authenticated;
 revoke execute on function cf_num(text, numeric) from public, anon, authenticated;
 revoke execute on function cf_int(text, int) from public, anon, authenticated;
 revoke execute on function cf_bigint(text, bigint) from public, anon, authenticated;
@@ -1589,6 +1668,7 @@ do $$
 declare
   r record;
   migrated int := 0;
+  stale_keys text[];
 begin
   for r in
     select hd.household_id, hd.data
@@ -1598,7 +1678,24 @@ begin
       and not exists (select 1 from household_settings s
                       where s.household_id = hd.household_id)
   loop
-    perform cf_apply_household_payload(r.household_id, r.data);
+    -- A blob is a historical shape, written by whatever version of the app was
+    -- current at the time, so it can carry keys this schema has never had a
+    -- place for. cf_apply_household_payload refuses those on a live save (they
+    -- mean the client is ahead of the database), but here they only mean the
+    -- blob is old — so strip them and say what was skipped rather than aborting
+    -- the upgrade. The blob itself is kept, so nothing is destroyed either way.
+    select array_agg(k order by k) into stale_keys
+    from jsonb_object_keys(r.data) k
+    where not (k = any (cf_payload_keys()))
+      and not (k = any (cf_payload_meta_keys()))
+      and not (k = any (cf_payload_retired_keys()));
+
+    if stale_keys is not null then
+      raise notice 'Household %: legacy blob carries % which this schema has no place for; skipping those and migrating the rest.',
+        r.household_id, array_to_string(stale_keys, ', ');
+    end if;
+
+    perform cf_apply_household_payload(r.household_id, r.data - coalesce(stale_keys, '{}'::text[]));
     migrated := migrated + 1;
     raise notice 'Migrated household % (% entries, % receipts extracted)',
       r.household_id,
