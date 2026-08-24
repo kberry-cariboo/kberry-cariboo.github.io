@@ -599,10 +599,17 @@
       });
       t("an optional BC holiday counts (Boxing Day)", () => {
         const boxing = __spreadProps(__spreadValues({}, payroll), { id: 23, startDate: "2026-12-28", recurUnit: "year" });
-        // 26 Dec 2026 is a Saturday, so Boxing Day is observed Mon 28 Dec and
+        // 26 Dec 2026 is a Saturday, so Boxing Day is taken Mon 28 Dec and
         // Christmas Day is Fri 25 Dec: the last banking day is Thu 24 Dec.
         const dec = expandEntries([boxing], 2026, {})[0];
         return dec.day === 28 && depStr(dec) === "2026-12-24";
+      });
+      t("dropping the un-observed date changes no deposit date", () => {
+        // The date a holiday slides off is always a Saturday or a Sunday, so
+        // the weekend rule already covered it — a payday on Boxing Day Sat 26
+        // Dec 2026 still deposits on Thursday the 24th.
+        const onSat = __spreadProps(__spreadValues({}, payroll), { id: 31, startDate: "2026-12-26", recurUnit: "year" });
+        return depStr(expandEntries([onSat], 2026, {})[0]) === "2026-12-24";
       });
       t("the deposit date may fall in the previous month or year", () => {
         // Nothing moves, so this is just a label — no month's totals change.
@@ -645,12 +652,25 @@
       });
       t("optional BC holidays are included and flagged", () => {
         const h = computeBCHolidays(2026);
-        return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-26"] && h["2026-12-26"].optional === true && h["2026-07-01"].optional === false;
+        // Boxing Day 2026 is a Saturday, so it is taken on Monday the 28th.
+        return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-28"] && h["2026-12-28"].optional === true && h["2026-07-01"].optional === false;
       });
-      t("a holiday on a weekend is also registered on the day it's observed", () => {
-        // 1 Jan 2028 is a Saturday, observed Monday the 3rd.
+      t("a holiday that falls on a weekend is listed once, on the day it's observed", () => {
+        // 1 Jan 2028 is a Saturday, taken on Monday the 3rd. Listing the
+        // Saturday as well was a duplicate — one day off, one row.
         const h = computeBCHolidays(2028);
-        return !!h["2028-01-01"] && /observed/.test((h["2028-01-03"] || {}).name || "");
+        return h["2028-01-01"] === void 0 && /^New Year's Day \(observed\)$/.test((h["2028-01-03"] || {}).name || "");
+      });
+      t("Christmas week resolves to two consecutive days off, listed once each", () => {
+        // 25 Dec 2027 is a Saturday: Christmas is taken Monday the 27th and
+        // Boxing Day moves past it to Tuesday the 28th.
+        const h = computeBCHolidays(2027);
+        const names = Object.keys(h).filter((d) => d >= "2027-12-24").map((d) => `${d}=${h[d].name}`);
+        return names.join(" ") === "2027-12-27=Christmas Day (observed) 2027-12-28=Boxing Day (observed)";
+      });
+      t("a holiday on a weekday keeps its plain name", () => {
+        const h = computeBCHolidays(2026);
+        return h["2026-07-01"].name === "Canada Day" && h["2026-12-25"].name === "Christmas Day";
       });
       t("a bad holiday payload is ignored rather than believed", () => {
         return parseHolidayPayload({ province: { holidays: [] } }, 2026) === null && parseHolidayPayload(null, 2026) === null && parseHolidayPayload({ holidays: [{ date: "not-a-date" }] }, 2026) === null;
@@ -661,7 +681,9 @@
           { date: "2026-12-26", observedDate: "2026-12-28", nameEn: "Boxing Day", optional: 1 },
           { date: "2025-12-25", nameEn: "Wrong year", optional: 0 }
         ] } }, 2026);
-        return parsed["2026-07-01"].name === "Canada Day" && parsed["2026-12-28"].optional === true && parsed["2025-12-25"] === void 0;
+        // The observed date only: taking `date` as well listed Boxing Day on
+        // both the 26th and the 28th.
+        return parsed["2026-07-01"].name === "Canada Day" && parsed["2026-12-28"].optional === true && parsed["2026-12-26"] === void 0 && parsed["2025-12-25"] === void 0;
       });
       // These run against the same module-level registry the live budget reads,
       // so each one puts it back before returning.

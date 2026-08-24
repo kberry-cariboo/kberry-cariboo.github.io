@@ -45,10 +45,12 @@
     out.setDate(out.getDate() + n);
     return out;
   };
-  // A holiday landing on a weekend is observed on the next open day, and it's
-  // the observed day the banks are shut. Both days are registered: the real one
-  // so a tooltip can name it, the observed one so the deposit maths steps over
-  // the right day.
+  // A holiday landing on a weekend is observed on the next open day, and the
+  // observed day is the only one that matters here: it is the day the banks are
+  // shut, and the day the holiday is actually taken. The calendar date it slid
+  // off was either a Saturday or a Sunday, which the weekend rule already
+  // covers, so listing both only ever produced a duplicate — "Boxing Day" on
+  // the 26th and "Boxing Day (observed)" on the 28th, two rows for one day off.
   //
   // `taken` is what makes Christmas week come out right. When Christmas is a
   // Saturday, it is observed on the Monday and Boxing Day moves past it to the
@@ -84,11 +86,13 @@
     // In date order, so an earlier holiday claims its observed day before a
     // later one looks for its own.
     fixed.sort((a, b) => a[0] - b[0]).forEach(([date, name, optional]) => {
-      const dateStr = localDateStr(date);
-      if (!out[dateStr]) out[dateStr] = { name, optional };
-      const obsStr = localDateStr(observedFor(date, taken));
+      const obs = observedFor(date, taken);
+      const obsStr = localDateStr(obs);
       taken.add(obsStr);
-      if (!out[obsStr]) out[obsStr] = { name: `${name} (observed)`, optional };
+      // The suffix only appears when the day actually moved, so a list that
+      // reads oddly — Boxing Day on a Tuesday — says why on the same line.
+      const moved = obsStr !== localDateStr(date);
+      if (!out[obsStr]) out[obsStr] = { name: moved ? `${name} (observed)` : name, optional };
     });
     return out;
   }
@@ -105,11 +109,13 @@
     list.forEach((h) => {
       const name = (h && (h.nameEn || h.name) || "Holiday").trim();
       const optional = !!(h && (h.optional === true || h.optional === 1));
-      [h && h.date, h && h.observedDate].forEach((raw) => {
-        if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
-        if (Number(raw.slice(0, 4)) !== year) return;
-        if (!out[raw]) out[raw] = { name, optional };
-      });
+      // observedDate, not date: the published feed carries both, and the
+      // observed one is the day off. Taking both listed a holiday twice
+      // whenever it fell on a weekend.
+      const raw = h && (h.observedDate || h.date);
+      if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
+      if (Number(raw.slice(0, 4)) !== year) return;
+      if (!out[raw]) out[raw] = { name, optional };
     });
     return Object.keys(out).length ? out : null;
   }

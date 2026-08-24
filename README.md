@@ -126,6 +126,15 @@ deleted every holiday in 2027" from "nobody has touched 2027". Settings →
 Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
 the pair against a scratch database.
 
+`tests/sync-sql.mjs` goes further: it runs the real app in a browser against a
+real Postgres, with only Supabase auth stubbed, so the client's payload actually
+passes through `save_household` and comes back out of `load_household`. It is
+opt-in (`CF_TEST_PG=1` plus `PG*` pointing at a scratch database) and skips
+otherwise. Worth running after touching the sync payload: a field with no column
+behind it fails silently, since `cf_apply_household_payload` ignores keys it
+doesn't recognise — the regression suite's stub accepts anything it is handed
+and cannot catch that.
+
 If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
 migration block at the end automatically copies each household's old
 `household_data` blob into the new tables (extracting inline base64 receipt
