@@ -455,13 +455,43 @@
       "Not you? Sign out"
     ))));
   }
+  // Checks that useHouseholdState produced the state the rest of the sync
+  // assumes: a value and a working setter for every row in HOUSEHOLD_FIELDS,
+  // and no two rows collapsed into one field. Inspecting the table alone would
+  // prove nothing — the point is that a row with a broken default, or a key
+  // that collides with another row's, shows up here instead of as data that
+  // silently stops syncing.
+  //
+  // Takes the hook's result rather than mounting a probe of its own:
+  // SelfTestView calls the hook, so this runs against a real React render
+  // without a second root to flush.
+  function checkHouseholdState(got) {
+    if (!got || !got.values || !got.setters) throw new Error("the hook returned nothing usable");
+    const missing = HOUSEHOLD_FIELDS.filter((f) => !(f.key in got.values));
+    if (missing.length) throw new Error("no value for: " + missing.map((f) => f.key).join(", "));
+    const unset = HOUSEHOLD_FIELDS.filter((f) => typeof got.setters[f.key] !== "function");
+    if (unset.length) throw new Error("no setter for: " + unset.map((f) => f.key).join(", "));
+    if (Object.keys(got.values).length !== HOUSEHOLD_FIELDS.length) {
+      throw new Error("table has " + HOUSEHOLD_FIELDS.length + " rows but produced " + Object.keys(got.values).length + " fields");
+    }
+    return true;
+  }
   function SelfTestView() {
+    // Called here, in a real component, so the check below tests the hook as
+    // the app uses it. Reads localStorage and nothing else — this view never
+    // touches the setters, so it can't write over the user's data.
+    const houseState = useHouseholdState();
     const results = useMemo(() => {
       const out = [];
+      // A check passes only by returning exactly true; report a failure by
+      // returning false or throwing. This used to accept anything truthy,
+      // which quietly turned "return a message explaining what's wrong" — the
+      // obvious way to write a failure — into a pass with the message printed
+      // beside the tick.
       const t = (name, fn) => {
         try {
           const v = fn();
-          out.push({ name, ok: !!v, detail: v === true ? "" : String(v) });
+          out.push({ name, ok: v === true, detail: v === true || v === false ? "" : "check returned " + String(v) + ", not a boolean" });
         } catch (e) {
           out.push({ name, ok: false, detail: e.message });
         }
@@ -762,9 +792,48 @@
       ));
       t("editing a payroll entry splits on the payday", () => {
         const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
-        if (!res.newId) return "no split";
+        if (!res.newId) throw new Error("no split");
         const seg = res.entries.find((e) => e.id === res.newId);
         return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
+      });
+      // ── The household-field table ──────────────────────────────────────
+      // Adding a synced field is one row in HOUSEHOLD_FIELDS and nothing else:
+      // useHouseholdState builds the state, the payload, the autosave triggers
+      // and the backup from that row. These checks pin down the properties the
+      // rest of the sync assumes about the table.
+      t("useHouseholdState creates state for every field in the table", () => checkHouseholdState(houseState));
+      t("household fields have unique keys and storage keys", () => {
+        const keys = HOUSEHOLD_FIELDS.map((f) => f.key);
+        const stores = HOUSEHOLD_FIELDS.map((f) => f.storage);
+        const dupe = (a) => a.find((x, i) => a.indexOf(x) !== i);
+        return !dupe(keys) && !dupe(stores) && HOUSEHOLD_FIELDS.every((f) => typeof f.initial === "function");
+      });
+      t("every household field is saved, cleared and guarded", () => {
+        // The three derived lists have to stay the same length as the table —
+        // this is what a hand-maintained copy of it used to get wrong.
+        return HOUSEHOLD_SYNCED_FIELDS.length === HOUSEHOLD_FIELDS.length && HOUSEHOLD_LOCAL_STORAGE_KEYS.length === HOUSEHOLD_FIELDS.length && HOUSEHOLD_SYNCED_FIELDS.every((f) => typeof f.apply === "function");
+      });
+      t("a field's guard rejects the wrong shape and accepts the right one", () => {
+        const got = [];
+        const set = (v) => got.push(v);
+        const guard = (key) => houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === key));
+        guard("entries")("not an array", set);
+        guard("entries")([{ id: 1 }], set);
+        guard("holidays")(null, set);
+        guard("holidays")({ 2026: {} }, set);
+        guard("activeYear")(0, set);
+        guard("activeYear")(2026, set);
+        // Only the three valid values should have got through.
+        return got.length === 3 && Array.isArray(got[0]) && got[1]["2026"] !== void 0 && got[2] === 2026;
+      });
+      t("colOrder drops the fixed actions column", () => {
+        const got = [];
+        houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
+        return got.length === 1 && got[0].join(",") === "desc,amount";
+      });
+      t("the backup export carries the fields worth restoring", () => {
+        const keys = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
+        return ["entries", "overridesByYr", "goals", "budgetTargets", "holidays", "categories"].every((k) => keys.includes(k)) && !keys.includes("regFilterCats");
       });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];

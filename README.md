@@ -150,6 +150,15 @@ Two opt-in tests cover the database itself. Both need a throwaway Postgres
   with only Supabase auth stubbed, so the client's payload passes through
   `save_household` and comes back out of `load_household`.
 
+On the client, a piece of household data is declared exactly once: a row in
+`HOUSEHOLD_FIELDS` in `src/lib/household-sync.js`. That row carries the
+localStorage key and default it loads with, the guard that vets a value arriving
+from the cloud or a backup file, whether editing it schedules a save, and
+whether it belongs in an export — and `useHouseholdState()` builds the React
+state from the table, so there is no second list to keep in step. Adding a field
+used to mean editing ten hand-maintained lists, and missing any one of them
+failed silently; holidays shipped missing two.
+
 **Run the first one whenever you add a field to the sync payload**, and add the
 field to its fixture. `cf_apply_household_payload` writes the columns it knows
 about and ignores the rest, so a field with no column behind it fails silently:

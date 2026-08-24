@@ -3869,23 +3869,151 @@ document.addEventListener('DOMContentLoaded',function(){
     const { error } = await supabaseClient.auth.updateUser({ password: nextPassword });
     if (error) throw error;
   }
-  // localStorage keys behind HOUSEHOLD_SYNCED_FIELDS below (the useLS key for
-  // each synced field, from App.js) plus the per-year AI report cache. On a
-  // shared device, HOUSEHOLD_SYNCED_FIELDS' apply() only overwrites a field
-  // when the newly-loaded household actually has a truthy value for it — so
-  // without clearing these first, a second household signing in on the same
-  // device would inherit any field the first household's save happened not to
-  // set, i.e. the previous household's leftover financial data. Device-level
-  // prefs that aren't household-scoped (lock timeout, saved email, biometric
-  // credential, swipe-coach dismissal) are deliberately left alone.
-  const HOUSEHOLD_LOCAL_STORAGE_KEYS = [
-    "cf_entries", "cf_overrides", "cf_years", "cf_categories", "cf_category_colors",
-    "cf_activeYear", "cf_alertThresh", "cf_darkMode", "cf_forecastHorizon", "cf_col_order",
-    "cf_reg_filter", "cf_reg_filter_cats", "cf_reg_filter_scheds", "cf_reg_filter_status",
-    "cf_budgtargets", "cf_templates", "cf_completed", "cf_goals",
-    "cf_dash_hidden", "cf_dash_order", "cf_debt_data", "cf_deleted_copy_ids",
-    "cf_holidays"
+  // ── The one list of household data ─────────────────────────────────────────
+  //
+  // Every mechanism that has to know about a piece of household data derives
+  // from this table: the localStorage key and default it loads with, the guard
+  // that vets a value arriving from the cloud or a backup file, whether editing
+  // it schedules a save, whether it belongs in a JSON export, and which keys to
+  // clear when a second household signs in on the same device.
+  //
+  // It exists because adding one field used to mean editing ten hand-maintained
+  // lists across three files plus the SQL, and missing any one of them failed
+  // *silently*. Holidays shipped missing two of them: it wasn't in the autosave
+  // dependency array, so editing a holiday on its own scheduled no save at all,
+  // and it had no column in the payload function, so what did get sent was
+  // dropped by the server without an error. Both looked completely wired.
+  //
+  // Adding a field is now one row here, and nothing else on the client:
+  // useHouseholdState below creates its state from this table, so there is no
+  // second list left to forget. App.js destructures the bindings it happens to
+  // use, but that's local convenience — an undestructured field still syncs,
+  // and a misspelt one is a ReferenceError rather than silence.
+  // tests/payload-roundtrip.mjs checks the database end.
+  //
+  //   kind      how a value from the cloud or a backup file is vetted
+  //     array     must be an array
+  //     object    must be a non-null object
+  //     value     must not be null/undefined (numbers, booleans)
+  //     truthy    must be truthy (a year of 0 or an empty filter is not a value)
+  //   apply     a custom guard, when one of the above won't do
+  //   backup    goes into Settings → Export Backup, and is restored from one
+  //   marksUnsaved  editing it while autosave is disabled means this device is
+  //                 holding work the server doesn't have
+  const HOUSEHOLD_FIELDS = [
+    { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true, marksUnsaved: true },
+    { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, marksUnsaved: true },
+    { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true, marksUnsaved: true },
+    { key: "categories", storage: "cf_categories", initial: () => DEFAULT_CATEGORIES, kind: "array", backup: true },
+    { key: "categoryColors", storage: "cf_category_colors", initial: () => DEFAULT_CATEGORY_COLORS, kind: "object", backup: true },
+    // The default must track the cf_years row above — a hardcoded year left
+    // fresh installs pointed at an empty year once the calendar rolled over.
+    { key: "activeYear", storage: "cf_activeYear", initial: () => (/* @__PURE__ */ new Date()).getFullYear(), kind: "truthy", backup: true },
+    { key: "alertThreshold", storage: "cf_alertThresh", initial: () => DEFAULT_ALERT_THRESHOLD, kind: "value", backup: true },
+    { key: "darkMode", storage: "cf_darkMode", initial: () => {
+      try {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      } catch (e) {
+        return false;
+      }
+    }, kind: "value", backup: true },
+    { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
+    { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true, marksUnsaved: true },
+    { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
+    { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
+    // "actions" is a fixed trailing column, not a reorderable one: an older
+    // payload that still lists it would otherwise reintroduce it.
+    { key: "colOrder", storage: "cf_col_order", initial: () => DEFAULT_ENTRIES_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
+    } },
+    // The four Entries filters keep their old "cf_reg_filter"/"regFilter"
+    // names on purpose: renaming a storage key or a payload field would
+    // silently reset every existing user's saved filters, locally and in any
+    // synced household, on upgrade. Only the in-code bindings in App.js were
+    // renamed to the "entries" wording used everywhere else.
+    { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
+    { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
+    { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
+    { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
+    { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true, marksUnsaved: true },
+    { key: "templates", storage: "cf_templates", initial: () => [], kind: "array", backup: true },
+    { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true, marksUnsaved: true },
+    { key: "debtData", storage: "cf_debt_data", initial: () => ({}), kind: "object", backup: true },
+    // Tombstones for the year-copy sync: source-entry id -> true, recorded
+    // whenever the user deletes a one-time entry that was itself a copy
+    // (entry.copiedFrom set). Without this, re-running "Copy year -> year+1"
+    // has no way to tell "never copied" apart from "copied, then the user
+    // deliberately deleted it" — both just look like the target entry is
+    // missing — and would resurrect the deleted copy on the next sync.
+    { key: "deletedCopyIds", storage: "cf_deleted_copy_ids", initial: () => ({}), kind: "object", backup: true },
+    // { [year]: { "YYYY-MM-DD": { name, optional, source } } } — the
+    // household's own statutory-holiday list, managed in Settings. Empty until
+    // someone edits a year or fetches one; every year without an entry falls
+    // back to the rules in holidays.js. Household data like anything else:
+    // corrected on one device, right on every device.
+    { key: "holidays", storage: "cf_holidays", initial: () => ({}), kind: "object", backup: true }
   ];
+  // Creates the localStorage-backed state for every field in the table, in
+  // table order, and returns the two objects useHouseholdData indexes by field
+  // key. Calling useLS in a loop is safe here precisely because
+  // HOUSEHOLD_FIELDS is a module-level constant: the number of hooks and their
+  // order can't vary between renders.
+  //
+  // This is what lets the table be the only place a field is declared. App.js
+  // used to repeat every field three more times — one useLS call, one entry in
+  // a houseValues literal, one in a houseSetters literal — and omitting either
+  // literal produced a field that looked wired but never left the device.
+  function useHouseholdState() {
+    const values = {};
+    const setters = [];
+    for (const f of HOUSEHOLD_FIELDS) {
+      const [value, set] = useLS(f.storage, f.initial);
+      values[f.key] = value;
+      setters.push(set);
+    }
+    // `values` is rebuilt every render (plain reads, no computation) so
+    // buildPayload can never close over a stale field. The setters object is
+    // built once — useLS's setter identity never changes — which is what keeps
+    // applyPayload and loadData stable, and the household-load effect firing
+    // on `household` rather than on every render.
+    const stableSetters = useMemo(
+      () => HOUSEHOLD_FIELDS.reduce((o, f, i) => {
+        o[f.key] = setters[i];
+        return o;
+      }, {}),
+      []
+    );
+    return { values, setters: stableSetters };
+  }
+  const HOUSEHOLD_GUARDS = {
+    array: (v, set) => {
+      if (Array.isArray(v)) set(v);
+    },
+    object: (v, set) => {
+      if (v && typeof v === "object") set(v);
+    },
+    value: (v, set) => {
+      if (v != null) set(v);
+    },
+    truthy: (v, set) => {
+      if (v) set(v);
+    }
+  };
+  const houseApply = (f) => f.apply || HOUSEHOLD_GUARDS[f.kind] || HOUSEHOLD_GUARDS.value;
+  // What the payload carries, and what a second household's leftovers are
+  // cleared from — both were separate hand-written lists.
+  const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
+  const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
+  // Every synced field's localStorage key, plus the per-year AI report cache.
+  // On a shared device, a field's apply() only overwrites local state when the
+  // newly-loaded household actually has a value for it — so without clearing
+  // these first, a second household signing in on the same device would
+  // inherit any field the first household's save happened not to set, i.e. the
+  // previous household's leftover financial data. Device-level prefs that
+  // aren't household-scoped (lock timeout, saved email, biometric credential,
+  // swipe-coach dismissal) are deliberately left alone, as is cf_ai_key: a
+  // personal credential isn't the household's to clear.
+  const HOUSEHOLD_LOCAL_STORAGE_KEYS = HOUSEHOLD_FIELDS.map((f) => f.storage);
   function clearHouseholdLocalState() {
     try {
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
@@ -4029,80 +4157,6 @@ document.addEventListener('DOMContentLoaded',function(){
   // budget with. It now lives only in this device's localStorage; enter it
   // per device. cf_ai_key is likewise absent from HOUSEHOLD_LOCAL_STORAGE_KEYS
   // above for the same reason: it isn't the household's to clear.
-  const HOUSEHOLD_SYNCED_FIELDS = [
-    { key: "entries", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "overridesByYr", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "yearConfigs", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "categories", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "categoryColors", apply: (v, set) => {
-      if (v && typeof v === "object") set(v);
-    } },
-    { key: "activeYear", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "alertThreshold", apply: (v, set) => {
-      if (v != null) set(v);
-    } },
-    { key: "darkMode", apply: (v, set) => {
-      if (v != null) set(v);
-    } },
-    { key: "forecastHorizon", apply: (v, set) => {
-      if (v != null) set(v);
-    } },
-    { key: "goals", apply: (v, set) => {
-      if (Array.isArray(v)) set(v);
-    } },
-    { key: "dashHidden", apply: (v, set) => {
-      if (v && typeof v === "object") set(v);
-    } },
-    { key: "dashOrder", apply: (v, set) => {
-      if (Array.isArray(v)) set(v);
-    } },
-    { key: "colOrder", apply: (v, set) => {
-      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
-    } },
-    { key: "regFilter", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "regFilterCats", apply: (v, set) => {
-      if (Array.isArray(v)) set(v);
-    } },
-    { key: "regFilterScheds", apply: (v, set) => {
-      if (Array.isArray(v)) set(v);
-    } },
-    { key: "regFilterStatus", apply: (v, set) => {
-      if (Array.isArray(v)) set(v);
-    } },
-    { key: "budgetTargets", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "templates", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "completed", apply: (v, set) => {
-      if (v) set(v);
-    } },
-    { key: "debtData", apply: (v, set) => {
-      if (v && typeof v === "object") set(v);
-    } },
-    { key: "deletedCopyIds", apply: (v, set) => {
-      if (v && typeof v === "object") set(v);
-    } },
-    // Statutory holidays are household data like anything else: corrected on
-    // one device, right on every device. A household that has never touched
-    // them syncs {} and every year falls back to the computed rules.
-    { key: "holidays", apply: (v, set) => {
-      if (v && typeof v === "object") set(v);
-    } }
-  ];
   // Edits that never reached the server. The service worker means the app
   // loads and is fully usable offline, so this is a real state to be in — and
   // previously a silent data-loss one: a failed load left autosave disabled,
@@ -4426,31 +4480,12 @@ document.addEventListener('DOMContentLoaded',function(){
         saveData(true);
       }, 2e3);
       return () => clearTimeout(saveTimer.current);
-    }, [
-      values.entries,
-      values.overridesByYr,
-      values.yearConfigs,
-      values.categories,
-      values.categoryColors,
-      values.alertThreshold,
-      values.darkMode,
-      values.activeYear,
-      values.budgetTargets,
-      values.templates,
-      values.completed,
-      values.forecastHorizon,
-      values.colOrder,
-      values.regFilter,
-      values.regFilterCats,
-      values.regFilterScheds,
-      values.regFilterStatus,
-      values.goals,
-      values.dashHidden,
-      values.dashOrder,
-      values.debtData,
-      values.deletedCopyIds,
-      values.holidays
-    ]);
+    // Derived from the table rather than listed by hand: a field left out of
+    // this array is only ever saved as a passenger on somebody else's edit,
+    // which is a silent failure and exactly how holidays shipped. The array's
+    // length is fixed (HOUSEHOLD_FIELDS is a module constant), which is all
+    // React requires of a dependency list.
+    }, HOUSEHOLD_FIELDS.map((f) => values[f.key]));
     // --- resolving a divergence -------------------------------------------
     // Deliberately only reachable from an explicit user choice; nothing here
     // runs automatically, because either branch discards somebody's work.
@@ -4521,7 +4556,7 @@ document.addEventListener('DOMContentLoaded',function(){
     useEffect(() => {
       if (!household || !loadAttempted.current || initialized.current) return;
       markUnsaved();
-    }, [household, markUnsaved, values.entries, values.overridesByYr, values.yearConfigs, values.completed, values.goals, values.budgetTargets]);
+    }, [household, markUnsaved, ...HOUSEHOLD_FIELDS.filter((f) => f.marksUnsaved).map((f) => values[f.key])]);
 
     return { status, msg, saveData, loadData, unsaved, divergence, keepLocalChanges, discardLocalChanges };
   }
@@ -12473,7 +12508,7 @@ Fill every field of the response schema. Rules:
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
   }, holidays = {}, setHolidays = () => {
-  }, isOffline = false }) {
+  }, isOffline = false, houseValues = {}, houseSetters = {} }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -12927,7 +12962,13 @@ Fill every field of the response schema. Rules:
         onCancel: () => setConfirmCopyYear(null)
       }
     )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, holidays, activeYear, alertThreshold, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      // Built from the household-field table, so a new field is in the backup
+      // the moment it is marked `backup: true` — this list used to be written
+      // out by hand and drifted from what the app actually stores.
+      const data = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+        acc[f.key] = houseValues[f.key];
+        return acc;
+      }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
         try {
@@ -12973,21 +13014,18 @@ Fill every field of the response schema. Rules:
               Array.isArray(d.entries) ? d.entries : [],
               d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
             );
+            // Entries and overrides go in first and by hand: legacy backups
+            // carry receipt images on the entry, which moveEntryAttachmentsToOverrides
+            // above has just re-keyed onto the occurrences they belong to.
             if (Array.isArray(d.entries)) setEntries(fixed.entries);
             if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
-            if (Array.isArray(d.yearConfigs)) setYearConfigs(d.yearConfigs);
-            if (Array.isArray(d.categories)) setCategories(d.categories);
-            if (d.categoryColors && typeof d.categoryColors === "object") setCategoryColors(d.categoryColors);
-            if (d.budgetTargets && typeof d.budgetTargets === "object") setBudgetTargets(d.budgetTargets);
-            if (Array.isArray(d.templates)) setTemplates(d.templates);
-            if (d.completed && typeof d.completed === "object") setCompleted(d.completed);
-            if (Array.isArray(d.goals)) setGoals(d.goals);
-            if (d.debtData && typeof d.debtData === "object") setDebtData(d.debtData);
-            if (d.deletedCopyIds && typeof d.deletedCopyIds === "object") setDeletedCopyIds(d.deletedCopyIds);
-            if (d.holidays && typeof d.holidays === "object") setHolidays(d.holidays);
-            if (d.activeYear) setActiveYear(d.activeYear);
-            if (d.alertThreshold != null) setAlertThreshold(d.alertThreshold);
-            if (d.darkMode != null) setDarkMode(d.darkMode);
+            // The rest is the table again, vetted by the same guards a payload
+            // from the cloud goes through.
+            HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
+              if (f.key === "entries" || f.key === "overridesByYr") return;
+              const set = houseSetters[f.key];
+              if (set) houseApply(f)(d[f.key], set);
+            });
             setYearMsg("\u2705 Backup restored successfully!");
           } catch (err) {
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
@@ -13795,13 +13833,43 @@ Fill every field of the response schema. Rules:
       "Not you? Sign out"
     ))));
   }
+  // Checks that useHouseholdState produced the state the rest of the sync
+  // assumes: a value and a working setter for every row in HOUSEHOLD_FIELDS,
+  // and no two rows collapsed into one field. Inspecting the table alone would
+  // prove nothing — the point is that a row with a broken default, or a key
+  // that collides with another row's, shows up here instead of as data that
+  // silently stops syncing.
+  //
+  // Takes the hook's result rather than mounting a probe of its own:
+  // SelfTestView calls the hook, so this runs against a real React render
+  // without a second root to flush.
+  function checkHouseholdState(got) {
+    if (!got || !got.values || !got.setters) throw new Error("the hook returned nothing usable");
+    const missing = HOUSEHOLD_FIELDS.filter((f) => !(f.key in got.values));
+    if (missing.length) throw new Error("no value for: " + missing.map((f) => f.key).join(", "));
+    const unset = HOUSEHOLD_FIELDS.filter((f) => typeof got.setters[f.key] !== "function");
+    if (unset.length) throw new Error("no setter for: " + unset.map((f) => f.key).join(", "));
+    if (Object.keys(got.values).length !== HOUSEHOLD_FIELDS.length) {
+      throw new Error("table has " + HOUSEHOLD_FIELDS.length + " rows but produced " + Object.keys(got.values).length + " fields");
+    }
+    return true;
+  }
   function SelfTestView() {
+    // Called here, in a real component, so the check below tests the hook as
+    // the app uses it. Reads localStorage and nothing else — this view never
+    // touches the setters, so it can't write over the user's data.
+    const houseState = useHouseholdState();
     const results = useMemo(() => {
       const out = [];
+      // A check passes only by returning exactly true; report a failure by
+      // returning false or throwing. This used to accept anything truthy,
+      // which quietly turned "return a message explaining what's wrong" — the
+      // obvious way to write a failure — into a pass with the message printed
+      // beside the tick.
       const t = (name, fn) => {
         try {
           const v = fn();
-          out.push({ name, ok: !!v, detail: v === true ? "" : String(v) });
+          out.push({ name, ok: v === true, detail: v === true || v === false ? "" : "check returned " + String(v) + ", not a boolean" });
         } catch (e) {
           out.push({ name, ok: false, detail: e.message });
         }
@@ -14102,9 +14170,48 @@ Fill every field of the response schema. Rules:
       ));
       t("editing a payroll entry splits on the payday", () => {
         const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
-        if (!res.newId) return "no split";
+        if (!res.newId) throw new Error("no split");
         const seg = res.entries.find((e) => e.id === res.newId);
         return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
+      });
+      // ── The household-field table ──────────────────────────────────────
+      // Adding a synced field is one row in HOUSEHOLD_FIELDS and nothing else:
+      // useHouseholdState builds the state, the payload, the autosave triggers
+      // and the backup from that row. These checks pin down the properties the
+      // rest of the sync assumes about the table.
+      t("useHouseholdState creates state for every field in the table", () => checkHouseholdState(houseState));
+      t("household fields have unique keys and storage keys", () => {
+        const keys = HOUSEHOLD_FIELDS.map((f) => f.key);
+        const stores = HOUSEHOLD_FIELDS.map((f) => f.storage);
+        const dupe = (a) => a.find((x, i) => a.indexOf(x) !== i);
+        return !dupe(keys) && !dupe(stores) && HOUSEHOLD_FIELDS.every((f) => typeof f.initial === "function");
+      });
+      t("every household field is saved, cleared and guarded", () => {
+        // The three derived lists have to stay the same length as the table —
+        // this is what a hand-maintained copy of it used to get wrong.
+        return HOUSEHOLD_SYNCED_FIELDS.length === HOUSEHOLD_FIELDS.length && HOUSEHOLD_LOCAL_STORAGE_KEYS.length === HOUSEHOLD_FIELDS.length && HOUSEHOLD_SYNCED_FIELDS.every((f) => typeof f.apply === "function");
+      });
+      t("a field's guard rejects the wrong shape and accepts the right one", () => {
+        const got = [];
+        const set = (v) => got.push(v);
+        const guard = (key) => houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === key));
+        guard("entries")("not an array", set);
+        guard("entries")([{ id: 1 }], set);
+        guard("holidays")(null, set);
+        guard("holidays")({ 2026: {} }, set);
+        guard("activeYear")(0, set);
+        guard("activeYear")(2026, set);
+        // Only the three valid values should have got through.
+        return got.length === 3 && Array.isArray(got[0]) && got[1]["2026"] !== void 0 && got[2] === 2026;
+      });
+      t("colOrder drops the fixed actions column", () => {
+        const got = [];
+        houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
+        return got.length === 1 && got[0].join(",") === "desc,amount";
+      });
+      t("the backup export carries the fields worth restoring", () => {
+        const keys = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
+        return ["entries", "overridesByYr", "goals", "budgetTargets", "holidays", "categories"].every((k) => keys.includes(k)) && !keys.includes("regFilterCats");
       });
       t("multi-select filter math ([]=all)", () => {
         const items = [{ cat: "A" }, { cat: "B" }, { cat: "C" }];
@@ -14491,42 +14598,71 @@ Fill every field of the response schema. Rules:
         }
       }
     }, [authLoading, session]);
-    const [entries, setEntries] = useLS("cf_entries", []);
-    const [overridesByYr, setOverridesByYr] = useLS("cf_overrides", {});
-    const [yearConfigs, setYearConfigs] = useLS("cf_years", [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }]);
-    // Default must track the cf_years default — a hardcoded year left fresh
-    // installs pointed at an empty year once the calendar rolled over.
-    const [activeYear, setActiveYear] = useLS("cf_activeYear", () => (/* @__PURE__ */ new Date()).getFullYear());
-    const [debtData, setDebtData] = useLS("cf_debt_data", {});
-    // Tombstones for the year-copy sync: source-entry id -> true, recorded
-    // whenever the user deletes a one-time entry that was itself a copy
-    // (entry.copiedFrom set). Without this, re-running "Copy year -> year+1"
-    // has no way to tell "never copied" apart from "copied, then the user
-    // deliberately deleted it" — both just look like the target entry is
-    // missing — and would resurrect the deleted copy on the next sync.
-    const [deletedCopyIds, setDeletedCopyIds] = useLS("cf_deleted_copy_ids", {});
-    // { [year]: { "YYYY-MM-DD": { name, optional, source } } } — the household's
-    // own statutory-holiday list, managed in Settings. Empty until someone
-    // edits a year or fetches one; every year without an entry falls back to
-    // the rules in holidays.js.
-    const [holidays, setHolidays] = useLS("cf_holidays", {});
-    const [goals, setGoals] = useLS("cf_goals", []);
-    const [dashHidden, setDashHidden] = useLS("cf_dash_hidden", {});
-    const [dashOrder, setDashOrder] = useLS("cf_dash_order", []);
-    const [darkMode, setDarkMode] = useLS("cf_darkMode", () => {
-      try {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches;
-      } catch (e) {
-        return false;
-      }
-    });
+    // Every household-synced field's state at once, created from the single
+    // table in household-sync.js (storage key, default, guard, backup and
+    // autosave behaviour all live there, next to each other).
+    //
+    // The names destructured below are local convenience only: the sync reads
+    // houseValues/houseSetters, so a field nobody destructures here still
+    // saves, loads, exports and clears correctly — and a misspelt one is a
+    // ReferenceError at first use rather than a field that quietly never
+    // leaves the device.
+    const { values: houseValues, setters: houseSetters } = useHouseholdState();
+    const {
+      entries,
+      overridesByYr,
+      yearConfigs,
+      categories,
+      categoryColors,
+      activeYear,
+      alertThreshold: alertThresh,
+      darkMode,
+      forecastHorizon,
+      goals,
+      dashHidden,
+      dashOrder,
+      colOrder,
+      // The Entries filters keep their "regFilter*" payload names for
+      // compatibility (see the table); only these bindings are renamed.
+      regFilter: entriesFilter,
+      regFilterCats: entriesFilterCats,
+      regFilterScheds: entriesFilterScheds,
+      regFilterStatus: entriesFilterStatus,
+      budgetTargets,
+      templates,
+      completed,
+      debtData,
+      deletedCopyIds,
+      holidays
+    } = houseValues;
+    const {
+      entries: setEntries,
+      overridesByYr: setOverridesByYr,
+      yearConfigs: setYearConfigs,
+      categories: setCategories,
+      categoryColors: setCategoryColors,
+      activeYear: setActiveYear,
+      alertThreshold: setAlertThresh,
+      darkMode: setDarkMode,
+      forecastHorizon: setForecastHorizon,
+      goals: setGoals,
+      dashHidden: setDashHidden,
+      dashOrder: setDashOrder,
+      colOrder: setColOrder,
+      regFilter: setEntriesFilter,
+      regFilterCats: setEntriesFilterCats,
+      regFilterScheds: setEntriesFilterScheds,
+      regFilterStatus: setEntriesFilterStatus,
+      budgetTargets: setBudgetTargets,
+      templates: setTemplates,
+      completed: setCompleted,
+      debtData: setDebtData,
+      deletedCopyIds: setDeletedCopyIds,
+      holidays: setHolidays
+    } = houseSetters;
+    // Deliberately not a household field: a personal API credential, never
+    // synced to the household and never written into a backup file.
     const [aiApiKey, setAiApiKey] = useLS("cf_ai_key", "");
-    const [alertThresh, setAlertThresh] = useLS("cf_alertThresh", DEFAULT_ALERT_THRESHOLD);
-    const [categories, setCategories] = useLS("cf_categories", DEFAULT_CATEGORIES);
-    const [categoryColors, setCategoryColors] = useLS("cf_category_colors", DEFAULT_CATEGORY_COLORS);
-    const [templates, setTemplates] = useLS("cf_templates", []);
-    const [budgetTargets, setBudgetTargets] = useLS("cf_budgtargets", {});
-    const [completed, setCompleted] = useLS("cf_completed", {});
     const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
     // Sourced only from Notification.requestPermission()'s resolved value,
     // never re-read from the Notification.permission property afterward —
@@ -14806,19 +14942,10 @@ Fill every field of the response schema. Rules:
         downloadBlob(`CashFlow_Backup_${todayStr()}.json`, blob);
       }
     };
+    // Not household fields: which month the Budget tab is showing and how its
+    // columns are ordered are per-device view preferences.
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
-    const [forecastHorizon, setForecastHorizon] = useLS("cf_forecastHorizon", 90);
-    const [colOrder, setColOrder] = useLS("cf_col_order", DEFAULT_ENTRIES_COLS);
     const [budgetColOrder, setBudgetColOrder] = useLS("cf_budget_col_order", DEFAULT_BUDGET_COLS);
-    // Storage keys and the household-sync field names below intentionally
-    // keep their old "cf_reg_filter"/"regFilter" values — renaming those
-    // would silently reset every existing user's saved Entries filters
-    // (locally and in any synced household) on upgrade. Only the in-code
-    // identifiers are renamed to match the Entries naming used everywhere else.
-    const [entriesFilter, setEntriesFilter] = useLS("cf_reg_filter", "all");
-    const [entriesFilterCats, setEntriesFilterCats] = useLS("cf_reg_filter_cats", []);
-    const [entriesFilterScheds, setEntriesFilterScheds] = useLS("cf_reg_filter_scheds", []);
-    const [entriesFilterStatus, setEntriesFilterStatus] = useLS("cf_reg_filter_status", []);
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
     useEffect(() => {
@@ -14961,67 +15088,6 @@ Fill every field of the response schema. Rules:
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
-    // Rebuilt fresh every render (cheap — plain values, no computation), so
-    // buildPayload/applyPayload can never close over a stale field.
-    const houseValues = {
-      entries,
-      overridesByYr,
-      yearConfigs,
-      categories,
-      categoryColors,
-      activeYear,
-      alertThreshold: alertThresh,
-      darkMode,
-      forecastHorizon,
-      colOrder,
-      regFilter: entriesFilter,
-      regFilterCats: entriesFilterCats,
-      regFilterScheds: entriesFilterScheds,
-      regFilterStatus: entriesFilterStatus,
-      aiApiKey,
-      budgetTargets,
-      templates,
-      completed,
-      goals,
-      dashHidden,
-      dashOrder,
-      debtData,
-      deletedCopyIds,
-      holidays
-    };
-    // Every setter here is permanently stable (useLS's setter never changes
-    // identity), so this only needs to be built once — memoizing it keeps
-    // applyPayload/loadData stable too, matching the pre-consolidation
-    // behavior where the household-load effect only re-ran when `household`
-    // itself changed, not on every render. Keys match houseValues' bare field
-    // names (not the setXxx names) — useHouseholdData indexes both objects
-    // by the same HOUSEHOLD_SYNCED_FIELDS key.
-    const houseSetters = useMemo(() => ({
-      entries: setEntries,
-      overridesByYr: setOverridesByYr,
-      yearConfigs: setYearConfigs,
-      categories: setCategories,
-      categoryColors: setCategoryColors,
-      activeYear: setActiveYear,
-      alertThreshold: setAlertThresh,
-      darkMode: setDarkMode,
-      forecastHorizon: setForecastHorizon,
-      colOrder: setColOrder,
-      regFilter: setEntriesFilter,
-      regFilterCats: setEntriesFilterCats,
-      regFilterScheds: setEntriesFilterScheds,
-      regFilterStatus: setEntriesFilterStatus,
-      aiApiKey: setAiApiKey,
-      budgetTargets: setBudgetTargets,
-      templates: setTemplates,
-      completed: setCompleted,
-      goals: setGoals,
-      dashHidden: setDashHidden,
-      dashOrder: setDashOrder,
-      debtData: setDebtData,
-      deletedCopyIds: setDeletedCopyIds,
-      holidays: setHolidays
-    }), []);
     const {
       status: houseStatus,
       msg: houseMsg,
@@ -15856,6 +15922,8 @@ Fill every field of the response schema. Rules:
         holidays,
         setHolidays,
         isOffline,
+        houseValues,
+        houseSetters,
         setCategories,
         categoryColors,
         setCategoryColors,
