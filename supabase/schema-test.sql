@@ -30,6 +30,7 @@ declare
   uid uuid := '00000000-0000-4000-8000-00000000cf01';
   hid uuid := '00000000-0000-4000-8000-00000000cf02';
   got jsonb;
+  missing text[];
 begin
   insert into auth.users (id, email) values (uid, 'schema-test@example.invalid')
     on conflict (id) do nothing;
@@ -166,7 +167,74 @@ begin
     raise exception 'a goal lost the entry it is linked to: %', got -> 'goals';
   end if;
 
-  -- 6. Deleting the household takes its holidays with it. -------------------
+  -- 6. Every declared payload key comes back out of load_household. ---------
+  -- A key the schema accepts on the way in but never emits on the way out is
+  -- the same silent loss seen from the other side: the save succeeds, and the
+  -- next device to load gets a payload without the field and quietly resets it
+  -- to its default.
+  --
+  -- Every key is given a value first, because load_household strips nulls on
+  -- purpose — a setting the household has never touched is *meant* to be
+  -- absent, so that loading it can't overwrite what this device has locally.
+  -- The claim being tested is narrower and is the one that matters: a field
+  -- that was actually saved is a field that comes back.
+  perform cf_apply_household_payload(hid, $p${
+    "entries": [], "overridesByYr": {}, "yearConfigs": [{"year": 2026, "openingBalance": 0}],
+    "categories": ["Housing"], "categoryColors": {"Housing": "#2F6FED"},
+    "activeYear": 2026, "alertThreshold": 50000, "darkMode": true, "forecastHorizon": 90,
+    "goals": [], "dashHidden": {"charts": true}, "dashOrder": ["kpis"],
+    "colOrder": ["desc", "amount"], "regFilter": "all", "regFilterCats": ["Housing"],
+    "regFilterScheds": ["recurring"], "regFilterStatus": ["unpaid"],
+    "budgetTargets": {"2026:0": {"Housing": 165000}}, "templates": [], "completed": {},
+    "debtData": {"Car": {"balance": 1200000}}, "deletedCopyIds": {"e-old": true},
+    "holidays": {"2026": {"2026-07-01": {"name": "Canada Day", "optional": false, "source": "computed"}}},
+    "schemaVersion": 8
+  }$p$::jsonb);
+  perform set_config('request.jwt.claim.sub', uid::text, true);
+  got := load_household() -> 'data';
+  select array_agg(k order by k) into missing
+  from unnest(cf_payload_keys()) k
+  where not (got ? k);
+  if missing is not null then
+    raise exception 'load_household() accepts but never emits: %', array_to_string(missing, ', ');
+  end if;
+
+  -- 7. A payload key with nothing behind it is refused, not ignored. --------
+  -- This is the guard that turns "the app is newer than the database" from
+  -- silent data loss into a failed save. Without it, the key below would be
+  -- dropped and cf_apply_household_payload would return normally.
+  begin
+    perform cf_apply_household_payload(hid, jsonb_build_object(
+      'schemaVersion', 8,
+      'entries', '[]'::jsonb,
+      'fieldFromANewerClient', jsonb_build_object('a', 1)
+    ));
+    raise exception 'an unknown payload key was accepted instead of refused';
+  exception
+    when others then
+      if position('fieldFromANewerClient' in sqlerrm) = 0 then
+        raise;
+      end if;
+  end;
+
+  -- ...and the envelope keys the client really does send are not mistaken for
+  -- unknown fields.
+  perform cf_apply_household_payload(hid, jsonb_build_object(
+    'schemaVersion', 8, 'savedAt', '2026-01-01T00:00:00Z', 'entries', '[]'::jsonb
+  ));
+
+  -- ...nor is a key this schema has retired. An older client (a browser tab
+  -- opened before the field was dropped) still sends aiApiKey, and refusing it
+  -- would break saves from a client that is merely old, which is the opposite
+  -- of what the guard above is for.
+  perform cf_apply_household_payload(hid, jsonb_build_object(
+    'schemaVersion', 8, 'entries', '[]'::jsonb, 'aiApiKey', 'sk-from-an-old-tab'
+  ));
+  if (select ai_api_key from household_settings where household_id = hid) is not null then
+    raise exception 'a retired key was tolerated but then stored anyway';
+  end if;
+
+  -- 8. Deleting the household takes its holidays with it. -------------------
   delete from households where id = hid;
   if exists (select 1 from holidays where household_id = hid)
      or exists (select 1 from holiday_years where household_id = hid) then

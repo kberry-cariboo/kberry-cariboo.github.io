@@ -141,7 +141,8 @@ deleted every holiday in 2027" from "nobody has touched 2027". Settings →
 Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
 the pair against a scratch database.
 
-Two opt-in tests cover the database itself. Both need a throwaway Postgres
+`tests/payload-fields.mjs` needs nothing at all and runs in CI. Two further
+tests cover the database itself; both need a throwaway Postgres
 (`CF_TEST_PG=1` plus `PG*` pointing at it) and skip cleanly without one:
 
 - `tests/payload-roundtrip.mjs` saves a payload exercising every documented
@@ -159,15 +160,30 @@ state from the table, so there is no second list to keep in step. Adding a field
 used to mean editing ten hand-maintained lists, and missing any one of them
 failed silently; holidays shipped missing two.
 
-**Run the first one whenever you add a field to the sync payload**, and add the
-field to its fixture. `cf_apply_household_payload` writes the columns it knows
-about and ignores the rest, so a field with no column behind it fails silently:
-the save succeeds, the app looks right, and the next load replaces the user's
-work with a copy that never had it. The regression suite cannot catch this — its
-Supabase stub accepts any payload it is handed. Six features were lost that way
-before the round-trip test existed (transfers, skipped occurrences, reconciled
-actual amounts, occurrences moved to another month, copy provenance, and the
-per-category rollover flags).
+The schema declares the same set of top-level fields in `cf_payload_keys()`, and
+`tests/payload-fields.mjs` fails if that list and `HOUSEHOLD_FIELDS` ever
+disagree. It reads both files as text — no database, no browser — so it runs in
+CI on every push, which is what makes the mismatch impossible to ship rather
+than merely detectable. `cf_apply_household_payload` enforces the same list at
+runtime: a payload carrying a key it has no column for is **refused**, not
+quietly stripped, so a site updated ahead of its database fails the save (and
+the edit stays on the device as unsaved work) instead of writing a copy with
+half the fields missing. Keys the schema has deliberately retired are listed in
+`cf_payload_retired_keys()` and stay tolerated, so an older browser tab keeps
+saving.
+
+That covers **top-level** fields. Fields *inside* an entry or an override —
+`transferDirection`, `copiedFrom`, `skipped`, `actualAmount`, `month` — have no
+equivalent declaration, so they are still only covered by the round-trip test:
+**run it whenever you add a field to the sync payload, and add the field to its
+fixture.** Before it existed, `cf_apply_household_payload` wrote the columns it
+knew about and ignored the rest, so a field with no column behind it failed
+silently: the save succeeded, the app looked right, and the next load replaced
+the user's work with a copy that never had it. The regression suite cannot catch
+this — its Supabase stub accepts any payload it is handed. Six features were
+lost that way (transfers, skipped occurrences, reconciled actual amounts,
+occurrences moved to another month, copy provenance, and the per-category
+rollover flags).
 
 If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
 migration block at the end automatically copies each household's old
