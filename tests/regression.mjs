@@ -1105,6 +1105,146 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   await ctx.close();
 });
 
+// ── Sync ────────────────────────────────────────────────────────────────────
+// A stateful stand-in for the backend: save_household stores the payload and
+// bumps savedAt, load_household returns whatever was saved last, and the
+// conflict check behaves like the SQL — a save quoting a savedAt that no
+// longer matches is rejected. `saveDelay` makes the request slow enough to
+// still be in the air while the next edit is made, which is the whole point.
+const syncFixture = (saveDelay = 0) => {
+  const seed = {
+    entries: [{ id: 1, desc: 'Seed Rent', type: 'expense', amount: 165000, category: 'Housing', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-05', notes: '' }],
+    overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 500000 }], budgetTargets: {}, templates: [],
+    completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: false, goals: [], dashHidden: {}, dashOrder: [],
+    schemaVersion: 999, savedAt: '2026-08-14T00:00:00.000Z',
+  };
+  return `
+  (() => {
+    const session = { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' };
+    const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }];
+    const store = { data: ${JSON.stringify(seed)} };
+    window.__saves = [];
+    window.__conflicts = 0;
+    const resolved = (data) => Promise.resolve({ data, error: null });
+    function chain(table) {
+      const c = {};
+      for (const m of ['select','eq','limit','order','update','insert','delete','neq','in']) {
+        c[m] = () => { if (m === 'order') return resolved(table === 'household_members' ? members : []); return c; };
+      }
+      c.maybeSingle = () => resolved(table === 'household_members' ? { household_id: 'hh-demo' } : { id: 'hh-demo', name: 'Demo Household' });
+      c.single = c.maybeSingle;
+      c.then = (res, rej) => resolved(null).then(res, rej);
+      return c;
+    }
+    const fakeClient = {
+      auth: { getSession: () => resolved({ session }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }), signOut: () => resolved(null) },
+      from: (t) => chain(t),
+      rpc: (name, args) => {
+        if (name === 'load_household') return resolved({ data: JSON.parse(JSON.stringify(store.data)), receipts: [] });
+        if (name === 'save_household') {
+          const expected = args && args.p_expected_saved_at;
+          const payload = (args && args.p_data) || {};
+          const commit = () => {
+            if (expected && expected !== store.data.savedAt) {
+              window.__conflicts++;
+              return { data: null, error: { message: 'CONFLICT: household data changed since you last loaded it.' } };
+            }
+            const savedAt = new Date().toISOString();
+            store.data = Object.assign({}, payload, { savedAt });
+            window.__saves.push({ entries: (payload.entries || []).length, holidays: payload.holidays || null });
+            return { data: savedAt, error: null };
+          };
+          return ${saveDelay} ? new Promise((res) => setTimeout(() => res(commit()), ${saveDelay})) : Promise.resolve(commit());
+        }
+        return resolved(null);
+      },
+      channel: () => { const ch = { on: () => ch, subscribe: () => ({ unsubscribe(){} }) }; return ch; },
+      removeChannel(){},
+    };
+    Object.defineProperty(window, 'supabase', { get: () => ({ createClient: () => fakeClient }), set: () => {} });
+  })();
+  `;
+};
+
+const addEntryVia = async (page, desc, amount) => {
+  await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+  await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+  await page.getByPlaceholder('e.g. Mortgage payment').fill(desc);
+  await page.getByPlaceholder('0.00').first().fill(amount);
+  await page.locator('#ef-category').selectOption({ label: 'Housing' });
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(400);
+};
+
+await test('sync: an entry added while a save is still in flight is not swallowed by a self-inflicted conflict', async () => {
+  // The bug this pins: two overlapping saves both quote the savedAt they
+  // loaded with, the second loses its own conflict check, and the CONFLICT
+  // branch recovers by reloading — throwing away the newer entry a few
+  // seconds after it was added, blaming another device for it.
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(20000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.addInitScript(syncFixture(4000));
+
+  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  await addEntryVia(page, 'QA First Entry', '42.00');
+  // 2s debounce + a slow request: the first save is now in the air.
+  await page.waitForTimeout(2600);
+  await addEntryVia(page, 'QA Second Entry', '7.00');
+
+  // Long enough for both saves to have run to completion.
+  await page.waitForTimeout(12000);
+  if (await page.getByText('QA Second Entry').count() === 0) {
+    throw new Error('the entry added during the in-flight save was removed again');
+  }
+  if (await page.getByText('QA First Entry').count() === 0) throw new Error('the first entry disappeared');
+  const conflicts = await page.evaluate(() => window.__conflicts);
+  if (conflicts > 0) throw new Error(conflicts + ' conflict(s) against a single device — saves are racing each other');
+  const saves = await page.evaluate(() => window.__saves);
+  if (!saves.length || saves[saves.length - 1].entries !== 3) {
+    throw new Error('the server never ended up with all three entries: ' + JSON.stringify(saves));
+  }
+  await ctx.close();
+});
+
+await test('sync: editing a holiday schedules a save of its own', async () => {
+  // Holidays reach the server through the same payload as everything else, so
+  // they need to be in the autosave effect's dependency list — a field left
+  // out of it is only ever saved as a passenger on somebody else's edit.
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(15000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.addInitScript(syncFixture(0));
+
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const section = page.locator('#sec-holidays');
+  await section.scrollIntoViewIfNeeded();
+  await section.getByRole('button', { name: '+ Add holiday' }).click();
+  await page.locator('#holiday-date').fill('2026-09-15');
+  await page.locator('#holiday-name').fill('QA Shutdown');
+  await section.getByRole('button', { name: 'Add holiday' }).click();
+
+  // Nothing else is touched — if holidays aren't watched, no save ever fires.
+  await page.waitForTimeout(4000);
+  const saves = await page.evaluate(() => window.__saves);
+  const withHoliday = saves.filter((s) => s.holidays && s.holidays['2026'] && s.holidays['2026']['2026-09-15']);
+  if (!withHoliday.length) {
+    throw new Error('adding a holiday never reached the server: ' + JSON.stringify(saves));
+  }
+  if (withHoliday[0].holidays['2026']['2026-09-15'].name !== 'QA Shutdown') {
+    throw new Error('the saved holiday lost its name: ' + JSON.stringify(withHoliday[0]));
+  }
+  await ctx.close();
+});
+
 await browser.close();
 server.close();
 

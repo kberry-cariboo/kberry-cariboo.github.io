@@ -313,6 +313,8 @@
       setUnsaved(false);
     }, []);
     const saveTimer = useRef(null);
+    // True while a save is actually in flight (see saveData's queue below).
+    const savingNow = useRef(false);
     const lastLoadedHousehold = useRef(null);
     // ownerKey ('override:<year>:<occId>') -> data URL, mirroring what the
     // receipts table holds server-side. Used to diff on save so only
@@ -383,10 +385,16 @@
       // Flush any pending debounced save first — otherwise a pull-to-refresh
       // or "Reload from Cloud" inside the 2s autosave window silently
       // overwrites the just-made local edit with the server copy.
+      //
+      // Not while a save is already running, though: saves are serialised, and
+      // the CONFLICT branch of a save calls this function, so awaiting another
+      // save here would be waiting on the very save that is waiting on us. The
+      // in-flight save is the flush; the timer is still cleared so it can't
+      // fire into the middle of the load.
       if (saveTimer.current && initialized.current) {
         clearTimeout(saveTimer.current);
         saveTimer.current = null;
-        await saveDataRef.current(true);
+        if (!savingNow.current) await saveDataRef.current(true);
       }
       setStatus("syncing");
       setMsg("Loading…");
@@ -477,9 +485,10 @@
         delete cached[key];
       }
     }, [collectAttachments]);
-    const saveData = useCallback(async (silent = false) => {
+    const runSave = useCallback(async (silent = false) => {
       if (!supabaseClient || !household) return false;
       if (!silent) setStatus("syncing");
+      savingNow.current = true;
       try {
         const payload = buildPayload();
         const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
@@ -513,8 +522,34 @@
         setStatus("error");
         setMsg("❌ " + e.message);
         return false;
+      } finally {
+        savingNow.current = false;
       }
     }, [household, buildPayload, syncReceipts, loadData, clearUnsaved, markUnsaved]);
+    const runSaveRef = useRef(runSave);
+    useEffect(() => {
+      runSaveRef.current = runSave;
+    }, [runSave]);
+    // Saves run one at a time. Two overlapping saves both quote the
+    // `savedAt` they loaded with, so whichever commits second fails its own
+    // conflict check — and the CONFLICT branch above recovers by reloading,
+    // which throws away every edit made since the first save started. That is
+    // this device losing its own work to itself: type, save, keep typing while
+    // the request is still in the air on a slow connection, and the newer edit
+    // vanishes a few seconds later, complete with a toast blaming another
+    // device. Queuing behind the in-flight save costs nothing (the debounce
+    // means the common case has an empty queue) and makes that impossible.
+    //
+    // The queued run goes through the ref rather than a captured closure so it
+    // builds its payload from the state at the moment it actually runs — the
+    // whole point is to include the edits made while it was waiting.
+    const savingRef = useRef(null);
+    const saveData = useCallback((silent = false) => {
+      const next = (savingRef.current || Promise.resolve()).catch(() => {
+      }).then(() => runSaveRef.current(silent));
+      savingRef.current = next;
+      return next;
+    }, []);
     // loadData is declared before saveData, so it reaches the latest saveData
     // through a ref (also keeps loadData's identity stable across payload edits).
     const saveDataRef = useRef(saveData);
@@ -570,7 +605,8 @@
       values.dashHidden,
       values.dashOrder,
       values.debtData,
-      values.deletedCopyIds
+      values.deletedCopyIds,
+      values.holidays
     ]);
     // --- resolving a divergence -------------------------------------------
     // Deliberately only reachable from an explicit user choice; nothing here
