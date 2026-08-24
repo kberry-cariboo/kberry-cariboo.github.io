@@ -54,10 +54,21 @@ notifications — needs a real `http://` or `https://` origin.)
 ### Updating the vendored libraries
 
 `src/vendor/` is checked in rather than installed, so there's no manifest saying
-where those files came from. Both are reproducible from npm — regenerate them
-with the recipes below, then run `node build.js` and `node tests/regression.mjs`
-(the "self-test" case runs the app's own React render checks, which is what
-actually catches a bad bundle).
+where those files came from. What's in there now:
+
+| file | package | version |
+| --- | --- | --- |
+| `react-bundle.js` | `react` + `react-dom` | 19.2.8 |
+| `supabase-client.js` | `@supabase/supabase-js` | 2.112.4 |
+| `mini-recharts.js` | — | hand-written, no upstream |
+
+Keep that table current when you regenerate one — a minified bundle is a poor
+place to look up a version. Both packaged files are reproducible from npm with
+the recipes below; afterwards run `node build.js` and `node tests/regression.mjs`.
+Two cases there are what actually catch a bad bundle: the "self-test" case
+renders real components against React, and the "vendor" case loads the Supabase
+file on its own and checks the API surface the app calls (every other test
+replaces `window.supabase` with a stub, so nothing else would notice).
 
 ```bash
 # src/vendor/react-bundle.js — React + ReactDOM, minified into window.React /

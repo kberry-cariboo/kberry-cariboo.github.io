@@ -1105,6 +1105,52 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   await ctx.close();
 });
 
+// ── Vendored libraries ──────────────────────────────────────────────────────
+await test('vendor: the Supabase client bundle exposes the API the app calls', async () => {
+  // Every other test replaces window.supabase with a stub, so a broken or
+  // mis-regenerated vendor file would sail straight through the suite. This
+  // one loads the file on its own — no app, no network — and checks the shape
+  // the app actually depends on. (The React bundle has the equivalent already:
+  // the in-page self-tests render real components against it.)
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  await page.setContent('<!doctype html><html><body></body></html>');
+  await page.addScriptTag({ path: join(ROOT, 'src', 'vendor', 'supabase-client.js') });
+
+  const shape = await page.evaluate(() => {
+    const sb = window.supabase;
+    if (!sb || typeof sb.createClient !== 'function') return { loaded: false };
+    // A syntactically valid URL and a dummy key: constructing a client makes no
+    // request, so this never touches a real project.
+    const c = sb.createClient('https://example.supabase.co', 'not-a-real-key');
+    const table = c.from('entries');
+    // Two levels, matching how the app chains them:
+    //   from(t).select(...).eq(...).limit(...).maybeSingle()
+    const filter = table.select('*');
+    return {
+      loaded: true,
+      auth: ['getSession', 'onAuthStateChange', 'signOut', 'signInWithPassword', 'resetPasswordForEmail']
+        .filter((m) => !c.auth || typeof c.auth[m] !== 'function'),
+      table: ['select', 'insert', 'update', 'delete', 'upsert']
+        .filter((m) => typeof table[m] !== 'function'),
+      filter: ['eq', 'neq', 'in', 'limit', 'order', 'maybeSingle', 'single', 'then']
+        .filter((m) => typeof filter[m] !== 'function'),
+      rpc: typeof c.rpc === 'function',
+      channel: typeof c.channel === 'function' && typeof c.removeChannel === 'function',
+    };
+  });
+
+  if (!shape.loaded) throw new Error('the vendored bundle did not define window.supabase.createClient');
+  if (shape.auth.length) throw new Error('auth methods missing from the client: ' + shape.auth.join(', '));
+  if (shape.table.length) throw new Error('table-builder methods missing: ' + shape.table.join(', '));
+  if (shape.filter.length) throw new Error('filter-builder methods missing: ' + shape.filter.join(', '));
+  if (!shape.rpc) throw new Error('client.rpc is missing — every load and save goes through it');
+  if (!shape.channel) throw new Error('client.channel/removeChannel are missing');
+  await ctx.close();
+});
+
 // ── Sync ────────────────────────────────────────────────────────────────────
 // A stateful stand-in for the backend: save_household stores the payload and
 // bumps savedAt, load_household returns whatever was saved last, and the
