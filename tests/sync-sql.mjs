@@ -143,6 +143,37 @@ page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
 await page.addInitScript(stub);
 
 const year = new Date().getFullYear();
+
+// ── A recurring entry added in the UI has to survive a refresh ──────────────
+// The failure this pins: the app mints row ids with crypto.randomUUID(), the
+// entries table wanted a bigint, and cf_apply_household_payload dropped any row
+// whose id didn't parse as a number — without erroring. The entry sat in local
+// state looking saved until the next load replaced it with the server's copy.
+await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+await page.waitForTimeout(2500);
+await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+await page.getByPlaceholder('e.g. Mortgage payment').waitFor();
+await page.getByPlaceholder('e.g. Mortgage payment').fill('SQL Recurring Entry');
+await page.getByPlaceholder('0.00').first().fill('321.00');
+await page.locator('#ef-category').selectOption({ index: 1 });
+await page.getByRole('switch', { name: 'Repeats' }).click();
+const nudge = page.getByRole('button', { name: 'Remind me later' });
+if (await nudge.count() > 0) await nudge.click().catch(() => {});
+await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+await page.getByRole('button', { name: 'Save Entry' }).click();
+await page.waitForTimeout(6000);
+
+const stored = psql(`select id || ' | ' || description || ' | repeats=' || repeats from entries where household_id = '${HID}' and description = 'SQL Recurring Entry';`);
+if (!stored) fail('the recurring entry never reached the entries table');
+else if (!/repeats=(t|true)$/.test(stored)) fail('the entry was stored but not as recurring: ' + stored);
+else pass('the recurring entry is a row: ' + stored);
+
+// The refresh that used to lose it.
+await page.reload({ waitUntil: 'load' });
+await page.waitForTimeout(2500);
+if (await page.getByText('SQL Recurring Entry').count() === 0) fail('the recurring entry disappeared after a refresh');
+else pass('it is still there after a refresh');
+
 await page.goto(BASE + '#/settings', { waitUntil: 'load' });
 await page.waitForTimeout(2500);
 

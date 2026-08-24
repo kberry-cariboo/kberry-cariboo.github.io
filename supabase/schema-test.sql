@@ -1,4 +1,6 @@
--- Round-trip check for the statutory-holiday tables.
+-- Round-trip checks for the parts of the schema the client is most likely to
+-- disagree with: the statutory-holiday tables, and the client-generated row ids
+-- that entries and goals are keyed by.
 --
 -- Run against a SCRATCH database, never a live project: it inserts a throwaway
 -- household (and an auth.users row for it to hang off) and deletes both at the
@@ -114,7 +116,57 @@ begin
     raise exception 'a payload with no holidays key wiped the table';
   end if;
 
-  -- 5. Deleting the household takes its holidays with it. -------------------
+  -- 5. Client ids are opaque strings, not numbers. --------------------------
+  -- genId() mints crypto.randomUUID() values. While these columns were bigint
+  -- every entry and goal created since that change was dropped on the way in,
+  -- silently — the app showed it until the next reload replaced local state
+  -- with the server's copy, and it had never arrived.
+  perform cf_apply_household_payload(hid, jsonb_build_object(
+    'entries', jsonb_build_array(
+      jsonb_build_object('id', '0d045530-5093-5be3-ab67-498da28b2b3c', 'desc', 'UUID recurring entry',
+                         'type', 'income', 'amount', 250000, 'startDate', '2026-01-15',
+                         'repeats', true, 'recurEvery', 1, 'recurUnit', 'month', 'category', 'Income'),
+      -- A household from before the change still holds numeric ids.
+      jsonb_build_object('id', 1755212345678::bigint, 'desc', 'Legacy numeric entry',
+                         'type', 'expense', 'amount', 165000, 'startDate', '2026-01-01',
+                         'repeats', true, 'recurEvery', 1, 'recurUnit', 'month', 'category', 'Housing')
+    ),
+    'goals', jsonb_build_array(
+      jsonb_build_object('id', '7f3c1e22-aaaa-4bbb-8ccc-1234567890ab', 'name', 'UUID goal',
+                         'target', 500000, 'saved', 0, 'monthly', 10000,
+                         'entryId', '0d045530-5093-5be3-ab67-498da28b2b3c')
+    )
+  ));
+
+  if not exists (select 1 from entries where household_id = hid and id = '0d045530-5093-5be3-ab67-498da28b2b3c') then
+    raise exception 'an entry with a UUID id was dropped on save';
+  end if;
+  if not exists (select 1 from entries where household_id = hid and id = '1755212345678') then
+    raise exception 'an entry with a legacy numeric id was dropped on save';
+  end if;
+  if not exists (select 1 from goals where household_id = hid
+                  and id = '7f3c1e22-aaaa-4bbb-8ccc-1234567890ab'
+                  and entry_id = '0d045530-5093-5be3-ab67-498da28b2b3c') then
+    raise exception 'a goal with a UUID id (or its linked entry) was dropped on save';
+  end if;
+
+  -- ...and each id comes back as the JSON type the client sent. A numeric id
+  -- returned as "1755212345678" would break every cross-reference the client
+  -- holds as a number.
+  got := (load_household() -> 'data');
+  if jsonb_typeof((select e -> 'id' from jsonb_array_elements(got -> 'entries') e
+                   where e ->> 'id' = '1755212345678')) <> 'number' then
+    raise exception 'a legacy numeric id came back as something other than a number';
+  end if;
+  if jsonb_typeof((select e -> 'id' from jsonb_array_elements(got -> 'entries') e
+                   where e ->> 'id' = '0d045530-5093-5be3-ab67-498da28b2b3c')) <> 'string' then
+    raise exception 'a UUID id came back as something other than a string';
+  end if;
+  if got -> 'goals' -> 0 ->> 'entryId' <> '0d045530-5093-5be3-ab67-498da28b2b3c' then
+    raise exception 'a goal lost the entry it is linked to: %', got -> 'goals';
+  end if;
+
+  -- 6. Deleting the household takes its holidays with it. -------------------
   delete from households where id = hid;
   if exists (select 1 from holidays where household_id = hid)
      or exists (select 1 from holiday_years where household_id = hid) then
@@ -122,5 +174,5 @@ begin
   end if;
   delete from auth.users where id = uid;
 
-  raise notice 'holiday schema round-trip: all checks passed';
+  raise notice 'schema round-trip: all checks passed';
 end $$;
