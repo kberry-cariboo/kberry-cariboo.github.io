@@ -72,31 +72,6 @@ create table if not exists household_data (
   updated_by uuid references auth.users(id)
 );
 
--- Client row ids are text, not bigint -----------------------------------------
---
--- These columns started as bigint because the app minted ids with Date.now().
--- It now uses crypto.randomUUID(), and a UUID is not a bigint: every entry and
--- goal created since that change was dropped on the way in — cf_apply_household_payload
--- skipped any row whose id didn't parse as a number, silently, so the app
--- looked fine until the next reload put the server's copy back. Widening the
--- columns is the fix; the guard keeps a re-run from rewriting tables that are
--- already text.
-do $$
-begin
-  if exists (select 1 from information_schema.columns
-             where table_schema = 'public' and table_name = 'entries'
-               and column_name = 'id' and data_type <> 'text') then
-    alter table entries alter column id type text using id::text;
-  end if;
-  if exists (select 1 from information_schema.columns
-             where table_schema = 'public' and table_name = 'goals'
-               and column_name = 'id' and data_type <> 'text') then
-    alter table goals alter column id type text using id::text;
-    alter table goals alter column entry_id type text using entry_id::text;
-    alter table goals alter column payout_entry_id type text using payout_entry_id::text;
-  end if;
-end $$;
-
 -- Normalized budget tables ----------------------------------------------------
 --
 -- Money columns (app schema v8+, round-9 AR5): the client stores every
@@ -138,6 +113,9 @@ create table if not exists entry_overrides (
   description text,
   amount numeric(14,2),
   day int,
+  month int,                                -- set when the occurrence was moved to another month
+  actual_amount numeric(14,2),              -- reconciled "actual amount paid", separate from the plan
+  skipped boolean not null default false,   -- this date was skipped; it generates no occurrence
   notes text,
   saved_at timestamptz,
   history jsonb not null default '[]'::jsonb,
@@ -268,6 +246,67 @@ create table if not exists household_settings (
 -- database, so existing installs need these columns added explicitly.
 alter table household_settings add column if not exists debt_data jsonb not null default '{}'::jsonb;
 alter table household_settings add column if not exists deleted_copy_ids jsonb not null default '{}'::jsonb;
+
+-- Fields the client keeps that these tables originally had nowhere to put ------
+--
+-- cf_apply_household_payload writes the columns it knows about and ignores the
+-- rest of the payload, so a field with no column here doesn't fail — it just
+-- never arrives, and the next load quietly replaces the user's work with a
+-- copy that never had it. Each of these was found that way:
+--
+--   entries.transfer_direction  a "transfer" entry came back as an expense,
+--   + 'transfer' in the type    flipping its sign in the running balance
+--   entries.copied_from         the year-copy provenance stamp, without which
+--                               copies re-pair by guesswork
+--   entry_overrides.month       "move this occurrence to another month" snapped
+--                               back on reload (day survived, month didn't)
+--   entry_overrides.actual_amount   a reconciled "actual amount paid" was lost
+--   entry_overrides.skipped     a skipped occurrence came back from the dead
+--   household_settings.rollover  the per-category envelope-rollover flags,
+--                               which live under budgetTargets._rollover
+do $$
+begin
+  if exists (select 1 from pg_constraint
+             where conrelid = 'entries'::regclass and contype = 'c'
+               and pg_get_constraintdef(oid) like '%type = ANY%'
+               and pg_get_constraintdef(oid) not like '%transfer%') then
+    alter table entries drop constraint if exists entries_type_check;
+    alter table entries add constraint entries_type_check
+      check (type in ('income', 'expense', 'transfer'));
+  end if;
+end $$;
+alter table entries add column if not exists transfer_direction text;
+alter table entries add column if not exists copied_from text;
+alter table entry_overrides add column if not exists month int;
+alter table entry_overrides add column if not exists actual_amount numeric(14,2);
+alter table entry_overrides add column if not exists skipped boolean not null default false;
+alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
+
+-- Client row ids are text, not bigint -----------------------------------------
+--
+-- These columns started as bigint because the app minted ids with Date.now().
+-- It now uses crypto.randomUUID(), and a UUID is not a bigint: every entry and
+-- goal created since that change was dropped on the way in — cf_apply_household_payload
+-- skipped any row whose id didn't parse as a number, silently, so the app
+-- looked fine until the next reload put the server's copy back. Widening the
+-- columns is the fix; the guard keeps a re-run from rewriting tables that are
+-- already text.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'entries'
+               and column_name = 'id' and data_type <> 'text') then
+    alter table entries alter column id type text using id::text;
+  end if;
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'goals'
+               and column_name = 'id' and data_type <> 'text') then
+    alter table goals alter column id type text using id::text;
+    alter table goals alter column entry_id type text using entry_id::text;
+    alter table goals alter column payout_entry_id type text using payout_entry_id::text;
+  end if;
+end $$;
+
 
 -- Receipt images, stored as binary blobs in the database. Receipts are strictly
 -- per-occurrence — each dated instance of a (possibly repeating) entry has its
@@ -667,12 +706,13 @@ begin
   if jsonb_typeof(d->'entries') = 'array' then
     insert into entries (household_id, id, sort_order, description, type, amount,
                          start_date, repeats, recur_every, recur_unit, recur_days,
-                         recur_end, category, notes, monthly_amounts, created_by)
+                         recur_end, category, notes, monthly_amounts, created_by,
+                         transfer_direction, copied_from)
     select hid,
            cf_id(e.value->>'id'),
            e.ord,
            coalesce(e.value->>'desc', ''),
-           case when e.value->>'type' = 'income' then 'income' else 'expense' end,
+           case when e.value->>'type' in ('income', 'transfer') then e.value->>'type' else 'expense' end,
            abs(coalesce(cf_num(e.value->>'amount'), 0)),
            coalesce(cf_date(e.value->>'startDate'), current_date),
            coalesce(cf_bool(e.value->>'repeats'), false),
@@ -685,7 +725,10 @@ begin
            coalesce(e.value->>'notes', ''),
            cf_num_array(e.value->'monthlyAmounts'),
            case when (e.value->>'userId') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-                then (e.value->>'userId')::uuid end
+                then (e.value->>'userId')::uuid end,
+           case when e.value->>'transferDirection' = 'in' then 'in'
+                when e.value->>'transferDirection' = 'out' then 'out' end,
+           cf_id(e.value->>'copiedFrom')
     from jsonb_array_elements(d->'entries') with ordinality e(value, ord)
     where cf_id(e.value->>'id') is not null
     on conflict (household_id, id) do update set
@@ -702,16 +745,20 @@ begin
       category = excluded.category,
       notes = excluded.notes,
       monthly_amounts = excluded.monthly_amounts,
-      created_by = excluded.created_by
+      created_by = excluded.created_by,
+      transfer_direction = excluded.transfer_direction,
+      copied_from = excluded.copied_from
     where (entries.sort_order, entries.description, entries.type, entries.amount,
            entries.start_date, entries.repeats, entries.recur_every, entries.recur_unit,
            entries.recur_days, entries.recur_end, entries.category, entries.notes,
-           entries.monthly_amounts, entries.created_by)
+           entries.monthly_amounts, entries.created_by,
+           entries.transfer_direction, entries.copied_from)
       is distinct from
           (excluded.sort_order, excluded.description, excluded.type, excluded.amount,
            excluded.start_date, excluded.repeats, excluded.recur_every, excluded.recur_unit,
            excluded.recur_days, excluded.recur_end, excluded.category, excluded.notes,
-           excluded.monthly_amounts, excluded.created_by);
+           excluded.monthly_amounts, excluded.created_by,
+           excluded.transfer_direction, excluded.copied_from);
 
     delete from entries e
     where e.household_id = hid
@@ -743,13 +790,17 @@ begin
   -- Same upsert + anti-join-delete pattern as entries above.
   if jsonb_typeof(d->'overridesByYr') = 'object' then
     insert into entry_overrides (household_id, year, occurrence_id, description,
-                                 amount, day, notes, saved_at, history)
+                                 amount, day, month, actual_amount, skipped,
+                                 notes, saved_at, history)
     select hid,
            cf_int(y.key, null),
            o.key,
            o.value->>'desc',
            cf_num(o.value->>'amount'),
            cf_int(o.value->>'day'),
+           cf_int(o.value->>'month'),
+           cf_num(o.value->>'actualAmount'),
+           coalesce(cf_bool(o.value->>'skipped'), false),
            o.value->>'notes',
            cf_ts(o.value->>'_savedAt'),
            coalesce(case when jsonb_typeof(o.value->'_history') = 'array'
@@ -762,13 +813,18 @@ begin
       description = excluded.description,
       amount = excluded.amount,
       day = excluded.day,
+      month = excluded.month,
+      actual_amount = excluded.actual_amount,
+      skipped = excluded.skipped,
       notes = excluded.notes,
       saved_at = excluded.saved_at,
       history = excluded.history
     where (entry_overrides.description, entry_overrides.amount, entry_overrides.day,
+           entry_overrides.month, entry_overrides.actual_amount, entry_overrides.skipped,
            entry_overrides.notes, entry_overrides.saved_at, entry_overrides.history)
       is distinct from
           (excluded.description, excluded.amount, excluded.day,
+           excluded.month, excluded.actual_amount, excluded.skipped,
            excluded.notes, excluded.saved_at, excluded.history);
 
     delete from entry_overrides v
@@ -1016,7 +1072,7 @@ begin
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
      reg_filter_status, dash_hidden, dash_order, debt_data, deleted_copy_ids,
-     schema_version, updated_at, updated_by)
+     rollover, schema_version, updated_at, updated_by)
   values
     (hid,
      cf_int(d->>'activeYear'),
@@ -1033,6 +1089,10 @@ begin
      cf_text_array(d->'dashOrder'),
      case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
      case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
+     -- budgetTargets._rollover is a per-category flag, not a per-month target,
+     -- so it has no row in budget_targets to live in and is kept here.
+     case when jsonb_typeof(d->'budgetTargets'->'_rollover') = 'object'
+          then d->'budgetTargets'->'_rollover' else '{}'::jsonb end,
      cf_int(d->>'schemaVersion'),
      now(),
      auth.uid())
@@ -1055,6 +1115,7 @@ begin
      dash_order = case when d ? 'dashOrder' then excluded.dash_order else s.dash_order end,
      debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
      deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
+     rollover = case when d ? 'budgetTargets' then excluded.rollover else s.rollover end,
      schema_version = case when d ? 'schemaVersion' then excluded.schema_version else s.schema_version end,
      updated_at = now(),
      updated_by = excluded.updated_by;
@@ -1169,7 +1230,7 @@ begin
 
   select jsonb_build_object(
     'entries', coalesce((
-      select jsonb_agg(jsonb_build_object(
+      select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
         'id', cf_id_json(e.id),
         'desc', e.description,
         'type', e.type,
@@ -1183,8 +1244,10 @@ begin
         'category', e.category,
         'notes', e.notes,
         'monthlyAmounts', coalesce(to_jsonb(e.monthly_amounts), 'null'::jsonb),
-        'userId', e.created_by
-      ) order by e.sort_order, e.id)
+        'userId', e.created_by,
+        'transferDirection', e.transfer_direction,
+        'copiedFrom', cf_id_json(e.copied_from)
+      )) order by e.sort_order, e.id)
       from entries e where e.household_id = hid), '[]'::jsonb),
     'overridesByYr', coalesce((
       select jsonb_object_agg(w.year::text, w.ovs)
@@ -1195,6 +1258,11 @@ begin
                    'desc', v.description,
                    'amount', v.amount,
                    'day', v.day,
+                   'month', v.month,
+                   'actualAmount', v.actual_amount,
+                   -- false would read as an override that says "not skipped",
+                   -- which is not the same as having no opinion.
+                   'skipped', case when v.skipped then true end,
                    'notes', v.notes,
                    '_savedAt', v.saved_at
                  )) || jsonb_build_object('_history', v.history)) as ovs
@@ -1218,7 +1286,12 @@ begin
                jsonb_object_agg(b.category, b.amount) as m
         from budget_targets b where b.household_id = hid
         group by b.year, b.month
-      ) w), '{}'::jsonb),
+      ) w), '{}'::jsonb)
+      -- The per-category rollover flags ride inside budgetTargets under a
+      -- reserved key, alongside the "YYYY:M" ones.
+      || case when (select s2.rollover from household_settings s2 where s2.household_id = hid) <> '{}'::jsonb
+              then jsonb_build_object('_rollover', (select s2.rollover from household_settings s2 where s2.household_id = hid))
+              else '{}'::jsonb end,
     'templates', coalesce((
       select jsonb_agg(jsonb_build_object(
         'desc', t.description,
