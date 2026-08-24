@@ -296,10 +296,10 @@
     const removeDate = (date) => {
       const days = holidayYearForEditing(year, holidays);
       delete days[date];
-      // An emptied year would fall straight back to the computed rules, which
-      // is the opposite of what deleting the last row asks for. A tombstone
-      // entry keeps the year stored and genuinely empty.
-      writeYear(Object.keys(days).length ? days : { _none: true });
+      // Left as an empty object rather than removed: an absent year falls back
+      // to the computed rules, which is the opposite of what deleting the last
+      // row asks for. (Stored as a holiday_years row with no holidays rows.)
+      writeYear(days);
       toast("Holiday removed");
     };
     const runFetch = async () => {
