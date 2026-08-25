@@ -19,7 +19,82 @@
           ["Add your recurring entries", "Pay, rent or mortgage, loan payments, utilities, subscriptions. Recurring entries fill the whole year from one definition."],
           ["Set an alert threshold", "Settings → Alert Threshold. Balances below it are flagged amber on the Dashboard, in the Forecast and in the Budget grid; below zero is red."]
         ] },
+        { shot: ["settings-years", "Settings \u2192 Budget Years. The opening balance sits on the first year in the list; later years say what they carry forward from."] },
         { p: "Everything is stored on your device first. If the app is configured with a Supabase project, your household's data also syncs to the cloud and to other devices signed in to the same household." }
+      ]
+    },
+    {
+      id: "help-walkthroughs",
+      title: "Step by step",
+      blocks: [
+        { p: "The seven things people actually do, in order, with the screen each step happens on. The sections after this one are the reference: what every view and setting does." },
+
+        { sub: "1. Set up your first budget" },
+        { steps: [
+          ["Open Settings \u2192 Budget Years", "The avatar at the top right opens the menu; Settings is in it. On a phone, Settings is the last item in the bottom bar."],
+          ["Type your opening balance", "What is in the account today. It goes on the first year in the list \u2014 every later year carries forward from the one before it, so you enter this once and never again."],
+          ["Add your income", "Budget \u2192 Entries \u2192 + Add Entry. Start with pay: choose Income, enter the amount of one paycheque, and set how often it repeats."],
+          ["Add the bills you already know", "Rent or mortgage, loans, utilities, subscriptions. One entry each, with its own schedule \u2014 a monthly bill entered once fills the whole year."],
+          ["Set an alert threshold", "Settings \u2192 Alert Threshold. Any projected balance below it is flagged amber; below zero is red. Pick the number that would actually worry you."]
+        ] },
+        { p: "That is enough for a working forecast. The Dashboard will now show a balance for any date in the year." },
+
+        { sub: "2. Add a recurring bill" },
+        { steps: [
+          ["Open the entry form", "+ Add on any budget view, or + Add Entry on the Entries list. Both open the same form."],
+          ["Describe it and enter the amount", "Always a positive number \u2014 choosing Expense is what makes it subtract."],
+          ["Pick the schedule", "Monthly on the 12th, every second Friday, the 1st and the 15th, every Monday and Thursday: all of these are one entry, not twelve."],
+          ["Set Ends on if it finishes", "A car loan with nine payments left stops generating occurrences after the last one, and the Dashboard flags it as ending soon."],
+          ["Save", "The bill appears on every date it falls on, for the whole year, with the running balance adjusted after each one."]
+        ] },
+        { shot: ["entry-form", "The entry form. Describe it in words at the top fills the rest in for you when AI access is configured."] },
+
+        { sub: "3. Record what a bill actually cost" },
+        { p: "Marking a row paid is a tick-off; it does not change any amount. Recording a different figure is a separate step, and it deliberately does not touch next month's plan." },
+        { steps: [
+          ["Open the occurrence", "Click the row in the Monthly grid \u2014 or right-click it (long-press on a phone, or the \u22EE button) and choose Edit this occurrence."],
+          ["Fill in Actual Amount Paid", "Leave it blank and the occurrence counts as paid exactly as scheduled. Fill it in and your running balance and Budget vs Actual use the real figure."],
+          ["Save", "Only that date changes. The entry still says what you expect to pay, so next month is unaffected."]
+        ] },
+        { p: "Settings \u2192 Audit lists your twenty most recent overrides, each with a one-click revert, if you want to check or undo what you have changed." },
+
+        { sub: "4. Change or skip a single date" },
+        { p: "Right-click a row in the budget grid \u2014 long-press on touch, or use the \u22EE button at the end of the row \u2014 to open the row menu. Every option on it affects one date except Edit recurring entry and Delete entry, which affect all of them." },
+        { shot: ["row-menu", "The row menu. Everything above the divider is about this one date."] },
+        { steps: [
+          ["A one-off different amount", "Edit this occurrence."],
+          ["A month you didn't pay", "Skip this occurrence. Skipped dates are listed above that month's grid, each with a Restore button, so nothing disappears silently."],
+          ["Undo a change", "Reset occurrence puts the originally scheduled amount back."],
+          ["Move it to another date", "Drag the row, or set a new day in Edit this occurrence. A payday you move is re-checked for weekends and holidays from wherever you put it."]
+        ] },
+
+        { sub: "5. Set a budget target and watch it" },
+        { steps: [
+          ["Open Budget \u2192 Budget vs Actual", "Every category you use is listed with what is scheduled against it this month."],
+          ["Set a target from the row menu", "The bar fills as spending approaches it, and turns red once it goes past."],
+          ["Turn on rollover for categories that vary", "Anything you didn't spend earlier in the year is added to this month's target \u2014 envelope-style, so a quiet month funds a heavy one instead of being lost."]
+        ] },
+        { shot: ["bva", "Budget vs Actual. The Total row at the bottom carries the same over-or-under note as each category."] },
+        { p: "Targets are what the Forecast's confidence column judges each row against, so setting a few makes the forecast more useful as well." },
+
+        { sub: "6. Roll into next year" },
+        { p: "Recurring entries without an end date flow into a new year on their own. What needs carrying over is everything else \u2014 and one button does all of it." },
+        { steps: [
+          ["Add the year", "Settings \u2192 Budget Years \u2192 + Add <year>, or the + Add <year> pill at the end of the month strip once you are in November or December. Both do exactly the same work."],
+          ["Check what it says it did", "It reports the budget targets copied, the one-time entries brought forward, the modified occurrences carried over, and the occurrences it mirrored last year's amount pattern onto."],
+          ["Fill in the gaps and re-run it if you like", "Copy \u2192 <year> on the earlier year syncs anything you have added since. It is safe to press repeatedly: it only ever adds what is missing, and never touches anything you have already edited in the new year."]
+        ] },
+        { p: "One-time entries are copied onto the same month and day, with any edit you made to them in the old year baked in. A copy you delete on purpose is remembered and is not brought back on the next run." },
+
+        { sub: "7. Back up, and restore" },
+        { p: "Export a backup before anything you are unsure about. The app reminds you every 30 days." },
+        { steps: [
+          ["Settings \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, categories, holidays and receipt photos."],
+          ["Keep it somewhere that isn't this device", "That is the point of it."],
+          ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
+        ] },
+        { shot: ["settings-backup", "Settings \u2192 Data Backup & Restore."] },
+        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default. It cannot be undone, which is why it asks first." }
       ]
     },
     {
@@ -72,6 +147,8 @@
       title: "The Budget tab",
       blocks: [
         { p: "Five views of the same year. The month strip switches months; the year pills beside the logo switch budget years." },
+        { shot: ["budget-grid", "Budget \u2192 Monthly. The month splits at the 15th, today is marked, and the balance after every row is on the right."] },
+        { shot: ["budget-toolbar", "Every grid carries the same toolbar: CSV and PDF export the view you are looking at, + Add opens the entry form."] },
         { defs: [
           ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
           ["Daily", "The same month as one card per day that has something on it, with the balance carried to the end of that day — useful for spotting the week where four bills land together. Desktop only: on a phone the Monthly cards already read day by day."],
@@ -95,6 +172,8 @@
       title: "The Dashboard",
       blocks: [
         { p: "The Dashboard answers “am I all right?” at a glance, and every number on it is drawn from the same projection as the Budget tab." },
+        { shot: ["dashboard-upcoming", "Upcoming \u2014 next 7 days. The circle beside each row ticks it off; ticked rows drop out of this list."] },
+        { shot: ["dashboard-kpis", "The year as four numbers, each with a sparkline of its shape across the months."] },
         { defs: [
           ["Balance today · Next low point · Due rest of month", "The three tiles across the top: where you are now, the lowest balance coming up and how far away it is, and what is still to be paid this month."],
           ["Upcoming — next 7 days", "Everything scheduled in the next week with its balance after, and a circle to tick each one off."],
@@ -120,6 +199,7 @@
         ] },
         { p: "Both simulations assume you keep paying the same total every month: when one debt clears, its payment rolls into the next one. Extra $/month adds to that total, and the chips above the chart include or exclude individual debts, so you can see what one of them is costing you. Only debts with both a balance and a payment can be simulated." },
         { sub: "Savings goals" },
+        { shot: ["plan-goals", "A savings goal: progress, the date it is reached at the current monthly figure, and whether that clears a target date you set."] },
         { p: "A goal is a target amount, what you have saved so far, and what you put aside each month. The app works out the date you reach it, says whether you are on track for a target date you set, and tells you the monthly figure that would get you there if you aren't. A goal can also add its payout to the budget as a one-time expense on the target date, so a planned purchase shows up in the forecast." }
       ]
     },
@@ -202,6 +282,29 @@
       if (block.steps) return /* @__PURE__ */ React.createElement("ol", { key: i, className: "help-steps" }, block.steps.map(([term, desc]) => /* @__PURE__ */ React.createElement("li", { key: term, className: "help-step" }, /* @__PURE__ */ React.createElement("span", { className: "help-term" }, term), /* @__PURE__ */ React.createElement("span", { className: "help-desc" }, desc))));
       if (block.defs) return /* @__PURE__ */ React.createElement("dl", { key: i, className: "help-defs" }, block.defs.map(([term, desc]) => /* @__PURE__ */ React.createElement(React.Fragment, { key: term }, /* @__PURE__ */ React.createElement("dt", { className: "help-term" }, term), /* @__PURE__ */ React.createElement("dd", { className: "help-desc" }, desc))));
       if (block.keys) return /* @__PURE__ */ React.createElement("div", { key: i, className: "help-keys" }, block.keys.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, className: "shortcut-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13 shortcut-kbd" }, key))));
+      if (block.shot) {
+        const [name, caption] = block.shot;
+        const size = HELP_SHOTS[name];
+        // width/height are the real pixel size (see src/lib/help-shots.js) so
+        // the box is reserved before a lazily-loaded image arrives — otherwise
+        // every shot below the fold shoves the text you are reading down the
+        // page as it loads. The caption is the accessible description too: a
+        // screenshot of a screen the reader is looking at needs saying once,
+        // not twice, so the img itself is decorative and the figcaption
+        // carries the words.
+        return /* @__PURE__ */ React.createElement("figure", { key: i, className: "help-shot" }, /* @__PURE__ */ React.createElement(
+          "img",
+          {
+            src: `images/help/${name}.png`,
+            alt: "",
+            loading: "lazy",
+            decoding: "async",
+            width: size ? size.w : void 0,
+            height: size ? size.h : void 0,
+            className: "help-shot-img"
+          }
+        ), /* @__PURE__ */ React.createElement("figcaption", { className: "help-shot-cap" }, caption));
+      }
       return null;
     };
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(

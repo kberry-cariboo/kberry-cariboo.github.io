@@ -1,5 +1,5 @@
 // CashFlow service worker. Built to sw.js at the repo root by build.js, which
-// substitutes v188-5cc531bdabc3 with the CF_VERSION constant in bootstrap-head.js
+// substitutes v189-efd6e893d148 with the CF_VERSION constant in bootstrap-head.js
 // so the cache name and the app bundle always bump together.
 //
 // This has to be a real same-origin file: it used to be registered from a
@@ -9,7 +9,7 @@
 // way to receive Web Push — push events are delivered to the worker, not to a
 // page — and on Android it's the only way to show a notification at all
 // (Chrome for Android does not implement the `new Notification()` constructor).
-const CACHE = 'cf-v188-5cc531bdabc3';
+const CACHE = 'cf-v189-efd6e893d148';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

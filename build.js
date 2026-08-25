@@ -18,6 +18,7 @@ const APP_MODULES = [
   "src/lib/holidays.js",
   "src/lib/dates.js",
   "src/lib/year-copy.js",
+  "src/lib/help-shots.js",
   "src/lib/format.js",
   "src/lib/biometric.js",
   "src/lib/household-sync.js",
