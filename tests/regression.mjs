@@ -1349,6 +1349,129 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   await ctx.close();
 });
 
+// ── Rolling into the next budget year ────────────────────────────────────────
+// The mechanics are covered without a browser in tests/year-copy.mjs. What
+// these check is the part that file can't: that all three buttons which offer
+// to roll the year forward actually run it, and run the same one. They used to
+// differ — the pill at the end of the Budget month picker copied budget targets
+// and nothing else, so December (when a user would most naturally reach for it)
+// was the worst time to use it.
+{
+  const yearState = (page) => page.evaluate(() => {
+    const g = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+    const entries = g('cf_entries') || [];
+    const targets = g('cf_budgtargets') || {};
+    return {
+      years: (g('cf_years') || []).map((y) => y.year).sort(),
+      copies: entries.filter((e) => e.copiedFrom !== undefined).map((e) => e.startDate).sort(),
+      singles2027: entries.filter((e) => !e.repeats && (e.startDate || '').startsWith('2027-')).map((e) => e.desc).sort(),
+      targetMonths2027: Object.keys(targets).filter((k) => k.startsWith('2027:')).length,
+      overrides2027: Object.keys((g('cf_overrides') || {})['2027'] || {}).length,
+    };
+  });
+  // The fixture's one-time entries: Tax refund (Apr), Summer vacation (Jul),
+  // Vet checkup (Aug). Named here so a fixture change fails loudly.
+  const SINGLES = ['Summer vacation', 'Tax refund', 'Vet checkup'];
+
+  await test('year copy: Settings "+ Add" creates the year and carries the work forward', async () => {
+    const { ctx, page } = await ctxPage();
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(1600);
+    await page.getByRole('button', { name: '+ Add 2027' }).click();
+    await page.waitForTimeout(900);
+    const s = await yearState(page);
+    if (JSON.stringify(s.years) !== JSON.stringify([2026, 2027])) throw new Error('years: ' + JSON.stringify(s.years));
+    if (JSON.stringify(s.singles2027) !== JSON.stringify(SINGLES)) throw new Error('one-time entries in 2027: ' + JSON.stringify(s.singles2027));
+    if (s.copies.length !== 3) throw new Error('copies not stamped with provenance: ' + JSON.stringify(s.copies));
+    if (s.targetMonths2027 !== 12) throw new Error('budget target months copied: ' + s.targetMonths2027);
+    await ctx.close();
+  });
+
+  // Same button, different door. This is the one that was doing less.
+  await test('year copy: the Budget grid\'s "+ Add" pill does exactly what Settings does', async () => {
+    const { ctx, page } = await ctxPage();
+    await page.goto(BASE + '#/budget', { waitUntil: 'load' });
+    await page.waitForTimeout(1600);
+    // The pill only appears once the month picker is late in the year.
+    await page.locator('.month-picker').getByRole('button', { name: 'Dec', exact: true }).click();
+    await page.waitForTimeout(500);
+    const pill = page.locator('.month-nextyear-pill');
+    if (await pill.count() === 0) throw new Error('no "+ Add 2027" pill on December');
+    await pill.click();
+    await page.waitForTimeout(1000);
+    const s = await yearState(page);
+    if (JSON.stringify(s.years) !== JSON.stringify([2026, 2027])) throw new Error('years: ' + JSON.stringify(s.years));
+    if (JSON.stringify(s.singles2027) !== JSON.stringify(SINGLES)) throw new Error('one-time entries did not come with the year: ' + JSON.stringify(s.singles2027));
+    if (s.copies.length !== 3) throw new Error('copies not stamped with provenance: ' + JSON.stringify(s.copies));
+    if (s.targetMonths2027 !== 12) throw new Error('budget target months copied: ' + s.targetMonths2027);
+    await ctx.close();
+  });
+
+  await test('year copy: "Copy →" is safe to press twice', async () => {
+    const { ctx, page } = await ctxPage();
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(1600);
+    await page.getByRole('button', { name: '+ Add 2027' }).click();
+    await page.waitForTimeout(900);
+    const before = await yearState(page);
+    // Now the Copy button exists for 2026 → 2027. Pressing it changes nothing,
+    // because "+ Add" already ran the same routine.
+    const copy = page.getByRole('button', { name: /^Copy .*2027$/ });
+    if (await copy.count() === 0) throw new Error('no Copy button for 2026 → 2027');
+    await copy.click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
+    await page.waitForTimeout(900);
+    const after = await yearState(page);
+    if (JSON.stringify(after) !== JSON.stringify(before)) {
+      throw new Error('a second run changed things:\n  before ' + JSON.stringify(before) + '\n  after  ' + JSON.stringify(after));
+    }
+    const msg = await page.locator('#sec-years').getByText(/already matches|→ 2027/).first().textContent().catch(() => '');
+    if (!/already matches/i.test(msg || '')) throw new Error('expected "already matches", got: ' + msg);
+    await ctx.close();
+  });
+
+  // The tombstone that stops a deliberately-deleted copy coming back on the
+  // next run. It is keyed by source entry rather than by year, and the
+  // "+ Add" path used not to pass it at all.
+  await test('year copy: a copy the user deletes does not come back on the next copy', async () => {
+    const { ctx, page } = await ctxPage();
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(1600);
+    await page.getByRole('button', { name: '+ Add 2027' }).click();
+    await page.waitForTimeout(900);
+    // Delete the 2027 copy the way a user would — the row menu in Entries,
+    // which is what records the tombstone in the first place.
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    await page.getByPlaceholder(/search/i).first().fill('Vet checkup');
+    await page.waitForTimeout(600);
+    const rows = page.locator('.entries-table tbody tr', { hasText: '2027' });
+    if (await rows.count() === 0) throw new Error('no 2027 "Vet checkup" row to delete');
+    await rows.first().locator('.row-menu-btn').click();
+    await page.waitForTimeout(300);
+    await page.getByText('Delete entry', { exact: false }).first().click();
+    await page.waitForTimeout(300);
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.waitForTimeout(700);
+    const tomb = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('cf_deleted_copy_ids') || '{}')).length);
+    if (tomb !== 1) throw new Error('deleting a copy recorded ' + tomb + ' tombstones, expected 1');
+    // Now re-run the copy. The entry is "missing" from 2027, but deliberately.
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(1400);
+    const copy = page.getByRole('button', { name: /^Copy .*2027$/ });
+    if (await copy.count() === 0) throw new Error('no Copy button after the delete');
+    await copy.click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
+    await page.waitForTimeout(900);
+    const s = await yearState(page);
+    if (s.singles2027.includes('Vet checkup')) throw new Error('the deleted copy was resurrected: ' + JSON.stringify(s.singles2027));
+    if (s.singles2027.length !== 2) throw new Error('the other copies should still be there: ' + JSON.stringify(s.singles2027));
+    await ctx.close();
+  });
+}
+
 // ── Backup & restore ─────────────────────────────────────────────────────────
 // Settings names local export as the only backup path and the app nudges for
 // one every 30 days, so this is the last copy of a household's data when a
