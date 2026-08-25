@@ -65,6 +65,14 @@ jobs:
       - name: Check the client and the schema agree on the payload fields
         run: node tests/payload-fields.mjs
 
+      # Also browser-free: evaluates src/lib/migrate.js directly and checks that
+      # a payload from any schema version is upgraded exactly once. Over-
+      # migration is silent and multiplies every amount by 100, and the cloud
+      # load path runs this on every load, so it gets its own fast check rather
+      # than riding on the UI suite.
+      - name: Check payloads migrate exactly once
+        run: node tests/payload-migration.mjs
+
       - name: Run UI regression suite
         run: node tests/regression.mjs
 

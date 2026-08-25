@@ -787,7 +787,7 @@ await test('auth: the login screen switches to create-account mode', async () =>
 // taken as already-cents and never exercises the upgrade path. This test
 // simulates a real existing household's save from before this migration
 // shipped — no schemaVersion field, amounts still dollar-scale — the exact
-// shape applyPayload's centsifyHouseholdPayload (household-sync.js) must
+// shape applyPayload's migrateHouseholdPayload (household-sync.js) must
 // catch and convert on load.
 await test('migration: a pre-v8 dollar-scale cloud payload is upgraded to cents on display', async () => {
   const oldPayload = {
@@ -1348,6 +1348,197 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   }
   await ctx.close();
 });
+
+// ── Backup & restore ─────────────────────────────────────────────────────────
+// Settings names local export as the only backup path and the app nudges for
+// one every 30 days, so this is the last copy of a household's data when a
+// sync goes wrong. The round trip is asserted field by field rather than
+// "a file appeared": the export list is derived from HOUSEHOLD_FIELDS, so a
+// field that stops being marked `backup: true` disappears from the file
+// silently, and a restore that quietly keeps the current value looks exactly
+// like a restore that worked.
+{
+  // downloadBlob hands the bytes to an <a download>, which a headless browser
+  // will not write anywhere useful — capture the Blob on its way past instead.
+  const CAPTURE_DOWNLOADS = `
+  (() => {
+    const real = URL.createObjectURL.bind(URL);
+    window.__downloads = [];
+    URL.createObjectURL = (blob) => {
+      const r = new FileReader();
+      r.onload = () => window.__downloads.push({ text: r.result, type: blob.type });
+      r.readAsText(blob);
+      return real(blob);
+    };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) { window.__lastDownloadName = this.download; return; }
+      return click.apply(this, arguments);
+    };
+  })();
+  `;
+  const openSettings = async () => {
+    const { ctx, page } = await ctxPage();
+    await page.addInitScript(CAPTURE_DOWNLOADS);
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(1600);
+    return { ctx, page };
+  };
+  const exportBackup = async (page) => {
+    await page.evaluate(() => { window.__downloads = []; });
+    await page.getByRole('button', { name: 'Export Backup' }).click();
+    await page.waitForTimeout(700);
+    const d = await page.evaluate(() => window.__downloads[0] || null);
+    if (!d) throw new Error('Export Backup produced no file');
+    return { json: JSON.parse(d.text), type: d.type, name: await page.evaluate(() => window.__lastDownloadName) };
+  };
+  const pickFile = async (page, body, fileName = 'CashFlow_Backup_2026-08-25.json') => {
+    await page.setInputFiles('input[type=file][accept=".json"]', {
+      name: fileName, mimeType: 'application/json',
+      buffer: Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)),
+    });
+    await page.waitForTimeout(500);
+  };
+  const confirmRestore = async (page) => {
+    const btn = page.getByRole('button', { name: 'Restore', exact: true });
+    if (await btn.count() === 0) return false;
+    await btn.click();
+    await page.waitForTimeout(800);
+    return true;
+  };
+  const stored = (page) => page.evaluate(() => {
+    const g = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+    return { entries: g('cf_entries'), overrides: g('cf_overrides'), years: g('cf_years'),
+      categories: g('cf_categories'), targets: g('cf_budgtargets'), goals: g('cf_goals'),
+      debt: g('cf_debt_data'), holidays: g('cf_holidays'), thresh: g('cf_alertThresh') };
+  });
+
+  await test('backup: the export carries every field the app stores', async () => {
+    const { ctx, page } = await openSettings();
+    const { json, type, name } = await exportBackup(page);
+    if (type !== 'application/json') throw new Error('blob type ' + type);
+    if (!/^CashFlow_Backup_\d{4}-\d{2}-\d{2}\.json$/.test(name || '')) throw new Error('filename ' + name);
+    if (json.schemaVersion !== 9) throw new Error('schemaVersion ' + json.schemaVersion);
+    if (isNaN(Date.parse(json.exportedAt))) throw new Error('exportedAt ' + json.exportedAt);
+    // Every field HOUSEHOLD_FIELDS marks `backup: true`. Update this list in
+    // the same commit that changes that flag — the point is that dropping a
+    // field from the backup has to be a decision, not a side effect.
+    for (const k of ['entries', 'overridesByYr', 'yearConfigs', 'categories', 'categoryColors',
+      'activeYear', 'alertThreshold', 'darkMode', 'goals', 'budgetTargets', 'templates',
+      'completed', 'debtData', 'deletedCopyIds', 'holidays']) {
+      if (!(k in json)) throw new Error('missing from the export: ' + k);
+    }
+    if (!json.entries.length) throw new Error('exported an empty entry list');
+    if (await page.evaluate(() => !localStorage.getItem('cf_last_backup'))) throw new Error('cf_last_backup not stamped, so the 30-day nudge will not clear');
+    await ctx.close();
+  });
+
+  await test('backup: exporting then restoring puts every value back', async () => {
+    const { ctx, page } = await openSettings();
+    const { json } = await exportBackup(page);
+    // Compared against the file, not against localStorage before the export: a
+    // field still sitting at its useLS default has no localStorage row yet, so
+    // "what was on disk" and "what the app was using" legitimately differ. What
+    // the file says is the contract.
+    await page.evaluate(() => {
+      localStorage.setItem('cf_entries', '[]');
+      localStorage.setItem('cf_goals', '[]');
+      localStorage.setItem('cf_alertThresh', '1');
+      localStorage.setItem('cf_categories', '["Wiped"]');
+    });
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForTimeout(1400);
+    await pickFile(page, json);
+    if (!await confirmRestore(page)) throw new Error('no confirm dialog for a valid backup');
+    const after = await stored(page);
+    const asFiled = {
+      entries: json.entries, overrides: json.overridesByYr, years: json.yearConfigs,
+      categories: json.categories, targets: json.budgetTargets, goals: json.goals,
+      debt: json.debtData, holidays: json.holidays, thresh: json.alertThreshold,
+    };
+    for (const k of Object.keys(asFiled)) {
+      if (JSON.stringify(after[k]) !== JSON.stringify(asFiled[k])) {
+        throw new Error(`${k} did not come back: stored ${JSON.stringify(after[k]).slice(0, 80)} vs filed ${JSON.stringify(asFiled[k]).slice(0, 80)}`);
+      }
+    }
+    await ctx.close();
+  });
+
+  // The dialog says the file replaces the current data and cannot be undone.
+  // A field the file does not carry used to be left alone, so restoring a
+  // backup taken before a goal existed left that goal in place — the user is
+  // handed a blend of two points in time and told it is the backup.
+  await test('backup: restoring replaces data the file omits instead of keeping it', async () => {
+    const { ctx, page } = await openSettings();
+    if (!(await stored(page)).goals) throw new Error('fixture has no goals to lose');
+    await pickFile(page, { schemaVersion: 9, exportedAt: '2026-08-25T00:00:00Z', entries: [] });
+    if (!await confirmRestore(page)) throw new Error('no confirm dialog');
+    const after = await stored(page);
+    if (after.entries.length) throw new Error('entries not replaced');
+    if (after.goals && after.goals.length) throw new Error('goals survived: ' + JSON.stringify(after.goals));
+    if (Object.keys(after.targets || {}).length) throw new Error('budget targets survived');
+    if (Object.keys(after.holidays || {}).length) throw new Error('holidays survived');
+    await ctx.close();
+  });
+
+  // "Backup restored successfully!" over a file that restored nothing is worse
+  // than an error: the user stops looking for their data.
+  await test('backup: a file that is not a CashFlow backup is refused, not celebrated', async () => {
+    const { ctx, page } = await openSettings();
+    const before = await stored(page);
+    await pickFile(page, 'not json at all', 'notes.json');
+    let msg = await page.locator('.backup-msg').first().textContent().catch(() => '');
+    if (!/could not read/i.test(msg || '')) throw new Error('unparseable file said: ' + msg);
+    await pickFile(page, { totals: 42, rows: [] }, 'some-other-app.json');
+    if (await confirmRestore(page)) throw new Error('offered to restore a foreign JSON file');
+    msg = await page.locator('.backup-msg').first().textContent().catch(() => '');
+    if (/restored successfully/i.test(msg || '')) throw new Error('reported success for a foreign file');
+    if (!/isn.t a CashFlow backup/i.test(msg || '')) throw new Error('unhelpful message: ' + msg);
+    const after = await stored(page);
+    if (JSON.stringify(after) !== JSON.stringify(before)) throw new Error('a rejected file still changed stored data');
+    await ctx.close();
+  });
+
+  // Money is cents from v8 and debt figures from v9. A v8 file is already in
+  // cents everywhere but debtData: running the v8 pass over it again turned
+  // $1,650.00 rent into $165,000.00, and said nothing.
+  await test('backup: a v8 backup restores at face value, with only its debt figures converted', async () => {
+    const { ctx, page } = await openSettings();
+    const { json } = await exportBackup(page);
+    const v8 = JSON.parse(JSON.stringify(json));
+    v8.schemaVersion = 8;
+    v8.debtData = { visa: { balance: '4500', rate: '19.99', payment: '200' } };
+    const rent = json.entries.find((e) => e.desc === 'Rent');
+    if (!rent) throw new Error('fixture lost its Rent entry');
+    await pickFile(page, v8);
+    if (!await confirmRestore(page)) throw new Error('no confirm dialog');
+    const after = await stored(page);
+    const back = after.entries.find((e) => e.desc === 'Rent');
+    if (back.amount !== rent.amount) throw new Error(`rent restored as ${back.amount}, backed up as ${rent.amount}`);
+    if (after.years[0].openingBalance !== json.yearConfigs[0].openingBalance) throw new Error('opening balance changed scale');
+    if (after.thresh !== json.alertThreshold) throw new Error('alert threshold changed scale');
+    if (after.debt.visa.balance !== '450000') throw new Error('v8 debt dollars not converted: ' + after.debt.visa.balance);
+    if (after.debt.visa.rate !== '19.99') throw new Error('interest rate was treated as money: ' + after.debt.visa.rate);
+    await ctx.close();
+  });
+
+  await test('backup: a pre-v8 backup with no version stamp is converted to cents', async () => {
+    const { ctx, page } = await openSettings();
+    await pickFile(page, {
+      exportedAt: '2026-01-01T00:00:00Z',
+      entries: [{ id: 'legacy', desc: 'Old Rent', type: 'expense', amount: 1650, category: 'Housing',
+        repeats: false, recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '' }],
+      yearConfigs: [{ year: 2026, openingBalance: 12500 }],
+      alertThreshold: 500,
+    });
+    if (!await confirmRestore(page)) throw new Error('no confirm dialog');
+    const after = await stored(page);
+    if (after.entries[0].amount !== 165000) throw new Error('legacy dollars not converted: ' + after.entries[0].amount);
+    if (after.years[0].openingBalance !== 1250000) throw new Error('legacy opening balance not converted');
+    if (after.thresh !== 50000) throw new Error('legacy threshold not converted: ' + after.thresh);
+    await ctx.close();
+  });
+}
 
 await browser.close();
 server.close();

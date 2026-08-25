@@ -10,64 +10,79 @@
     const n = Number(c);
     return isFinite(n) ? n / 100 : 0;
   };
-  // Same schema-v8 dollars->cents upgrade as migrateData below, but for a
-  // household payload just loaded from Supabase rather than localStorage —
-  // a household member's browser can still be holding an older, un-migrated
-  // save (or an even older client saved after this shipped but before that
-  // device reloaded), so this runs on every load whose schemaVersion is
-  // stale, independent of this device's own local schema version.
-  function centsifyHouseholdPayload(d) {
+  // The same upgrades migrateData below runs on localStorage, but for a payload
+  // arriving from somewhere else: a household load from Supabase (another
+  // member's browser can still be holding an older, un-migrated save) or a
+  // backup file the user is restoring in Settings. Runs independently of this
+  // device's own schema version, because the payload's age is what matters.
+  //
+  // `from` is the payload's own schemaVersion (0 when it predates the stamp),
+  // and EVERY step below must be gated on it exactly the way migrateData gates
+  // on storedVersion. This function used to apply all of its conversions
+  // unconditionally, with the callers gating the whole call on
+  // `payloadVersion < SCHEMA_VERSION` — which is only correct while
+  // SCHEMA_VERSION is the version that introduced the last conversion. It
+  // stopped being correct the moment v9 landed: a v8 payload is already in
+  // cents, but `8 < 9` sent it through the v8 pass again and multiplied every
+  // amount by 100. Bumping to v10 would have done the same to every v9 payload
+  // in existence, cloud data included. Gate each step, never the call.
+  function migrateHouseholdPayload(d, from) {
     if (!d) return d;
+    const at = Number(from) || 0;
     const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
     const out = __spreadValues({}, d);
-    if (Array.isArray(out.entries)) {
-      out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
-        amount: toCents(e.amount),
-        monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
-      }));
-    }
-    if (out.overridesByYr && typeof out.overridesByYr === "object") {
-      const nextOvr = {};
-      Object.keys(out.overridesByYr).forEach((year) => {
-        const yOvr = out.overridesByYr[year] || {};
-        nextOvr[year] = {};
-        Object.keys(yOvr).forEach((evId) => {
-          const o = yOvr[evId] || {};
-          nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+    if (at < 8) {
+      if (Array.isArray(out.entries)) {
+        out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
+          amount: toCents(e.amount),
+          monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
+        }));
+      }
+      if (out.overridesByYr && typeof out.overridesByYr === "object") {
+        const nextOvr = {};
+        Object.keys(out.overridesByYr).forEach((year) => {
+          const yOvr = out.overridesByYr[year] || {};
+          nextOvr[year] = {};
+          Object.keys(yOvr).forEach((evId) => {
+            const o = yOvr[evId] || {};
+            nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+          });
         });
-      });
-      out.overridesByYr = nextOvr;
-    }
-    if (Array.isArray(out.yearConfigs)) {
-      out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
-    }
-    if (out.budgetTargets && typeof out.budgetTargets === "object") {
-      const nextTargets = {};
-      Object.keys(out.budgetTargets).forEach((key) => {
-        const cats = out.budgetTargets[key] || {};
-        const nextCats = {};
-        Object.keys(cats).forEach((cat) => {
-          nextCats[cat] = toCents(cats[cat]);
+        out.overridesByYr = nextOvr;
+      }
+      if (Array.isArray(out.yearConfigs)) {
+        out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
+      }
+      if (out.budgetTargets && typeof out.budgetTargets === "object") {
+        const nextTargets = {};
+        Object.keys(out.budgetTargets).forEach((key) => {
+          const cats = out.budgetTargets[key] || {};
+          const nextCats = {};
+          Object.keys(cats).forEach((cat) => {
+            nextCats[cat] = toCents(cats[cat]);
+          });
+          nextTargets[key] = nextCats;
         });
-        nextTargets[key] = nextCats;
-      });
-      out.budgetTargets = nextTargets;
+        out.budgetTargets = nextTargets;
+      }
+      if (Array.isArray(out.goals)) {
+        out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
+          target: toCents(g.target),
+          saved: toCents(g.saved),
+          monthly: toCents(g.monthly)
+        }));
+      }
+      if (Array.isArray(out.templates)) {
+        out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
+          amount: toCents(t.amount),
+          monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
+        }));
+      }
+      if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
     }
-    if (Array.isArray(out.goals)) {
-      out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
-        target: toCents(g.target),
-        saved: toCents(g.saved),
-        monthly: toCents(g.monthly)
-      }));
-    }
-    if (Array.isArray(out.templates)) {
-      out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
-        amount: toCents(t.amount),
-        monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
-      }));
-    }
-    if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
-    if (out.debtData && typeof out.debtData === "object") {
+    // v9: the debt tracker's balance/payment were left in dollars when v8 moved
+    // every other money field to cents. Rate is a percentage and stays put.
+    if (at < 9 && out.debtData && typeof out.debtData === "object") {
       const toCentsStr = (s) => {
         const n = parseFloat(s);
         return isFinite(n) ? String(dollarsToCents(n)) : s;
