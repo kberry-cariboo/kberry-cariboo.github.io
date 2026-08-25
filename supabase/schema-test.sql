@@ -234,7 +234,68 @@ begin
     raise exception 'a retired key was tolerated but then stored anyway';
   end if;
 
-  -- 8. Deleting the household takes its holidays with it. -------------------
+  -- 8. The payload never carries the retired API key back out. -------------
+  --
+  -- Saves stopped writing aiApiKey in schema v8 (it is a personal credential
+  -- with its own billing, and household_settings is readable by every member),
+  -- but load_household() went on selecting the column — so any value still in
+  -- the row was handed to every member on every load. Set it the only way that
+  -- is left, straight into the table, and check it does not come back out.
+  update household_settings set ai_api_key = 'sk-ant-api03-should-never-travel'
+   where household_id = hid;
+  perform set_config('request.jwt.claim.sub', uid::text, true);
+  if (load_household()->'data') ? 'aiApiKey' then
+    raise exception 'load_household() is still sending the retired API key to every household member';
+  end if;
+  update household_settings set ai_api_key = null where household_id = hid;
+
+  -- 9. Migrating a legacy blob keeps the schema version. --------------------
+  --
+  -- The legacy store kept the version in household_data.schema_version, beside
+  -- the blob rather than inside it. The migration read only the blob, so the
+  -- version was lost, load_household() stripped the resulting null out of the
+  -- payload, and the client read "no version" as "pre-v8 dollars" and
+  -- multiplied every amount in the household by 100 — then autosaved that back.
+  declare
+    lid uuid := '00000000-0000-4000-8000-00000000cf03';
+    blob jsonb := jsonb_build_object('entries', jsonb_build_array(jsonb_build_object(
+      'id', 'legacy-1', 'desc', 'Rent', 'type', 'expense', 'amount', 165000,
+      'startDate', '2026-01-01', 'repeats', true, 'recurEvery', 1,
+      'recurUnit', 'month', 'recurDays', '[]'::jsonb, 'recurEnd', '',
+      'category', 'Housing', 'notes', '')));
+  begin
+    insert into households (id, name) values (lid, 'Legacy blob household')
+      on conflict (id) do nothing;
+    insert into household_members (household_id, user_id, full_name, role)
+      values (lid, uid, 'Schema Test', 'owner')
+      on conflict (household_id, user_id) do nothing;
+
+    -- A blob written by a v9 client, with the version in the column only.
+    perform cf_migrate_legacy_household(lid, blob, 9);
+    if (select schema_version from household_settings where household_id = lid) is distinct from 9 then
+      raise exception 'the legacy schema version was lost on migration: %',
+        coalesce((select schema_version::text from household_settings where household_id = lid), 'null');
+    end if;
+
+    -- The blob's own stamp wins where it has one.
+    delete from household_settings where household_id = lid;
+    perform cf_migrate_legacy_household(lid, blob || jsonb_build_object('schemaVersion', 8), 9);
+    if (select schema_version from household_settings where household_id = lid) is distinct from 8 then
+      raise exception 'the blob''s own schemaVersion should win over the column';
+    end if;
+
+    -- And a blob that predates both really is pre-v8 data: no version is the
+    -- honest answer, and the client is right to convert it.
+    delete from household_settings where household_id = lid;
+    perform cf_migrate_legacy_household(lid, blob, null);
+    if (select schema_version from household_settings where household_id = lid) is not null then
+      raise exception 'invented a schema version for a blob that never had one';
+    end if;
+
+    delete from households where id = lid;
+  end;
+
+  -- 10. Deleting the household takes its holidays with it. ------------------
   delete from households where id = hid;
   if exists (select 1 from holidays where household_id = hid)
      or exists (select 1 from holiday_years where household_id = hid) then

@@ -28,6 +28,37 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # supabase/schema.sql is half of the sync path, and until now nothing in CI
+    # ever executed it — the three SQL suites below were written, committed, and
+    # then skipped on every run because they need a database. Both bugs found in
+    # the round-9 sync review were in this file and neither was reachable from
+    # JavaScript: a legacy-blob migration that dropped the schema version (which
+    # makes the client multiply every amount by 100 on the next load) and
+    # load_household() still handing out a retired API key. A Postgres service
+    # costs one container and turns all three suites on.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cf_scratch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: cf_scratch
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -79,6 +110,46 @@ jobs:
       # clicks. The three buttons that trigger it are covered in the UI suite.
       - name: Check rolling a budget year forward
         run: node tests/year-copy.mjs
+
+      # schema.sql expects a Supabase project (an auth schema, auth.uid(), the
+      # three Supabase roles). On a bare Postgres those have to be created
+      # first — the same shim supabase/schema-test.sql documents in its header.
+      - name: Load the schema into the scratch database
+        run: |
+          sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists auth;
+          create table if not exists auth.users (id uuid primary key default gen_random_uuid(), email text);
+          create or replace function auth.uid() returns uuid language sql stable as
+            $fn$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
+          do $do$ begin
+            if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+          end $do$;
+          SQL
+          psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
+
+      # Re-running schema.sql must stay a no-op — it is the documented upgrade
+      # procedure, and the legacy migration and the repair statements in it all
+      # run again every time.
+      - name: Check the schema is safe to re-run
+        run: psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
+
+      - name: Check the schema round-trips what the client sends
+        run: psql -v ON_ERROR_STOP=1 -f supabase/schema-test.sql
+
+      - name: Check every payload field survives a save and a load
+        run: CF_TEST_PG=1 node tests/payload-roundtrip.mjs
+
+      - name: Check the app against the real SQL
+        run: CF_TEST_PG=1 node tests/sync-sql.mjs
+
+      # Reloading a household from the cloud: conflicts, offline edits, a
+      # divergence needing the user to choose, receipts. None of it reachable by
+      # clicking, all of it data-loss shaped.
+      - name: Run cloud sync suite
+        run: node tests/cloud-sync.mjs
 
       - name: Run UI regression suite
         run: node tests/regression.mjs

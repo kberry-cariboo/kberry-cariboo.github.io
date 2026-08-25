@@ -1423,7 +1423,10 @@ begin
       'alertThreshold', s.alert_threshold,
       'darkMode', s.dark_mode,
       'forecastHorizon', s.forecast_horizon,
-      'aiApiKey', s.ai_api_key,
+      -- aiApiKey is deliberately absent: retired in schema v8 (see
+      -- cf_payload_retired_keys) because household_settings is readable by
+      -- every member. The client ignores the key, but it was still leaving the
+      -- database on every load.
       'colOrder', to_jsonb(s.col_order),
       'regFilter', s.reg_filter,
       'regFilterCats', to_jsonb(s.reg_filter_cats),
@@ -1664,38 +1667,73 @@ $$;
 -- Runs only for households that have blob data but no household_settings row
 -- (i.e. not yet migrated), so this whole file stays safe to re-run.
 -- The household_data blob itself is left untouched as a backup.
+
+-- The per-household step, as a function rather than inline in the loop below,
+-- so supabase/schema-test.sql can exercise it on a household it seeds itself.
+-- Losing the schema version here corrupts every amount in the household on the
+-- next load (see below), which is not a thing to leave untested.
+create or replace function cf_migrate_legacy_household(hid uuid, d jsonb, legacy_version int)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  stale_keys text[];
+begin
+  -- A blob is a historical shape, written by whatever version of the app was
+  -- current at the time, so it can carry keys this schema has never had a
+  -- place for. cf_apply_household_payload refuses those on a live save (they
+  -- mean the client is ahead of the database), but here they only mean the
+  -- blob is old — so strip them and say what was skipped rather than aborting
+  -- the upgrade. The blob itself is kept, so nothing is destroyed either way.
+  select array_agg(k order by k) into stale_keys
+  from jsonb_object_keys(d) k
+  where not (k = any (cf_payload_keys()))
+    and not (k = any (cf_payload_meta_keys()))
+    and not (k = any (cf_payload_retired_keys()));
+
+  if stale_keys is not null then
+    raise notice 'Household %: legacy blob carries % which this schema has no place for; skipping those and migrating the rest.',
+      hid, array_to_string(stale_keys, ', ');
+  end if;
+
+  perform cf_apply_household_payload(
+    hid,
+    (d - coalesce(stale_keys, '{}'::text[]))
+      -- The version is NOT necessarily inside the blob: the legacy store kept
+      -- it in household_data.schema_version, beside the data, and a blob
+      -- written before the client started stamping it has no such key. Drop it
+      -- and household_settings.schema_version ends up null, which
+      -- load_household() strips out of the payload, which the client reads as
+      -- "no version, so pre-v8 dollars" — and it multiplies every entry,
+      -- opening balance, budget target, goal, template and alert threshold by
+      -- 100 on the next load, then autosaves that back.
+      --
+      -- The blob's own stamp wins when it has one; the column is the fallback;
+      -- and when neither has a version it stays null, which is then the truth,
+      -- because a blob predating both really is pre-v8 data the client should
+      -- convert.
+      || case when (d ? 'schemaVersion') or legacy_version is null
+              then '{}'::jsonb
+              else jsonb_build_object('schemaVersion', legacy_version) end);
+end $$;
+revoke all on function cf_migrate_legacy_household(uuid, jsonb, int) from public, anon, authenticated;
+
 do $$
 declare
   r record;
   migrated int := 0;
-  stale_keys text[];
 begin
   for r in
-    select hd.household_id, hd.data
+    select hd.household_id, hd.data, hd.schema_version
     from household_data hd
     where jsonb_typeof(hd.data) = 'object'
       and hd.data <> '{}'::jsonb
       and not exists (select 1 from household_settings s
                       where s.household_id = hd.household_id)
   loop
-    -- A blob is a historical shape, written by whatever version of the app was
-    -- current at the time, so it can carry keys this schema has never had a
-    -- place for. cf_apply_household_payload refuses those on a live save (they
-    -- mean the client is ahead of the database), but here they only mean the
-    -- blob is old — so strip them and say what was skipped rather than aborting
-    -- the upgrade. The blob itself is kept, so nothing is destroyed either way.
-    select array_agg(k order by k) into stale_keys
-    from jsonb_object_keys(r.data) k
-    where not (k = any (cf_payload_keys()))
-      and not (k = any (cf_payload_meta_keys()))
-      and not (k = any (cf_payload_retired_keys()));
-
-    if stale_keys is not null then
-      raise notice 'Household %: legacy blob carries % which this schema has no place for; skipping those and migrating the rest.',
-        r.household_id, array_to_string(stale_keys, ', ');
-    end if;
-
-    perform cf_apply_household_payload(r.household_id, r.data - coalesce(stale_keys, '{}'::text[]));
+    perform cf_migrate_legacy_household(r.household_id, r.data, r.schema_version);
     migrated := migrated + 1;
     raise notice 'Migrated household % (% entries, % receipts extracted)',
       r.household_id,
@@ -1708,6 +1746,20 @@ begin
     raise notice 'Migration complete: % household(s) migrated. The legacy household_data table was kept as a backup.', migrated;
   end if;
 end $$;
+
+-- Repair: households migrated before the line above learned to carry the
+-- version across have a null household_settings.schema_version. load_household()
+-- strips a null out of the payload, and the client reads a payload with no
+-- schemaVersion as pre-v8 dollar amounts — so it multiplies every entry,
+-- opening balance, budget target, goal, template and alert threshold by 100 on
+-- the next load, then autosaves that back. The legacy blob is kept as a backup
+-- and still has the real version, so take it from there.
+update household_settings s
+   set schema_version = hd.schema_version
+  from household_data hd
+ where hd.household_id = s.household_id
+   and s.schema_version is null
+   and hd.schema_version is not null;
 
 -- Receipts are per-occurrence only: re-key any legacy entry-level receipts
 -- ('entry:<id>', from blob data migrated before this rule) onto the entry's
