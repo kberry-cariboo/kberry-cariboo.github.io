@@ -452,6 +452,42 @@
     const [open, setOpen] = useState(false);
     const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
     const wrapRef = useRef(null);
+    // The bubble is absolutely positioned inside a 15px wrapper and hangs off
+    // one edge of it, so a tip on a field near the right of the screen ran
+    // straight past the viewport and lost its last words — and on a phone
+    // neither edge works: the bubble is up to 272px wide and there is no
+    // 272px window either side of a control in the middle of a 320px screen.
+    // So rather than picking an edge, measure and slide it: keep the
+    // caller's preferred alignment where it fits, and otherwise clamp the
+    // offset until both ends of the bubble are inside the viewport.
+    // (Closed tips overflowed too — styles.css zero-sizes them so they can't
+    // drag the page sideways.)
+    const [offset, setOffset] = useState(null);
+    useLayoutEffect(() => {
+      if (!open) {
+        setOffset(null);
+        return;
+      }
+      const place = () => {
+        const wrap = wrapRef.current;
+        const bubble = wrap && wrap.querySelector(".helptip-bubble");
+        if (!bubble) return;
+        const r = wrap.getBoundingClientRect();
+        const w = bubble.getBoundingClientRect().width;
+        const vw = document.documentElement.clientWidth;
+        // All offsets are wrapper-relative, matching the CSS they replace:
+        // start alignment is left:-6px, end alignment is right:-6px.
+        const preferred = align === "end" ? r.width + 6 - w : -6;
+        const min = 8 - r.left;
+        const max = vw - 8 - w - r.left;
+        // max < min only if the bubble is wider than the viewport, which its
+        // max-width rules out; Math.max last keeps the left edge on screen.
+        setOffset(Math.max(min, Math.min(preferred, max)));
+      };
+      place();
+      window.addEventListener("resize", place);
+      return () => window.removeEventListener("resize", place);
+    }, [open, align]);
     // A tap opens the bubble; the next tap anywhere else closes it. Without
     // this an opened tip on a touch device has no dismiss gesture at all,
     // since there's no pointer to move away.
@@ -516,7 +552,11 @@
         {
           id: tipId,
           role: "tooltip",
-          className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : "")
+          className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : ""),
+          // Inline so it beats both alignment rules; `right` has to be cleared
+          // too or an end-aligned bubble ends up constrained from both sides
+          // and stretches to fill the gap.
+          style: offset === null ? void 0 : { left: offset + "px", right: "auto" }
         },
         text
       )
