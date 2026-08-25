@@ -386,10 +386,13 @@
     const lastSavedAtRef = useRef(null);
     const applyPayload = useCallback((d) => {
       if (!d) return;
-      // Money is cents from schema v8 on; a payload saved by an older,
-      // un-migrated client (another device that hasn't reloaded yet) is
-      // still dollars and needs upgrading before it reaches app state.
-      const data = (d.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(d) : d;
+      // A payload saved by an older, un-migrated client (another device that
+      // hasn't reloaded yet) can predate any of the storage migrations. Pass
+      // its own version through — migrateHouseholdPayload gates each step on
+      // it, so a current payload costs one object spread and nothing else.
+      // Never re-add an outer `< SCHEMA_VERSION` gate here: that is what used
+      // to send an already-migrated payload back through the conversions.
+      const data = migrateHouseholdPayload(d, d.schemaVersion || 0);
       HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], setters[key]));
     }, [setters]);
     // Receipt images live in the receipts table as binary blobs, not inside the

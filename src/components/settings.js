@@ -960,11 +960,24 @@
       reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result);
+          // Parsing is not recognition. Any .json at all used to reach the
+          // confirm dialog, and confirming one from some other app restored
+          // nothing while reporting "Backup restored successfully!" — the user
+          // is then told their data is back when it never moved. A real backup
+          // carries the export stamp, or (before that stamp existed) at least
+          // one of the fields we know how to restore.
+          const looksLikeBackup = parsed && typeof parsed === "object" && !Array.isArray(parsed) && (parsed.exportedAt !== void 0 || parsed.schemaVersion !== void 0 || HOUSEHOLD_BACKUP_FIELDS.some((f) => f.key in parsed));
+          if (!looksLikeBackup) {
+            setYearMsg("\u274C That file isn't a CashFlow backup. Choose a CashFlow_Backup_*.json file exported from Settings.");
+            return;
+          }
+          setYearMsg("");
           setPendingRestore({ parsed, fileName: file.name });
         } catch (err) {
           setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
         }
       };
+      reader.onerror = () => setYearMsg("\u274C Couldn't read that file off this device. Try again.");
       reader.readAsText(file);
       e.target.value = "";
     } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
@@ -973,33 +986,49 @@
       ConfirmDialog,
       {
         title: "Restore backup?",
-        message: `Restoring "${pendingRestore.fileName}" replaces your current entries, overrides, budget targets, goals, and other data with what's in this file. This cannot be undone.`,
+        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. This cannot be undone.`,
         confirmLabel: "Restore",
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
         onConfirm: () => {
           try {
             const parsed = pendingRestore.parsed;
-            // A backup exported before schema v8 (round-9 AR5) still has
-            // dollar-scale amounts — upgrade it the same way a stale cloud
-            // payload gets upgraded on load, so an old backup can't silently
-            // restore 100x-wrong figures.
-            const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
+            // An old backup can predate any of the storage migrations — before
+            // schema v8 its amounts are dollars, before v9 its debt figures
+            // are — so it goes through the same upgrade a stale cloud payload
+            // gets on load, keyed on the version stamped in the file itself.
+            const d = migrateHouseholdPayload(parsed, parsed.schemaVersion || 0);
             const fixed = moveEntryAttachmentsToOverrides(
               Array.isArray(d.entries) ? d.entries : [],
               d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
             );
+            // Restore *replaces*, which is what the confirm dialog promises and
+            // what "this cannot be undone" implies. So a field the file doesn't
+            // carry is reset to its default rather than left alone: restoring a
+            // backup taken before a goal existed used to leave that goal in
+            // place, silently blending two points in time and handing the user
+            // a state that was never backed up. A backup from an older build
+            // legitimately lacks fields added since — resetting those is the
+            // correct reading of "restore to this file".
+            //
             // Entries and overrides go in first and by hand: legacy backups
             // carry receipt images on the entry, which moveEntryAttachmentsToOverrides
             // above has just re-keyed onto the occurrences they belong to.
-            if (Array.isArray(d.entries)) setEntries(fixed.entries);
-            if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
+            setEntries(fixed.entries);
+            setOverridesByYr(fixed.overridesByYr);
             // The rest is the table again, vetted by the same guards a payload
-            // from the cloud goes through.
+            // from the cloud goes through — a guard that rejects the file's
+            // value (missing, or the wrong type) falls through to the default.
             HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
               if (f.key === "entries" || f.key === "overridesByYr") return;
               const set = houseSetters[f.key];
-              if (set) houseApply(f)(d[f.key], set);
+              if (!set) return;
+              let applied = false;
+              houseApply(f)(d[f.key], (v) => {
+                applied = true;
+                set(v);
+              });
+              if (!applied) set(f.initial());
             });
             setYearMsg("\u2705 Backup restored successfully!");
           } catch (err) {

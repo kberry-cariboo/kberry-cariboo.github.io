@@ -2579,7 +2579,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v185';
+const CF_VERSION='v186';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -2706,64 +2706,79 @@ document.addEventListener('DOMContentLoaded',function(){
     const n = Number(c);
     return isFinite(n) ? n / 100 : 0;
   };
-  // Same schema-v8 dollars->cents upgrade as migrateData below, but for a
-  // household payload just loaded from Supabase rather than localStorage —
-  // a household member's browser can still be holding an older, un-migrated
-  // save (or an even older client saved after this shipped but before that
-  // device reloaded), so this runs on every load whose schemaVersion is
-  // stale, independent of this device's own local schema version.
-  function centsifyHouseholdPayload(d) {
+  // The same upgrades migrateData below runs on localStorage, but for a payload
+  // arriving from somewhere else: a household load from Supabase (another
+  // member's browser can still be holding an older, un-migrated save) or a
+  // backup file the user is restoring in Settings. Runs independently of this
+  // device's own schema version, because the payload's age is what matters.
+  //
+  // `from` is the payload's own schemaVersion (0 when it predates the stamp),
+  // and EVERY step below must be gated on it exactly the way migrateData gates
+  // on storedVersion. This function used to apply all of its conversions
+  // unconditionally, with the callers gating the whole call on
+  // `payloadVersion < SCHEMA_VERSION` — which is only correct while
+  // SCHEMA_VERSION is the version that introduced the last conversion. It
+  // stopped being correct the moment v9 landed: a v8 payload is already in
+  // cents, but `8 < 9` sent it through the v8 pass again and multiplied every
+  // amount by 100. Bumping to v10 would have done the same to every v9 payload
+  // in existence, cloud data included. Gate each step, never the call.
+  function migrateHouseholdPayload(d, from) {
     if (!d) return d;
+    const at = Number(from) || 0;
     const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
     const out = __spreadValues({}, d);
-    if (Array.isArray(out.entries)) {
-      out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
-        amount: toCents(e.amount),
-        monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
-      }));
-    }
-    if (out.overridesByYr && typeof out.overridesByYr === "object") {
-      const nextOvr = {};
-      Object.keys(out.overridesByYr).forEach((year) => {
-        const yOvr = out.overridesByYr[year] || {};
-        nextOvr[year] = {};
-        Object.keys(yOvr).forEach((evId) => {
-          const o = yOvr[evId] || {};
-          nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+    if (at < 8) {
+      if (Array.isArray(out.entries)) {
+        out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
+          amount: toCents(e.amount),
+          monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
+        }));
+      }
+      if (out.overridesByYr && typeof out.overridesByYr === "object") {
+        const nextOvr = {};
+        Object.keys(out.overridesByYr).forEach((year) => {
+          const yOvr = out.overridesByYr[year] || {};
+          nextOvr[year] = {};
+          Object.keys(yOvr).forEach((evId) => {
+            const o = yOvr[evId] || {};
+            nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+          });
         });
-      });
-      out.overridesByYr = nextOvr;
-    }
-    if (Array.isArray(out.yearConfigs)) {
-      out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
-    }
-    if (out.budgetTargets && typeof out.budgetTargets === "object") {
-      const nextTargets = {};
-      Object.keys(out.budgetTargets).forEach((key) => {
-        const cats = out.budgetTargets[key] || {};
-        const nextCats = {};
-        Object.keys(cats).forEach((cat) => {
-          nextCats[cat] = toCents(cats[cat]);
+        out.overridesByYr = nextOvr;
+      }
+      if (Array.isArray(out.yearConfigs)) {
+        out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
+      }
+      if (out.budgetTargets && typeof out.budgetTargets === "object") {
+        const nextTargets = {};
+        Object.keys(out.budgetTargets).forEach((key) => {
+          const cats = out.budgetTargets[key] || {};
+          const nextCats = {};
+          Object.keys(cats).forEach((cat) => {
+            nextCats[cat] = toCents(cats[cat]);
+          });
+          nextTargets[key] = nextCats;
         });
-        nextTargets[key] = nextCats;
-      });
-      out.budgetTargets = nextTargets;
+        out.budgetTargets = nextTargets;
+      }
+      if (Array.isArray(out.goals)) {
+        out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
+          target: toCents(g.target),
+          saved: toCents(g.saved),
+          monthly: toCents(g.monthly)
+        }));
+      }
+      if (Array.isArray(out.templates)) {
+        out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
+          amount: toCents(t.amount),
+          monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
+        }));
+      }
+      if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
     }
-    if (Array.isArray(out.goals)) {
-      out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
-        target: toCents(g.target),
-        saved: toCents(g.saved),
-        monthly: toCents(g.monthly)
-      }));
-    }
-    if (Array.isArray(out.templates)) {
-      out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
-        amount: toCents(t.amount),
-        monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
-      }));
-    }
-    if (out.alertThreshold !== void 0) out.alertThreshold = toCents(out.alertThreshold);
-    if (out.debtData && typeof out.debtData === "object") {
+    // v9: the debt tracker's balance/payment were left in dollars when v8 moved
+    // every other money field to cents. Rate is a percentage and stays put.
+    if (at < 9 && out.debtData && typeof out.debtData === "object") {
       const toCentsStr = (s) => {
         const n = parseFloat(s);
         return isFinite(n) ? String(dollarsToCents(n)) : s;
@@ -4251,10 +4266,13 @@ document.addEventListener('DOMContentLoaded',function(){
     const lastSavedAtRef = useRef(null);
     const applyPayload = useCallback((d) => {
       if (!d) return;
-      // Money is cents from schema v8 on; a payload saved by an older,
-      // un-migrated client (another device that hasn't reloaded yet) is
-      // still dollars and needs upgrading before it reaches app state.
-      const data = (d.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(d) : d;
+      // A payload saved by an older, un-migrated client (another device that
+      // hasn't reloaded yet) can predate any of the storage migrations. Pass
+      // its own version through — migrateHouseholdPayload gates each step on
+      // it, so a current payload costs one object spread and nothing else.
+      // Never re-add an outer `< SCHEMA_VERSION` gate here: that is what used
+      // to send an already-migrated payload back through the conversions.
+      const data = migrateHouseholdPayload(d, d.schemaVersion || 0);
       HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], setters[key]));
     }, [setters]);
     // Receipt images live in the receipts table as binary blobs, not inside the
@@ -13052,11 +13070,24 @@ Fill every field of the response schema. Rules:
       reader.onload = (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result);
+          // Parsing is not recognition. Any .json at all used to reach the
+          // confirm dialog, and confirming one from some other app restored
+          // nothing while reporting "Backup restored successfully!" — the user
+          // is then told their data is back when it never moved. A real backup
+          // carries the export stamp, or (before that stamp existed) at least
+          // one of the fields we know how to restore.
+          const looksLikeBackup = parsed && typeof parsed === "object" && !Array.isArray(parsed) && (parsed.exportedAt !== void 0 || parsed.schemaVersion !== void 0 || HOUSEHOLD_BACKUP_FIELDS.some((f) => f.key in parsed));
+          if (!looksLikeBackup) {
+            setYearMsg("\u274C That file isn't a CashFlow backup. Choose a CashFlow_Backup_*.json file exported from Settings.");
+            return;
+          }
+          setYearMsg("");
           setPendingRestore({ parsed, fileName: file.name });
         } catch (err) {
           setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
         }
       };
+      reader.onerror = () => setYearMsg("\u274C Couldn't read that file off this device. Try again.");
       reader.readAsText(file);
       e.target.value = "";
     } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
@@ -13065,33 +13096,49 @@ Fill every field of the response schema. Rules:
       ConfirmDialog,
       {
         title: "Restore backup?",
-        message: `Restoring "${pendingRestore.fileName}" replaces your current entries, overrides, budget targets, goals, and other data with what's in this file. This cannot be undone.`,
+        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. This cannot be undone.`,
         confirmLabel: "Restore",
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
         onConfirm: () => {
           try {
             const parsed = pendingRestore.parsed;
-            // A backup exported before schema v8 (round-9 AR5) still has
-            // dollar-scale amounts — upgrade it the same way a stale cloud
-            // payload gets upgraded on load, so an old backup can't silently
-            // restore 100x-wrong figures.
-            const d = (parsed.schemaVersion || 0) < SCHEMA_VERSION ? centsifyHouseholdPayload(parsed) : parsed;
+            // An old backup can predate any of the storage migrations — before
+            // schema v8 its amounts are dollars, before v9 its debt figures
+            // are — so it goes through the same upgrade a stale cloud payload
+            // gets on load, keyed on the version stamped in the file itself.
+            const d = migrateHouseholdPayload(parsed, parsed.schemaVersion || 0);
             const fixed = moveEntryAttachmentsToOverrides(
               Array.isArray(d.entries) ? d.entries : [],
               d.overridesByYr && typeof d.overridesByYr === "object" ? d.overridesByYr : {}
             );
+            // Restore *replaces*, which is what the confirm dialog promises and
+            // what "this cannot be undone" implies. So a field the file doesn't
+            // carry is reset to its default rather than left alone: restoring a
+            // backup taken before a goal existed used to leave that goal in
+            // place, silently blending two points in time and handing the user
+            // a state that was never backed up. A backup from an older build
+            // legitimately lacks fields added since — resetting those is the
+            // correct reading of "restore to this file".
+            //
             // Entries and overrides go in first and by hand: legacy backups
             // carry receipt images on the entry, which moveEntryAttachmentsToOverrides
             // above has just re-keyed onto the occurrences they belong to.
-            if (Array.isArray(d.entries)) setEntries(fixed.entries);
-            if (d.overridesByYr || fixed.moved) setOverridesByYr(fixed.overridesByYr);
+            setEntries(fixed.entries);
+            setOverridesByYr(fixed.overridesByYr);
             // The rest is the table again, vetted by the same guards a payload
-            // from the cloud goes through.
+            // from the cloud goes through — a guard that rejects the file's
+            // value (missing, or the wrong type) falls through to the default.
             HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
               if (f.key === "entries" || f.key === "overridesByYr") return;
               const set = houseSetters[f.key];
-              if (set) houseApply(f)(d[f.key], set);
+              if (!set) return;
+              let applied = false;
+              houseApply(f)(d[f.key], (v) => {
+                applied = true;
+                set(v);
+              });
+              if (!applied) set(f.initial());
             });
             setYearMsg("\u2705 Backup restored successfully!");
           } catch (err) {
