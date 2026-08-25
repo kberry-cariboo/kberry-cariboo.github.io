@@ -51,6 +51,30 @@ committing. (Opening `index.html` from the filesystem still works for most of
 the app, but the service worker — and therefore offline caching and
 notifications — needs a real `http://` or `https://` origin.)
 
+### Help screenshots
+
+The Help page's screenshots live in `images/help/` and are committed, not built
+— `node build.js` stays dependency-free, and a shot only changes when the UI in
+it changes. They are captured from the shipped bundle driving the same fictional
+household the regression suite uses, so nothing there is mocked-up artwork and
+nothing carries real data.
+
+```bash
+node build.js && node scripts/gen-help-shots.mjs
+```
+
+That rewrites every PNG, sweeps any left behind by a rename, and regenerates
+`src/lib/help-shots.js` (the sizes the page reserves space with). Run it after
+changing any screen a shot covers; `node tests/help-shots.mjs` fails if the Help
+page names a file that isn't there, if a file is unused, or if the manifest has
+drifted. Add or remove a shot by editing the `SHOTS` list at the top of the
+script and the matching `{ shot: [...] }` block in `src/components/help.js`.
+
+The images are ordinary same-origin files, fetched lazily when the Help page is
+opened and then runtime-cached by the service worker like everything else — so
+they work offline after one visit, and they cost nothing to anyone who never
+opens Help.
+
 ### Updating the vendored libraries
 
 `src/vendor/` is checked in rather than installed, so there's no manifest saying

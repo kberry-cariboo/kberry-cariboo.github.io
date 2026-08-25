@@ -399,7 +399,27 @@
           max-width:68ch;}
         .help-steps{margin:0 0 12px;padding-left:20px;display:flex;flex-direction:column;gap:10px;}
         .help-step{font-size:13px;color:var(--textMid);}
-        .help-step .help-term{display:block;}
+        /* Both halves have to be blocks. .help-desc carries max-width:68ch, and
+           max-width does nothing to a non-replaced inline element — so the step
+           descriptions ran the full width of the card while every paragraph
+           beside them wrapped at the measure, which reads as two different
+           columns of text in one list. */
+        .help-step .help-term,.help-step .help-desc{display:block;}
+        /* A screenshot of the app, inside the app. It is a picture of a thing,
+           not part of the page, so it keeps its own light surface and border in
+           both themes — the alternative is a bright rectangle bleeding into a
+           dark page with nothing to say where the screenshot ends. max-width
+           with height:auto over the intrinsic width/height attributes: the
+           attributes reserve the right box before the lazy image lands, and
+           these let it shrink on a narrow screen without distorting. */
+        .help-shot{margin:0 0 16px;max-width:100%;}
+        /* The width/height attributes carry the 1x size (the shots are captured
+           at 2x), so this is the ordinary responsive-image pair: lay out at the
+           attribute width, shrink to fit a narrow card, never distort. */
+        .help-shot-img{display:block;max-width:100%;height:auto;
+          background:#FFFFFF;border:1px solid var(--border);border-radius:10px;
+          box-shadow:var(--shadowSm);}
+        .help-shot-cap{font-size:11px;line-height:1.5;color:var(--textLt);margin-top:6px;max-width:68ch;}
         .help-keys{max-width:420px;margin-bottom:12px;}
         .help-footer{margin:4px 0 8px;text-align:right;}
         /* Settings lost its explanatory paragraphs to the Help page, so it
