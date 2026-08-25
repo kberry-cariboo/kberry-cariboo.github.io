@@ -1007,22 +1007,23 @@
       });
     };
     const latestYear = yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : activeYear;
+    // The "+ Add <year>" pill at the end of the Budget month picker. It used to
+    // copy budget targets and stop there, so rolling into next year from the
+    // grid in December — the obvious place to do it — silently produced a
+    // thinner year than the identically-named button in Settings: no one-time
+    // entries, no carried-over occurrence edits, no amount pattern. Same
+    // routine for both doors now (src/lib/year-copy.js); only the wording
+    // differs, and here it has to fit in a toast.
     const addNextYearInline = () => {
       const y = latestYear + 1;
       if (yearConfigs.find((yc) => yc.year === y)) return;
-      setBudgetTargets((prev) => {
-        const next = __spreadValues({}, prev);
-        for (let m = 0; m < 12; m++) {
-          const prevKey = `${latestYear}:${m}`;
-          const newKey = `${y}:${m}`;
-          if (prev[prevKey] && !prev[newKey]) next[newKey] = __spreadValues({}, prev[prevKey]);
-        }
-        return next;
-      });
+      const plan = planYearRollforward({ entries, overridesByYr, budgetTargets, fromYear: latestYear, toYear: y, deletedCopyIds });
+      applyYearRollforward(plan, y, { setEntries, setOverridesByYr, setBudgetTargets });
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       setBudgetMonth(0);
-      toast(`Year ${y} added — recurring entries carry forward automatically.`);
+      const parts = yearRollforwardParts(plan.counts, latestYear);
+      toast(parts.length ? `Year ${y} added — ${parts.join(", ")}.` : `Year ${y} added — recurring entries carry forward automatically.`);
     };
     const tabs = [
       { id: "dashboard", label: "Dashboard" },

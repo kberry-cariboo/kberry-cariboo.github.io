@@ -73,6 +73,13 @@ jobs:
       - name: Check payloads migrate exactly once
         run: node tests/payload-migration.mjs
 
+      # Browser-free too: drives src/lib/year-copy.js directly. Rolling a year
+      # forward reaches four stores at once and has to be safe to re-run, so
+      # the scenarios are cheaper and far more thorough as plain data than as
+      # clicks. The three buttons that trigger it are covered in the UI suite.
+      - name: Check rolling a budget year forward
+        run: node tests/year-copy.mjs
+
       - name: Run UI regression suite
         run: node tests/regression.mjs
 
