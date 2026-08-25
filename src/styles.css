@@ -109,6 +109,13 @@
           opacity:0;visibility:hidden;transform:translateY(-2px);
           transition:opacity 0.12s ease,transform 0.12s ease,visibility 0.12s;}
         .helptip-bubble--end{left:auto;right:-6px;}
+        /* Collapsed to nothing while closed. `visibility:hidden` stops it being
+           seen or read, but an absolutely-positioned box still counts toward
+           its scroll container's scrollable overflow — the two closed tips in
+           Settings alone gave every phone width ~60px of dead sideways drag
+           onto blank page. Zero-sizing it costs nothing visually and takes it
+           out of the overflow calculation entirely. */
+        .helptip-bubble:not(.is-open){max-width:0;max-height:0;padding:0;border-width:0;overflow:hidden;}
         .helptip-bubble.is-open{opacity:1;visibility:visible;transform:translateY(0);}
         @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
 
@@ -582,7 +589,6 @@
         .entries-mobilefilters-stack>.relative{width:100%;}
         .entries-mobilefilters-stack .filter-pill-btn{width:100%;justify-content:space-between;}
         .entries-showresults-btn{width:100%;margin-top:18px;padding:12px;}
-        .fab-panel-close{background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--textLt);padding:4px;line-height:1;}
         .budget-selectall-btn{width:20px;height:20px;border-radius:5px;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1;}
         .entries-th--col{font-size:11px;font-weight:700;color:#fff;padding:10px 12px;text-align:left;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:grab;user-select:none;transition:background 0.1s;}
         .entries-th--actions{width:40px;padding:10px 8px;background:var(--navy);}
@@ -890,7 +896,13 @@
         .over-note{font-size:11px;white-space:nowrap;flex-shrink:0;}
         .bva-progress-track{height:6px;background:var(--border);border-radius:3px;}
         .bva-progress-fill{height:100%;border-radius:3px;transition:width 0.4s ease;}
-        .bva-totals-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:10px;border-top:2px solid var(--border);}
+        /* Wraps rather than overruns: "Total  $36,040.00 / $34,240.00  $1,800.00
+           over" is three unbreakable tokens on one line, and at 320px they
+           needed ~17px more than the card had — the card's overflow:hidden ate
+           the "over" note, which is the one part that isn't repeated anywhere
+           else on the row. */
+        .bva-totals-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:2px 10px;margin-top:6px;padding-top:10px;border-top:2px solid var(--border);}
+        .bva-totals-row>.cf-row{flex-wrap:wrap;gap:2px 8px;}
         .bva-total-label{font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--textMid);}
         .total-over-note{font-size:10px;}
         .budget-col-cat{padding:8px 14px;}
@@ -1010,7 +1022,10 @@
         .upcoming-desktop-amts{display:flex;align-items:center;gap:10px;flex-shrink:0;}
         .paid-btn{width:22px;height:22px;min-width:22px;border-radius:50%;color:var(--greenDk);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;padding:0;flex-shrink:0;}
         .insight-banner{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:20px;line-height:1.5;}
-        .kpi-spark-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;}
+        /* overflow-wrap for the same reason .kpi-card .kpi-value has it — the
+           annual tiles are the other place a long amount can outgrow its card,
+           and they were the pair that never got the treatment. */
+        .kpi-spark-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;overflow-wrap:anywhere;}
         .kpi-warn-note{font-size:11px;color:var(--red);margin-top:4px;}
         .kpi-sub-note{font-size:11px;color:var(--textLt);margin-top:4px;}
         .dash-cat-bar-wrap{height:220px;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:8px;margin-top:4px;}
@@ -1276,6 +1291,17 @@
           .settings-quicklinks a{min-height:44px;display:inline-flex;align-items:center;}
           .settings-help-link{min-height:44px;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
+          /* The "?" beside a field label is a 15px circle — deliberately, it
+             sits inside running text — which made it the smallest target in the
+             app by a wide margin. Same padded-halo treatment as the row
+             checkboxes: 15px of visual, 45px of hit area. */
+          .helptip-btn{position:relative;}
+          .helptip-btn::after{content:'';position:absolute;inset:-15px;}
+          /* The ✕ on a dialog header: an 18px glyph, and on a bottom sheet
+             the first thing a thumb reaches for. Halo rather than growth so
+             the header row keeps its height. */
+          .cf-close-x{position:relative;}
+          .cf-close-x::after{content:'';position:absolute;inset:-13px;}
           /* Column reordering is HTML5 drag-and-drop, which never fires on
              touch. The grab cursor, the ⠿ dots and the "drag to reorder"
              wording promised a gesture that cannot work here — and the arrow
@@ -1325,15 +1351,8 @@
           background:var(--bgCard);border-top:1px solid var(--border);
           padding-bottom:env(safe-area-inset-bottom);
           box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
-        .cf-fab{display:none;position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));
-          width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;
-          font-size:28px;font-weight:400;line-height:1;border:none;cursor:pointer;
-          box-shadow:0 6px 20px rgba(0,0,0,0.28);z-index:1500;
-          transition:transform 0.18s ease, opacity 0.18s ease;}
-        .cf-fab--hidden{transform:translateY(96px);opacity:0;pointer-events:none;}
         @media(max-width:768px){
           .cf-bottomnav{display:flex;}
-          .cf-fab{display:flex;align-items:center;justify-content:center;}
           .tab-bar{display:none!important;}
           /* Nav clearance belongs to the scroll container, not to <main>: the
              footer is a *sibling* of <main> inside .app-scroll, so padding on
@@ -1345,14 +1364,8 @@
              resolves against the padded content box. */
           .app-scroll{padding-bottom:calc(72px + env(safe-area-inset-bottom));}
           .content-area{padding-bottom:20px!important;}
-          .cf-fab{bottom:calc(66px + env(safe-area-inset-bottom))!important;}
           .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
         }
-        /* The bulk-action bar is centred at the bottom and the FAB sits at the
-           same height on the right, so they collide on a phone. The bulk bar
-           is a transient mode with its own primary action; the FAB stands
-           down while it's up. */
-        body:has(.budget-bulkbar) .cf-fab{display:none!important;}
         /* Camera capture: touch devices only — desktop shows gallery picker alone */
         .attach-camera{display:none!important;}
         @media (pointer:coarse){.attach-camera{display:inline-flex!important;}}
@@ -1466,7 +1479,7 @@
         .mobile-year-badge--header .mobile-year-badge-caret{color:rgba(255,255,255,0.5);}
         /* ── Print stylesheet (PDF export via window.print()) ───────────
            Goal: only the report content prints — no header, nav, footer,
-           FAB, or transient banners — and it always prints in the light
+           or transient banners — and it always prints in the light
            theme's colors, even mid-session in dark mode, since the theme
            colors are set as inline custom properties on <html> (highest
            specificity short of !important) rather than toggled by a class. */
@@ -1487,7 +1500,7 @@
           }
           html,body{height:auto;overflow:visible;background:#fff!important;color-scheme:light!important;}
           .app-scroll{height:auto!important;overflow:visible!important;}
-          /* App chrome: header, both nav variants, footer, FAB, and anything
+          /* App chrome: header, both nav variants, footer, and anything
              else marked data-noprint (banners, toasts, the Customize row…). */
           [data-noprint],.tab-bar,.cf-bottomnav,.month-picker,.month-picker-fade,
           .budget-subtabs,.modal-overlay{
@@ -1567,10 +1580,14 @@
           /* Kill any residual navy gap between tab-bar and content on mobile */
           .tab-bar-outer{overflow:hidden!important;}
           /* KPI grids: 2-column on tablet/mobile */
-          .kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
-          .kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;}
-          /* Dashboard: charts stack, no overflow */
-          .chart-grid{grid-template-columns:1fr!important;gap:10px!important;}
+          .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+          .kpi-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+          /* Dashboard: charts stack, no overflow. minmax(0,…) rather than a
+             bare 1fr — 1fr floors at min-content, and at 320px the widest
+             card (Income Sources, Budget vs Actual) has a 342px min-content
+             width, so the "stacked" column was 22px wider than the viewport
+             and .dash-page's overflow:hidden cut the right edge off. */
+          .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px!important;}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden!important;max-width:100%!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
@@ -1615,28 +1632,30 @@
              above still apply where the tables actually render. */
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          /* Full width below 768px, which puts its bottom-right corner — where
-             "Export backup", its whole point, lives — underneath the FAB. The
-             FAB is 56px tall sitting 18px off the bottom and outranks the
-             nudge on z-index, so the nudge has to clear it rather than the
-             other way round. The FAB's top edge is 122px off the bottom here
-             (66px offset + 56px tall), so 134px leaves 12px of air. */
+          /* Full width below 768px. It used to sit 134px up to clear the
+             quick-add FAB; with the FAB gone the only fixed chrome beneath it
+             is the bottom nav (~49px + safe area), so 72px — the same
+             clearance .app-scroll and the bulk bar use — puts it back within
+             thumb reach instead of floating a third of the way up the screen. */
           .backup-nudge{left:12px!important;right:12px!important;
             width:auto!important;max-width:none!important;
-            bottom:calc(134px + env(safe-area-inset-bottom))!important;}
+            bottom:calc(72px + env(safe-area-inset-bottom))!important;}
           /* Full-width here and the message wraps to more lines, so it grows
-             to ~176px at 320px — 134px offset + 176px + gap. */
-          .content-area.content-area--nudged{padding-bottom:334px!important;}
+             to ~176px at 320px — 72px offset + 176px + gap. */
+          .content-area.content-area--nudged{padding-bottom:272px!important;}
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
-          .kpi-grid{grid-template-columns:1fr 1fr!important;gap:6px!important;}
-          .kpi-grid-4{grid-template-columns:1fr 1fr!important;gap:6px!important;}
+          /* minmax(0,…), not a bare 1fr: 1fr floors at min-content, so a
+             six-figure amount pushed the track — and the card with it — past
+             the viewport instead of being allowed to wrap inside it. */
+          .kpi-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important;}
+          .kpi-grid-4{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important;}
           /* Three glance tiles across a phone leaves ~110px each, which isn't
              enough for a labelled currency value. Two up, with a lone third
              tile spanning the row. !important because the column count is set
              inline from the widget run length in dashboard.js. */
-          .glance-grid{grid-template-columns:1fr 1fr!important;}
+          .glance-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
           .glance-grid>.glance-tile:last-child:nth-child(odd){grid-column:1/-1;}
           .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
           .month-picker button{padding:9px 10px!important;font-size:11px!important;}
@@ -1707,6 +1726,9 @@
         @media(max-width:360px){
           .kpi-card{padding:14px 14px!important;}
           .kpi-card .kpi-value{font-size:15px!important;}
+          /* Same step-down for the annual tiles' value, which shares the
+             two-up grid and therefore the same ~109px of content width. */
+          .kpi-spark-value{font-size:15px!important;}
           /* Same step-down the KPI tiles get, for the same reason — the
              glance tiles were the one card type that never received it. */
           .glance-value{font-size:14px!important;}

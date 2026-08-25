@@ -294,7 +294,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     await page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Goal' }).click();
-    await page.locator('.modal-card, .fab-panel').first().waitFor(V);
+    await page.locator('.modal-card').first().waitFor(V);
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     await page.waitForTimeout(400);
     if (await page.locator('.modal-overlay').count() > 0) throw new Error('goal modal did not close');
@@ -671,6 +671,64 @@ await test('dark mode: charts render with theme colours', async () => {
     await page.getByRole('button', { name: 'Cancel' }).first().tap({ force: true });
     await page.waitForTimeout(300);
     if (await page.locator('.modal-overlay').count() > 0) throw new Error('add-entry modal did not close');
+  });
+
+  // The quick-add FAB was removed once every grid grew its own "+ Add" button
+  // in the export toolbar — two ways to do the same thing, one of them parked
+  // permanently over the balance column. This guards the removal: an add
+  // affordance that floats over the content is a regression, not a feature.
+  await test('mobile: nothing floats over the content offering to add an entry', async () => {
+    for (const tab of ['dashboard', 'budget']) {
+      await page.locator('.cf-bottomnav').getByRole('button', { name: tab === 'dashboard' ? 'Dashboard' : 'Budget' }).tap({ force: true });
+      await page.waitForTimeout(500);
+      if (await page.locator('.cf-fab').count() > 0) throw new Error('floating add button back on ' + tab);
+    }
+  });
+
+  // Every phone width used to be draggable ~60px sideways onto blank page,
+  // because two *closed* help bubbles in Settings still counted toward the
+  // scroll container's overflow. Checked on every tab, since the same class of
+  // bug (a grid track floored at min-content, a row that can't wrap) has now
+  // produced it three times in three different places.
+  await test('mobile: no tab scrolls sideways onto blank page', async () => {
+    for (const [tab, label] of [['dashboard', 'Dashboard'], ['budget', 'Budget'], ['plan', 'Plan'], ['settings', 'Settings']]) {
+      await page.locator('.cf-bottomnav').getByRole('button', { name: label }).tap({ force: true });
+      await page.waitForTimeout(600);
+      const slop = await page.evaluate(() => {
+        const sc = document.querySelector('.app-scroll');
+        const doc = document.documentElement;
+        return Math.max(sc ? sc.scrollWidth - sc.clientWidth : 0, doc.scrollWidth - doc.clientWidth);
+      });
+      if (slop > 1) throw new Error(tab + ' overflows by ' + slop + 'px');
+    }
+  });
+
+  // A help bubble is up to 272px wide and hangs off a 15px control, so on a
+  // 393px screen neither edge alignment fits — it has to slide until both ends
+  // are on screen. It used to run off the right edge, taking the last line of
+  // the explanation with it.
+  await test('mobile: an opened help tip stays inside the viewport', async () => {
+    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Settings' }).tap({ force: true });
+    await page.waitForTimeout(700);
+    const tips = page.locator('.helptip-btn');
+    const n = await tips.count();
+    if (n === 0) throw new Error('no help tips on Settings');
+    for (let i = 0; i < n; i++) {
+      const btn = tips.nth(i);
+      await btn.scrollIntoViewIfNeeded();
+      await btn.evaluate((el) => el.click());
+      await page.waitForTimeout(250);
+      const box = await page.evaluate(() => {
+        const b = document.querySelector('.helptip-bubble.is-open');
+        if (!b) return null;
+        const r = b.getBoundingClientRect();
+        return { left: r.left, right: r.right, vw: document.documentElement.clientWidth };
+      });
+      if (!box) throw new Error('tip ' + i + ' did not open');
+      if (box.left < -1 || box.right > box.vw + 1) throw new Error(`tip ${i} spans ${Math.round(box.left)}–${Math.round(box.right)} in a ${box.vw}px viewport`);
+      await btn.evaluate((el) => el.click());
+      await page.waitForTimeout(150);
+    }
   });
 
   await test('mobile: settings hides biometric unlock on a device with no authenticator', async () => {

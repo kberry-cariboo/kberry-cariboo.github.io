@@ -1,8 +1,9 @@
 # Mobile UI Audit — CashFlow Budget
 
-> **Status: all 21 items addressed.** The findings below are kept as written —
-> they are the record of what was wrong and why, and every fix commit points
-> back at a section number here. See §7 for the item-by-item outcome.
+> **Status: all 21 items addressed** (item 6 addressed, then reverted — see §7).
+> The findings below are kept as written — they are the record of what was
+> wrong and why, and every fix commit points back at a section number here.
+> See §7 for the item-by-item outcome.
 
 Audited build `v183` (`3c599fd`). Findings come from reading `src/` **and** from
 running the built app in Chromium at 320 / 390 / 430 / 820 px CSS widths with
@@ -414,7 +415,7 @@ and the existing 37-test regression suite.
 
 | # | Item | Fix |
 | --- | --- | --- |
-| 6 | FAB styled but never rendered (§5) | Rendered on Dashboard and Budget, wired to the existing `cf:quickadd` event, retracts while scrolling down so it never parks over a balance |
+| 6 | FAB styled but never rendered (§5) | ~~Rendered on Dashboard and Budget, wired to the existing `cf:quickadd` event, retracts while scrolling down so it never parks over a balance~~ **Reverted in v185.** The premise of §5 was wrong: adding an entry from a phone was not buried, because every grid already carries a `+ Add` button in its export toolbar. Rendering the FAB gave the same action two entry points, one of them floating permanently over the running-balance column. The button, its styles and its scroll-retract listener are gone; the toolbar button is the only way in, on every viewport |
 | 7 | Templates un-creatable (§2.2) | `.ef-save-template` unhidden; label shortens to "Template" so the sticky action bar stays one line |
 | 8 | Unlabelled mobile search (§2.4) | Real placeholder; search takes the remaining width of the Filters row |
 | 9 | Column reorder advertised but impossible on touch (§2.3) | `draggable`, the grab cursor, the ⠿ hints and the "arrow to reorder" wording all drop on coarse pointers — same for the category list, whose copy now points at its ↑/↓ buttons |
@@ -439,7 +440,7 @@ and the existing 37-test regression suite.
 | 18 | Pull-to-refresh listener churn (§4.6) | Progress mirrored into a ref; the effect mounts once instead of re-subscribing every frame |
 | 19 | `aria-label` "Home" (§4.7) | "Dashboard", matching the rest of the app; the nav still *shows* "Home" |
 | 20 | "All Categorys" (§20) | Plural is a property of the label now, not derived from it |
-| 21 | Two responsive axes (§ context) | Layout is now width-only at 768px — nav variant, FAB, card/table swap, container measure. `pointer:coarse` is reserved for input ergonomics: hit targets, camera capture, menus as sheets, the app-shell scroll lock, and affordances for gestures touch can't perform |
+| 21 | Two responsive axes (§ context) | Layout is now width-only at 768px — nav variant, card/table swap, container measure. `pointer:coarse` is reserved for input ergonomics: hit targets, camera capture, menus as sheets, the app-shell scroll lock, and affordances for gestures touch can't perform |
 
 Two things were deliberately **not** changed:
 

@@ -380,8 +380,7 @@
       const trap = (e) => {
         if (e.key !== "Tab") return;
         try {
-          // .fab-panel surfaces (mobile quick-add) share the modal contract.
-          const overlays = document.querySelectorAll(".modal-overlay,.fab-panel");
+          const overlays = document.querySelectorAll(".modal-overlay");
           if (!overlays || !overlays.length) return;
           const modal = overlays[overlays.length - 1];
           const focusables = modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
@@ -693,42 +692,6 @@
         window.removeEventListener("touchend", onEnd);
       };
     }, []);
-    // A FAB parked over the balance column hides one row's running balance for
-    // as long as the user leaves it there. Retracting while scrolling *down*
-    // (reading) and returning on any upward scroll or pause is the standard
-    // answer, and it means the button is never over content the user is
-    // actively working through. The listener is passive and does nothing but
-    // compare two numbers.
-    const [fabHidden, setFabHidden] = useState(false);
-    useEffect(() => {
-      // Which element scrolls depends on the *pointer*, not the width: the
-      // app-shell scroll lock (.app-scroll as a fixed-height scroller) exists
-      // to stop a touch browser's URL bar animating fixed chrome, so it stays
-      // on pointer:coarse — while the FAB itself is width-gated. A narrow
-      // desktop window therefore gets the FAB with ordinary body scrolling.
-      // Listening to both covers either arrangement; whichever isn't the
-      // scrolling context simply never fires.
-      const sc = document.querySelector(".app-scroll");
-      const posOf = () => (sc && sc.scrollTop) || window.scrollY || 0;
-      let last = posOf();
-      let idle = null;
-      const onScroll = () => {
-        const y = posOf();
-        // 6px of slack so a jittery finger doesn't flicker the button.
-        if (y > last + 6) setFabHidden(true);
-        else if (y < last - 6) setFabHidden(false);
-        last = y;
-        clearTimeout(idle);
-        idle = setTimeout(() => setFabHidden(false), 900);
-      };
-      if (sc) sc.addEventListener("scroll", onScroll, { passive: true });
-      window.addEventListener("scroll", onScroll, { passive: true });
-      return () => {
-        clearTimeout(idle);
-        if (sc) sc.removeEventListener("scroll", onScroll);
-        window.removeEventListener("scroll", onScroll);
-      };
-    }, [tab]);
     const [installPrompt, setInstallPrompt] = useState(null);
     const [showInstall, setShowInstall] = useState(false);
     useEffect(() => {
@@ -792,7 +755,7 @@
           setGlobalSearch("");
           return;
         }
-        if (document.querySelector(".modal-overlay,.fab-panel")) return;
+        if (document.querySelector(".modal-overlay")) return;
         if (TAB_KEYS[e.key]) {
           e.preventDefault();
           setTab(TAB_KEYS[e.key]);
@@ -1313,29 +1276,7 @@
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null),
-    // Quick-add, thumb-reach. The styling for this has been in the sheet
-    // since the bottom nav landed (.cf-fab, sized and offset to clear it)
-    // but nothing ever rendered it, so adding an entry from a phone meant
-    // Budget \u2192 Entries \u2192 past three toolbar rows \u2192 "+ Add Entry". It reuses
-    // the existing cf:quickadd event, which is also what the desktop `n`
-    // shortcut fires. Shown on the two tabs where "add an entry" is the
-    // obvious next action \u2014 Plan and Settings have their own add buttons for
-    // their own object types, and a generic one there would just be wrong.
-    (tab === "dashboard" || tab === "budget") && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "cf-fab" + (fabHidden ? " cf-fab--hidden" : ""),
-        "aria-label": "Add entry",
-        title: "Add entry",
-        "data-noprint": true,
-        onClick: () => {
-          haptic();
-          window.dispatchEvent(new CustomEvent("cf:quickadd"));
-        }
-      },
-      "+"
-    ), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (showBackupNudge ? " content-area--nudged" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (showBackupNudge ? " content-area--nudged" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
       borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`

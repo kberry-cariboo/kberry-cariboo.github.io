@@ -344,7 +344,7 @@
         {
           onClick: close,
           "aria-label": "Close",
-          className: "fab-panel-close"
+          className: "cf-close-x"
         },
         "\u2715"
       )), /* @__PURE__ */ React.createElement(
