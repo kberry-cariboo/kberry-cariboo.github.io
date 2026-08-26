@@ -75,7 +75,7 @@
           ["Turn on rollover for categories that vary", "Anything you didn't spend earlier in the year is added to this month's target \u2014 envelope-style, so a quiet month funds a heavy one instead of being lost."]
         ] },
         { shot: ["bva", "Budget vs Actual. The Total row at the bottom carries the same over-or-under note as each category."] },
-        { p: "Targets are what the Forecast's confidence column judges each row against, so setting a few makes the forecast more useful as well." },
+        { p: "Targets are what the Forecast's “vs Target” column judges each row against, so setting a few makes the forecast more useful as well." },
 
         { sub: "6. Roll into next year" },
         { p: "Recurring entries without an end date flow into a new year on their own. What needs carrying over is everything else \u2014 and one button does all of it." },
@@ -106,7 +106,7 @@
         { defs: [
           ["Income", "Adds to the balance and to income totals."],
           ["Expense", "Subtracts from the balance and adds to expense totals."],
-          ["Transfer", "Moves money without counting as income or expense — it changes the running balance but is left out of the income and expense totals and out of Budget vs Actual."]
+          ["Transfer", "Moves money without counting as income or expense — it changes the running balance and appears in the In or Out column of every grid, but stays out of the income and expense totals and out of Budget vs Actual. When a year has any transfers, the Dashboard's monthly summary grows a Transfers column so each row still adds up: income, less expenses, plus transfers, is the surplus — and the surplus is always the movement in the closing balance beside it."]
         ] },
         { sub: "How often it repeats" },
         { defs: [
@@ -158,13 +158,14 @@
         ] },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
-        { sub: "The Forecast confidence column" },
+        { sub: "The Forecast “vs Target” column" },
+        { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [
-          ["✓", "Either income, or an expense that fits inside its category's monthly target."],
-          ["—", "No target is set for that category, so there is nothing to judge it against."],
-          ["A percentage", "The expense is bigger than the target for its category that month, and by how much. Amber to about 150% of target, red beyond it."]
+          ["✓", "The category is still inside its target for the month at this point."],
+          ["A percentage", "The category is over its monthly target here, and by how much. Amber to 120%, red beyond it."],
+          ["—", "Money coming in, or no target set for that category — nothing to compare against."]
         ] },
-        { p: "Confidence is about your own budget targets, not about whether the bill will arrive. An unbudgeted category is not a problem — it just means the forecast can't check that row for you." }
+        { p: "This is about your own budget targets, not about whether the bill will arrive. An unbudgeted category is not a problem — it just means the forecast can't check that row for you." }
       ]
     },
     {

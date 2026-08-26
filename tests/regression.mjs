@@ -409,6 +409,72 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     if (incomeBefore !== incomeAfter) throw new Error(`transfer leaked into Annual Income: ${incomeBefore} -> ${incomeAfter}`);
   });
 
+  // The guard the transfer bug got past. The case above pins down what a
+  // transfer must *not* do (count as income); this one pins down what every
+  // total must do regardless of the mix of types in the month — agree with
+  // the balance printed beside it.
+  //
+  // Before this existed, "Surplus / Shortfall" was income minus expenses,
+  // which silently excluded transfers while the running balance included
+  // them. Each month with a transfer reported a surplus that contradicted its
+  // own Closing Balance, and the Annual Total was out by the year's transfers
+  // — $6,000 on a $500/month savings transfer — with nothing on screen
+  // indicating which figure to believe. Reading the numbers off the rendered
+  // table (rather than calling getMonthSummaries directly) is deliberate: the
+  // defect was in what the user saw, and a unit test on the helper would not
+  // have caught the grid footer or the annual row.
+  await test('dashboard: every monthly summary row reconciles with the balance beside it', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const grid = await page.evaluate(() => {
+      const money = (t) => {
+        const m = (t || '').replace(/[^0-9.+-]/g, '');
+        return m === '' ? null : Math.round(parseFloat(m) * 100);
+      };
+      const table = [...document.querySelectorAll('table')].find((t) => /Closing Balance/i.test(t.textContent));
+      if (!table) return null;
+      const head = [...table.querySelectorAll('thead th')].map((h) => h.textContent.trim());
+      const rows = [...table.querySelectorAll('tbody tr')].map((r) => [...r.children].map((c) => c.textContent.trim()));
+      return { head, rows: rows.map((cells) => cells.map((c, i) => (i === 0 ? c : money(c)))) };
+    });
+    if (!grid) throw new Error('monthly summary table not found');
+    const iInc = grid.head.findIndex((h) => /^Income/i.test(h));
+    const iExp = grid.head.findIndex((h) => /^Expenses/i.test(h));
+    const iTra = grid.head.findIndex((h) => /^Transfers/i.test(h));
+    const iSur = grid.head.findIndex((h) => /Surplus/i.test(h));
+    const iBal = grid.head.findIndex((h) => /Closing/i.test(h));
+    if (iInc < 0 || iExp < 0 || iSur < 0 || iBal < 0) throw new Error('unexpected summary columns: ' + grid.head.join(' | '));
+
+    const months = grid.rows.filter((r) => r[iBal] !== null);
+    if (months.length !== 12) throw new Error('expected 12 month rows, got ' + months.length);
+
+    // 1. Each row's stated surplus is the movement its own balance made.
+    let prevClose = null;
+    for (const r of months) {
+      if (prevClose !== null) {
+        const moved = r[iBal] - prevClose;
+        if (moved !== r[iSur]) {
+          throw new Error(`${r[0]}: balance moved ${moved} but the row says surplus ${r[iSur]}`);
+        }
+      }
+      prevClose = r[iBal];
+      // 2. And it is explained by the activity columns actually on screen.
+      const explained = r[iInc] - r[iExp] + (iTra >= 0 ? (r[iTra] || 0) : 0);
+      if (explained !== r[iSur]) {
+        throw new Error(`${r[0]}: columns give ${explained} but the row says surplus ${r[iSur]}`);
+      }
+    }
+
+    // 3. The Annual Total row is the sum of the months, not a re-derivation
+    //    that can drift from them.
+    const total = grid.rows.find((r) => /Annual/i.test(r[0]));
+    if (!total) throw new Error('Annual Total row not found');
+    const sum = (i) => months.reduce((a, r) => a + (r[i] || 0), 0);
+    for (const [label, i] of [['income', iInc], ['expenses', iExp], ['surplus', iSur]]) {
+      if (total[i] !== sum(i)) throw new Error(`Annual ${label}: row says ${total[i]}, months sum to ${sum(i)}`);
+    }
+  });
+
   await test('budget monthly: an actual amount paid updates the ledger, balance and BvA without touching the plan', async () => {
     // Read the Housing actual as a starting baseline rather than assuming
     // it's exactly Rent's $1,650 — earlier tests in this shared session

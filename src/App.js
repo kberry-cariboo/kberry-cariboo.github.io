@@ -1363,6 +1363,10 @@
         templates,
         setTemplates,
         globalSearch,
+        // Declared as a prop here since the view was written, but never
+        // actually passed — which is why CSV import could only compare a
+        // statement row against one-time entries.
+        allYearFlows: yearFlows,
         colOrder,
         setColOrder,
         filter: entriesFilter,

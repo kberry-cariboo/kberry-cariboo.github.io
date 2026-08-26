@@ -145,7 +145,7 @@
         className: "cf-menu-item cf-menu-item--compact template-item"
       },
       /* @__PURE__ */ React.createElement("span", { className: "fw-600" }, t.desc),
-      /* @__PURE__ */ React.createElement("span", { className: "template-item-amount" }, t.type === "income" ? "+" : "-", fmt(t.amount))
+      /* @__PURE__ */ React.createElement("span", { className: "template-item-amount" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount))
     ))));
   }
   // Drag handle for the mobile bottom sheets, and the swipe-down-to-dismiss

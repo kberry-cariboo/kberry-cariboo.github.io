@@ -99,7 +99,7 @@
   // ask for while still importing a year of transactions in a handful of
   // calls.
   const CSV_AI_BATCH = 60;
-  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], apiKey = "", isOffline = false }) {
+  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], scheduledOccurrences = [], apiKey = "", isOffline = false }) {
     const [step, setStep] = useState("upload");
     const [fileName, setFileName] = useState("");
     const [headers, setHeaders] = useState([]);
@@ -123,6 +123,12 @@
     });
     const [skipDuplicates, setSkipDuplicates] = useState(true);
     const [excludedRows, setExcludedRows] = useState(() => /* @__PURE__ */ new Set());
+    // Rows flagged as duplicates that the user has ticked back on. "Skip
+    // likely duplicates" is a bulk default, not a verdict — the match is
+    // best-effort (and now matches scheduled occurrences within a few days,
+    // which is looser still), so a wrong flag has to cost one click rather
+    // than forcing the whole option off to rescue one row.
+    const [keptDuplicates, setKeptDuplicates] = useState(() => /* @__PURE__ */ new Set());
     // Per-row category overrides, keyed by row index. Empty means "use the
     // bulk category chosen on the mapping step", so the import works exactly
     // as before if nothing here is ever touched.
@@ -190,14 +196,42 @@
       reader.readAsText(file);
     };
     // Every parsed row, with its resolved date/desc/amount/type and a
-    // best-effort duplicate flag (same date + same absolute amount already
-    // present as a one-time entry) — computed fresh each time the mapping
+    // best-effort duplicate flag — computed fresh each time the mapping
     // changes so the preview always reflects the current column choices.
+    //
+    // A statement row can already be in the budget two ways, and both have to
+    // be checked. The obvious one is an entry someone typed in. The one that
+    // used to be missed is a **scheduled occurrence of a recurring entry**:
+    // this only compared against `existingEntries.filter((e) => !e.repeats)`,
+    // so importing a bank statement into a budget that already forecasts Rent
+    // produced a second Rent as a one-time entry — double-counted in the
+    // running balance and in Budget vs Actual, with "Possible duplicate"
+    // never firing because the recurring original was excluded from the
+    // comparison. Most rows on a statement are bills the budget predicted, so
+    // that was the common case, not the corner one.
+    //
+    // Occurrences match within a few days rather than on the exact date: a
+    // scheduled date is a prediction, and a bill due on the 1st routinely
+    // posts on the 3rd. A typed one-time entry's date came from reality, so
+    // it keeps the exact-date rule it always had.
     const parsedRows = useMemo(() => {
       if (step !== "preview" && step !== "map") return [];
       const existingKeys = /* @__PURE__ */ new Set(
         existingEntries.filter((e) => !e.repeats).map((e) => `${e.startDate}|${Math.abs(e.amount)}`)
       );
+      const OCCURRENCE_DAY_WINDOW = 3;
+      const byAmount = {};
+      (scheduledOccurrences || []).forEach((o) => {
+        const k = String(Math.abs(o.amount));
+        (byAmount[k] = byAmount[k] || []).push(o);
+      });
+      const matchOccurrence = (dateStr, amountCents) => {
+        const near = byAmount[String(Math.abs(amountCents))];
+        if (!near || !dateStr) return null;
+        const t = parseDate(dateStr);
+        if (!t || isNaN(t)) return null;
+        return near.find((o) => Math.abs((o.date - t) / 864e5) <= OCCURRENCE_DAY_WINDOW) || null;
+      };
       return dataRows.map((r, i) => {
         const date = dateCol >= 0 ? parseCsvDate(r[dateCol]) : null;
         const desc = descCol >= 0 ? (r[descCol] || "").trim() : "";
@@ -214,20 +248,48 @@
         const type = rawAmount != null && rawAmount >= 0 ? "income" : "expense";
         const amountCents = rawAmount != null ? dollarsToCents(Math.abs(rawAmount)) : null;
         const valid = !!date && !!desc && rawAmount != null;
-        const isDuplicate = valid && existingKeys.has(`${date}|${amountCents}`);
-        return { i, date, desc, amountCents, type, valid, isDuplicate };
+        const matchedEntry = valid && existingKeys.has(`${date}|${amountCents}`);
+        const matchedOcc = !matchedEntry && valid ? matchOccurrence(date, amountCents) : null;
+        const isDuplicate = !!matchedEntry || !!matchedOcc;
+        const duplicateReason = matchedOcc ? `Already scheduled: ${matchedOcc.desc} on ${humanShortDate(localDateStr(matchedOcc.date))}` : matchedEntry ? "Already entered with this date and amount" : "";
+        return { i, date, desc, amountCents, type, valid, isDuplicate, duplicateReason };
       });
-    }, [dataRows, dateCol, descCol, amountMode, amountCol, debitCol, creditCol, flipSign, step, existingEntries]);
+    }, [dataRows, dateCol, descCol, amountMode, amountCol, debitCol, creditCol, flipSign, step, existingEntries, scheduledOccurrences]);
     // All hooks must run before this — React requires the same hooks in the
     // same order on every render, so the early return for a closed modal has
     // to come after every useState/useMemo above, not before.
     if (!show) return null;
-    const toggleExcluded = (i) => setExcludedRows((prev) => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
-    const rowsToImport = parsedRows.filter((r) => r.valid && !excludedRows.has(r.i) && !(skipDuplicates && r.isDuplicate));
+    const dupSuppressed = (r) => skipDuplicates && r.isDuplicate && !keptDuplicates.has(r.i);
+    const willImport = (r) => r.valid && !excludedRows.has(r.i) && !dupSuppressed(r);
+    const toggleRow = (r) => {
+      // For a row currently held back by the duplicate flag, the tick means
+      // "import this one after all" — flipping excludedRows instead would
+      // leave the checkbox visibly inert, since the flag suppresses it either
+      // way.
+      if (dupSuppressed(r)) {
+        setKeptDuplicates((prev) => new Set(prev).add(r.i));
+        setExcludedRows((prev) => {
+          const next = new Set(prev);
+          next.delete(r.i);
+          return next;
+        });
+        return;
+      }
+      if (r.isDuplicate && keptDuplicates.has(r.i)) {
+        setKeptDuplicates((prev) => {
+          const next = new Set(prev);
+          next.delete(r.i);
+          return next;
+        });
+        return;
+      }
+      setExcludedRows((prev) => {
+        const next = new Set(prev);
+        next.has(r.i) ? next.delete(r.i) : next.add(r.i);
+        return next;
+      });
+    };
+    const rowsToImport = parsedRows.filter(willImport);
     // Classifies each row's description against the household's own category
     // list. Everything lands in the preview as an editable dropdown rather
     // than being applied on import, so a wrong guess costs one click and the
@@ -392,11 +454,11 @@
             /* @__PURE__ */ React.createElement("table", { className: "forecast-table" },
               /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type", "Category"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
               /* @__PURE__ */ React.createElement("tbody", null, parsedRows.map((r) => {
-                const excluded = excludedRows.has(r.i) || (skipDuplicates && r.isDuplicate) || !r.valid;
+                const excluded = !willImport(r);
                 return /* @__PURE__ */ React.createElement("tr", { key: r.i, className: "forecast-tr", style: { opacity: excluded ? 0.45 : 1 } },
-                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: !excludedRows.has(r.i) && !(skipDuplicates && r.isDuplicate), disabled: skipDuplicates && r.isDuplicate, onChange: () => toggleExcluded(r.i) })),
+                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement("input", { type: "checkbox", "aria-label": `Import row ${r.i + 1}: ${r.desc || "untitled"}`, checked: willImport(r), onChange: () => toggleRow(r) })),
                   /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, r.date || "—"),
-                  /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell" }, r.desc || "—", !r.valid && /* @__PURE__ */ React.createElement("span", { className: "field-error-text" }, " Couldn't parse this row"), r.isDuplicate && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Possible duplicate")),
+                  /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell" }, r.desc || "—", !r.valid && /* @__PURE__ */ React.createElement("span", { className: "field-error-text" }, " Couldn't parse this row"), r.isDuplicate && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone", title: r.duplicateReason }, "Possible duplicate"), r.isDuplicate && r.duplicateReason && /* @__PURE__ */ React.createElement("div", { className: "csvimport-dup-reason" }, r.duplicateReason)),
                   /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13" }, r.amountCents != null ? fmt(r.amountCents) : "—"),
                   /* @__PURE__ */ React.createElement("td", null, r.type),
                   /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement(
