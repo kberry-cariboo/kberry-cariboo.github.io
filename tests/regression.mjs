@@ -22,11 +22,16 @@ const { chromium } = await loadPlaywright();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8749;
+// The service-worker test needs to watch what actually leaves the server and to
+// stand in a second build, so the server keeps a log and an override table.
+const requestLog = [];
+const serverOverride = new Map();
 const server = createServer((req, res) => {
   try {
     const path = req.url.split('?')[0].split('#')[0];
+    requestLog.push(path);
     const file = path === '/' || path === '/index.html' ? 'index.html' : path.slice(1);
-    const body = readFileSync(join(ROOT, file));
+    const body = serverOverride.has(path) ? Buffer.from(serverOverride.get(path)) : readFileSync(join(ROOT, file));
     const type = file.endsWith('.html') ? 'text/html' : file.endsWith('.js') ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : file.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream';
     res.writeHead(200, { 'content-type': type }); res.end(body);
   } catch { res.writeHead(404); res.end(); }
@@ -2184,6 +2189,201 @@ await test('wide screens: cards size to their content, and card lists use the wi
   const narrowRows = await rowsOf(narrow.page);
   if (narrowRows !== 4) throw new Error(`four goal cards fill ${narrowRows} rows on a phone, expected one each`);
   await narrow.ctx.close();
+});
+
+
+// ── The printed-numbers invariant ────────────────────────────────────────────
+// The suite had a shaped hole: plenty of tests over what the app computes, none
+// over whether the figures it *prints* agree with each other. That is exactly
+// how D-01 shipped and stayed — a surplus that silently disagreed with the two
+// balances printed beside it, on screen, in every month, for as long as the
+// view existed, with a green suite the whole time.
+//
+// So: one invariant, asserted against rendered text only, over a fixture that
+// carries transfers in both directions — the case that broke.
+await test('invariant: every printed surplus agrees with the balances printed beside it', async () => {
+  const transfers = JSON.stringify([
+    { id: 801, desc: 'To savings', type: 'transfer', transferDirection: 'out', amount: 50000,
+      category: 'Savings / RRSP', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: '2026-01-20', notes: '' },
+    { id: 802, desc: 'From savings', type: 'transfer', transferDirection: 'in', amount: 120000,
+      category: 'Savings / RRSP', repeats: false, recurUnit: 'month', recurEvery: 1, startDate: '2026-07-05', notes: '' },
+  ]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${transfers}); const payload = {`) });
+  // Cents, from whatever the cell says. Everything is compared as integers —
+  // the app stores cents, so a penny of drift is a real disagreement, not a
+  // rounding artefact to be tolerated with an epsilon.
+  const cents = (s) => {
+    const neg = /-/.test(s);
+    const n = Math.round(parseFloat((s || '').replace(/[^0-9.]/g, '') || '0') * 100);
+    return neg ? -n : n;
+  };
+  const OPENING = 1250000;
+
+  // ── The Dashboard's Monthly Summary ───────────────────────────────────────
+  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.waitForTimeout(1800);
+  const table = await page.evaluate(() => {
+    const tb = [...document.querySelectorAll('table')].find((t) =>
+      [...t.querySelectorAll('thead th')].some((h) => /Surplus/.test(h.textContent)));
+    if (!tb) return null;
+    return {
+      head: [...tb.querySelectorAll('thead th')].map((h) => h.textContent.trim()),
+      rows: [...tb.querySelectorAll('tbody tr')].map((r) => [...r.querySelectorAll('td,th')].map((c) => c.textContent.trim())),
+    };
+  });
+  if (!table) throw new Error('no Monthly Summary table on the dashboard');
+  const col = (name) => {
+    const i = table.head.findIndex((h) => h.startsWith(name));
+    if (i < 0) throw new Error(`no "${name}" column: ${table.head.join(' | ')}`);
+    return i;
+  };
+  const [cM, cIn, cEx, cTr, cSur, cCl] = [col('Month'), col('Income'), col('Expenses'), col('Transfers'), col('Surplus'), col('Closing')];
+  const months = table.rows.filter((r) => !/Annual/i.test(r[cM]));
+  if (months.length !== 12) throw new Error(`summary has ${months.length} month rows`);
+
+  let prevClose = OPENING;
+  let sumIn = 0, sumEx = 0, sumTr = 0, sumSur = 0;
+  for (const r of months) {
+    const inc = cents(r[cIn]), exp = cents(r[cEx]), tr = cents(r[cTr]);
+    const sur = cents(r[cSur]), close = cents(r[cCl]);
+    // The row has to add up on its own terms. Transfers are neither income nor
+    // expense — that is the documented rule — so a surplus that ignores them is
+    // a surplus that disagrees with the balance in the next cell along.
+    if (inc - exp + tr !== sur) {
+      throw new Error(`${r[cM]}: income ${r[cIn]} − expenses ${r[cEx]} + transfers ${r[cTr]} = ${(inc - exp + tr) / 100}, but the row prints ${r[cSur]}`);
+    }
+    // And the surplus has to be the movement between the two balances the app
+    // prints either side of it.
+    if (close - prevClose !== sur) {
+      throw new Error(`${r[cM]}: balance moved ${(close - prevClose) / 100} but the row prints a surplus of ${r[cSur]}`);
+    }
+    prevClose = close;
+    sumIn += inc; sumEx += exp; sumTr += tr; sumSur += sur;
+  }
+  if (sumSur !== prevClose - OPENING) {
+    throw new Error(`the twelve surpluses total ${sumSur / 100}, but the year moved ${(prevClose - OPENING) / 100}`);
+  }
+  const annual = table.rows.find((r) => /Annual/i.test(r[cM]));
+  if (annual) {
+    for (const [label, got, want] of [
+      ['income', cents(annual[cIn]), sumIn], ['expenses', cents(annual[cEx]), sumEx],
+      ['transfers', cents(annual[cTr]), sumTr], ['surplus', cents(annual[cSur]), sumSur],
+    ]) {
+      if (got !== want) throw new Error(`the Annual Total row prints ${got / 100} of ${label}, but its twelve months add to ${want / 100}`);
+    }
+  }
+  // The fixture has to actually exercise the case that broke, or the invariant
+  // above is being asserted over a year with no transfers in it.
+  if (sumTr === 0) throw new Error('the fixture carries no transfers, so this proves nothing');
+
+  // ── Budget → Monthly, every month ─────────────────────────────────────────
+  // Same invariant one level down: the running balance printed against each row
+  // has to be the previous one plus that row's own In and Out, and the totals
+  // bar has to be the sum of the column above it.
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  for (const mon of ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) {
+    await page.locator('.month-picker button', { hasText: new RegExp('^' + mon + '$') }).first().click();
+    await page.waitForTimeout(350);
+    // Every row, not just the first page of them.
+    const sizeSel = page.locator('.grid-pagination-size select').first();
+    if (await sizeSel.count()) await sizeSel.selectOption('all');
+    await page.waitForTimeout(350);
+    const grid = await page.evaluate(() => {
+      const open = document.querySelector('.openbal-row');
+      const totals = document.querySelector('.budget-totals-row');
+      const rows = [...document.querySelectorAll('tbody tr')]
+        .filter((r) => r !== open && r !== totals && r.querySelector('.budget-col-balance'))
+        .map((r) => ({
+          desc: (r.querySelector('.budget-col-desc') || {}).textContent || '',
+          inc: (r.querySelector('.budget-col-income') || {}).textContent || '',
+          exp: (r.querySelector('.budget-col-expense') || {}).textContent || '',
+          bal: (r.querySelector('.budget-col-balance') || {}).textContent || '',
+        }));
+      const cellsOf = (row) => row ? [...row.querySelectorAll('td')].map((c) => c.textContent.trim()).filter(Boolean) : [];
+      return { opening: cellsOf(open), totals: cellsOf(totals), rows };
+    });
+    if (!grid.rows.length) continue;
+    const opening = cents(grid.opening[grid.opening.length - 1]);
+    let running = opening, tIn = 0, tOut = 0;
+    for (const r of grid.rows) {
+      const inc = cents(r.inc), exp = cents(r.exp);
+      running += inc - exp;
+      tIn += inc; tOut += exp;
+      if (running !== cents(r.bal)) {
+        throw new Error(`${mon} "${r.desc.trim()}": in ${r.inc || '—'} out ${r.exp || '—'} leaves ${running / 100}, but the row prints ${r.bal}`);
+      }
+    }
+    // "Monthly Totals", then In, Out, and the net.
+    const [, tin, tout, tnet] = grid.totals;
+    if (cents(tin) !== tIn) throw new Error(`${mon}: the totals bar prints ${tin} of income, the column adds to ${tIn / 100}`);
+    if (cents(tout) !== tOut) throw new Error(`${mon}: the totals bar prints ${tout} of expenses, the column adds to ${tOut / 100}`);
+    if (cents(tnet) !== tIn - tOut) throw new Error(`${mon}: the totals bar prints a net of ${tnet}, but ${tin} − ${tout} is ${(tIn - tOut) / 100}`);
+    if (opening + cents(tnet) !== running) {
+      throw new Error(`${mon}: opening ${grid.opening[grid.opening.length - 1]} plus the printed net ${tnet} is not the last printed balance ${running / 100}`);
+    }
+  }
+  await ctx.close();
+});
+
+
+// ── Service worker ───────────────────────────────────────────────────────────
+// Navigations used to be network-first with `cache: 'no-store'`, which made the
+// cache an offline fallback and nothing else: every launch re-downloaded the
+// whole app — 1.5 MB uncompressed, 387 KB gzipped — before anything could
+// start. Serving the cached shell first is only safe because a deploy still
+// reaches the user, so both halves are asserted here: the fast path, and the
+// update path that keeps it honest.
+await test('service worker: a repeat launch is served from cache, and a deploy still lands', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  await page.addInitScript(mkStub(false, true));
+  await page.goto(BASE, { waitUntil: 'load' });
+  // Wait for install + activate; the worker precaches the shell on install.
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+  await page.waitForTimeout(1200);
+
+  // A repeat launch: the document comes out of the cache, not the network.
+  await page.goto('about:blank');
+  await page.goto(BASE, { waitUntil: 'load' });
+  await page.waitForTimeout(800);
+  const transferred = await page.evaluate(() => performance.getEntriesByType('navigation')[0].transferSize);
+  if (transferred !== 0) throw new Error(`a repeat launch still pulled ${transferred} bytes over the network`);
+
+  // ...but the worker still asks, every time, or a deploy would go unnoticed.
+  const before = requestLog.length;
+  await page.goto('about:blank');
+  await page.goto(BASE, { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const asked = requestLog.slice(before).filter((p) => p === '/' || p === '/index.html');
+  if (!asked.length) throw new Error('the worker served from cache without revalidating — a deploy would never be noticed');
+
+  // Now deploy: a different page, behind a worker with a different cache name.
+  // The real build derives that name from a hash of the page, so any change to
+  // the app changes the worker too; this mimics that by hand.
+  const realSw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+  const realHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  // The marker is the build tag, not the <title>: the app rewrites the title
+  // from the route on every render, so a title marker is erased by the very
+  // build you are trying to detect.
+  serverOverride.set('/sw.js', realSw.replace(/const CACHE = '[^']+'/, "const CACHE = 'cf-deploy-test'"));
+  const nextHtml = realHtml.replace(/const CF_VERSION='[^']+'/, "const CF_VERSION='v-deploy-test'");
+  if (nextHtml === realHtml) throw new Error('could not stamp a new build tag into the page');
+  serverOverride.set('/', nextHtml);
+  serverOverride.set('/index.html', nextHtml);
+  try {
+    await page.goto('about:blank');
+    await page.goto(BASE, { waitUntil: 'load' });
+    // The launch may well start on the cached build — that is the whole point.
+    // What has to happen is that it does not stay there: the new worker
+    // installs, activates, and the controllerchange handler in
+    // bootstrap-head.js reloads the app onto the new bundle.
+    await page.waitForFunction(() => typeof CF_VERSION !== 'undefined' && CF_VERSION === 'v-deploy-test', null, { timeout: 25000 })
+      .catch(() => { throw new Error('the app never picked up the new build — a deploy would strand every installed client on the old one'); });
+  } finally {
+    serverOverride.clear();
+  }
+  await ctx.close();
 });
 
 await browser.close();

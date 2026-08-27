@@ -37,6 +37,20 @@ browser has that there's an update to install. Deriving it from content means
 you can't ship a change that installed apps never pick up. Both files are
 generated; don't hand-edit either.
 
+The worker serves navigations **cache-first with background revalidation**: a
+launch paints the cached shell immediately and the network request goes out
+behind it. Before, navigations were network-first with `cache: 'no-store'`,
+which made the cache an offline fallback and nothing else — every launch
+re-downloaded the whole app (387 KB gzipped), not just the first. The trade is
+that a launch immediately after a deploy can start on the previous build; it
+corrects itself, because the changed `sw.js` installs, activates, and the
+`controllerchange` handler in `src/bootstrap-head.js` reloads the open app onto
+the new bundle. **That is why the cache name has to change with every build** —
+it always does, since it is a hash of `index.html`, but a scheme that ever
+produced the same name twice would now strand clients rather than merely delay
+them. `tests/regression.mjs` asserts both halves: that a repeat launch pulls
+zero bytes, and that a deploy still reaches a client that has one cached.
+
 `build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
 
 ## Making a change
