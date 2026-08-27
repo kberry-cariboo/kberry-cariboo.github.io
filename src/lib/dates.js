@@ -84,6 +84,20 @@
     const why = hol ? `is ${hol.name}${hol.optional ? " (an optional holiday)" : ""}` : "falls on a weekend";
     return `Payday ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day} ${why} — direct deposit lands ${WEEKDAYS[paid.getDay()]} ${MONTHS[paid.getMonth()]} ${paid.getDate()}. The budget keeps it on the payday.`;
   }
+  // The nth named weekday of a month — nth 1..5 counting forward, or -1 for
+  // the last one. Returns null when a month has no 5th such weekday, so a
+  // "5th Friday" entry simply produces nothing in the months that lack one
+  // rather than silently sliding into the next month.
+  function nthWeekdayInMonth(year, month, weekday, nth) {
+    if (nth === -1) {
+      const last = new Date(year, month, daysInMonth(month, year));
+      last.setDate(last.getDate() - ((last.getDay() - weekday + 7) % 7));
+      return last;
+    }
+    const first = new Date(year, month, 1);
+    const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
+    return day > daysInMonth(month, year) ? null : new Date(year, month, day);
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -148,6 +162,11 @@
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
+          // Who last edited this occurrence, and when — carried through for
+          // display only, so the occurrence editor can attribute the change in
+          // a shared household. Nothing totals or sorts by either.
+          _by: ov._by,
+          _savedAt: ov._savedAt,
           month: effM,
           day: effD,
           date: effDate,
@@ -207,14 +226,36 @@
           }
           cur.setDate(cur.getDate() + every * 7);
         }
-      } else if (unit === "month") {
+      } else if (unit === "month" || unit === "monthend" || unit === "monthweekday") {
+        // All three step month by month from the start month; they differ only
+        // in which day of the month they land on.
+        //
+        //   month         the same day number, clamped into short months
+        //   monthend      the last day, whatever length the month is
+        //   monthweekday  the nth (or last) named weekday
+        //
+        // "monthend" is not the same as a plain monthly entry anchored on the
+        // 31st: that one lands on the 28th in February and the 31st in March,
+        // but an entry *created* in February anchors on the 28th and then
+        // stays on the 28th for the rest of the year. A bill genuinely due on
+        // the last day needs the intent recorded, not inferred from whichever
+        // month it was first entered in.
         const anchorDay = startD.getDate();
+        const nth = Number.isFinite(e.recurNth) ? e.recurNth : 1;
+        const weekday = Array.isArray(e.recurDays) && e.recurDays.length ? e.recurDays[0] : startD.getDay();
         for (let mi = 0; mi < 12; mi++) {
           const startMi = startD.getFullYear() < year ? 0 : startD.getFullYear() === year ? startD.getMonth() : 999;
           if (mi < startMi) continue;
           const totalMo = (year - startD.getFullYear()) * 12 + mi - startD.getMonth();
           if (totalMo < 0 || totalMo % every !== 0) continue;
-          addEv(new Date(year, mi, Math.min(anchorDay, daysInMonth(mi, year))));
+          if (unit === "monthend") {
+            addEv(new Date(year, mi, daysInMonth(mi, year)));
+          } else if (unit === "monthweekday") {
+            const d = nthWeekdayInMonth(year, mi, weekday, nth);
+            if (d) addEv(d);
+          } else {
+            addEv(new Date(year, mi, Math.min(anchorDay, daysInMonth(mi, year))));
+          }
         }
       } else if (unit === "year") {
         const sy = startD.getFullYear();
@@ -269,6 +310,11 @@
       recurEvery: e.recurEvery || 1,
       recurUnit: e.recurUnit || "month",
       recurDays: e.recurDays || [],
+      // Part of the shape: changing only which weekday of the month a bill
+      // falls on is a real change to the schedule, and without it here it
+      // would read as "nothing changed" and be applied retroactively over
+      // months already recorded.
+      recurNth: Number.isFinite(e.recurNth) ? e.recurNth : null,
       startDate: e.startDate,
       monthlyAmounts: e.monthlyAmounts || null
     });

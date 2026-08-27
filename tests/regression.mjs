@@ -423,6 +423,181 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // table (rather than calling getMonthSummaries directly) is deliberate: the
   // defect was in what the user saw, and a unit test on the helper would not
   // have caught the grid footer or the annual row.
+  // Currency and number format were hardcoded to en-CA and a bare "$" in
+  // fmt(), which is the single function every amount in the app goes through.
+  await test('settings: changing currency and number format rewrites every amount', async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.locator('#set-currency').selectOption('EUR');
+    await page.locator('#set-locale').selectOption('de-DE');
+    await page.waitForTimeout(500);
+
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+    // German grouping puts points where en-CA puts commas, and the symbol
+    // changes with the currency.
+    if (!kpi.includes('€')) throw new Error('currency symbol did not change: ' + kpi);
+    if (!/\d\.\d{3},\d{2}/.test(kpi)) throw new Error('number format did not change: ' + kpi);
+    // Chart axes format money too, through the same module state.
+    const ticks = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((t) => t.textContent).join(' '));
+    if (!ticks.includes('€')) throw new Error('chart axis still using the old symbol: ' + ticks.slice(0, 120));
+
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    await page.locator('#set-currency').selectOption('CAD');
+    await page.locator('#set-locale').selectOption('en-CA');
+    await page.waitForTimeout(500);
+  });
+
+  // The statutory holidays that decide when a payday lands were British
+  // Columbia's, with no way to pick another province.
+  await test('settings: the holiday region changes which dates are computed', async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const list = () => page.locator('#sec-holidays').innerText();
+    const bc = await list();
+    if (!/British Columbia Day/.test(bc)) throw new Error('BC list missing BC Day');
+
+    await page.locator('#holiday-region').selectOption('QC');
+    await page.waitForTimeout(700);
+    const qc = await list();
+    if (!/St-Jean-Baptiste Day/.test(qc)) throw new Error('Quebec list missing St-Jean-Baptiste: ' + qc.slice(0, 200));
+    if (/Family Day/.test(qc)) throw new Error('Quebec should have no Family Day');
+    if (!/Canada Day/.test(qc)) throw new Error('Quebec lost a national holiday');
+
+    await page.locator('#holiday-region').selectOption('BC');
+    await page.waitForTimeout(700);
+    if (!/British Columbia Day/.test(await list())) throw new Error('switching back did not restore BC');
+  });
+
+  // Every balance in the app is projected from the year's opening figure; the
+  // Help page is explicit that marking an occurrence paid is a tick-off, not a
+  // reconciliation. Nothing measured the projection against reality, and the
+  // only correction available rewrote the whole year.
+  await test('dashboard: reconciling to the bank adjusts today without touching income or expenses', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+
+    const money = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+    const tile = (name) => page.locator('.kpi-tile', { hasText: name }).locator('.kpi-spark-value').innerText();
+    const balanceText = () => page.locator('.glance-tile', { hasText: 'Balance today' }).locator('.glance-value').innerText();
+
+    const incomeBefore = await tile('Annual Income');
+    const expenseBefore = await tile('Annual Expenses');
+    const projected = money(await balanceText());
+    const target = projected - 27985;
+
+    await page.getByRole('button', { name: /Reconcile/ }).click();
+    await page.locator('#rec-actual').waitFor(V);
+    await page.locator('#rec-actual').fill((target / 100).toFixed(2));
+    await page.getByRole('button', { name: 'Record adjustment' }).click();
+    await page.waitForTimeout(800);
+
+    const after = money(await balanceText());
+    if (after !== target) throw new Error(`balance did not match the bank figure: wanted ${target}, got ${after}`);
+
+    // The adjustment is a transfer precisely so it stays out of these two —
+    // it is not earnings and not spending, and putting it in either would
+    // distort a category and Budget vs Actual along with it.
+    if (await tile('Annual Income') !== incomeBefore) throw new Error('reconciliation leaked into Annual Income');
+    if (await tile('Annual Expenses') !== expenseBefore) throw new Error('reconciliation leaked into Annual Expenses');
+
+    // Leave the fixture as it was found — the suite shares one session.
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    await page.getByLabel('Rows per page').first().selectOption('all');
+    await page.waitForTimeout(400);
+    const row = page.locator('tr', { hasText: 'Balance adjustment' }).first();
+    await row.locator('button').last().click();
+    await page.waitForTimeout(400);
+    await page.getByText('Delete', { exact: false }).last().click();
+    await page.waitForTimeout(300);
+    const confirmDel = page.locator('.modal-overlay').getByRole('button', { name: /^Delete$/ });
+    if (await confirmDel.count() > 0) await confirmDel.first().click();
+    await page.waitForTimeout(500);
+  });
+
+  // A shared budget generates "who changed this?", and nothing answered it:
+  // entries have carried a userId since they were first synced and overrides
+  // carried a timestamp, but neither was ever displayed.
+  await test('household: an occurrence edit records who made it', async () => {
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const row = page.locator('.forecast-table tbody tr').filter({ hasText: 'Rent' }).first();
+    await row.locator('td').nth(2).click();
+    await page.waitForTimeout(500);
+    const amount = page.locator('.modal-card input[inputmode="decimal"]').first();
+    await amount.fill('1751');
+    await page.getByRole('button', { name: /^Save/ }).first().click();
+    await page.waitForTimeout(600);
+
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    await page.getByRole('button', { name: /Audit/i }).first().click();
+    await page.waitForTimeout(600);
+    const entry = await page.locator('.audit-entry').first().innerText();
+    if (!/Saved/.test(entry)) throw new Error('audit row has no save stamp: ' + entry);
+    // The fixture household has a single member, and naming yourself on every
+    // row you touched is noise — so the *absence* of a "by" here is correct,
+    // and what this pins down is that the stamp is recorded and rendered
+    // without throwing.
+    if (/\bby\s*$/.test(entry)) throw new Error('dangling "by" with no name: ' + entry);
+
+    // Put back everything this touched. The suite shares one page session, so
+    // both the override and the Settings sub-page are state later cases read:
+    // leaving the override in place moved the Rent figures a downstream test
+    // asserts on, and leaving Settings on Audit meant the next test to open
+    // Settings found no category list at all.
+    await page.locator('.audit-entry').first().getByRole('button', { name: /Revert/i }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /General/i }).first().click();
+    await page.waitForTimeout(400);
+  });
+
+  // Undo used to exist for exactly one action (deleting an entry) while the
+  // more destructive ones — a category, a budget year, a year of targets,
+  // restoring a backup over your data — committed with no way back. This
+  // covers the one that is easiest to press by accident and hardest to
+  // reconstruct by hand.
+  await test('settings: removing a category can be undone, colour and position included', async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    const names = () => page.evaluate(() => [...document.querySelectorAll('#sec-categories .cat-row')]
+      .map((r) => r.innerText.replace(/\s+/g, ' ').replace(/[⠿↑↓]|Reset|Edit|Remove/g, '').trim()));
+    const swatches = () => page.evaluate(() => [...document.querySelectorAll('#sec-categories .cat-row')]
+      .map((r) => { const d = r.querySelector('[style*="background"]'); return d ? getComputedStyle(d).backgroundColor : ''; }));
+
+    const before = await names(), colorsBefore = await swatches();
+    if (before.length < 2) throw new Error('expected a category list, got ' + JSON.stringify(before));
+
+    await page.locator('#sec-categories .cat-row').first().locator('button', { hasText: /^Remove$/ }).click();
+    await page.waitForTimeout(400);
+    const afterDelete = await names();
+    if (afterDelete.length !== before.length - 1) throw new Error(`remove did not drop a row: ${before.length} -> ${afterDelete.length}`);
+
+    const toast = await page.locator('.undo-toast').innerText();
+    if (!toast.includes(before[0])) throw new Error(`toast does not name the removed category: ${toast}`);
+
+    await page.locator('.undo-btn').click();
+    await page.waitForTimeout(400);
+    const afterUndo = await names(), colorsAfter = await swatches();
+    if (JSON.stringify(afterUndo) !== JSON.stringify(before)) {
+      throw new Error(`undo did not restore the list in order: ${JSON.stringify(before)} vs ${JSON.stringify(afterUndo)}`);
+    }
+    // The colour lives in a separate map from the name, so restoring only the
+    // name would bring the category back grey.
+    if (JSON.stringify(colorsAfter) !== JSON.stringify(colorsBefore)) {
+      throw new Error('undo restored the names but not the colours');
+    }
+  });
+
   await test('dashboard: every monthly summary row reconciles with the balance beside it', async () => {
     await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
     await page.waitForTimeout(900);
@@ -1202,7 +1377,7 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   if ((await page.evaluate(() => window.__holidayFetches || [])).length !== 0) {
     throw new Error('the app fetched holidays without being asked');
   }
-  await section.getByRole('button', { name: /Fetch 2026 from canada-holidays\.ca/ }).click();
+  await section.getByRole('button', { name: /Fetch 2026 for BC from canada-holidays\.ca/ }).click();
   await page.getByRole('button', { name: 'Fetch', exact: true }).click();
   await page.waitForTimeout(700);
   const asked = await page.evaluate(() => window.__holidayFetches || []);

@@ -359,6 +359,16 @@
         .receipt-lightbox-close{position:fixed;top:calc(14px + env(safe-area-inset-top));right:16px;
           width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
           background:rgba(255,255,255,0.15);color:#fff;font-size:18px;}
+        .glance-action{margin-top:6px;background:none;border:none;padding:0;cursor:pointer;
+          font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline;
+          text-underline-offset:2px;font-family:inherit;}
+        .glance-action:hover{color:var(--primary);}
+        .reconcile-row{display:flex;justify-content:space-between;align-items:baseline;
+          padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:14px;}
+        .reconcile-figure{font-weight:700;}
+        .reconcile-diff{font-size:12px;color:var(--textMid);margin-top:10px;line-height:1.5;}
+        .entry-addedby{font-size:11px;color:var(--textLt);margin-bottom:10px;}
+        .oem-editedby{font-size:11px;color:var(--textLt);margin-bottom:12px;}
         .csvimport-dup-reason{font-size:11px;color:var(--textLt);margin-top:2px;}
         /* Legend for the Forecast's "vs Target" column. The rule it states
            used to live only in a title tooltip, which never fires on touch. */
@@ -2886,7 +2896,7 @@ document.addEventListener('DOMContentLoaded',function(){
           startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : localDateStr(/* @__PURE__ */ new Date()),
           repeats: !!e.repeats,
           recurEvery: parseInt(e.recurEvery) > 0 ? parseInt(e.recurEvery) : 1,
-          recurUnit: ["day", "week", "month", "year", "semimonth"].includes(e.recurUnit) ? e.recurUnit : "month",
+          recurUnit: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(e.recurUnit) ? e.recurUnit : "month",
           recurDays: Array.isArray(e.recurDays) ? e.recurDays : [],
           recurEnd: typeof e.recurEnd === "string" ? e.recurEnd : "",
           category: typeof e.category === "string" && e.category ? e.category : "Uncategorized",
@@ -3095,14 +3105,14 @@ document.addEventListener('DOMContentLoaded',function(){
   // synced it to everyone else in the household is not a thing the app should
   // do on its own initiative.
   //
-  // A year with nothing stored falls back to computeBCHolidays() below, which
+  // A year with nothing stored falls back to computeRegionHolidays() below, which
   // works the list out from the rules. That fallback is the floor the feature
   // stands on rather than a stopgap: the app is offline-first and ships as a
   // single static page, so the deposit marker has to be right on a plane, on a
   // budget year opened for the first time, and if that site ever moves. The
   // fetch earns its place where rules can't reach — a proclaimed one-off, or a
   // change like BC moving Family Day to the third Monday in 2019.
-  const HOLIDAY_API_URL = (year) => `https://canada-holidays.ca/api/v1/provinces/BC?year=${year}&optional=true`;
+  const HOLIDAY_API_URL = (year, region) => `https://canada-holidays.ca/api/v1/provinces/${holidayRegion(region).code}?year=${year}&optional=true`;
 
   const nthWeekdayOfMonth = (year, month, weekday, n) => {
     const first = new Date(year, month, 1);
@@ -3142,7 +3152,39 @@ document.addEventListener('DOMContentLoaded',function(){
     while (obs.getDay() === 0 || obs.getDay() === 6 || taken.has(localDateStr(obs))) obs = addDays(obs, 1);
     return obs;
   };
-  function computeBCHolidays(year) {
+  // Which region's rules the built-in list is computed from. Provinces and
+  // territories differ in three places — the February holiday, the August
+  // civic one, and which of Victoria Day / Truth and Reconciliation /
+  // Remembrance Day / Boxing Day they observe — and everything else is common
+  // across the country.
+  //
+  // This is a computed baseline, not an authority. Provincial rules change,
+  // one-off proclamations happen, and some of these days are "optional" or
+  // employer-discretionary in ways a rule table can't capture. Settings →
+  // Statutory Holidays can fetch the published list for the chosen region from
+  // canada-holidays.ca, and every date can be added, edited or removed by
+  // hand; that is what the feature is for. `optional` here marks the days a
+  // region commonly treats as discretionary, matching how BC has always
+  // treated Easter Monday and Boxing Day.
+  const HOLIDAY_REGIONS = [
+    { code: "BC", name: "British Columbia", feb: "Family Day", aug: "British Columbia Day", victoria: true, truth: true, remembrance: true, boxingOptional: true },
+    { code: "AB", name: "Alberta", feb: "Family Day", aug: "Heritage Day", augOptional: true, victoria: true, truth: false, remembrance: true },
+    { code: "SK", name: "Saskatchewan", feb: "Family Day", aug: "Saskatchewan Day", victoria: true, truth: false, remembrance: true },
+    { code: "MB", name: "Manitoba", feb: "Louis Riel Day", aug: "Terry Fox Day", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "ON", name: "Ontario", feb: "Family Day", aug: "Civic Holiday", augOptional: true, victoria: true, truth: false, remembrance: false, boxing: true },
+    { code: "QC", name: "Quebec", feb: null, aug: null, victoria: true, victoriaName: "National Patriots' Day", truth: false, remembrance: false, stJean: true },
+    { code: "NB", name: "New Brunswick", feb: "Family Day", aug: "New Brunswick Day", victoria: true, truth: false, remembrance: true },
+    { code: "NS", name: "Nova Scotia", feb: "Heritage Day", aug: "Natal Day", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "PE", name: "Prince Edward Island", feb: "Islander Day", aug: "Gold Cup Parade Day", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "NL", name: "Newfoundland and Labrador", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: false, remembrance: true },
+    { code: "YT", name: "Yukon", feb: "Heritage Day", aug: "Discovery Day", augMonday: 3, victoria: true, truth: true, remembrance: true },
+    { code: "NT", name: "Northwest Territories", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "NU", name: "Nunavut", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: true, remembrance: true, nunavutDay: true }
+  ];
+  const DEFAULT_HOLIDAY_REGION = "BC";
+  const holidayRegion = (code) => HOLIDAY_REGIONS.find((r) => r.code === code) || HOLIDAY_REGIONS[0];
+  function computeRegionHolidays(year, regionCode) {
+    const r = holidayRegion(regionCode);
     const may25 = new Date(year, 4, 25);
     // Victoria Day is the Monday *preceding* May 25 — on a May 25 Monday the
     // holiday is the week before, not that day.
@@ -3150,19 +3192,21 @@ document.addEventListener('DOMContentLoaded',function(){
     const easter = easterSunday(year);
     const fixed = [
       [new Date(year, 0, 1), "New Year's Day", false],
-      [nthWeekdayOfMonth(year, 1, 1, 3), "Family Day", false],
       [addDays(easter, -2), "Good Friday", false],
       [addDays(easter, 1), "Easter Monday", true],
-      [victoria, "Victoria Day", false],
       [new Date(year, 6, 1), "Canada Day", false],
-      [nthWeekdayOfMonth(year, 7, 1, 1), "British Columbia Day", false],
       [nthWeekdayOfMonth(year, 8, 1, 1), "Labour Day", false],
-      [new Date(year, 8, 30), "National Day for Truth and Reconciliation", false],
       [nthWeekdayOfMonth(year, 9, 1, 2), "Thanksgiving", false],
-      [new Date(year, 10, 11), "Remembrance Day", false],
-      [new Date(year, 11, 25), "Christmas Day", false],
-      [new Date(year, 11, 26), "Boxing Day", true]
+      [new Date(year, 11, 25), "Christmas Day", false]
     ];
+    if (r.feb) fixed.push([nthWeekdayOfMonth(year, 1, 1, 3), r.feb, false]);
+    if (r.victoria) fixed.push([victoria, r.victoriaName || "Victoria Day", false]);
+    if (r.stJean) fixed.push([new Date(year, 5, 24), "St-Jean-Baptiste Day", false]);
+    if (r.nunavutDay) fixed.push([new Date(year, 6, 9), "Nunavut Day", false]);
+    if (r.aug) fixed.push([nthWeekdayOfMonth(year, 7, 1, r.augMonday || 1), r.aug, !!r.augOptional]);
+    if (r.truth) fixed.push([new Date(year, 8, 30), "National Day for Truth and Reconciliation", false]);
+    if (r.remembrance) fixed.push([new Date(year, 10, 11), "Remembrance Day", false]);
+    if (r.boxing || r.boxingOptional) fixed.push([new Date(year, 11, 26), "Boxing Day", !!r.boxingOptional]);
     const out = {};
     const taken = /* @__PURE__ */ new Set();
     // In date order, so an earlier holiday claims its observed day before a
@@ -3219,8 +3263,20 @@ document.addEventListener('DOMContentLoaded',function(){
   function getStoredHolidays() {
     return storedHolidays;
   }
+  // Which region the computed list is worked out for. Pushed in from App the
+  // same way the stored holidays are — the readers below are called from a
+  // dozen synchronous places with no access to React state. Changing it clears
+  // the cache, so the next lookup recomputes rather than serving the previous
+  // region's dates.
+  let computedRegion = DEFAULT_HOLIDAY_REGION;
+  function setHolidayRegion(code) {
+    const next = holidayRegion(code).code;
+    if (next === computedRegion) return;
+    computedRegion = next;
+    Object.keys(computedCache).forEach((k) => delete computedCache[k]);
+  }
   function computedHolidaysForYear(year) {
-    if (!computedCache[year]) computedCache[year] = computeBCHolidays(year);
+    if (!computedCache[year]) computedCache[year] = computeRegionHolidays(year, computedRegion);
     return computedCache[year];
   }
   // A stored year replaces the computed one outright rather than merging with
@@ -3275,10 +3331,10 @@ document.addEventListener('DOMContentLoaded',function(){
   // Throws with a message meant to be shown as-is: this is only ever called
   // from a button the user pressed, so a failure has to say what happened
   // rather than fall back silently the way an automatic refresh would.
-  async function fetchBCHolidayYear(year) {
+  async function fetchHolidayYear(year, region) {
     let res;
     try {
-      res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
+      res = await fetch(HOLIDAY_API_URL(year, region), { headers: { accept: "application/json" } });
     } catch (e) {
       throw new Error("Couldn't reach canada-holidays.ca. Check your connection and try again.");
     }
@@ -3424,6 +3480,20 @@ document.addEventListener('DOMContentLoaded',function(){
     const why = hol ? `is ${hol.name}${hol.optional ? " (an optional holiday)" : ""}` : "falls on a weekend";
     return `Payday ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day} ${why} — direct deposit lands ${WEEKDAYS[paid.getDay()]} ${MONTHS[paid.getMonth()]} ${paid.getDate()}. The budget keeps it on the payday.`;
   }
+  // The nth named weekday of a month — nth 1..5 counting forward, or -1 for
+  // the last one. Returns null when a month has no 5th such weekday, so a
+  // "5th Friday" entry simply produces nothing in the months that lack one
+  // rather than silently sliding into the next month.
+  function nthWeekdayInMonth(year, month, weekday, nth) {
+    if (nth === -1) {
+      const last = new Date(year, month, daysInMonth(month, year));
+      last.setDate(last.getDate() - ((last.getDay() - weekday + 7) % 7));
+      return last;
+    }
+    const first = new Date(year, month, 1);
+    const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
+    return day > daysInMonth(month, year) ? null : new Date(year, month, day);
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3488,6 +3558,11 @@ document.addEventListener('DOMContentLoaded',function(){
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
+          // Who last edited this occurrence, and when — carried through for
+          // display only, so the occurrence editor can attribute the change in
+          // a shared household. Nothing totals or sorts by either.
+          _by: ov._by,
+          _savedAt: ov._savedAt,
           month: effM,
           day: effD,
           date: effDate,
@@ -3547,14 +3622,36 @@ document.addEventListener('DOMContentLoaded',function(){
           }
           cur.setDate(cur.getDate() + every * 7);
         }
-      } else if (unit === "month") {
+      } else if (unit === "month" || unit === "monthend" || unit === "monthweekday") {
+        // All three step month by month from the start month; they differ only
+        // in which day of the month they land on.
+        //
+        //   month         the same day number, clamped into short months
+        //   monthend      the last day, whatever length the month is
+        //   monthweekday  the nth (or last) named weekday
+        //
+        // "monthend" is not the same as a plain monthly entry anchored on the
+        // 31st: that one lands on the 28th in February and the 31st in March,
+        // but an entry *created* in February anchors on the 28th and then
+        // stays on the 28th for the rest of the year. A bill genuinely due on
+        // the last day needs the intent recorded, not inferred from whichever
+        // month it was first entered in.
         const anchorDay = startD.getDate();
+        const nth = Number.isFinite(e.recurNth) ? e.recurNth : 1;
+        const weekday = Array.isArray(e.recurDays) && e.recurDays.length ? e.recurDays[0] : startD.getDay();
         for (let mi = 0; mi < 12; mi++) {
           const startMi = startD.getFullYear() < year ? 0 : startD.getFullYear() === year ? startD.getMonth() : 999;
           if (mi < startMi) continue;
           const totalMo = (year - startD.getFullYear()) * 12 + mi - startD.getMonth();
           if (totalMo < 0 || totalMo % every !== 0) continue;
-          addEv(new Date(year, mi, Math.min(anchorDay, daysInMonth(mi, year))));
+          if (unit === "monthend") {
+            addEv(new Date(year, mi, daysInMonth(mi, year)));
+          } else if (unit === "monthweekday") {
+            const d = nthWeekdayInMonth(year, mi, weekday, nth);
+            if (d) addEv(d);
+          } else {
+            addEv(new Date(year, mi, Math.min(anchorDay, daysInMonth(mi, year))));
+          }
         }
       } else if (unit === "year") {
         const sy = startD.getFullYear();
@@ -3609,6 +3706,11 @@ document.addEventListener('DOMContentLoaded',function(){
       recurEvery: e.recurEvery || 1,
       recurUnit: e.recurUnit || "month",
       recurDays: e.recurDays || [],
+      // Part of the shape: changing only which weekday of the month a bill
+      // falls on is a real change to the schedule, and without it here it
+      // would read as "nothing changed" and be applied retroactively over
+      // months already recorded.
+      recurNth: Number.isFinite(e.recurNth) ? e.recurNth : null,
       startDate: e.startDate,
       monthlyAmounts: e.monthlyAmounts || null
     });
@@ -4111,12 +4213,97 @@ document.addEventListener('DOMContentLoaded',function(){
   // One negative-number convention app-wide: a minus sign, never parentheses
   // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
   // `n` is cents.
+  // The household's currency and number formatting. Pushed in from App the
+  // same way holidays are (setStoredHolidays) — fmt() is called from about
+  // ninety places, none of which have access to React state, and threading a
+  // formatter through all of them would be a much larger change than the
+  // feature is worth.
+  //
+  // Only 2-decimal currencies are offered. Money is integer cents everywhere
+  // at rest, so a 0-decimal currency (yen) or a 3-decimal one (dinar) would
+  // need the storage model changed, not just the formatting — offering one
+  // here would produce amounts that are quietly wrong by a factor of ten.
+  const CURRENCIES = [
+    { code: "CAD", name: "Canadian dollar" },
+    { code: "USD", name: "US dollar" },
+    { code: "EUR", name: "Euro" },
+    { code: "GBP", name: "Pound sterling" },
+    { code: "AUD", name: "Australian dollar" },
+    { code: "NZD", name: "New Zealand dollar" },
+    { code: "CHF", name: "Swiss franc" },
+    { code: "SEK", name: "Swedish krona" },
+    { code: "NOK", name: "Norwegian krone" },
+    { code: "DKK", name: "Danish krone" },
+    { code: "PLN", name: "Polish z\u0142oty" },
+    { code: "MXN", name: "Mexican peso" },
+    { code: "BRL", name: "Brazilian real" },
+    { code: "ZAR", name: "South African rand" },
+    { code: "INR", name: "Indian rupee" },
+    { code: "SGD", name: "Singapore dollar" },
+    { code: "HKD", name: "Hong Kong dollar" }
+  ];
+  // Number formatting only — which separators go where. Kept deliberately
+  // short and described by what each one looks like rather than by country,
+  // because that is the actual choice being made: someone in Ireland wanting
+  // 1.234,56 should not have to know which locale tag produces it.
+  const NUMBER_LOCALES = [
+    { code: "en-CA", name: "1,234.56  (comma / point)" },
+    { code: "de-DE", name: "1.234,56  (point / comma)" },
+    { code: "fr-FR", name: "1 234,56  (space / comma)" },
+    { code: "en-IN", name: "1,23,456.78  (Indian grouping)" },
+    { code: "de-CH", name: "1\u2019234.56  (apostrophe / point)" }
+  ];
+  const DEFAULT_CURRENCY = "CAD";
+  const DEFAULT_LOCALE = "en-CA";
+  let _money = { locale: DEFAULT_LOCALE, currency: DEFAULT_CURRENCY, symbol: "$", nf: null };
+  // The symbol on its own, which is what the app's own sign convention needs:
+  // a leading minus, then the symbol, then the grouped number. Intl's
+  // style:"currency" puts the sign wherever the locale wants it and would
+  // give three different shapes across the app's tiles and tables.
+  function currencySymbol(locale, currency) {
+    try {
+      const parts = new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).formatToParts(0);
+      const sym = parts.find((p) => p.type === "currency");
+      if (sym && sym.value) return sym.value;
+    } catch (e) {
+      // An unsupported locale/currency pair, or an engine without
+      // narrowSymbol: fall through to the code itself, which is always
+      // intelligible even if it isn't pretty.
+    }
+    return currency + "\u00a0";
+  }
+  function setMoneyFormat(locale, currency) {
+    const loc = locale || DEFAULT_LOCALE;
+    const cur = currency || DEFAULT_CURRENCY;
+    if (_money.locale === loc && _money.currency === cur && _money.nf) return;
+    let nf = null;
+    try {
+      nf = new Intl.NumberFormat(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (e) {
+      // A locale tag the engine doesn't know must not take the app down; the
+      // default grouping is still readable.
+      try {
+        nf = new Intl.NumberFormat(DEFAULT_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (e2) {
+        nf = null;
+      }
+    }
+    _money = { locale: loc, currency: cur, symbol: currencySymbol(loc, cur), nf };
+  }
+  setMoneyFormat(DEFAULT_LOCALE, DEFAULT_CURRENCY);
+  // The bare symbol, for the handful of places that put one beside an input
+  // rather than formatting a number — the alert threshold, an opening balance,
+  // a goal target. They were literal "$" characters, which is how a household
+  // set to euros ends up typing into a box labelled with a dollar sign.
+  const moneySymbol = () => _money.symbol;
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
-    const abs = Math.abs(centsToDollars(n)).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (n < 0) return `-$${abs}`;
-    if (showSign && n > 0) return `+$${abs}`;
-    return `$${abs}`;
+    const d = Math.abs(centsToDollars(n));
+    const abs = _money.nf ? _money.nf.format(d) : d.toFixed(2);
+    const sym = _money.symbol;
+    if (n < 0) return `-${sym}${abs}`;
+    if (showSign && n > 0) return `+${sym}${abs}`;
+    return `${sym}${abs}`;
   };
   // Rolls over to millions rather than running the k tier forever — without
   // it a $15M axis tick reads "$15000k". (mini-recharts' own defaultFmt
@@ -4124,9 +4311,9 @@ document.addEventListener('DOMContentLoaded',function(){
   // needs to agree.)
   const fmtAxisK = (v) => {
     const d = Math.abs(centsToDollars(v));
-    const sign = v < 0 ? "-$" : "$";
+    const sign = (v < 0 ? "-" : "") + _money.symbol;
     // The zero line read "$0k" before — the suffix was unconditional.
-    if (d === 0) return "$0";
+    if (d === 0) return _money.symbol + "0";
     return d >= 1e6 ? sign + (d / 1e6).toFixed(1) + "M" : sign + (d / 1e3).toFixed(0) + "k";
   };
   // One download path for every export (CSV here, JSON backup in App.js and
@@ -4138,6 +4325,22 @@ document.addEventListener('DOMContentLoaded',function(){
   // the revoke past the navigation. It also reports failure instead of
   // silently doing nothing, which matters because Settings names local export
   // as the only backup path and the app nudges for one every 30 days.
+  // Resolve a stored user id to a display name. Ids are what get stamped on
+  // entries and overrides — names are editable in Settings, so a stored copy
+  // would go stale the moment someone corrected theirs — and this is the one
+  // place that turns one back into something to show.
+  //
+  // Returns "" when there is nobody to name: a legacy row with no author, a
+  // household of one (where "by Ken" on every row is noise), or an id no
+  // longer in the member list. Callers render nothing at all in that case
+  // rather than "Unknown".
+  function memberName(userId, members, opts = {}) {
+    if (!userId || !Array.isArray(members) || members.length < 2 && !opts.always) return "";
+    const m = members.find((x) => x && x.user_id === userId);
+    if (!m) return "";
+    if (opts.selfId && m.user_id === opts.selfId) return "you";
+    return m.full_name || m.email || "";
+  }
   function downloadBlob(filename, blob) {
     try {
       const url = URL.createObjectURL(blob);
@@ -4209,7 +4412,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);
       if (!vals.length) return "Variable";
       const mn = Math.min(...vals), mx = Math.max(...vals);
-      const k = (v) => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : "$" + Math.round(v);
+      const k = (v) => v >= 1e6 ? _money.symbol + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? _money.symbol + (v / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1) + "k" : _money.symbol + Math.round(v);
       return mn === mx ? "\u2248 " + k(mn) : k(mn) + "\u2013" + k(mx);
     } catch (err) {
       return "Variable";
@@ -4424,7 +4627,14 @@ document.addEventListener('DOMContentLoaded',function(){
     // someone edits a year or fetches one; every year without an entry falls
     // back to the rules in holidays.js. Household data like anything else:
     // corrected on one device, right on every device.
-    { key: "holidays", storage: "cf_holidays", initial: () => ({}), kind: "object", backup: true }
+    { key: "holidays", storage: "cf_holidays", initial: () => ({}), kind: "object", backup: true },
+    // Household-wide, not per-device: everyone sharing a budget has to see the
+    // same figures in the same currency, and the statutory holidays that
+    // decide when a payday lands are already household data (the `holidays`
+    // table above).
+    { key: "currency", storage: "cf_currency", initial: () => DEFAULT_CURRENCY, kind: "truthy", backup: true },
+    { key: "locale", storage: "cf_locale", initial: () => DEFAULT_LOCALE, kind: "truthy", backup: true },
+    { key: "holidayRegion", storage: "cf_holiday_region", initial: () => DEFAULT_HOLIDAY_REGION, kind: "truthy", backup: true }
   ];
   // Creates the localStorage-backed state for every field in the table, in
   // table order, and returns the two objects useHouseholdData indexes by field
@@ -5327,6 +5537,12 @@ document.addEventListener('DOMContentLoaded',function(){
     return { ok: true, count: rows.length };
   }
   const CategoriesContext = createContext({ categories: [], categoryColors: {} });
+  // Who is in the household, and which one is looking. Read by anything that
+  // wants to attribute a change to a person — an entry's author, an
+  // occurrence override's — without four layers of prop drilling to reach it.
+  // Empty in the signed-out and single-member cases, which is what makes
+  // memberName() return "" and every consumer render nothing.
+  const HouseholdContext = createContext({ members: [], sessionUser: null });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
   const LOGO_SRC = "data:image/png;base64,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";
   const DEFAULT_ALERT_THRESHOLD = 150000;
@@ -6695,6 +6911,13 @@ document.addEventListener('DOMContentLoaded',function(){
       recurEvery: 1,
       recurUnit: "month",
       recurDays: [],
+      // Which occurrence in the month, for the "nth weekday" schedule:
+      // 1..5 counting forward, or -1 for the last one. Ignored by every other
+      // unit. Stored rather than derived from the start date, because the
+      // start date can't tell "the fourth Friday" from "the last Friday" —
+      // they are the same day in most months and different in the long ones,
+      // and which one the bill means is not something to guess.
+      recurNth: 1,
       recurEnd: "",
       monthlyAmounts: null,
       transferDirection: "out"
@@ -6707,6 +6930,7 @@ document.addEventListener('DOMContentLoaded',function(){
       recurEvery: (_a = initial.recurEvery) != null ? _a : 1,
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
+      recurNth: Number.isFinite(initial.recurNth) ? initial.recurNth : 1,
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
       repeats: (_e = initial.repeats) != null ? _e : false,
       transferDirection: initial.transferDirection || "out"
@@ -6737,7 +6961,7 @@ document.addEventListener('DOMContentLoaded',function(){
           start_date: { type: "string", description: "Date it first applies, as YYYY-MM-DD. Use today when the text doesn't say." },
           repeats: { type: "boolean", description: "true only when the text describes something recurring." },
           recur_every: { type: "integer", description: "Interval between repeats, e.g. 2 for 'every second week'. 1 otherwise." },
-          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth"] },
+          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"] },
           recur_days: { type: "array", description: "Weekly repeats only: weekday numbers, 0 = Sunday through 6 = Saturday.", items: { type: "integer" } },
           recur_end: { type: "string", description: "Last date as YYYY-MM-DD, or an empty string when ongoing." },
           notes: { type: "string", description: "Anything in the text that doesn't fit the other fields. Empty string if none." }
@@ -6763,7 +6987,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (/^\d{4}-\d{2}-\d{2}$/.test(data.start_date || "")) patch.startDate = data.start_date;
         patch.repeats = !!data.repeats;
         if (patch.repeats) {
-          patch.recurUnit = ["day", "week", "month", "year", "semimonth"].includes(data.recur_unit) ? data.recur_unit : "month";
+          patch.recurUnit = ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(data.recur_unit) ? data.recur_unit : "month";
           patch.recurEvery = Number.isInteger(data.recur_every) && data.recur_every > 0 ? data.recur_every : 1;
           // recurDays is only meaningful for weekly repeats, and the form's
           // own weekday toggles assume clean 0-6 values.
@@ -6787,7 +7011,22 @@ document.addEventListener('DOMContentLoaded',function(){
       const newDays = f.recurUnit === "week" ? wd !== null ? [wd] : f.recurDays : f.recurDays;
       set({ startDate: val, recurDays: newDays });
     };
-    const setUnit = (unit) => set({ recurUnit: unit, recurDays: unit === "week" && startWD !== null ? [startWD] : [] });
+    const setUnit = (unit) => {
+      // recurDays carries the weekday for both "week" and "monthweekday"; the
+      // start date is the natural default for each, so switching to either
+      // pre-selects the day the user already picked rather than Sunday.
+      if (unit === "monthweekday") {
+        const d = startD || null;
+        set({
+          recurUnit: unit,
+          recurDays: startWD !== null ? [startWD] : [],
+          // Which occurrence of that weekday the start date already is.
+          recurNth: d ? Math.floor((d.getDate() - 1) / 7) + 1 : 1
+        });
+        return;
+      }
+      set({ recurUnit: unit, recurDays: unit === "week" && startWD !== null ? [startWD] : [] });
+    };
     const toggleWD = (wd) => {
       if (f.recurEvery > 1 || wd === startWD) return;
       const next = f.recurDays.includes(wd) ? f.recurDays.filter((d) => d !== wd) : [...f.recurDays, wd].sort((a, b) => a - b);
@@ -6797,6 +7036,12 @@ document.addEventListener('DOMContentLoaded',function(){
       if (!f.repeats) return null;
       const e = f.recurEvery, u = f.recurUnit, until = f.recurEnd ? ` until ${f.recurEnd}` : " (ongoing)";
       if (u === "semimonth") return `Semi-monthly (1st & 15th pattern)${until}`;
+      if (u === "monthend") return `The last day of every month${until}`;
+      if (u === "monthweekday") {
+        const ord = { "1": "first", "2": "second", "3": "third", "4": "fourth", "5": "fifth", "-1": "last" }[String(f.recurNth)] || "first";
+        const wd = WEEKDAYS[f.recurDays[0] != null ? f.recurDays[0] : startWD || 0];
+        return `The ${ord} ${wd} of every month${until}`;
+      }
       if (u === "day") return `Every ${e} day${e > 1 ? "s" : ""}${until}`;
       if (u === "month") return `Every ${e} month${e > 1 ? "s" : ""}${until}`;
       if (u === "year") return `Every ${e} year${e > 1 ? "s" : ""}${until}`;
@@ -6825,13 +7070,22 @@ document.addEventListener('DOMContentLoaded',function(){
         amount: dollarsToCents(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
-        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
+        recurNth: f.recurUnit === "monthweekday" ? parseInt(f.recurNth, 10) || 1 : void 0,
+        // "monthweekday" keeps exactly one weekday (the schedule names one);
+        // "week" keeps the start day plus any extras the user ticked.
+        recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
+    // Who added this entry, when the household has more than one person in it
+    // and it wasn't you. The id has round-tripped as `userId` since entries
+    // were first synced; nothing ever displayed it, so "who put this here?"
+    // had no answer in a shared budget.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const addedBy = initial ? memberName(initial.userId, hhMembers, { selfId: hhUser && hhUser.id }) : "";
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, addedBy && addedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "entry-addedby" }, "Added by ", addedBy), !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
       /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
       /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
         /* @__PURE__ */ React.createElement("input", {
@@ -6933,7 +7187,11 @@ document.addEventListener('DOMContentLoaded',function(){
           );
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "monthend" }, "Monthly \u2014 last day"), /* @__PURE__ */ React.createElement("option", { value: "monthweekday" }, "Monthly \u2014 nth weekday"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "monthweekday" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      className: lblCls,
+      helpLabel: "Which weekday",
+      help: "A month with only four of the chosen weekday has no fifth one, so a \u201c5th\u201d entry simply doesn\u2019t occur in those months. Pick \u201cLast\u201d for the one that should always land in the final week."
+    }, "Which weekday"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("select", { "aria-label": "Which occurrence in the month", className: inpCls(false), style: { flex: "0 1 130px" }, value: String(f.recurNth), onChange: (e) => set({ recurNth: parseInt(e.target.value, 10) }) }, [[1, "First"], [2, "Second"], [3, "Third"], [4, "Fourth"], [5, "Fifth"], [-1, "Last"]].map(([v, lbl]) => /* @__PURE__ */ React.createElement("option", { key: v, value: String(v) }, lbl))), /* @__PURE__ */ React.createElement("select", { "aria-label": "Weekday", className: inpCls(false), style: { flex: "0 1 150px" }, value: String(f.recurDays[0] != null ? f.recurDays[0] : startWD || 0), onChange: (e) => set({ recurDays: [parseInt(e.target.value, 10)] }) }, WEEKDAYS.map((wd, i) => /* @__PURE__ */ React.createElement("option", { key: wd, value: String(i) }, wd))))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
       className: lblCls,
       helpLabel: "Weekdays",
       help: f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."
@@ -7869,6 +8127,8 @@ document.addEventListener('DOMContentLoaded',function(){
       if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { className: "recur-onetime" }, "One-time");
       const u = e.recurUnit || "month", ev = e.recurEvery || 1;
       if (u === "semimonth") return "Semi-monthly";
+      if (u === "monthend") return "Month end";
+      if (u === "monthweekday") return "Monthly (weekday)";
       if (u === "week" && ((_a = e.recurDays) == null ? void 0 : _a.length) > 1) return `Every ${ev}w \xB7 ${e.recurDays.map((d) => WEEKDAYS[d].slice(0, 2)).join("/")}`;
       if (u === "week") return `Every ${ev}wk`;
       if (u === "day") return `Every ${ev}d`;
@@ -8433,6 +8693,106 @@ document.addEventListener('DOMContentLoaded',function(){
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
     )));
   }
+  // "The app says $2,140. What does the bank actually say?"
+  //
+  // Every balance in the app is projected from one figure — the year's opening
+  // balance — plus the entries. Nothing measures it against reality, and the
+  // Help page is explicit that marking an occurrence paid is a tick-off, not a
+  // reconciliation. So the projection drifts: cash spent, a rounding, a
+  // purchase nobody entered. Until now the only correction was to edit
+  // January's opening balance, which rewrites every balance in the year
+  // including the months you had already checked.
+  //
+  // The adjustment is posted as a dated one-time **transfer** rather than an
+  // income or expense entry. That is exactly the meaning transfers already
+  // carry (see getMonthSummaries): it moves the running balance without
+  // pretending to be earnings or spending, so it doesn't land in Budget vs
+  // Actual, distort a category, or turn up in the AI's spending analysis. It
+  // is visible in the ledger on the day it was made, and can be deleted like
+  // any other entry if it was a mistake.
+  function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
+    const [actual, setActual] = useState("");
+    const [err, setErr] = useState("");
+    const parsed = actual.trim() === "" ? null : Number(actual);
+    const valid = parsed !== null && Number.isFinite(parsed);
+    const actualCents = valid ? dollarsToCents(actual) : null;
+    const diff = valid ? actualCents - projected : null;
+    const submit = () => {
+      if (!valid) {
+        setErr("Enter the balance your bank shows today.");
+        return;
+      }
+      if (diff === 0) {
+        setErr("");
+        onCancel();
+        return;
+      }
+      onConfirm({ actualCents, diff });
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Reconcile to bank" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" },
+      /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
+      /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Reconcile to your bank"),
+      /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it."),
+      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled)),
+      /* @__PURE__ */ React.createElement("div", { className: "reconcile-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, "This app projects"), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 reconcile-figure" }, fmt(projected))),
+      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "rec-actual" }, "Your bank shows"),
+      /* @__PURE__ */ React.createElement("input", {
+        id: "rec-actual",
+        type: "number",
+        inputMode: "decimal",
+        step: "0.01",
+        autoFocus: true,
+        className: "field-input field-input--mono" + (err ? " field-error" : ""),
+        placeholder: "0.00",
+        value: actual,
+        onChange: (e) => {
+          setActual(e.target.value);
+          if (err) setErr("");
+        },
+        onKeyDown: (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }
+      }),
+      err && /* @__PURE__ */ React.createElement(FieldError, { msg: err }),
+      valid && /* @__PURE__ */ React.createElement(
+        "div",
+        { className: "reconcile-diff" },
+        diff === 0 ? "Already matches \u2014 nothing to adjust." : /* @__PURE__ */ React.createElement(
+          React.Fragment,
+          null,
+          "Adjustment of ",
+          /* @__PURE__ */ React.createElement("strong", { style: { color: diff > 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(diff, true)),
+          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`
+        )
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: submit, disabled: !valid || diff === 0, className: "cf-btn cf-btn--primary" }, "Record adjustment"))
+    ));
+  }
+  // Where a reconciliation adjustment is filed. "Other" is the default
+  // category list's catch-all and the natural home; a household that renamed
+  // or removed it gets the last category instead, which is where the defaults
+  // put the catch-all anyway.
+  function reconcileCategory(categories) {
+    if (!Array.isArray(categories) || !categories.length) return "Other";
+    return categories.includes("Other") ? "Other" : categories[categories.length - 1];
+  }
+  // The marker that makes an adjustment recognisable later, for the "last
+  // reconciled" line. Deliberately the visible description rather than a
+  // hidden field: it needs no new column, it reads correctly in the ledger and
+  // in a CSV export, and if someone renames one the only consequence is that
+  // this stops counting it.
+  const RECONCILE_DESC = "Balance adjustment";
+  function lastReconciledDate(entries) {
+    if (!Array.isArray(entries)) return null;
+    let latest = null;
+    entries.forEach((e) => {
+      if (e && e.desc === RECONCILE_DESC && e.startDate && (!latest || e.startDate > latest)) latest = e.startDate;
+    });
+    return latest;
+  }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
@@ -8450,6 +8810,12 @@ document.addEventListener('DOMContentLoaded',function(){
     const [attachment, setAttachment] = useState(ev.attachment || null);
     const [err, setErr] = useState("");
     const [dayErr, setDayErr] = useState("");
+    // Who last edited this occurrence, in a household of more than one. This
+    // is the question a shared budget actually generates — "who moved the rent
+    // to the 3rd?" — and the override has carried a timestamp all along with
+    // nothing beside it saying whose.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const editedBy = memberName(ev._by, hhMembers, { selfId: hhUser && hhUser.id });
     const attachFile = (e) => {
       compressReceiptImage(e.target.files[0], (b64) => {
         if (b64) setAttachment(b64);
@@ -8556,6 +8922,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21a4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        editedBy && editedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last edited by ", editedBy, ev._savedAt ? ` on ${new Date(ev._savedAt).toLocaleDateString()}` : ""),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -8829,7 +9196,8 @@ document.addEventListener('DOMContentLoaded',function(){
   // see a new component type each render and remount their DOM.
   const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
   const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
-  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
+  }, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -9757,8 +10125,14 @@ document.addEventListener('DOMContentLoaded',function(){
               setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
             } },
+            // Removing a target is undoable; editing one is not, deliberately
+            // — an edit leaves the new value on screen in a field you can type
+            // over, so a toast per save would be noise. A removal leaves
+            // nothing behind to correct from.
             { icon: "\u2715", label: "Remove target", action: () => {
               const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+              const prevTargets = budgetTargets, removedCat = bvaCtxMenu.cat;
+              pushUndo(`Target for "${removedCat}" removed`, () => setBudgetTargets(prevTargets));
               setBudgetTargets((prev) => {
                 const n = __spreadValues({}, prev);
                 if (n[bk]) {
@@ -10115,7 +10489,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if (done) return null;
     const steps = [
       // Step 0: Opening balance
-      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-step-icon wizard-icon--primary" }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-title" }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-subtitle wizard-step-subtitle--lh" }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { className: "wizard-amount-row" }, /* @__PURE__ */ React.createElement("span", { className: "wizard-dollar-lg" }, "$"), /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-step-icon wizard-icon--primary" }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-title" }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-subtitle wizard-step-subtitle--lh" }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { className: "wizard-amount-row" }, /* @__PURE__ */ React.createElement("span", { className: "wizard-dollar-lg" }, moneySymbol()), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -10141,7 +10515,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onChange: (e) => setIncome((p) => __spreadProps(__spreadValues({}, p), { desc: e.target.value })),
           className: "wizard-text-input"
         }
-      ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "$"), /* @__PURE__ */ React.createElement(
+      ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, moneySymbol()), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -10179,7 +10553,7 @@ document.addEventListener('DOMContentLoaded',function(){
           onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { desc: e.target.value })),
           className: "wizard-text-input"
         }
-      ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "$"), /* @__PURE__ */ React.createElement(
+      ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, moneySymbol()), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -11200,7 +11574,7 @@ Fill every field of the response schema. Rules:
             // dividing by `every` here (as every other unit correctly does)
             // silently halved this to 12/yr for any semimonth entry that
             // happened to carry a stale/leftover recurEvery of 2.
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
             return sum + (ev.amount || 0) * (ppy / 12);
           }
           return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
@@ -11232,6 +11606,7 @@ Fill every field of the response schema. Rules:
               const u = ev.recurUnit || "month";
               const e = ev.recurEvery || 1;
               if (u === "semimonth") return `2\xD7/mo`;
+              if (u === "monthend" || u === "monthweekday") return `Monthly`;
               if (u === "week" && e === 2) return "Bi-weekly";
               if (u === "week") return `Every ${e} wk`;
               if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
@@ -11412,7 +11787,7 @@ Fill every field of the response schema. Rules:
               className: "strat-suggest-btn",
               onClick: () => setDebtExtra(String(suggested))
             },
-            "$",
+            moneySymbol(),
             suggested,
             "/mo extra"
           ), ".")));
@@ -11521,7 +11896,7 @@ Fill every field of the response schema. Rules:
           if (!recurExpenses.length) return null;
           const entryToMonthly = (e) => {
             const every = e.recurEvery || 1;
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
             return roundMoney((e.amount || 0) * (ppy / 12));
           };
           // Group by description so multiple entries sharing one name (e.g.
@@ -11819,6 +12194,30 @@ Fill every field of the response schema. Rules:
       if (sharedView || !sessionUser) return flow;
       return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
+    const [showReconcile, setShowReconcile] = useState(false);
+    // Posts the difference between the projected balance and the real one as a
+    // dated one-time transfer. See ReconcileModal for why a transfer and not
+    // an income/expense entry.
+    const recordReconcile = ({ actualCents, diff }) => {
+      const today = todayStr();
+      addEntry({
+        desc: RECONCILE_DESC,
+        type: "transfer",
+        transferDirection: diff > 0 ? "in" : "out",
+        amount: Math.abs(diff),
+        category: reconcileCategory(categories),
+        notes: `Reconciled to a bank balance of ${fmt(actualCents)} on ${today}.`,
+        startDate: today,
+        repeats: false,
+        recurEvery: 1,
+        recurUnit: "month",
+        recurDays: [],
+        recurEnd: "",
+        monthlyAmounts: null
+      });
+      setShowReconcile(false);
+      toast(`Adjustment of ${fmt(diff, true)} recorded — today's balance now matches your bank.`);
+    };
     const summaries = useMemo(() => getMonthSummaries(effectiveFlow, openBal), [effectiveFlow, openBal]);
     const catTotals = useMemo(() => {
       const map = {};
@@ -11980,7 +12379,15 @@ Fill every field of the response schema. Rules:
     const WIDGET_RENDER = {
       balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
-      } }, glance ? fmt(glance.balanceNow) : "\u2014")),
+      } }, glance ? fmt(glance.balanceNow) : "\u2014"), glance && addEntry && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          className: "glance-action",
+          onClick: () => setShowReconcile(true),
+          title: "Compare this against your real bank balance and record the difference"
+        },
+        "Reconcile\u2026"
+      )),
       nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
       } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
@@ -12247,7 +12654,7 @@ Fill every field of the response schema. Rules:
             const ev = occs[0];
             if (ev.repeats) {
               const every = ev.recurEvery || 1;
-              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
               return sum + (ev.amount || 0) * (ppy / 12);
             }
             return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
@@ -12377,7 +12784,13 @@ Fill every field of the response schema. Rules:
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner,
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, showReconcile && /* @__PURE__ */ React.createElement(ReconcileModal, {
+      projected: glance ? glance.balanceNow : openBal,
+      categories,
+      lastReconciled: lastReconciledDate(entries),
+      onCancel: () => setShowReconcile(false),
+      onConfirm: recordReconcile
+    }), firstRunPanel, sampleBanner,
     // Customize and the shared-view toggle sit on one line — see .dash-toolbar.
     /* @__PURE__ */ React.createElement("div", { className: "dash-toolbar", "data-noprint": true }, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, /* @__PURE__ */ React.createElement(
       "button",
@@ -12530,7 +12943,7 @@ Fill every field of the response schema. Rules:
           ["Fill in Actual Amount Paid", "Leave it blank and the occurrence counts as paid exactly as scheduled. Fill it in and your running balance and Budget vs Actual use the real figure."],
           ["Save", "Only that date changes. The entry still says what you expect to pay, so next month is unaffected."]
         ] },
-        { p: "Settings \u2192 Audit lists your twenty most recent overrides, each with a one-click revert, if you want to check or undo what you have changed." },
+        { p: "Settings \u2192 Audit lists the twenty most recent overrides, each with a one-click revert, if you want to check or undo what has been changed. In a household with more than one member each one names who made it, and the occurrence editor says so too \u2014 so \u201cwho moved the rent to the 3rd?\u201d has an answer. Entries carry their author the same way; open one and the form says who added it. Changes made before this existed have no author recorded and simply show nothing." },
 
         { sub: "4. Change or skip a single date" },
         { p: "Right-click a row in the budget grid \u2014 long-press on touch, or use the \u22EE button at the end of the row \u2014 to open the row menu. Every option on it affects one date except Edit recurring entry and Delete entry, which affect all of them." },
@@ -12568,7 +12981,7 @@ Fill every field of the response schema. Rules:
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
         { shot: ["settings-backup", "Settings \u2192 Data Backup & Restore."] },
-        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default. It cannot be undone, which is why it asks first." }
+        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default \u2014 which is why it asks first. The toast that follows offers one undo, for the few seconds it is up; after that the only way back is another backup." }
       ]
     },
     {
@@ -12587,13 +13000,15 @@ Fill every field of the response schema. Rules:
           ["One-time", "A single date."],
           ["Daily / weekly / monthly / yearly", "Every N days, weeks, months or years. Weekly repeats can name specific weekdays, so “every second Friday” and “every Monday and Thursday” are both one entry."],
           ["Semi-monthly", "The 1st-and-15th pattern, for pay that lands twice a month."],
+          ["Monthly — last day", "The final day of every month, whatever its length: 28 February, 31 March, 30 April. Not the same as a monthly entry that happens to start on the last day — that one keeps the start date's day number, so one created in February stays on the 28th all year."],
+          ["Monthly — nth weekday", "“The third Friday”, “the last Tuesday”. Pick which one and which weekday; both default to whatever your start date already is. “Last” and “fourth” are the same day in most months and different in the long ones, which is why they are separate choices. A month with only four of the chosen weekday has no fifth one, so a “fifth” entry simply doesn't occur in those months."],
           ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
         { sub: "Paydays that land on a closed day" },
         { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
         { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
-        { p: "Holidays are British Columbia's, including the two the province lists as optional (Easter Monday and Boxing Day). Each one is listed on the day it is observed and only there — when Boxing Day falls on a Saturday the entry is the Monday it is actually taken, marked “(observed)”, rather than a pair of rows for one day off. Settings → Statutory Holidays shows exactly which dates the app is using for a year and lets you add, edit or remove them; nothing is fetched on its own, so a date you correct stays corrected. Moving an occurrence yourself — dragging the row, or Edit this occurrence — re-checks the deposit date from wherever you put it." },
+        { p: "Which province's or territory's holidays apply is set in Settings → Statutory Holidays, and defaults to British Columbia. The built-in list is computed from that region's usual rules and includes the days it commonly treats as optional; each one is listed on the day it is observed and only there. Rules change and one-off days get proclaimed, so the built-in list is a baseline — the Fetch button replaces a year with what canada-holidays.ca publishes for your region, and any date can be added, edited or removed by hand. Outside Canada, add the days that matter to you by hand and the deposit rule works the same way." },
         { sub: "Changing one occurrence without changing the plan" },
         { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [
@@ -12601,10 +13016,14 @@ Fill every field of the response schema. Rules:
           ["Edit recurring entry", "Changes the entry, and so every occurrence of it."],
           ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates are listed above the grid for that month, each with a Restore button."],
           ["Reset occurrence", "Removes an override and puts the originally scheduled amount back."],
-          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."]
+          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."],
+          ["Undo, generally", "Removing a category or a budget year, resetting a year of targets, removing a budget target and restoring a backup all raise the same undo toast. Ctrl+Z (Cmd+Z on a Mac) does the same thing as its button. Marking an occurrence paid has no toast \u2014 the tick is its own undo."]
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
+        { sub: "Reconciling to your bank" },
+        { p: "Every balance in the app is projected: the year's opening balance, plus everything scheduled since. Reality drifts from that — cash spent, a rounding, a purchase nobody entered — so the Dashboard's “Balance today” tile has a Reconcile link. Enter what your account actually shows and the difference is recorded as a dated adjustment on today." },
+        { p: "The adjustment is a transfer, not an expense, so it moves the balance without counting as spending: it stays out of your income and expense totals, out of Budget vs Actual and out of the category charts. It sits in the ledger on the day you made it and can be deleted like any other entry. Reconciling this way is why you never have to go back and edit January's opening balance, which would rewrite every month behind it." },
         { p: "To record that a bill actually cost something different, open Edit this occurrence and fill in Actual Amount Paid. Leaving it blank means “paid as scheduled”. An actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
         { sub: "Getting entries in faster" },
         { defs: [
@@ -12699,6 +13118,7 @@ Fill every field of the response schema. Rules:
         { sub: "General" },
         { defs: [
           ["Alert Threshold", "The balance you want to be warned about. Used for Dashboard alerts, Forecast warnings and the amber balances in the Budget grid."],
+          ["Currency & Format", "The currency symbol, and where the thousands and decimal separators go. It changes how amounts are written, not what they are worth — nothing is converted. Only two-decimal currencies are listed, because amounts are stored as whole cents throughout the app. Shared with the household, so everyone sees the same figures the same way."],
           ["Appearance", "Light or dark theme. The choice is per device."],
           ["Notifications", "One notification a day at the hour you choose, listing every bill due that day with its amount, plus a warning when your forecast balance is heading below your threshold. With background delivery configured these arrive as ordinary system notifications whether or not the app is open; without it they only appear while the app is open."],
           ["Budget Years", "Years are added in sequence — the next one only. The first year holds your opening balance; later years carry forward automatically. Switch the active year with the pills beside the logo."],
@@ -12874,7 +13294,8 @@ Fill every field of the response schema. Rules:
   // to an unstored year materialises the rules into the store so nothing is
   // lost. Rows say where they came from, because "built-in" and "I typed this"
   // are different kinds of trust.
-  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false }) {
+  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
+  } }) {
     const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (/* @__PURE__ */ new Date()).getFullYear()));
     const [form, setForm] = useState(null);
     const [err, setErr] = useState("");
@@ -12927,7 +13348,7 @@ Fill every field of the response schema. Rules:
       setBusy(true);
       setFetchMsg("");
       try {
-        const fetched = await fetchBCHolidayYear(year);
+        const fetched = await fetchHolidayYear(year, holidayRegionCode);
         const res = mergeFetchedHolidays(stored ? holidayYearForEditing(year, holidays) : {}, fetched);
         writeYear(res.days);
         const bits = [`${Object.keys(res.days).length} dates for ${year}`];
@@ -12966,7 +13387,15 @@ Fill every field of the response schema. Rules:
         },
         y
       ))),
-      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : "from the built-in BC rules"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "txm", htmlFor: "holiday-region" }, "Province or territory"), /* @__PURE__ */ React.createElement("select", {
+        id: "holiday-region",
+        className: "field-input settings-input",
+        style: { flex: "0 1 240px" },
+        value: holidayRegionCode,
+        onChange: (e) => setHolidayRegionCode(e.target.value)
+      }, HOLIDAY_REGIONS.map((r) => /* @__PURE__ */ React.createElement("option", { key: r.code, value: r.code }, r.name)))),
+      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : `computed from ${holidayRegion(holidayRegionCode).name}'s general rules`),
+      !stored && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "The built-in list is worked out from the province's usual rules, so it can differ from a given year's published one \u2014 rules change and one-off days get proclaimed. Fetch below replaces it with what canada-holidays.ca lists, and every date can be edited or removed by hand."),
       rows.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "No holidays for ", year, ". Payroll on a weekday will be treated as deposited that day."),
       rows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "holiday-list mb-12" }, rows.map((row) => /* @__PURE__ */ React.createElement(
         "div",
@@ -13042,14 +13471,14 @@ Fill every field of the response schema. Rules:
             title: isOffline ? "You're offline — fetching the published list needs a connection." : void 0,
             className: "cf-btn cf-btn--secondary cf-btn--md"
           },
-          busy ? "Fetching\u2026" : `Fetch ${year} from canada-holidays.ca`
+          busy ? "Fetching\u2026" : `Fetch ${year} for ${holidayRegion(holidayRegionCode).code} from canada-holidays.ca`
         ),
         stored && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmReset(true), className: "cf-btn cf-btn--secondary cf-btn--md" }, "Reset to built-in")
       ),
       /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, fetchMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: { color: fetchMsg.startsWith("\u2705") ? "var(--greenDk)" : "var(--red)" } }, fetchMsg)),
       confirmFetch && /* @__PURE__ */ React.createElement(ConfirmDialog, {
         title: `Fetch ${year} holidays?`,
-        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for British Columbia, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
+        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for ${holidayRegion(holidayRegionCode).name}, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
         confirmLabel: "Fetch",
         confirmVariant: "primary",
         onConfirm: runFetch,
@@ -13095,7 +13524,8 @@ Fill every field of the response schema. Rules:
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
@@ -13103,7 +13533,10 @@ Fill every field of the response schema. Rules:
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
   }, holidays = {}, setHolidays = () => {
-  }, isOffline = false, houseValues = {}, houseSetters = {} }) {
+  }, isOffline = false, houseValues = {}, houseSetters = {}, currency = DEFAULT_CURRENCY, setCurrency = () => {
+  }, locale = DEFAULT_LOCALE, setLocale = () => {
+  }, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
+  } }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -13233,6 +13666,7 @@ Fill every field of the response schema. Rules:
         setYearMsg("Cannot delete the only year.");
         return;
       }
+      const prevConfigs = yearConfigs, prevOverrides = overridesByYr, prevActive = activeYear;
       setYearConfigs((prev) => prev.filter((yc) => yc.year !== yr));
       setOverridesByYr((prev) => {
         const n = __spreadValues({}, prev);
@@ -13241,6 +13675,15 @@ Fill every field of the response schema. Rules:
       });
       if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
       setYearMsg(`Year ${yr} removed.`);
+      // The year's per-occurrence edits go with it, and they are not
+      // recoverable from anywhere else — which is exactly why this one needs
+      // an undo more than the entry delete that already had one.
+      pushUndo(`Budget year ${yr} removed`, () => {
+        setYearConfigs(prevConfigs);
+        setOverridesByYr(prevOverrides);
+        setActiveYear(prevActive);
+        setYearMsg("");
+      });
     };
     const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const [catMsg, setCatMsg] = useState("");
@@ -13262,12 +13705,20 @@ Fill every field of the response schema. Rules:
     };
     const delCat = (i) => {
       const name = categories[i];
+      // Snapshot both lists before touching either: a category's colour is
+      // stored separately from its name, so restoring only the name brings it
+      // back grey.
+      const prevCats = categories, prevColors = categoryColors;
       setCategories((p) => p.filter((_, j) => j !== i));
       setCategoryColors((p) => {
         if (!p[name]) return p;
         const n = __spreadValues({}, p);
         delete n[name];
         return n;
+      });
+      pushUndo(`Category "${name}" removed`, () => {
+        setCategories(prevCats);
+        setCategoryColors(prevColors);
       });
     };
     const saveEdit = () => {
@@ -13392,7 +13843,7 @@ Fill every field of the response schema. Rules:
         className: "clear-key-btn"
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, moneySymbol()), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -13404,7 +13855,22 @@ Fill every field of the response schema. Rules:
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-currency" }, "Currency"), /* @__PURE__ */ React.createElement("select", {
+        id: "set-currency",
+        className: "field-input settings-input",
+        style: { minWidth: 220 },
+        value: currency,
+        onChange: (e) => setCurrency(e.target.value)
+      }, CURRENCIES.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.code, value: c.code }, `${c.code} \u2014 ${c.name}`)))),
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-locale" }, "Number format"), /* @__PURE__ */ React.createElement("select", {
+        id: "set-locale",
+        className: "field-input settings-input",
+        style: { minWidth: 220 },
+        value: locale,
+        onChange: (e) => setLocale(e.target.value)
+      }, NUMBER_LOCALES.map((l) => /* @__PURE__ */ React.createElement("option", { key: l.code, value: l.code }, l.name))))
+    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
       if (v) enableNotifications();
       else disableNotifications();
     }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
@@ -13421,7 +13887,7 @@ Fill every field of the response schema. Rules:
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
         border: `1px solid ${activeYear === yc.year ? "var(--primary)" : "var(--border)"}`
-      } }, /* @__PURE__ */ React.createElement("span", { className: "year-number" }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal" }, /* @__PURE__ */ React.createElement("span", { className: "openbal-label" }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { className: "txm" }, "$"), /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("span", { className: "year-number" }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal" }, /* @__PURE__ */ React.createElement("span", { className: "openbal-label" }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { className: "txm" }, moneySymbol()), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -13549,6 +14015,15 @@ Fill every field of the response schema. Rules:
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
         onConfirm: () => {
+          // Everything the restore is about to replace, captured before it
+          // does. This is the most destructive action in the app — the dialog
+          // says so — and until now it was also the only one with no way back
+          // short of having exported a backup first, which is precisely the
+          // habit someone restoring a backup has just discovered they lack.
+          const beforeRestore = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+            acc[f.key] = houseValues[f.key];
+            return acc;
+          }, {});
           try {
             const parsed = pendingRestore.parsed;
             // An old backup can predate any of the storage migrations — before
@@ -13589,6 +14064,13 @@ Fill every field of the response schema. Rules:
               if (!applied) set(f.initial());
             });
             setYearMsg("\u2705 Backup restored successfully!");
+            pushUndo(`Restored "${pendingRestore.fileName}"`, () => {
+              HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
+                const set = houseSetters[f.key];
+                if (set) set(beforeRestore[f.key]);
+              });
+              setYearMsg("");
+            });
           } catch (err) {
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
           }
@@ -13708,6 +14190,8 @@ Fill every field of the response schema. Rules:
         onKeyDown: (e) => e.key === "Enter" && addCat()
       }
     ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(HolidaySettings, {
+          holidayRegionCode,
+          setHolidayRegionCode,
       holidays,
       setHolidays,
       isOffline,
@@ -13739,6 +14223,7 @@ Fill every field of the response schema. Rules:
         message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
         confirmLabel: "Reset Targets",
         onConfirm: () => {
+          const prevTargets = budgetTargets;
           const byMonthCat = {};
           (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
             const key = `${activeYear}:${ev.month}`;
@@ -13762,6 +14247,12 @@ Fill every field of the response schema. Rules:
           const monthsSet = Object.keys(byMonthCat).length;
           setTgtResetMsg(`Targets for ${activeYear} reset from actuals across ${monthsSet} month${monthsSet !== 1 ? "s" : ""}.`);
           setConfirmTgtReset(false);
+          // A year of hand-set targets is overwritten in one press, and the
+          // confirm dialog is the only thing between the button and the loss.
+          pushUndo(`${activeYear} targets reset from actuals`, () => {
+            setBudgetTargets(prevTargets);
+            setTgtResetMsg("");
+          });
         },
         onCancel: () => setConfirmTgtReset(false)
       }
@@ -13887,7 +14378,10 @@ Fill every field of the response schema. Rules:
         const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
         const hist = ov._history || [];
         const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString(), (() => {
+          const who = memberName(ov._by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` \xB7 by ${who}` : "";
+        })())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
@@ -13909,7 +14403,10 @@ Fill every field of the response schema. Rules:
             title: "Restore the originally scheduled values for this date"
           },
           "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), (() => {
+          const who = memberName(h.by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` (${who})` : "";
+        })(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
     })())));
   }
@@ -14042,10 +14539,10 @@ Fill every field of the response schema. Rules:
       )
     );
   }
-  function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
+  function UndoToast({ label, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
-    // Restart the countdown when a further delete lands while the toast is
-    // still up — the newest deletion gets the full undo window.
+    // Restart the countdown when a further undoable action lands while the
+    // toast is still up — the newest one gets the full undo window.
     useEffect(() => {
       setSecs(5);
       const iv = setInterval(() => setSecs((s) => {
@@ -14057,8 +14554,8 @@ Fill every field of the response schema. Rules:
         return s - 1;
       }), 1e3);
       return () => clearInterval(iv);
-    }, [entry, count]);
-    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast" }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
+    }, [label, count]);
+    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast", role: "status" }, /* @__PURE__ */ React.createElement("span", null, label, count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onUndo,
@@ -14442,6 +14939,38 @@ Fill every field of the response schema. Rules:
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
       const semi = __spreadProps(__spreadValues({}, entry), { id: 2, recurUnit: "semimonth", startDate: "2026-01-01" });
       t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
+      // Last day of the month: every month's real length, not the start
+      // date's day number. An entry created in February is the case that
+      // separates this from a plain monthly entry — that one would stay on
+      // the 28th all year.
+      const mend = __spreadProps(__spreadValues({}, entry), { id: 20, recurUnit: "monthend", startDate: "2026-02-28" });
+      const mendEvs = expandEntries([mend], 2026, {});
+      t("month-end = 11 events (Mar-Dec plus Feb)", () => mendEvs.length === 11);
+      t("month-end lands on 31 Mar, 30 Apr, 31 May", () => mendEvs[1].month === 2 && mendEvs[1].day === 31 && mendEvs[2].day === 30 && mendEvs[3].day === 31);
+      t("month-end differs from a plain monthly anchored the same day", () => {
+        const plain = expandEntries([__spreadProps(__spreadValues({}, mend), { id: 21, recurUnit: "month" })], 2026, {});
+        return plain[1].day === 28 && mendEvs[1].day === 31;
+      });
+      // Third Friday of each month, from Fri 16 Jan 2026.
+      const nth3 = __spreadProps(__spreadValues({}, entry), { id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" });
+      const nth3Evs = expandEntries([nth3], 2026, {});
+      t("3rd Friday = 12 events", () => nth3Evs.length === 12);
+      t("3rd Friday is always a Friday", () => nth3Evs.every((ev) => ev.date.getDay() === 5));
+      t("3rd Friday is always in the third week", () => nth3Evs.every((ev) => ev.day >= 15 && ev.day <= 21));
+      // "Last" is not "fourth": in a month with five Fridays they differ.
+      const nthLast = __spreadProps(__spreadValues({}, entry), { id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" });
+      const lastEvs = expandEntries([nthLast], 2026, {});
+      t("last Friday is always a Friday within 7 days of month end", () => lastEvs.every((ev) => ev.date.getDay() === 5 && ev.day > daysInMonth(ev.month, 2026) - 7));
+      t("last Friday differs from 4th Friday in a 5-Friday month", () => {
+        const fourth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 24, recurNth: 4 })], 2026, {});
+        return lastEvs.some((ev, i) => fourth[i] && fourth[i].day !== ev.day);
+      });
+      // A month with only four of that weekday has no fifth one, and the
+      // occurrence is skipped rather than sliding into the next month.
+      t("5th Friday skips the months that have none", () => {
+        const fifth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 25, recurNth: 5 })], 2026, {});
+        return fifth.length > 0 && fifth.length < 12 && fifth.every((ev) => ev.date.getDay() === 5);
+      });
       const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
@@ -14615,31 +15144,55 @@ Fill every field of the response schema. Rules:
         const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
         return aug.day === 17 && aug.depositShifted === false;
       });
+      // BC is the default and was the only region the rules covered; these two
+      // pin down that adding the others left it exactly as it was.
+      t("BC still computes 13 dates for 2026", () => Object.keys(computeRegionHolidays(2026, "BC")).length === 13);
+      t("regions differ where they actually differ", () => {
+        const on = computeRegionHolidays(2026, "ON");
+        const qc = computeRegionHolidays(2026, "QC");
+        const named = (h) => Object.keys(h).map((k) => h[k].name.replace(" (observed)", ""));
+        const onNames = named(on), qcNames = named(qc);
+        return (
+          // Ontario: no Truth and Reconciliation, no Remembrance Day, a Civic
+          // Holiday rather than BC Day.
+          !onNames.includes("National Day for Truth and Reconciliation") &&
+          !onNames.includes("Remembrance Day") &&
+          onNames.includes("Civic Holiday") &&
+          // Quebec: no February holiday at all, and Victoria Day is National
+          // Patriots' Day on the same date.
+          !qcNames.includes("Family Day") &&
+          qcNames.includes("National Patriots' Day") &&
+          qcNames.includes("St-Jean-Baptiste Day") &&
+          // Everything shared is still shared.
+          ["New Year's Day", "Good Friday", "Canada Day", "Labour Day", "Christmas Day"].every((n) => onNames.includes(n) && qcNames.includes(n))
+        );
+      });
+      t("an unknown region falls back to the default rather than throwing", () => Object.keys(computeRegionHolidays(2026, "ZZ")).length === 13);
       t("BC holiday rules: the computed dates for 2026", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         const on = (d) => (h[d] || {}).name || "\u2014";
         return on("2026-02-16") === "Family Day" && on("2026-04-03") === "Good Friday" && on("2026-05-18") === "Victoria Day" && on("2026-08-03") === "British Columbia Day" && on("2026-09-30") === "National Day for Truth and Reconciliation" && on("2026-10-12") === "Thanksgiving" && on("2026-12-25") === "Christmas Day";
       });
       t("optional BC holidays are included and flagged", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         // Boxing Day 2026 is a Saturday, so it is taken on Monday the 28th.
         return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-28"] && h["2026-12-28"].optional === true && h["2026-07-01"].optional === false;
       });
       t("a holiday that falls on a weekend is listed once, on the day it's observed", () => {
         // 1 Jan 2028 is a Saturday, taken on Monday the 3rd. Listing the
         // Saturday as well was a duplicate — one day off, one row.
-        const h = computeBCHolidays(2028);
+        const h = computeRegionHolidays(2028, "BC");
         return h["2028-01-01"] === void 0 && /^New Year's Day \(observed\)$/.test((h["2028-01-03"] || {}).name || "");
       });
       t("Christmas week resolves to two consecutive days off, listed once each", () => {
         // 25 Dec 2027 is a Saturday: Christmas is taken Monday the 27th and
         // Boxing Day moves past it to Tuesday the 28th.
-        const h = computeBCHolidays(2027);
+        const h = computeRegionHolidays(2027, "BC");
         const names = Object.keys(h).filter((d) => d >= "2027-12-24").map((d) => `${d}=${h[d].name}`);
         return names.join(" ") === "2027-12-27=Christmas Day (observed) 2027-12-28=Boxing Day (observed)";
       });
       t("a holiday on a weekday keeps its plain name", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         return h["2026-07-01"].name === "Canada Day" && h["2026-12-25"].name === "Christmas Day";
       });
       t("a bad holiday payload is ignored rather than believed", () => {
@@ -15195,7 +15748,10 @@ Fill every field of the response schema. Rules:
       completed,
       debtData,
       deletedCopyIds,
-      holidays
+      holidays,
+      currency,
+      locale,
+      holidayRegion: holidayRegionCode
     } = houseValues;
     const {
       entries: setEntries,
@@ -15220,7 +15776,10 @@ Fill every field of the response schema. Rules:
       completed: setCompleted,
       debtData: setDebtData,
       deletedCopyIds: setDeletedCopyIds,
-      holidays: setHolidays
+      holidays: setHolidays,
+      currency: setCurrency,
+      locale: setLocale,
+      holidayRegion: setHolidayRegionCode
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -15507,6 +16066,12 @@ Fill every field of the response schema. Rules:
     // columns are ordered are per-device view preferences.
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [budgetColOrder, setBudgetColOrder] = useLS("cf_budget_col_order", DEFAULT_BUDGET_COLS);
+    // fmt() reads module state, so React has no idea its output changed when
+    // the currency does. This is the one re-render that has to be forced.
+    const [, setMoneyTick] = useState(0);
+    useEffect(() => {
+      setMoneyTick((t) => t + 1);
+    }, [locale, currency]);
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
     useEffect(() => {
@@ -15543,10 +16108,49 @@ Fill every field of the response schema. Rules:
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
     const [undoStack, setUndoStack] = useState([]);
-    const pushUndo = (e) => {
-      setUndoStack((prev) => [...prev.slice(-9), e]);
+    // An undoable action is a label for the toast plus the function that puts
+    // things back.
+    //
+    // The stack used to hold the deleted *entry*, and App knew how to restore
+    // one — which meant entry deletion was the only action that could ever
+    // offer undo. Everything else destructive (removing a category, removing
+    // a budget year, "Reset Targets to Actuals", restoring a backup over your
+    // data) committed immediately with no way back, having taught the user
+    // through the one case that destructive things here are recoverable.
+    // Holding the revert instead puts that knowledge with the caller, which
+    // is the only place that knows what it just changed.
+    const pushUndo = useCallback((label, revert) => {
+      setUndoStack((prev) => [...prev.slice(-9), { label, revert }]);
+    }, []);
+    // The global shortcut handler mounts once; without this it would close
+    // over an empty stack forever.
+    const undoStackRef = useRef([]);
+    useEffect(() => {
+      undoStackRef.current = undoStack;
+    }, [undoStack]);
+    const undoLast = useCallback(() => {
+      setUndoStack((prev) => {
+        if (!prev.length) return prev;
+        return prev.slice(0, -1);
+      });
+    }, []);
+    // Deleting an entry, expressed in those terms. The copy-provenance
+    // bookkeeping is part of the delete (so a deleted copy doesn't come back
+    // on the next year roll-forward) and part of the undo, so both live here
+    // rather than at the two call sites.
+    const pushUndoEntryDelete = useCallback((e) => {
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
-    };
+      const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
+      pushUndo(`"${shortDesc}" deleted`, () => {
+        setEntries((prev) => [...prev, e]);
+        if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
+          if (!(e.copiedFrom in prev)) return prev;
+          const next = __spreadValues({}, prev);
+          delete next[e.copiedFrom];
+          return next;
+        });
+      });
+    }, [pushUndo, setDeletedCopyIds, setEntries]);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -15564,8 +16168,20 @@ Fill every field of the response schema. Rules:
     // same memo that consumes it, is what keeps that reference honest: the
     // flows can never be built against a stale list, which an effect running
     // after render would allow for one paint.
+    // Currency and number format reach fmt() the same way holidays reach
+    // expandEntries: through a module-level registry, because both are read
+    // from synchronous helpers called in dozens of places that have no access
+    // to React state. Done in a layout effect so the first paint after a
+    // change is already formatted correctly.
+    useLayoutEffect(() => {
+      setMoneyFormat(locale, currency);
+    }, [locale, currency]);
     const yearFlows = useMemo(() => {
       setStoredHolidays(holidays);
+      // Same reasoning as setStoredHolidays directly above: pushed in from the
+      // memo that consumes it, so the flows can never be built against the
+      // previous region's computed dates for one paint.
+      setHolidayRegion(holidayRegionCode);
       const flows = {};
       let carry = null;
       const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -15578,7 +16194,7 @@ Fill every field of the response schema. Rules:
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr, holidays]);
+    }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
@@ -15774,6 +16390,22 @@ Fill every field of the response schema. Rules:
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
+          return;
+        }
+        // Undo the last undoable action. Guarded the same way the letter
+        // shortcuts are (never while typing, never under a modal), and it only
+        // does anything while the toast is up — this is the toast's button
+        // under a keyboard, not a general document history.
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+          if (!undoStackRef.current.length) return;
+          e.preventDefault();
+          const top = undoStackRef.current[undoStackRef.current.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
           return;
         }
         if (document.querySelector(".modal-overlay")) return;
@@ -15997,8 +16629,12 @@ Fill every field of the response schema. Rules:
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         const existing = yOvs[eventId] || {};
-        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), prev: __spreadValues({}, existing) }].slice(-10);
-        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _history: history });
+        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), by: existing._by, prev: __spreadValues({}, existing) }].slice(-10);
+        // Who made this edit, so a shared budget can answer "who moved the
+        // rent?". The id is stamped rather than the name: names are editable
+        // in Settings, and a stored copy would go stale the moment someone
+        // corrected theirs. Every reader resolves it against the member list.
+        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _by: (sessionUser == null ? void 0 : sessionUser.id) || void 0, _history: history });
         return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
       });
     };
@@ -16077,7 +16713,7 @@ Fill every field of the response schema. Rules:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: { members, sessionUser } }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -16346,6 +16982,7 @@ Fill every field of the response schema. Rules:
         setEntries,
         saveEntryEdit,
         addEntry,
+        pushUndo,
         apiKey: aiApiKey,
         isOffline,
         budgetSub,
@@ -16364,7 +17001,7 @@ Fill every field of the response schema. Rules:
         activeYear,
         budgetColOrder,
         setBudgetColOrder,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
@@ -16380,7 +17017,7 @@ Fill every field of the response schema. Rules:
         activeYear,
         apiKey: aiApiKey,
         isOffline,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         templates,
         setTemplates,
         globalSearch,
@@ -16432,6 +17069,13 @@ Fill every field of the response schema. Rules:
         isOffline,
         houseValues,
         houseSetters,
+        pushUndo,
+        currency,
+        setCurrency,
+        locale,
+        setLocale,
+        holidayRegionCode,
+        setHolidayRegionCode,
         setCategories,
         categoryColors,
         setCategoryColors,
@@ -16491,19 +17135,19 @@ Fill every field of the response schema. Rules:
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
-        entry: undoStack[undoStack.length - 1],
+        label: undoStack[undoStack.length - 1].label,
         count: undoStack.length,
         onUndo: () => {
           haptic();
-          const e = undoStack[undoStack.length - 1];
-          setEntries((prev) => [...prev, e]);
-          setUndoStack((prev) => prev.slice(0, -1));
-          if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
-            if (!(e.copiedFrom in prev)) return prev;
-            const next = __spreadValues({}, prev);
-            delete next[e.copiedFrom];
-            return next;
-          });
+          const top = undoStack[undoStack.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            // A revert that throws must still leave the stack consistent —
+            // leaving the entry on it would offer the same broken undo again.
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
         },
         onDismiss: () => setUndoStack([])
       }
@@ -16521,7 +17165,7 @@ Fill every field of the response schema. Rules:
         className: "cf-footer-link"
       },
       "Terms of Use"
-    ))));
+    )))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

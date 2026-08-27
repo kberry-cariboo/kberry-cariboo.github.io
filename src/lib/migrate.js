@@ -160,7 +160,7 @@
           startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : localDateStr(/* @__PURE__ */ new Date()),
           repeats: !!e.repeats,
           recurEvery: parseInt(e.recurEvery) > 0 ? parseInt(e.recurEvery) : 1,
-          recurUnit: ["day", "week", "month", "year", "semimonth"].includes(e.recurUnit) ? e.recurUnit : "month",
+          recurUnit: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(e.recurUnit) ? e.recurUnit : "month",
           recurDays: Array.isArray(e.recurDays) ? e.recurDays : [],
           recurEnd: typeof e.recurEnd === "string" ? e.recurEnd : "",
           category: typeof e.category === "string" && e.category ? e.category : "Uncategorized",

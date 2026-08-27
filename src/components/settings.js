@@ -75,7 +75,8 @@
   // to an unstored year materialises the rules into the store so nothing is
   // lost. Rows say where they came from, because "built-in" and "I typed this"
   // are different kinds of trust.
-  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false }) {
+  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
+  } }) {
     const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (/* @__PURE__ */ new Date()).getFullYear()));
     const [form, setForm] = useState(null);
     const [err, setErr] = useState("");
@@ -128,7 +129,7 @@
       setBusy(true);
       setFetchMsg("");
       try {
-        const fetched = await fetchBCHolidayYear(year);
+        const fetched = await fetchHolidayYear(year, holidayRegionCode);
         const res = mergeFetchedHolidays(stored ? holidayYearForEditing(year, holidays) : {}, fetched);
         writeYear(res.days);
         const bits = [`${Object.keys(res.days).length} dates for ${year}`];
@@ -167,7 +168,15 @@
         },
         y
       ))),
-      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : "from the built-in BC rules"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "txm", htmlFor: "holiday-region" }, "Province or territory"), /* @__PURE__ */ React.createElement("select", {
+        id: "holiday-region",
+        className: "field-input settings-input",
+        style: { flex: "0 1 240px" },
+        value: holidayRegionCode,
+        onChange: (e) => setHolidayRegionCode(e.target.value)
+      }, HOLIDAY_REGIONS.map((r) => /* @__PURE__ */ React.createElement("option", { key: r.code, value: r.code }, r.name)))),
+      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : `computed from ${holidayRegion(holidayRegionCode).name}'s general rules`),
+      !stored && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "The built-in list is worked out from the province's usual rules, so it can differ from a given year's published one \u2014 rules change and one-off days get proclaimed. Fetch below replaces it with what canada-holidays.ca lists, and every date can be edited or removed by hand."),
       rows.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "No holidays for ", year, ". Payroll on a weekday will be treated as deposited that day."),
       rows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "holiday-list mb-12" }, rows.map((row) => /* @__PURE__ */ React.createElement(
         "div",
@@ -243,14 +252,14 @@
             title: isOffline ? "You're offline — fetching the published list needs a connection." : void 0,
             className: "cf-btn cf-btn--secondary cf-btn--md"
           },
-          busy ? "Fetching\u2026" : `Fetch ${year} from canada-holidays.ca`
+          busy ? "Fetching\u2026" : `Fetch ${year} for ${holidayRegion(holidayRegionCode).code} from canada-holidays.ca`
         ),
         stored && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmReset(true), className: "cf-btn cf-btn--secondary cf-btn--md" }, "Reset to built-in")
       ),
       /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, fetchMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: { color: fetchMsg.startsWith("\u2705") ? "var(--greenDk)" : "var(--red)" } }, fetchMsg)),
       confirmFetch && /* @__PURE__ */ React.createElement(ConfirmDialog, {
         title: `Fetch ${year} holidays?`,
-        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for British Columbia, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
+        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for ${holidayRegion(holidayRegionCode).name}, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
         confirmLabel: "Fetch",
         confirmVariant: "primary",
         onConfirm: runFetch,
@@ -296,7 +305,8 @@
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
@@ -304,7 +314,10 @@
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
   }, holidays = {}, setHolidays = () => {
-  }, isOffline = false, houseValues = {}, houseSetters = {} }) {
+  }, isOffline = false, houseValues = {}, houseSetters = {}, currency = DEFAULT_CURRENCY, setCurrency = () => {
+  }, locale = DEFAULT_LOCALE, setLocale = () => {
+  }, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
+  } }) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -434,6 +447,7 @@
         setYearMsg("Cannot delete the only year.");
         return;
       }
+      const prevConfigs = yearConfigs, prevOverrides = overridesByYr, prevActive = activeYear;
       setYearConfigs((prev) => prev.filter((yc) => yc.year !== yr));
       setOverridesByYr((prev) => {
         const n = __spreadValues({}, prev);
@@ -442,6 +456,15 @@
       });
       if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
       setYearMsg(`Year ${yr} removed.`);
+      // The year's per-occurrence edits go with it, and they are not
+      // recoverable from anywhere else — which is exactly why this one needs
+      // an undo more than the entry delete that already had one.
+      pushUndo(`Budget year ${yr} removed`, () => {
+        setYearConfigs(prevConfigs);
+        setOverridesByYr(prevOverrides);
+        setActiveYear(prevActive);
+        setYearMsg("");
+      });
     };
     const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const [catMsg, setCatMsg] = useState("");
@@ -463,12 +486,20 @@
     };
     const delCat = (i) => {
       const name = categories[i];
+      // Snapshot both lists before touching either: a category's colour is
+      // stored separately from its name, so restoring only the name brings it
+      // back grey.
+      const prevCats = categories, prevColors = categoryColors;
       setCategories((p) => p.filter((_, j) => j !== i));
       setCategoryColors((p) => {
         if (!p[name]) return p;
         const n = __spreadValues({}, p);
         delete n[name];
         return n;
+      });
+      pushUndo(`Category "${name}" removed`, () => {
+        setCategories(prevCats);
+        setCategoryColors(prevColors);
       });
     };
     const saveEdit = () => {
@@ -593,7 +624,7 @@
         className: "clear-key-btn"
       },
       "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, "$"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, moneySymbol()), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "alert-threshold",
@@ -605,7 +636,22 @@
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-currency" }, "Currency"), /* @__PURE__ */ React.createElement("select", {
+        id: "set-currency",
+        className: "field-input settings-input",
+        style: { minWidth: 220 },
+        value: currency,
+        onChange: (e) => setCurrency(e.target.value)
+      }, CURRENCIES.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.code, value: c.code }, `${c.code} \u2014 ${c.name}`)))),
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-locale" }, "Number format"), /* @__PURE__ */ React.createElement("select", {
+        id: "set-locale",
+        className: "field-input settings-input",
+        style: { minWidth: 220 },
+        value: locale,
+        onChange: (e) => setLocale(e.target.value)
+      }, NUMBER_LOCALES.map((l) => /* @__PURE__ */ React.createElement("option", { key: l.code, value: l.code }, l.name))))
+    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
       if (v) enableNotifications();
       else disableNotifications();
     }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
@@ -622,7 +668,7 @@
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
         border: `1px solid ${activeYear === yc.year ? "var(--primary)" : "var(--border)"}`
-      } }, /* @__PURE__ */ React.createElement("span", { className: "year-number" }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal" }, /* @__PURE__ */ React.createElement("span", { className: "openbal-label" }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { className: "txm" }, "$"), /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement("span", { className: "year-number" }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal" }, /* @__PURE__ */ React.createElement("span", { className: "openbal-label" }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { className: "txm" }, moneySymbol()), /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "number",
@@ -750,6 +796,15 @@
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
         onConfirm: () => {
+          // Everything the restore is about to replace, captured before it
+          // does. This is the most destructive action in the app — the dialog
+          // says so — and until now it was also the only one with no way back
+          // short of having exported a backup first, which is precisely the
+          // habit someone restoring a backup has just discovered they lack.
+          const beforeRestore = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+            acc[f.key] = houseValues[f.key];
+            return acc;
+          }, {});
           try {
             const parsed = pendingRestore.parsed;
             // An old backup can predate any of the storage migrations — before
@@ -790,6 +845,13 @@
               if (!applied) set(f.initial());
             });
             setYearMsg("\u2705 Backup restored successfully!");
+            pushUndo(`Restored "${pendingRestore.fileName}"`, () => {
+              HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
+                const set = houseSetters[f.key];
+                if (set) set(beforeRestore[f.key]);
+              });
+              setYearMsg("");
+            });
           } catch (err) {
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
           }
@@ -909,6 +971,8 @@
         onKeyDown: (e) => e.key === "Enter" && addCat()
       }
     ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(HolidaySettings, {
+          holidayRegionCode,
+          setHolidayRegionCode,
       holidays,
       setHolidays,
       isOffline,
@@ -940,6 +1004,7 @@
         message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
         confirmLabel: "Reset Targets",
         onConfirm: () => {
+          const prevTargets = budgetTargets;
           const byMonthCat = {};
           (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
             const key = `${activeYear}:${ev.month}`;
@@ -963,6 +1028,12 @@
           const monthsSet = Object.keys(byMonthCat).length;
           setTgtResetMsg(`Targets for ${activeYear} reset from actuals across ${monthsSet} month${monthsSet !== 1 ? "s" : ""}.`);
           setConfirmTgtReset(false);
+          // A year of hand-set targets is overwritten in one press, and the
+          // confirm dialog is the only thing between the button and the loss.
+          pushUndo(`${activeYear} targets reset from actuals`, () => {
+            setBudgetTargets(prevTargets);
+            setTgtResetMsg("");
+          });
         },
         onCancel: () => setConfirmTgtReset(false)
       }
@@ -1088,7 +1159,10 @@
         const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
         const hist = ov._history || [];
         const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString(), (() => {
+          const who = memberName(ov._by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` \xB7 by ${who}` : "";
+        })())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
@@ -1110,7 +1184,10 @@
             title: "Restore the originally scheduled values for this date"
           },
           "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), (() => {
+          const who = memberName(h.by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` (${who})` : "";
+        })(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
     })())));
   }

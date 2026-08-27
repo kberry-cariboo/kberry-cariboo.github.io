@@ -12,6 +12,13 @@
       recurEvery: 1,
       recurUnit: "month",
       recurDays: [],
+      // Which occurrence in the month, for the "nth weekday" schedule:
+      // 1..5 counting forward, or -1 for the last one. Ignored by every other
+      // unit. Stored rather than derived from the start date, because the
+      // start date can't tell "the fourth Friday" from "the last Friday" —
+      // they are the same day in most months and different in the long ones,
+      // and which one the bill means is not something to guess.
+      recurNth: 1,
       recurEnd: "",
       monthlyAmounts: null,
       transferDirection: "out"
@@ -24,6 +31,7 @@
       recurEvery: (_a = initial.recurEvery) != null ? _a : 1,
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
+      recurNth: Number.isFinite(initial.recurNth) ? initial.recurNth : 1,
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
       repeats: (_e = initial.repeats) != null ? _e : false,
       transferDirection: initial.transferDirection || "out"
@@ -54,7 +62,7 @@
           start_date: { type: "string", description: "Date it first applies, as YYYY-MM-DD. Use today when the text doesn't say." },
           repeats: { type: "boolean", description: "true only when the text describes something recurring." },
           recur_every: { type: "integer", description: "Interval between repeats, e.g. 2 for 'every second week'. 1 otherwise." },
-          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth"] },
+          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"] },
           recur_days: { type: "array", description: "Weekly repeats only: weekday numbers, 0 = Sunday through 6 = Saturday.", items: { type: "integer" } },
           recur_end: { type: "string", description: "Last date as YYYY-MM-DD, or an empty string when ongoing." },
           notes: { type: "string", description: "Anything in the text that doesn't fit the other fields. Empty string if none." }
@@ -80,7 +88,7 @@
         if (/^\d{4}-\d{2}-\d{2}$/.test(data.start_date || "")) patch.startDate = data.start_date;
         patch.repeats = !!data.repeats;
         if (patch.repeats) {
-          patch.recurUnit = ["day", "week", "month", "year", "semimonth"].includes(data.recur_unit) ? data.recur_unit : "month";
+          patch.recurUnit = ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(data.recur_unit) ? data.recur_unit : "month";
           patch.recurEvery = Number.isInteger(data.recur_every) && data.recur_every > 0 ? data.recur_every : 1;
           // recurDays is only meaningful for weekly repeats, and the form's
           // own weekday toggles assume clean 0-6 values.
@@ -104,7 +112,22 @@
       const newDays = f.recurUnit === "week" ? wd !== null ? [wd] : f.recurDays : f.recurDays;
       set({ startDate: val, recurDays: newDays });
     };
-    const setUnit = (unit) => set({ recurUnit: unit, recurDays: unit === "week" && startWD !== null ? [startWD] : [] });
+    const setUnit = (unit) => {
+      // recurDays carries the weekday for both "week" and "monthweekday"; the
+      // start date is the natural default for each, so switching to either
+      // pre-selects the day the user already picked rather than Sunday.
+      if (unit === "monthweekday") {
+        const d = startD || null;
+        set({
+          recurUnit: unit,
+          recurDays: startWD !== null ? [startWD] : [],
+          // Which occurrence of that weekday the start date already is.
+          recurNth: d ? Math.floor((d.getDate() - 1) / 7) + 1 : 1
+        });
+        return;
+      }
+      set({ recurUnit: unit, recurDays: unit === "week" && startWD !== null ? [startWD] : [] });
+    };
     const toggleWD = (wd) => {
       if (f.recurEvery > 1 || wd === startWD) return;
       const next = f.recurDays.includes(wd) ? f.recurDays.filter((d) => d !== wd) : [...f.recurDays, wd].sort((a, b) => a - b);
@@ -114,6 +137,12 @@
       if (!f.repeats) return null;
       const e = f.recurEvery, u = f.recurUnit, until = f.recurEnd ? ` until ${f.recurEnd}` : " (ongoing)";
       if (u === "semimonth") return `Semi-monthly (1st & 15th pattern)${until}`;
+      if (u === "monthend") return `The last day of every month${until}`;
+      if (u === "monthweekday") {
+        const ord = { "1": "first", "2": "second", "3": "third", "4": "fourth", "5": "fifth", "-1": "last" }[String(f.recurNth)] || "first";
+        const wd = WEEKDAYS[f.recurDays[0] != null ? f.recurDays[0] : startWD || 0];
+        return `The ${ord} ${wd} of every month${until}`;
+      }
       if (u === "day") return `Every ${e} day${e > 1 ? "s" : ""}${until}`;
       if (u === "month") return `Every ${e} month${e > 1 ? "s" : ""}${until}`;
       if (u === "year") return `Every ${e} year${e > 1 ? "s" : ""}${until}`;
@@ -142,13 +171,22 @@
         amount: dollarsToCents(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
-        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
+        recurNth: f.recurUnit === "monthweekday" ? parseInt(f.recurNth, 10) || 1 : void 0,
+        // "monthweekday" keeps exactly one weekday (the schedule names one);
+        // "week" keeps the start day plus any extras the user ticked.
+        recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
+    // Who added this entry, when the household has more than one person in it
+    // and it wasn't you. The id has round-tripped as `userId` since entries
+    // were first synced; nothing ever displayed it, so "who put this here?"
+    // had no answer in a shared budget.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const addedBy = initial ? memberName(initial.userId, hhMembers, { selfId: hhUser && hhUser.id }) : "";
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, addedBy && addedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "entry-addedby" }, "Added by ", addedBy), !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
       /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
       /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
         /* @__PURE__ */ React.createElement("input", {
@@ -250,7 +288,11 @@
           );
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "monthend" }, "Monthly \u2014 last day"), /* @__PURE__ */ React.createElement("option", { value: "monthweekday" }, "Monthly \u2014 nth weekday"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "monthweekday" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      className: lblCls,
+      helpLabel: "Which weekday",
+      help: "A month with only four of the chosen weekday has no fifth one, so a \u201c5th\u201d entry simply doesn\u2019t occur in those months. Pick \u201cLast\u201d for the one that should always land in the final week."
+    }, "Which weekday"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("select", { "aria-label": "Which occurrence in the month", className: inpCls(false), style: { flex: "0 1 130px" }, value: String(f.recurNth), onChange: (e) => set({ recurNth: parseInt(e.target.value, 10) }) }, [[1, "First"], [2, "Second"], [3, "Third"], [4, "Fourth"], [5, "Fifth"], [-1, "Last"]].map(([v, lbl]) => /* @__PURE__ */ React.createElement("option", { key: v, value: String(v) }, lbl))), /* @__PURE__ */ React.createElement("select", { "aria-label": "Weekday", className: inpCls(false), style: { flex: "0 1 150px" }, value: String(f.recurDays[0] != null ? f.recurDays[0] : startWD || 0), onChange: (e) => set({ recurDays: [parseInt(e.target.value, 10)] }) }, WEEKDAYS.map((wd, i) => /* @__PURE__ */ React.createElement("option", { key: wd, value: String(i) }, wd))))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
       className: lblCls,
       helpLabel: "Weekdays",
       help: f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."

@@ -160,7 +160,8 @@ re-keyed onto the entry's start-date occurrence by the migration.) All reads/wri
 Statutory holidays (which decide when payroll landing on a closed day is
 actually deposited) are rows too: one per date in `holidays`, plus a
 `holiday_years` row per year the household has taken over from the built-in
-British Columbia rules — that second table is what distinguishes "this household
+rules for its region (`holidayRegion`, any Canadian province or territory,
+defaulting to British Columbia) — that second table is what distinguishes "this household
 deleted every holiday in 2027" from "nobody has touched 2027". Settings →
 Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
 the pair against a scratch database.
@@ -197,7 +198,7 @@ half the fields missing. Keys the schema has deliberately retired are listed in
 saving.
 
 That covers **top-level** fields. Fields *inside* an entry or an override —
-`transferDirection`, `copiedFrom`, `skipped`, `actualAmount`, `month` — have no
+`transferDirection`, `copiedFrom`, `recurNth`, `skipped`, `actualAmount`, `month` — have no
 equivalent declaration, so they are still only covered by the round-trip test:
 **run it whenever you add a field to the sync payload, and add the field to its
 fixture.** Before it existed, `cf_apply_household_payload` wrote the columns it
@@ -208,6 +209,16 @@ this — its Supabase stub accepts any payload it is handed. Six features were
 lost that way (transfers, skipped occurrences, reconciled actual amounts,
 occurrences moved to another month, copy provenance, and the per-category
 rollover flags).
+
+**Re-run `supabase/schema.sql` before deploying a client that adds a field.**
+An inner field has no runtime guard behind it — `cf_apply_household_payload`
+refuses an unknown *top-level* key, but a field inside an entry that the
+database has no column for is silently dropped, and the next load hands the
+user back a copy that never had it. The two recurrence units added most
+recently make this concrete: against an un-upgraded database, `recurUnit`
+fails the old `check` and is coerced to `'month'`, so "the third Friday"
+quietly becomes "the 16th" and `recurNth` vanishes. Run the SQL first and the
+whole class of problem doesn't arise.
 
 If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
 migration block at the end automatically copies each household's old

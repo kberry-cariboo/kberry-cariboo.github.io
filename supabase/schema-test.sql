@@ -188,6 +188,7 @@ begin
     "budgetTargets": {"2026:0": {"Housing": 165000}}, "templates": [], "completed": {},
     "debtData": {"Car": {"balance": 1200000}}, "deletedCopyIds": {"e-old": true},
     "holidays": {"2026": {"2026-07-01": {"name": "Canada Day", "optional": false, "source": "computed"}}},
+    "currency": "EUR", "locale": "de-DE", "holidayRegion": "ON",
     "schemaVersion": 8
   }$p$::jsonb);
   perform set_config('request.jwt.claim.sub', uid::text, true);

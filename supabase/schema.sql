@@ -94,7 +94,8 @@ create table if not exists entries (
   start_date date not null,
   repeats boolean not null default false,
   recur_every int not null default 1,
-  recur_unit text not null default 'month' check (recur_unit in ('day','week','month','year','semimonth')),
+  recur_unit text not null default 'month' check (recur_unit in ('day','week','month','year','semimonth','monthend','monthweekday')),
+  recur_nth int,                            -- 'monthweekday' only: 1-5, or -1 for last
   recur_days int[] not null default '{}',   -- weekdays (0-6) for weekly schedules
   recur_end date,                           -- null = ongoing
   category text not null default 'Uncategorized',
@@ -118,6 +119,7 @@ create table if not exists entry_overrides (
   skipped boolean not null default false,   -- this date was skipped; it generates no occurrence
   notes text,
   saved_at timestamptz,
+  updated_by uuid,                          -- who last edited this occurrence
   history jsonb not null default '[]'::jsonb,
   primary key (household_id, year, occurrence_id)
 );
@@ -234,6 +236,9 @@ create table if not exists household_settings (
   reg_filter_status text[] not null default '{}',
   dash_hidden jsonb not null default '{}'::jsonb,
   dash_order text[] not null default '{}',
+  currency text,
+  locale text,
+  holiday_region text,
   debt_data jsonb not null default '{}'::jsonb,
   deleted_copy_ids jsonb not null default '{}'::jsonb,
   schema_version int,
@@ -282,9 +287,36 @@ begin
       check (type in ('income', 'expense', 'transfer'));
   end if;
 end $$;
+-- Two further recurrence units — the last day of the month, and the nth named
+-- weekday of the month — widen the same check the same way the 'transfer' type
+-- did above. An older client never sends them, so this is safe to run ahead of
+-- a deploy.
+do $$
+begin
+  if exists (select 1 from pg_constraint
+             where conrelid = 'entries'::regclass and contype = 'c'
+               and pg_get_constraintdef(oid) like '%recur_unit%'
+               and pg_get_constraintdef(oid) not like '%monthweekday%') then
+    alter table entries drop constraint if exists entries_recur_unit_check;
+    alter table entries add constraint entries_recur_unit_check
+      check (recur_unit in ('day','week','month','year','semimonth','monthend','monthweekday'));
+  end if;
+end $$;
+-- Which occurrence of the weekday the 'monthweekday' schedule means: 1-5
+-- counting forward, or -1 for the last one. Null for every other unit.
+alter table entries add column if not exists recur_nth int;
 alter table entries add column if not exists transfer_direction text;
 alter table entries add column if not exists copied_from text;
 alter table entry_overrides add column if not exists month int;
+-- Who last edited an occurrence. Null for every row written before this
+-- existed, which reads as "nobody recorded" and displays as nothing.
+alter table entry_overrides add column if not exists updated_by uuid;
+-- Currency, number formatting and which region's statutory holidays to
+-- compute. Null on every existing row, which the client reads as its
+-- defaults (CAD / en-CA / BC) — so an upgrade changes nothing on screen.
+alter table household_settings add column if not exists currency text;
+alter table household_settings add column if not exists locale text;
+alter table household_settings add column if not exists holiday_region text;
 alter table entry_overrides add column if not exists actual_amount numeric(14,2);
 alter table entry_overrides add column if not exists skipped boolean not null default false;
 alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
@@ -702,7 +734,8 @@ returns text[] language sql immutable as $$
     'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon', 'goals',
     'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
-    'completed', 'debtData', 'deletedCopyIds', 'holidays'
+    'completed', 'debtData', 'deletedCopyIds', 'holidays',
+    'currency', 'locale', 'holidayRegion'
   ]::text[];
 $$;
 
@@ -782,6 +815,7 @@ begin
   if jsonb_typeof(d->'entries') = 'array' then
     insert into entries (household_id, id, sort_order, description, type, amount,
                          start_date, repeats, recur_every, recur_unit, recur_days,
+                         recur_nth,
                          recur_end, category, notes, monthly_amounts, created_by,
                          transfer_direction, copied_from)
     select hid,
@@ -793,9 +827,10 @@ begin
            coalesce(cf_date(e.value->>'startDate'), current_date),
            coalesce(cf_bool(e.value->>'repeats'), false),
            greatest(coalesce(cf_int(e.value->>'recurEvery'), 1), 1),
-           case when e.value->>'recurUnit' in ('day','week','month','year','semimonth')
+           case when e.value->>'recurUnit' in ('day','week','month','year','semimonth','monthend','monthweekday')
                 then e.value->>'recurUnit' else 'month' end,
            cf_int_array(e.value->'recurDays'),
+           cf_int(e.value->>'recurNth'),
            cf_date(e.value->>'recurEnd'),
            coalesce(nullif(e.value->>'category', ''), 'Uncategorized'),
            coalesce(e.value->>'notes', ''),
@@ -817,6 +852,7 @@ begin
       recur_every = excluded.recur_every,
       recur_unit = excluded.recur_unit,
       recur_days = excluded.recur_days,
+      recur_nth = excluded.recur_nth,
       recur_end = excluded.recur_end,
       category = excluded.category,
       notes = excluded.notes,
@@ -826,13 +862,13 @@ begin
       copied_from = excluded.copied_from
     where (entries.sort_order, entries.description, entries.type, entries.amount,
            entries.start_date, entries.repeats, entries.recur_every, entries.recur_unit,
-           entries.recur_days, entries.recur_end, entries.category, entries.notes,
+           entries.recur_days, entries.recur_nth, entries.recur_end, entries.category, entries.notes,
            entries.monthly_amounts, entries.created_by,
            entries.transfer_direction, entries.copied_from)
       is distinct from
           (excluded.sort_order, excluded.description, excluded.type, excluded.amount,
            excluded.start_date, excluded.repeats, excluded.recur_every, excluded.recur_unit,
-           excluded.recur_days, excluded.recur_end, excluded.category, excluded.notes,
+           excluded.recur_days, excluded.recur_nth, excluded.recur_end, excluded.category, excluded.notes,
            excluded.monthly_amounts, excluded.created_by,
            excluded.transfer_direction, excluded.copied_from);
 
@@ -867,7 +903,7 @@ begin
   if jsonb_typeof(d->'overridesByYr') = 'object' then
     insert into entry_overrides (household_id, year, occurrence_id, description,
                                  amount, day, month, actual_amount, skipped,
-                                 notes, saved_at, history)
+                                 notes, saved_at, updated_by, history)
     select hid,
            cf_int(y.key, null),
            o.key,
@@ -879,6 +915,8 @@ begin
            coalesce(cf_bool(o.value->>'skipped'), false),
            o.value->>'notes',
            cf_ts(o.value->>'_savedAt'),
+           case when (o.value->>'_by') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                then (o.value->>'_by')::uuid end,
            coalesce(case when jsonb_typeof(o.value->'_history') = 'array'
                          then o.value->'_history' end, '[]'::jsonb)
     from jsonb_each(d->'overridesByYr') y(key, value),
@@ -894,14 +932,15 @@ begin
       skipped = excluded.skipped,
       notes = excluded.notes,
       saved_at = excluded.saved_at,
+      updated_by = excluded.updated_by,
       history = excluded.history
     where (entry_overrides.description, entry_overrides.amount, entry_overrides.day,
            entry_overrides.month, entry_overrides.actual_amount, entry_overrides.skipped,
-           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.history)
+           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.updated_by, entry_overrides.history)
       is distinct from
           (excluded.description, excluded.amount, excluded.day,
            excluded.month, excluded.actual_amount, excluded.skipped,
-           excluded.notes, excluded.saved_at, excluded.history);
+           excluded.notes, excluded.saved_at, excluded.updated_by, excluded.history);
 
     delete from entry_overrides v
     where v.household_id = hid
@@ -1147,7 +1186,8 @@ begin
   insert into household_settings as s
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
-     reg_filter_status, dash_hidden, dash_order, debt_data, deleted_copy_ids,
+     reg_filter_status, dash_hidden, dash_order, currency, locale, holiday_region,
+     debt_data, deleted_copy_ids,
      rollover, schema_version, updated_at, updated_by)
   values
     (hid,
@@ -1163,6 +1203,9 @@ begin
      cf_text_array(d->'regFilterStatus'),
      case when jsonb_typeof(d->'dashHidden') = 'object' then d->'dashHidden' else '{}'::jsonb end,
      cf_text_array(d->'dashOrder'),
+     d->>'currency',
+     d->>'locale',
+     d->>'holidayRegion',
      case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
      case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
      -- budgetTargets._rollover is a per-category flag, not a per-month target,
@@ -1189,6 +1232,9 @@ begin
      reg_filter_status = case when d ? 'regFilterStatus' then excluded.reg_filter_status else s.reg_filter_status end,
      dash_hidden = case when d ? 'dashHidden' then excluded.dash_hidden else s.dash_hidden end,
      dash_order = case when d ? 'dashOrder' then excluded.dash_order else s.dash_order end,
+     currency = case when d ? 'currency' then excluded.currency else s.currency end,
+     locale = case when d ? 'locale' then excluded.locale else s.locale end,
+     holiday_region = case when d ? 'holidayRegion' then excluded.holiday_region else s.holiday_region end,
      debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
      deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
      rollover = case when d ? 'budgetTargets' then excluded.rollover else s.rollover end,
@@ -1319,6 +1365,7 @@ begin
         'recurEvery', e.recur_every,
         'recurUnit', e.recur_unit,
         'recurDays', to_jsonb(e.recur_days),
+        'recurNth', e.recur_nth,
         'recurEnd', coalesce(to_char(e.recur_end, 'YYYY-MM-DD'), ''),
         'category', e.category,
         'notes', e.notes,
@@ -1339,6 +1386,7 @@ begin
                    'day', v.day,
                    'month', v.month,
                    'actualAmount', v.actual_amount,
+                   '_by', v.updated_by,
                    -- false would read as an override that says "not skipped",
                    -- which is not the same as having no opinion.
                    'skipped', case when v.skipped then true end,
@@ -1434,6 +1482,9 @@ begin
       'regFilterStatus', to_jsonb(s.reg_filter_status),
       'dashHidden', s.dash_hidden,
       'dashOrder', to_jsonb(s.dash_order),
+      'currency', s.currency,
+      'locale', s.locale,
+      'holidayRegion', s.holiday_region,
       'debtData', s.debt_data,
       'deletedCopyIds', s.deleted_copy_ids,
       'schemaVersion', s.schema_version,

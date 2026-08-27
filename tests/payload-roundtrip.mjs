@@ -69,10 +69,19 @@ const payload = {
     { id: 'e-copy', desc: 'Vet checkup', type: 'expense', amount: 24000, category: 'Farm / Animals', repeats: false,
       recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-08-12', notes: '',
       copiedFrom: 'e-expense' },
+    // The two schedules whose day of the month is not the start date's: the
+    // last day, and the nth named weekday. recurNth is the field with no
+    // column behind it until schema.sql is re-run, which is exactly the shape
+    // of failure this test exists to catch.
+    { id: 'e-monthend', desc: 'Card payment', type: 'expense', amount: 42000, category: 'Debt / Credit', repeats: true,
+      recurEvery: 1, recurUnit: 'monthend', recurDays: [], recurEnd: '', startDate: '2026-02-28', notes: '' },
+    { id: 'e-nthweekday', desc: 'Cleaner', type: 'expense', amount: 12000, category: 'Personal', repeats: true,
+      recurEvery: 1, recurUnit: 'monthweekday', recurDays: [5], recurNth: -1, recurEnd: '', startDate: '2026-01-30', notes: '' },
   ],
   overridesByYr: {
     2026: {
-      'e-expense-2026-2-1': { amount: 170000, notes: 'rent went up', _savedAt: '2026-03-01T10:00:00.000Z' },
+      'e-expense-2026-2-1': { amount: 170000, notes: 'rent went up', _savedAt: '2026-03-01T10:00:00.000Z',
+        _by: UID },
       'e-expense-2026-3-1': { skipped: true },
       'e-expense-2026-4-1': { actualAmount: 171050 },
       'e-expense-2026-5-1': { day: 3, month: 6 },

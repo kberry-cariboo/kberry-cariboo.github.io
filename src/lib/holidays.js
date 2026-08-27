@@ -13,14 +13,14 @@
   // synced it to everyone else in the household is not a thing the app should
   // do on its own initiative.
   //
-  // A year with nothing stored falls back to computeBCHolidays() below, which
+  // A year with nothing stored falls back to computeRegionHolidays() below, which
   // works the list out from the rules. That fallback is the floor the feature
   // stands on rather than a stopgap: the app is offline-first and ships as a
   // single static page, so the deposit marker has to be right on a plane, on a
   // budget year opened for the first time, and if that site ever moves. The
   // fetch earns its place where rules can't reach — a proclaimed one-off, or a
   // change like BC moving Family Day to the third Monday in 2019.
-  const HOLIDAY_API_URL = (year) => `https://canada-holidays.ca/api/v1/provinces/BC?year=${year}&optional=true`;
+  const HOLIDAY_API_URL = (year, region) => `https://canada-holidays.ca/api/v1/provinces/${holidayRegion(region).code}?year=${year}&optional=true`;
 
   const nthWeekdayOfMonth = (year, month, weekday, n) => {
     const first = new Date(year, month, 1);
@@ -60,7 +60,39 @@
     while (obs.getDay() === 0 || obs.getDay() === 6 || taken.has(localDateStr(obs))) obs = addDays(obs, 1);
     return obs;
   };
-  function computeBCHolidays(year) {
+  // Which region's rules the built-in list is computed from. Provinces and
+  // territories differ in three places — the February holiday, the August
+  // civic one, and which of Victoria Day / Truth and Reconciliation /
+  // Remembrance Day / Boxing Day they observe — and everything else is common
+  // across the country.
+  //
+  // This is a computed baseline, not an authority. Provincial rules change,
+  // one-off proclamations happen, and some of these days are "optional" or
+  // employer-discretionary in ways a rule table can't capture. Settings →
+  // Statutory Holidays can fetch the published list for the chosen region from
+  // canada-holidays.ca, and every date can be added, edited or removed by
+  // hand; that is what the feature is for. `optional` here marks the days a
+  // region commonly treats as discretionary, matching how BC has always
+  // treated Easter Monday and Boxing Day.
+  const HOLIDAY_REGIONS = [
+    { code: "BC", name: "British Columbia", feb: "Family Day", aug: "British Columbia Day", victoria: true, truth: true, remembrance: true, boxingOptional: true },
+    { code: "AB", name: "Alberta", feb: "Family Day", aug: "Heritage Day", augOptional: true, victoria: true, truth: false, remembrance: true },
+    { code: "SK", name: "Saskatchewan", feb: "Family Day", aug: "Saskatchewan Day", victoria: true, truth: false, remembrance: true },
+    { code: "MB", name: "Manitoba", feb: "Louis Riel Day", aug: "Terry Fox Day", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "ON", name: "Ontario", feb: "Family Day", aug: "Civic Holiday", augOptional: true, victoria: true, truth: false, remembrance: false, boxing: true },
+    { code: "QC", name: "Quebec", feb: null, aug: null, victoria: true, victoriaName: "National Patriots' Day", truth: false, remembrance: false, stJean: true },
+    { code: "NB", name: "New Brunswick", feb: "Family Day", aug: "New Brunswick Day", victoria: true, truth: false, remembrance: true },
+    { code: "NS", name: "Nova Scotia", feb: "Heritage Day", aug: "Natal Day", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "PE", name: "Prince Edward Island", feb: "Islander Day", aug: "Gold Cup Parade Day", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "NL", name: "Newfoundland and Labrador", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: false, remembrance: true },
+    { code: "YT", name: "Yukon", feb: "Heritage Day", aug: "Discovery Day", augMonday: 3, victoria: true, truth: true, remembrance: true },
+    { code: "NT", name: "Northwest Territories", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: true, remembrance: true },
+    { code: "NU", name: "Nunavut", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: true, remembrance: true, nunavutDay: true }
+  ];
+  const DEFAULT_HOLIDAY_REGION = "BC";
+  const holidayRegion = (code) => HOLIDAY_REGIONS.find((r) => r.code === code) || HOLIDAY_REGIONS[0];
+  function computeRegionHolidays(year, regionCode) {
+    const r = holidayRegion(regionCode);
     const may25 = new Date(year, 4, 25);
     // Victoria Day is the Monday *preceding* May 25 — on a May 25 Monday the
     // holiday is the week before, not that day.
@@ -68,19 +100,21 @@
     const easter = easterSunday(year);
     const fixed = [
       [new Date(year, 0, 1), "New Year's Day", false],
-      [nthWeekdayOfMonth(year, 1, 1, 3), "Family Day", false],
       [addDays(easter, -2), "Good Friday", false],
       [addDays(easter, 1), "Easter Monday", true],
-      [victoria, "Victoria Day", false],
       [new Date(year, 6, 1), "Canada Day", false],
-      [nthWeekdayOfMonth(year, 7, 1, 1), "British Columbia Day", false],
       [nthWeekdayOfMonth(year, 8, 1, 1), "Labour Day", false],
-      [new Date(year, 8, 30), "National Day for Truth and Reconciliation", false],
       [nthWeekdayOfMonth(year, 9, 1, 2), "Thanksgiving", false],
-      [new Date(year, 10, 11), "Remembrance Day", false],
-      [new Date(year, 11, 25), "Christmas Day", false],
-      [new Date(year, 11, 26), "Boxing Day", true]
+      [new Date(year, 11, 25), "Christmas Day", false]
     ];
+    if (r.feb) fixed.push([nthWeekdayOfMonth(year, 1, 1, 3), r.feb, false]);
+    if (r.victoria) fixed.push([victoria, r.victoriaName || "Victoria Day", false]);
+    if (r.stJean) fixed.push([new Date(year, 5, 24), "St-Jean-Baptiste Day", false]);
+    if (r.nunavutDay) fixed.push([new Date(year, 6, 9), "Nunavut Day", false]);
+    if (r.aug) fixed.push([nthWeekdayOfMonth(year, 7, 1, r.augMonday || 1), r.aug, !!r.augOptional]);
+    if (r.truth) fixed.push([new Date(year, 8, 30), "National Day for Truth and Reconciliation", false]);
+    if (r.remembrance) fixed.push([new Date(year, 10, 11), "Remembrance Day", false]);
+    if (r.boxing || r.boxingOptional) fixed.push([new Date(year, 11, 26), "Boxing Day", !!r.boxingOptional]);
     const out = {};
     const taken = /* @__PURE__ */ new Set();
     // In date order, so an earlier holiday claims its observed day before a
@@ -137,8 +171,20 @@
   function getStoredHolidays() {
     return storedHolidays;
   }
+  // Which region the computed list is worked out for. Pushed in from App the
+  // same way the stored holidays are — the readers below are called from a
+  // dozen synchronous places with no access to React state. Changing it clears
+  // the cache, so the next lookup recomputes rather than serving the previous
+  // region's dates.
+  let computedRegion = DEFAULT_HOLIDAY_REGION;
+  function setHolidayRegion(code) {
+    const next = holidayRegion(code).code;
+    if (next === computedRegion) return;
+    computedRegion = next;
+    Object.keys(computedCache).forEach((k) => delete computedCache[k]);
+  }
   function computedHolidaysForYear(year) {
-    if (!computedCache[year]) computedCache[year] = computeBCHolidays(year);
+    if (!computedCache[year]) computedCache[year] = computeRegionHolidays(year, computedRegion);
     return computedCache[year];
   }
   // A stored year replaces the computed one outright rather than merging with
@@ -193,10 +239,10 @@
   // Throws with a message meant to be shown as-is: this is only ever called
   // from a button the user pressed, so a failure has to say what happened
   // rather than fall back silently the way an automatic refresh would.
-  async function fetchBCHolidayYear(year) {
+  async function fetchHolidayYear(year, region) {
     let res;
     try {
-      res = await fetch(HOLIDAY_API_URL(year), { headers: { accept: "application/json" } });
+      res = await fetch(HOLIDAY_API_URL(year, region), { headers: { accept: "application/json" } });
     } catch (e) {
       throw new Error("Couldn't reach canada-holidays.ca. Check your connection and try again.");
     }

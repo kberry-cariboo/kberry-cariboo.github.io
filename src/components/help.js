@@ -56,7 +56,7 @@
           ["Fill in Actual Amount Paid", "Leave it blank and the occurrence counts as paid exactly as scheduled. Fill it in and your running balance and Budget vs Actual use the real figure."],
           ["Save", "Only that date changes. The entry still says what you expect to pay, so next month is unaffected."]
         ] },
-        { p: "Settings \u2192 Audit lists your twenty most recent overrides, each with a one-click revert, if you want to check or undo what you have changed." },
+        { p: "Settings \u2192 Audit lists the twenty most recent overrides, each with a one-click revert, if you want to check or undo what has been changed. In a household with more than one member each one names who made it, and the occurrence editor says so too \u2014 so \u201cwho moved the rent to the 3rd?\u201d has an answer. Entries carry their author the same way; open one and the form says who added it. Changes made before this existed have no author recorded and simply show nothing." },
 
         { sub: "4. Change or skip a single date" },
         { p: "Right-click a row in the budget grid \u2014 long-press on touch, or use the \u22EE button at the end of the row \u2014 to open the row menu. Every option on it affects one date except Edit recurring entry and Delete entry, which affect all of them." },
@@ -94,7 +94,7 @@
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
         { shot: ["settings-backup", "Settings \u2192 Data Backup & Restore."] },
-        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default. It cannot be undone, which is why it asks first." }
+        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default \u2014 which is why it asks first. The toast that follows offers one undo, for the few seconds it is up; after that the only way back is another backup." }
       ]
     },
     {
@@ -113,13 +113,15 @@
           ["One-time", "A single date."],
           ["Daily / weekly / monthly / yearly", "Every N days, weeks, months or years. Weekly repeats can name specific weekdays, so “every second Friday” and “every Monday and Thursday” are both one entry."],
           ["Semi-monthly", "The 1st-and-15th pattern, for pay that lands twice a month."],
+          ["Monthly — last day", "The final day of every month, whatever its length: 28 February, 31 March, 30 April. Not the same as a monthly entry that happens to start on the last day — that one keeps the start date's day number, so one created in February stays on the 28th all year."],
+          ["Monthly — nth weekday", "“The third Friday”, “the last Tuesday”. Pick which one and which weekday; both default to whatever your start date already is. “Last” and “fourth” are the same day in most months and different in the long ones, which is why they are separate choices. A month with only four of the chosen weekday has no fifth one, so a “fifth” entry simply doesn't occur in those months."],
           ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
         { sub: "Paydays that land on a closed day" },
         { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
         { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
-        { p: "Holidays are British Columbia's, including the two the province lists as optional (Easter Monday and Boxing Day). Each one is listed on the day it is observed and only there — when Boxing Day falls on a Saturday the entry is the Monday it is actually taken, marked “(observed)”, rather than a pair of rows for one day off. Settings → Statutory Holidays shows exactly which dates the app is using for a year and lets you add, edit or remove them; nothing is fetched on its own, so a date you correct stays corrected. Moving an occurrence yourself — dragging the row, or Edit this occurrence — re-checks the deposit date from wherever you put it." },
+        { p: "Which province's or territory's holidays apply is set in Settings → Statutory Holidays, and defaults to British Columbia. The built-in list is computed from that region's usual rules and includes the days it commonly treats as optional; each one is listed on the day it is observed and only there. Rules change and one-off days get proclaimed, so the built-in list is a baseline — the Fetch button replaces a year with what canada-holidays.ca publishes for your region, and any date can be added, edited or removed by hand. Outside Canada, add the days that matter to you by hand and the deposit rule works the same way." },
         { sub: "Changing one occurrence without changing the plan" },
         { p: "Clicking a row in the budget grid opens that occurrence for editing. For the rest, right-click the row (long-press on touch, or use the ⋮ button) to open the row menu:" },
         { defs: [
@@ -127,10 +129,14 @@
           ["Edit recurring entry", "Changes the entry, and so every occurrence of it."],
           ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates are listed above the grid for that month, each with a Restore button."],
           ["Reset occurrence", "Removes an override and puts the originally scheduled amount back."],
-          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."]
+          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."],
+          ["Undo, generally", "Removing a category or a budget year, resetting a year of targets, removing a budget target and restoring a backup all raise the same undo toast. Ctrl+Z (Cmd+Z on a Mac) does the same thing as its button. Marking an occurrence paid has no toast \u2014 the tick is its own undo."]
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
+        { sub: "Reconciling to your bank" },
+        { p: "Every balance in the app is projected: the year's opening balance, plus everything scheduled since. Reality drifts from that — cash spent, a rounding, a purchase nobody entered — so the Dashboard's “Balance today” tile has a Reconcile link. Enter what your account actually shows and the difference is recorded as a dated adjustment on today." },
+        { p: "The adjustment is a transfer, not an expense, so it moves the balance without counting as spending: it stays out of your income and expense totals, out of Budget vs Actual and out of the category charts. It sits in the ledger on the day you made it and can be deleted like any other entry. Reconciling this way is why you never have to go back and edit January's opening balance, which would rewrite every month behind it." },
         { p: "To record that a bill actually cost something different, open Edit this occurrence and fill in Actual Amount Paid. Leaving it blank means “paid as scheduled”. An actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
         { sub: "Getting entries in faster" },
         { defs: [
@@ -225,6 +231,7 @@
         { sub: "General" },
         { defs: [
           ["Alert Threshold", "The balance you want to be warned about. Used for Dashboard alerts, Forecast warnings and the amber balances in the Budget grid."],
+          ["Currency & Format", "The currency symbol, and where the thousands and decimal separators go. It changes how amounts are written, not what they are worth — nothing is converted. Only two-decimal currencies are listed, because amounts are stored as whole cents throughout the app. Shared with the household, so everyone sees the same figures the same way."],
           ["Appearance", "Light or dark theme. The choice is per device."],
           ["Notifications", "One notification a day at the hour you choose, listing every bill due that day with its amount, plus a warning when your forecast balance is heading below your threshold. With background delivery configured these arrive as ordinary system notifications whether or not the app is open; without it they only appear while the app is open."],
           ["Budget Years", "Years are added in sequence — the next one only. The first year holds your opening balance; later years carry forward automatically. Switch the active year with the pills beside the logo."],

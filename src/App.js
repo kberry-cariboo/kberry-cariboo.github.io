@@ -174,7 +174,10 @@
       completed,
       debtData,
       deletedCopyIds,
-      holidays
+      holidays,
+      currency,
+      locale,
+      holidayRegion: holidayRegionCode
     } = houseValues;
     const {
       entries: setEntries,
@@ -199,7 +202,10 @@
       completed: setCompleted,
       debtData: setDebtData,
       deletedCopyIds: setDeletedCopyIds,
-      holidays: setHolidays
+      holidays: setHolidays,
+      currency: setCurrency,
+      locale: setLocale,
+      holidayRegion: setHolidayRegionCode
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -486,6 +492,12 @@
     // columns are ordered are per-device view preferences.
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [budgetColOrder, setBudgetColOrder] = useLS("cf_budget_col_order", DEFAULT_BUDGET_COLS);
+    // fmt() reads module state, so React has no idea its output changed when
+    // the currency does. This is the one re-render that has to be forced.
+    const [, setMoneyTick] = useState(0);
+    useEffect(() => {
+      setMoneyTick((t) => t + 1);
+    }, [locale, currency]);
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
     useEffect(() => {
@@ -522,10 +534,49 @@
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
     const [undoStack, setUndoStack] = useState([]);
-    const pushUndo = (e) => {
-      setUndoStack((prev) => [...prev.slice(-9), e]);
+    // An undoable action is a label for the toast plus the function that puts
+    // things back.
+    //
+    // The stack used to hold the deleted *entry*, and App knew how to restore
+    // one — which meant entry deletion was the only action that could ever
+    // offer undo. Everything else destructive (removing a category, removing
+    // a budget year, "Reset Targets to Actuals", restoring a backup over your
+    // data) committed immediately with no way back, having taught the user
+    // through the one case that destructive things here are recoverable.
+    // Holding the revert instead puts that knowledge with the caller, which
+    // is the only place that knows what it just changed.
+    const pushUndo = useCallback((label, revert) => {
+      setUndoStack((prev) => [...prev.slice(-9), { label, revert }]);
+    }, []);
+    // The global shortcut handler mounts once; without this it would close
+    // over an empty stack forever.
+    const undoStackRef = useRef([]);
+    useEffect(() => {
+      undoStackRef.current = undoStack;
+    }, [undoStack]);
+    const undoLast = useCallback(() => {
+      setUndoStack((prev) => {
+        if (!prev.length) return prev;
+        return prev.slice(0, -1);
+      });
+    }, []);
+    // Deleting an entry, expressed in those terms. The copy-provenance
+    // bookkeeping is part of the delete (so a deleted copy doesn't come back
+    // on the next year roll-forward) and part of the undo, so both live here
+    // rather than at the two call sites.
+    const pushUndoEntryDelete = useCallback((e) => {
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
-    };
+      const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
+      pushUndo(`"${shortDesc}" deleted`, () => {
+        setEntries((prev) => [...prev, e]);
+        if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
+          if (!(e.copiedFrom in prev)) return prev;
+          const next = __spreadValues({}, prev);
+          delete next[e.copiedFrom];
+          return next;
+        });
+      });
+    }, [pushUndo, setDeletedCopyIds, setEntries]);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -543,8 +594,20 @@
     // same memo that consumes it, is what keeps that reference honest: the
     // flows can never be built against a stale list, which an effect running
     // after render would allow for one paint.
+    // Currency and number format reach fmt() the same way holidays reach
+    // expandEntries: through a module-level registry, because both are read
+    // from synchronous helpers called in dozens of places that have no access
+    // to React state. Done in a layout effect so the first paint after a
+    // change is already formatted correctly.
+    useLayoutEffect(() => {
+      setMoneyFormat(locale, currency);
+    }, [locale, currency]);
     const yearFlows = useMemo(() => {
       setStoredHolidays(holidays);
+      // Same reasoning as setStoredHolidays directly above: pushed in from the
+      // memo that consumes it, so the flows can never be built against the
+      // previous region's computed dates for one paint.
+      setHolidayRegion(holidayRegionCode);
       const flows = {};
       let carry = null;
       const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -557,7 +620,7 @@
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr, holidays]);
+    }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
@@ -753,6 +816,22 @@
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
+          return;
+        }
+        // Undo the last undoable action. Guarded the same way the letter
+        // shortcuts are (never while typing, never under a modal), and it only
+        // does anything while the toast is up — this is the toast's button
+        // under a keyboard, not a general document history.
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+          if (!undoStackRef.current.length) return;
+          e.preventDefault();
+          const top = undoStackRef.current[undoStackRef.current.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
           return;
         }
         if (document.querySelector(".modal-overlay")) return;
@@ -976,8 +1055,12 @@
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         const existing = yOvs[eventId] || {};
-        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), prev: __spreadValues({}, existing) }].slice(-10);
-        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _history: history });
+        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), by: existing._by, prev: __spreadValues({}, existing) }].slice(-10);
+        // Who made this edit, so a shared budget can answer "who moved the
+        // rent?". The id is stamped rather than the name: names are editable
+        // in Settings, and a stored copy would go stale the moment someone
+        // corrected theirs. Every reader resolves it against the member list.
+        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _by: (sessionUser == null ? void 0 : sessionUser.id) || void 0, _history: history });
         return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
       });
     };
@@ -1056,7 +1139,7 @@
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: { members, sessionUser } }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -1325,6 +1408,7 @@
         setEntries,
         saveEntryEdit,
         addEntry,
+        pushUndo,
         apiKey: aiApiKey,
         isOffline,
         budgetSub,
@@ -1343,7 +1427,7 @@
         activeYear,
         budgetColOrder,
         setBudgetColOrder,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
@@ -1359,7 +1443,7 @@
         activeYear,
         apiKey: aiApiKey,
         isOffline,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         templates,
         setTemplates,
         globalSearch,
@@ -1411,6 +1495,13 @@
         isOffline,
         houseValues,
         houseSetters,
+        pushUndo,
+        currency,
+        setCurrency,
+        locale,
+        setLocale,
+        holidayRegionCode,
+        setHolidayRegionCode,
         setCategories,
         categoryColors,
         setCategoryColors,
@@ -1470,19 +1561,19 @@
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
-        entry: undoStack[undoStack.length - 1],
+        label: undoStack[undoStack.length - 1].label,
         count: undoStack.length,
         onUndo: () => {
           haptic();
-          const e = undoStack[undoStack.length - 1];
-          setEntries((prev) => [...prev, e]);
-          setUndoStack((prev) => prev.slice(0, -1));
-          if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
-            if (!(e.copiedFrom in prev)) return prev;
-            const next = __spreadValues({}, prev);
-            delete next[e.copiedFrom];
-            return next;
-          });
+          const top = undoStack[undoStack.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            // A revert that throws must still leave the stack consistent —
+            // leaving the entry on it would offer the same broken undo again.
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
         },
         onDismiss: () => setUndoStack([])
       }
@@ -1500,7 +1591,7 @@
         className: "cf-footer-link"
       },
       "Terms of Use"
-    ))));
+    )))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

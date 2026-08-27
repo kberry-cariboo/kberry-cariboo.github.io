@@ -102,10 +102,10 @@
       )
     );
   }
-  function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
+  function UndoToast({ label, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
-    // Restart the countdown when a further delete lands while the toast is
-    // still up — the newest deletion gets the full undo window.
+    // Restart the countdown when a further undoable action lands while the
+    // toast is still up — the newest one gets the full undo window.
     useEffect(() => {
       setSecs(5);
       const iv = setInterval(() => setSecs((s) => {
@@ -117,8 +117,8 @@
         return s - 1;
       }), 1e3);
       return () => clearInterval(iv);
-    }, [entry, count]);
-    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast" }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
+    }, [label, count]);
+    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast", role: "status" }, /* @__PURE__ */ React.createElement("span", null, label, count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onUndo,
@@ -502,6 +502,38 @@
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
       const semi = __spreadProps(__spreadValues({}, entry), { id: 2, recurUnit: "semimonth", startDate: "2026-01-01" });
       t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
+      // Last day of the month: every month's real length, not the start
+      // date's day number. An entry created in February is the case that
+      // separates this from a plain monthly entry — that one would stay on
+      // the 28th all year.
+      const mend = __spreadProps(__spreadValues({}, entry), { id: 20, recurUnit: "monthend", startDate: "2026-02-28" });
+      const mendEvs = expandEntries([mend], 2026, {});
+      t("month-end = 11 events (Mar-Dec plus Feb)", () => mendEvs.length === 11);
+      t("month-end lands on 31 Mar, 30 Apr, 31 May", () => mendEvs[1].month === 2 && mendEvs[1].day === 31 && mendEvs[2].day === 30 && mendEvs[3].day === 31);
+      t("month-end differs from a plain monthly anchored the same day", () => {
+        const plain = expandEntries([__spreadProps(__spreadValues({}, mend), { id: 21, recurUnit: "month" })], 2026, {});
+        return plain[1].day === 28 && mendEvs[1].day === 31;
+      });
+      // Third Friday of each month, from Fri 16 Jan 2026.
+      const nth3 = __spreadProps(__spreadValues({}, entry), { id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" });
+      const nth3Evs = expandEntries([nth3], 2026, {});
+      t("3rd Friday = 12 events", () => nth3Evs.length === 12);
+      t("3rd Friday is always a Friday", () => nth3Evs.every((ev) => ev.date.getDay() === 5));
+      t("3rd Friday is always in the third week", () => nth3Evs.every((ev) => ev.day >= 15 && ev.day <= 21));
+      // "Last" is not "fourth": in a month with five Fridays they differ.
+      const nthLast = __spreadProps(__spreadValues({}, entry), { id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" });
+      const lastEvs = expandEntries([nthLast], 2026, {});
+      t("last Friday is always a Friday within 7 days of month end", () => lastEvs.every((ev) => ev.date.getDay() === 5 && ev.day > daysInMonth(ev.month, 2026) - 7));
+      t("last Friday differs from 4th Friday in a 5-Friday month", () => {
+        const fourth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 24, recurNth: 4 })], 2026, {});
+        return lastEvs.some((ev, i) => fourth[i] && fourth[i].day !== ev.day);
+      });
+      // A month with only four of that weekday has no fifth one, and the
+      // occurrence is skipped rather than sliding into the next month.
+      t("5th Friday skips the months that have none", () => {
+        const fifth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 25, recurNth: 5 })], 2026, {});
+        return fifth.length > 0 && fifth.length < 12 && fifth.every((ev) => ev.date.getDay() === 5);
+      });
       const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
@@ -675,31 +707,55 @@
         const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
         return aug.day === 17 && aug.depositShifted === false;
       });
+      // BC is the default and was the only region the rules covered; these two
+      // pin down that adding the others left it exactly as it was.
+      t("BC still computes 13 dates for 2026", () => Object.keys(computeRegionHolidays(2026, "BC")).length === 13);
+      t("regions differ where they actually differ", () => {
+        const on = computeRegionHolidays(2026, "ON");
+        const qc = computeRegionHolidays(2026, "QC");
+        const named = (h) => Object.keys(h).map((k) => h[k].name.replace(" (observed)", ""));
+        const onNames = named(on), qcNames = named(qc);
+        return (
+          // Ontario: no Truth and Reconciliation, no Remembrance Day, a Civic
+          // Holiday rather than BC Day.
+          !onNames.includes("National Day for Truth and Reconciliation") &&
+          !onNames.includes("Remembrance Day") &&
+          onNames.includes("Civic Holiday") &&
+          // Quebec: no February holiday at all, and Victoria Day is National
+          // Patriots' Day on the same date.
+          !qcNames.includes("Family Day") &&
+          qcNames.includes("National Patriots' Day") &&
+          qcNames.includes("St-Jean-Baptiste Day") &&
+          // Everything shared is still shared.
+          ["New Year's Day", "Good Friday", "Canada Day", "Labour Day", "Christmas Day"].every((n) => onNames.includes(n) && qcNames.includes(n))
+        );
+      });
+      t("an unknown region falls back to the default rather than throwing", () => Object.keys(computeRegionHolidays(2026, "ZZ")).length === 13);
       t("BC holiday rules: the computed dates for 2026", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         const on = (d) => (h[d] || {}).name || "\u2014";
         return on("2026-02-16") === "Family Day" && on("2026-04-03") === "Good Friday" && on("2026-05-18") === "Victoria Day" && on("2026-08-03") === "British Columbia Day" && on("2026-09-30") === "National Day for Truth and Reconciliation" && on("2026-10-12") === "Thanksgiving" && on("2026-12-25") === "Christmas Day";
       });
       t("optional BC holidays are included and flagged", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         // Boxing Day 2026 is a Saturday, so it is taken on Monday the 28th.
         return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-28"] && h["2026-12-28"].optional === true && h["2026-07-01"].optional === false;
       });
       t("a holiday that falls on a weekend is listed once, on the day it's observed", () => {
         // 1 Jan 2028 is a Saturday, taken on Monday the 3rd. Listing the
         // Saturday as well was a duplicate — one day off, one row.
-        const h = computeBCHolidays(2028);
+        const h = computeRegionHolidays(2028, "BC");
         return h["2028-01-01"] === void 0 && /^New Year's Day \(observed\)$/.test((h["2028-01-03"] || {}).name || "");
       });
       t("Christmas week resolves to two consecutive days off, listed once each", () => {
         // 25 Dec 2027 is a Saturday: Christmas is taken Monday the 27th and
         // Boxing Day moves past it to Tuesday the 28th.
-        const h = computeBCHolidays(2027);
+        const h = computeRegionHolidays(2027, "BC");
         const names = Object.keys(h).filter((d) => d >= "2027-12-24").map((d) => `${d}=${h[d].name}`);
         return names.join(" ") === "2027-12-27=Christmas Day (observed) 2027-12-28=Boxing Day (observed)";
       });
       t("a holiday on a weekday keeps its plain name", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         return h["2026-07-01"].name === "Canada Day" && h["2026-12-25"].name === "Christmas Day";
       });
       t("a bad holiday payload is ignored rather than believed", () => {
