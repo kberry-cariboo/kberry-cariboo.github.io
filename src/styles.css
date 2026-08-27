@@ -251,7 +251,10 @@
           padding:4px 10px;font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;}
         .offline-chip-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex-shrink:0;}
         .header-search-input{font-size:13px;background:transparent;border:none;outline:none;
-          color:#fff;width:130px;caret-color:var(--amberInk);}
+          color:#fff;width:130px;caret-color:var(--amberInk);
+          transition:width 0.15s ease;}
+        .header-search:focus-within .header-search-input{width:230px;}
+        @media(prefers-reduced-motion:reduce){.header-search-input{transition:none;}}
         .header-search-clear{background:transparent;border:none;cursor:pointer;
           color:rgba(255,255,255,0.5);font-size:14px;padding:0;line-height:1;}
         .alert-bell-btn{position:relative;border:1px solid;border-radius:8px;width:36px;height:36px;
@@ -331,6 +334,17 @@
         .receipt-lightbox-close{position:fixed;top:calc(14px + env(safe-area-inset-top));right:16px;
           width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
           background:rgba(255,255,255,0.15);color:#fff;font-size:18px;}
+        .entries-th--select,.entries-col-select{width:34px;padding-left:10px;padding-right:0;text-align:center;}
+        .entries-bulk-cat{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);
+          background:var(--bgCard);color:var(--text);font-family:inherit;max-width:180px;}
+        .entries-bulk-delete{background:var(--red)!important;color:#fff!important;}
+        .bva-set-target{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;
+          font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline;
+          text-underline-offset:2px;white-space:nowrap;}
+        .bva-set-target:hover{color:var(--primary);}
+        .debt-needs-balance{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;
+          border:1px dashed var(--border);border-radius:10px;background:var(--stripe);
+          color:var(--textMid);font-size:13px;}
         .glance-action{margin-top:6px;background:none;border:none;padding:0;cursor:pointer;
           font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline;
           text-underline-offset:2px;font-family:inherit;}
@@ -1643,13 +1657,15 @@
              four tabs (three on Plan), so sharing the row equally leaves
              ~90px each — enough for a short label beside the icon, and no
              horizontal scrolling to discover. */
-          .budget-subtab-pill .bp-label-full{display:none!important;}
-          .budget-subtab-pill .bp-label-short{display:inline!important;
-            overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+          .budget-subtab-pill .bp-label-short{display:none!important;}
+          .budget-subtab-pill .bp-label-full{display:block!important;
+            white-space:normal;overflow-wrap:break-word;hyphens:none;
+            line-height:1.15;min-width:0;text-align:center;}
+          .budget-subtab-pill>svg{display:none!important;}
           .budget-subtabs-row{gap:6px!important;}
-          .budget-subtab-pill{flex:1 1 0!important;min-width:0!important;height:44px!important;
-            padding:0 8px!important;display:inline-flex!important;align-items:center!important;
-            justify-content:center!important;gap:5px!important;font-size:11px!important;}
+          .budget-subtab-pill{flex:1 1 0!important;min-width:0!important;min-height:44px!important;
+            padding:4px 6px!important;display:inline-flex!important;align-items:center!important;
+            justify-content:center!important;gap:0!important;font-size:11px!important;}
           /* Daily is a per-day breakdown of what Monthly already shows — on
              mobile's cramped subtab row it's redundant. BudgetView redirects
              `daily` to `monthly` on a mobile viewport so a persisted choice

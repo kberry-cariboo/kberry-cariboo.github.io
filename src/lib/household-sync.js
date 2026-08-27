@@ -392,7 +392,7 @@
     // device/member and reject instead of silently overwriting it (AR2).
     const lastSavedAtRef = useRef(null);
     const applyPayload = useCallback((d) => {
-      if (!d) return;
+      if (!d) return {};
       // A payload saved by an older, un-migrated client (another device that
       // hasn't reloaded yet) can predate any of the storage migrations. Pass
       // its own version through — migrateHouseholdPayload gates each step on
@@ -400,7 +400,16 @@
       // Never re-add an outer `< SCHEMA_VERSION` gate here: that is what used
       // to send an already-migrated payload back through the conversions.
       const data = migrateHouseholdPayload(d, d.schemaVersion || 0);
-      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], setters[key]));
+      // Report what actually reached state, field by field. The guards reject
+      // values they don't like and a payload need not carry every field, so
+      // "what the payload said" and "what the app now holds" are different
+      // things — and it is the latter the sync baseline has to be built from.
+      const applied = {};
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], (v) => {
+        applied[key] = v;
+        setters[key](v);
+      }));
+      return applied;
     }, [setters]);
     // Receipt images live in the receipts table as binary blobs, not inside the
     // save payload — the payload only carries the rest of each entry/override.
@@ -438,17 +447,46 @@
       });
       return map;
     }, [values.overridesByYr]);
-    const buildPayload = useCallback(() => {
+    // The synced shape of a set of field values. Shared by the payload that
+    // gets sent and by the baseline the autosave compares against, so the two
+    // can never be normalised differently and disagree about what "unchanged"
+    // means.
+    const normaliseFields = (src) => {
       const out = {};
       HOUSEHOLD_SYNCED_FIELDS.forEach(({ key }) => {
-        out[key] = values[key];
+        out[key] = src[key];
       });
       out.entries = stripAttachments(out.entries);
       out.overridesByYr = stripOverrideAttachments(out.overridesByYr);
       out.schemaVersion = SCHEMA_VERSION;
+      return out;
+    };
+    const buildPayload = useCallback(() => {
+      const out = normaliseFields(values);
       out.savedAt = (/* @__PURE__ */ new Date()).toISOString();
       return out;
     }, [values]);
+    // A fingerprint of everything that gets synced, with savedAt removed — it
+    // is a fresh timestamp on every build, so leaving it in would make every
+    // payload look different from every other one.
+    const sigOf = (p) => {
+      const c = Object.assign({}, p);
+      delete c.savedAt;
+      return JSON.stringify(c);
+    };
+    // What the cloud is known to already hold. Set when a save succeeds, and
+    // when a load applies the server's copy.
+    const syncedSig = useRef(null);
+    // `values` is rebuilt every render; the load callbacks are deliberately
+    // stable (see stableSetters above), so they read the current set through
+    // this rather than closing over one.
+    const valuesRef = useRef(values);
+    valuesRef.current = values;
+    // The baseline the autosave compares against: the fields the load just
+    // applied, over the ones it left alone.
+    const adoptLoaded = (applied) => {
+      syncedSig.current = sigOf(normaliseFields(Object.assign({}, valuesRef.current, applied)));
+    };
     const loadData = useCallback(async () => {
       if (!supabaseClient || !household) return false;
       // Flush any pending debounced save first — otherwise a pull-to-refresh
@@ -518,7 +556,7 @@
           setMsg("⚠ Unsaved changes here and newer changes in the cloud");
           return false;
         }
-        applyPayload(payload);
+        adoptLoaded(applyPayload(payload));
         writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
         initialized.current = true;
         loadAttempted.current = true;
@@ -571,6 +609,9 @@
         }
         await syncReceipts();
         clearUnsaved();
+        // Only on success: a failed save must leave the previous signature in
+        // place so the retry still sees a difference and goes through.
+        syncedSig.current = sigOf(payload);
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -649,6 +690,15 @@
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
         saveTimer.current = null;
+        // Nothing to say. loadData sets initialized.current synchronously
+        // while the setters it just called land a render later, so the act of
+        // *loading* a household arrives here looking exactly like someone
+        // editing it — and every launch used to push the cloud's own copy
+        // straight back at it, advancing savedAt for every other device and
+        // inviting a conflict none of them caused. Comparing content rather
+        // than trusting the render that carried it also covers any other
+        // route to a no-op save.
+        if (sigOf(buildPayload()) === syncedSig.current) return;
         saveData(true);
       }, 2e3);
       return () => clearTimeout(saveTimer.current);
@@ -684,7 +734,7 @@
           });
         });
       }
-      applyPayload(payload);
+      adoptLoaded(applyPayload(payload));
       lastSavedAtRef.current = payload.savedAt || null;
       writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
       clearUnsaved();

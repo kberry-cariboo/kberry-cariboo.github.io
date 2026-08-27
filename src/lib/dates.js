@@ -6,10 +6,11 @@
     const [y, m, d] = str.split("-").map(Number);
     return new Date(y, m - 1, d);
   }
-  function humanShortDate(str) {
-    const d = parseDate(str);
-    if (!d || isNaN(d)) return str;
-    return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  // Kept as the name a dozen call sites already use; the presentation itself
+  // lives in one place (fmtDate in format.js) so every date in the app reads
+  // the same way and follows the household's locale.
+  function humanShortDate(str, contextYear) {
+    return fmtDate(str, contextYear === void 0 ? (/* @__PURE__ */ new Date()).getFullYear() : contextYear);
   }
   function todayStr() {
     const t = /* @__PURE__ */ new Date();

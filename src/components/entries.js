@@ -3,6 +3,8 @@
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
   }, filterScheds = [], setFilterScheds = () => {
+  }, pushUndo = () => {
+  }, setGlobalSearch = () => {
   }, filterStatus = [], setFilterStatus = () => {
   } }) {
     const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_ENTRIES_COLS;
@@ -35,7 +37,12 @@
     const isMobile = useIsMobile();
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const isCoarsePointer = useIsCoarsePointer();
-    const [search, setSearch] = useState("");
+    // Entries used to keep its own search box alongside the header one, so on
+    // desktop there were two searches with undeclared scopes and a placeholder
+    // that had to explain the other one ("Search… (header: …)"). There is one
+    // search now, in one piece of state: the header owns it above 768px, this
+    // box owns it below (where the header search is hidden), and either way it
+    // filters the same list.
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [dragCol, setDragCol] = useState(null);
@@ -100,6 +107,38 @@
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       close();
     };
+    // Bulk selection. The Monthly grid has had row checkboxes and a select-all
+    // since it was written; Entries — the list where "recategorise these six"
+    // and "delete these old one-offs" actually come up — had none, so the only
+    // way to do either was one row menu at a time.
+    const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
+    const [bulkCat, setBulkCat] = useState("");
+    const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+    const toggleSel = (id) => setSelIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+    const clearSel = () => setSelIds(() => /* @__PURE__ */ new Set());
+    const bulkRecategorise = (cat) => {
+      if (!cat) return;
+      const ids = new Set(selIds);
+      const before = entries;
+      setEntries((prev) => prev.map((e) => ids.has(e.id) ? __spreadProps(__spreadValues({}, e), { category: cat }) : e));
+      pushUndo(`${ids.size} ${ids.size === 1 ? "entry" : "entries"} moved to "${cat}"`, () => setEntries(before));
+      setBulkCat("");
+      clearSel();
+    };
+    const bulkDelete = () => {
+      const ids = new Set(selIds);
+      const removed = entries.filter((e) => ids.has(e.id));
+      setEntries((prev) => prev.filter((e) => !ids.has(e.id)));
+      // One undo for the whole selection rather than one per row, so undoing a
+      // ten-row delete is one press.
+      pushUndo(`${removed.length} ${removed.length === 1 ? "entry" : "entries"} deleted`, () => setEntries((prev) => [...prev, ...removed]));
+      setConfirmBulkDelete(false);
+      clearSel();
+    };
     const [confirmDelEntry, setConfirmDelEntry] = useState(null);
     const confirmDelete = () => {
       const deleted = entries.find((e) => e.id === confirmDelEntry);
@@ -118,7 +157,7 @@
       const arc = isArchived(e, activeYear);
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
     }).filter((e) => {
-      const q = (search || globalSearch || "").toLowerCase();
+      const q = (globalSearch || "").toLowerCase();
       return eventMatchesSearch(e, q);
     }).filter((e) => {
       if (!dateFrom && !dateTo) return true;
@@ -135,7 +174,7 @@
       else if (sortCol === "schedule") cmp = a.repeats === b.repeats ? 0 : a.repeats ? 1 : -1;
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
-    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, search, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
+    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
     const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
     useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
@@ -189,13 +228,13 @@
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "entries-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (signedAmount(e) >= 0 ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? (signedAmount(e) >= 0 ? "+" : "-") + fmtVarRange(e.monthlyAmounts) : fmt(signedAmount(e), true));
         case "startDate":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate || "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate ? fmtDate(e.startDate, null) : "\u2014");
         case "schedule":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta }, recurLabel(e));
         case "until":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), e.recurEnd) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), fmtDate(e.recurEnd, null)) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
         case "category":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-cat", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }));
         case "notes":
@@ -289,18 +328,14 @@
       },
       "\u2699\ufe0f Filters",
       activeFilterCount > 0 && /* @__PURE__ */ React.createElement("span", { className: "entries-filter-count-badge" }, activeFilterCount)
-    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement("div", { className: "entries-search-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 13, className: "entries-search-icon" }), /* @__PURE__ */ React.createElement(
+    ), globalSearch && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement("div", { className: "entries-search-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 13, className: "entries-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
-        // The placeholder used to be empty whenever the header search was
-        // idle, on the grounds that the magnifier carried the meaning. It
-        // doesn't at phone width: the header search is hidden below 768px, so
-        // this is the *only* search in the app there, and it rendered as a
-        // wide unlabelled pill sitting next to "Filters".
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search entries\u2026",
-        value: search,
-        onChange: (e) => setSearch(e.target.value),
-        "aria-label": "Search entries",
+        // Names its scope, so it is clear what will and won't be searched.
+        placeholder: `Search ${activeYear} entries\u2026`,
+        value: globalSearch,
+        onChange: (e) => setGlobalSearch(e.target.value),
+        "aria-label": `Search ${activeYear} entries`,
         type: "search",
         className: "entries-search-input"
       }
@@ -312,7 +347,7 @@
       "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
-    ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "entries-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering entries by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+    ), globalSearch && /* @__PURE__ */ React.createElement("div", { className: "entries-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -374,7 +409,33 @@
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
       ))
-    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "entries-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "entries-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+    ), selIds.size > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-bulkbar budget-bulkbar--accent", role: "status" },
+      /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-count" }, selIds.size, " selected"),
+      /* @__PURE__ */ React.createElement("select", {
+        "aria-label": "Move selected entries to a category",
+        className: "entries-bulk-cat",
+        value: bulkCat,
+        onChange: (e) => bulkRecategorise(e.target.value)
+      }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Move to category\u2026"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmBulkDelete(true), className: "budget-bulk-markpaid-btn entries-bulk-delete" }, "Delete"),
+      /* @__PURE__ */ React.createElement("button", { onClick: clearSel, "aria-label": "Clear selection", className: "budget-bulk-clear-btn" }, "Clear")
+    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "entries-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "entries-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "entries-th entries-th--select" }, /* @__PURE__ */ React.createElement("input", {
+      type: "checkbox",
+      "aria-label": paged.length && paged.every((e) => selIds.has(e.id)) ? "Clear selection" : "Select all rows on this page",
+      title: "Select every row on this page",
+      checked: paged.length > 0 && paged.every((e) => selIds.has(e.id)),
+      onChange: (ev) => {
+        // Scoped to the page you can see, like the Monthly grid's — selecting
+        // rows that are scrolled out of a filtered list is not something you
+        // can check before acting on it.
+        const all = ev.target.checked;
+        setSelIds((prev) => {
+          const next = new Set(prev);
+          paged.forEach((e) => all ? next.add(e.id) : next.delete(e.id));
+          return next;
+        });
+      }
+    })), visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -418,10 +479,15 @@
         ENTRIES_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "entries-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, ENTRIES_COL_LABELS[col], col !== "actions" && col !== "notes" ? /* @__PURE__ */ React.createElement("span", { className: "entries-th-drag-hint" }, " \u283F") : "")
-    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "entries-th entries-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "entries-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
-      message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
-      actionLabel: !(search || globalSearch) && "+ Add Entry",
+    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "entries-th entries-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "entries-tr", style: { background: selIds.has(e.id) ? "var(--stripe)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "entries-col-select" }, /* @__PURE__ */ React.createElement("input", {
+      type: "checkbox",
+      "aria-label": `Select ${e.desc}`,
+      checked: selIds.has(e.id),
+      onChange: () => toggleSel(e.id)
+    })), visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 2, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
+      message: globalSearch ? `No entries matching "${globalSearch}"` : "No entries found matching your filters.",
+      actionLabel: !(globalSearch) && "+ Add Entry",
       onAction: openNew
     })))))), /* @__PURE__ */ React.createElement("div", { className: "entries-cards" }, paged.map((e, i) => {
       const archived = isArchived(e, activeYear);
@@ -438,9 +504,9 @@
           className: "entries-mobile-card"
         },
         /* @__PURE__ */ React.createElement("div", { className: "entries-mobile-card-toprow" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "entries-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 entries-mobile-amount", style: {
-          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
+          color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
-        } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
+        } }, e.monthlyAmounts ? (isInc ? "+" : "-") + fmtVarRange(e.monthlyAmounts) : fmt(signedAmount(e), true)), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: (ev) => {
@@ -452,12 +518,12 @@
           },
           "⋮"
         )),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-date" }, humanShortDate(e.startDate), e.repeats && ` \xB7 ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-notes" }, e.notes))
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-date" }, fmtDate(e.startDate, null), e.repeats && ` \xB7 ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-notes" }, e.notes))
       );
     }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
-      message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
-      actionLabel: !(search || globalSearch) && "+ Add Entry",
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
+      message: globalSearch ? `No entries matching "${globalSearch}"` : "No entries found matching your filters.",
+      actionLabel: !(globalSearch) && "+ Add Entry",
       onAction: openNew
     }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "entries", isMobile })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
@@ -494,5 +560,12 @@
       scheduledOccurrences: csvScheduled,
       apiKey,
       isOffline
+    }), confirmBulkDelete && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+      title: `Delete ${selIds.size} ${selIds.size === 1 ? "entry" : "entries"}?`,
+      message: `Every scheduled occurrence of ${selIds.size === 1 ? "this entry" : "these entries"} disappears from the budget. The toast that follows offers one undo.`,
+      confirmLabel: "Delete",
+      confirmVariant: "danger",
+      onCancel: () => setConfirmBulkDelete(false),
+      onConfirm: bulkDelete
     }));
   }

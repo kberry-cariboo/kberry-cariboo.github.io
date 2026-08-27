@@ -187,7 +187,7 @@
       { id: "dashboard", icon: "home", label: "Dashboard" },
       { id: "budget", icon: "calendar", label: "Budget" },
       { id: "plan", icon: "target", label: "Plan" },
-      { id: "ai", icon: "sparkle", label: "AI" },
+      { id: "ai", icon: "sparkle", label: "AI Insights" },
       { id: "settings", icon: "settings", label: "Settings" }
     ];
     return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => /* @__PURE__ */ React.createElement(
