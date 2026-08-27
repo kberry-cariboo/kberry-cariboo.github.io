@@ -1077,7 +1077,14 @@
             },
             /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
+            } }, fmt(actual)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
+              className: "bva-set-target",
+              onClick: (e) => {
+                e.stopPropagation();
+                setBvaModalData({ cat, target: "", editCat: cat, rollover: !!(budgetTargets._rollover || {})[cat] });
+                setShowBvaModal(true);
+              }
+            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
             // The kebab is a sibling of .bva-amounts, not a child of it: the
             // amounts group wraps to a second line on a phone once the actual,
             // the target and an overage all have to fit, and a row action that

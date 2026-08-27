@@ -279,7 +279,10 @@
           padding:4px 10px;font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap;}
         .offline-chip-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex-shrink:0;}
         .header-search-input{font-size:13px;background:transparent;border:none;outline:none;
-          color:#fff;width:130px;caret-color:var(--amberInk);}
+          color:#fff;width:130px;caret-color:var(--amberInk);
+          transition:width 0.15s ease;}
+        .header-search:focus-within .header-search-input{width:230px;}
+        @media(prefers-reduced-motion:reduce){.header-search-input{transition:none;}}
         .header-search-clear{background:transparent;border:none;cursor:pointer;
           color:rgba(255,255,255,0.5);font-size:14px;padding:0;line-height:1;}
         .alert-bell-btn{position:relative;border:1px solid;border-radius:8px;width:36px;height:36px;
@@ -359,6 +362,17 @@
         .receipt-lightbox-close{position:fixed;top:calc(14px + env(safe-area-inset-top));right:16px;
           width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
           background:rgba(255,255,255,0.15);color:#fff;font-size:18px;}
+        .entries-th--select,.entries-col-select{width:34px;padding-left:10px;padding-right:0;text-align:center;}
+        .entries-bulk-cat{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);
+          background:var(--bgCard);color:var(--text);font-family:inherit;max-width:180px;}
+        .entries-bulk-delete{background:var(--red)!important;color:#fff!important;}
+        .bva-set-target{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;
+          font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline;
+          text-underline-offset:2px;white-space:nowrap;}
+        .bva-set-target:hover{color:var(--primary);}
+        .debt-needs-balance{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;
+          border:1px dashed var(--border);border-radius:10px;background:var(--stripe);
+          color:var(--textMid);font-size:13px;}
         .glance-action{margin-top:6px;background:none;border:none;padding:0;cursor:pointer;
           font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline;
           text-underline-offset:2px;font-family:inherit;}
@@ -1671,13 +1685,15 @@
              four tabs (three on Plan), so sharing the row equally leaves
              ~90px each — enough for a short label beside the icon, and no
              horizontal scrolling to discover. */
-          .budget-subtab-pill .bp-label-full{display:none!important;}
-          .budget-subtab-pill .bp-label-short{display:inline!important;
-            overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+          .budget-subtab-pill .bp-label-short{display:none!important;}
+          .budget-subtab-pill .bp-label-full{display:block!important;
+            white-space:normal;overflow-wrap:break-word;hyphens:none;
+            line-height:1.15;min-width:0;text-align:center;}
+          .budget-subtab-pill>svg{display:none!important;}
           .budget-subtabs-row{gap:6px!important;}
-          .budget-subtab-pill{flex:1 1 0!important;min-width:0!important;height:44px!important;
-            padding:0 8px!important;display:inline-flex!important;align-items:center!important;
-            justify-content:center!important;gap:5px!important;font-size:11px!important;}
+          .budget-subtab-pill{flex:1 1 0!important;min-width:0!important;min-height:44px!important;
+            padding:4px 6px!important;display:inline-flex!important;align-items:center!important;
+            justify-content:center!important;gap:0!important;font-size:11px!important;}
           /* Daily is a per-day breakdown of what Monthly already shows — on
              mobile's cramped subtab row it's redundant. BudgetView redirects
              `daily` to `monthly` on a mobile viewport so a persisted choice
@@ -3402,10 +3418,11 @@ document.addEventListener('DOMContentLoaded',function(){
     const [y, m, d] = str.split("-").map(Number);
     return new Date(y, m - 1, d);
   }
-  function humanShortDate(str) {
-    const d = parseDate(str);
-    if (!d || isNaN(d)) return str;
-    return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  // Kept as the name a dozen call sites already use; the presentation itself
+  // lives in one place (fmtDate in format.js) so every date in the app reads
+  // the same way and follows the household's locale.
+  function humanShortDate(str, contextYear) {
+    return fmtDate(str, contextYear === void 0 ? (/* @__PURE__ */ new Date()).getFullYear() : contextYear);
   }
   function todayStr() {
     const t = /* @__PURE__ */ new Date();
@@ -4272,6 +4289,52 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     return currency + "\u00a0";
   }
+  // One date presentation for the whole app, in the household's chosen locale.
+  //
+  // There were four. The Entries table printed ISO (2026-01-01), its own
+  // From/To filters sat directly above it as native inputs showing the
+  // browser's format, the Forecast printed "Aug 28", and the mobile Entries
+  // card printed "Jan 1" — so a user comparing a filter to the row beneath it
+  // was reading two conventions eight pixels apart.
+  //
+  // One format — the locale's medium date — with the year included where it
+  // carries information. The ledgers (Monthly, Daily, Forecast) are scoped to
+  // a year, so they pass that year as the context and a row inside it reads
+  // "Aug 28": repeating "2026" down every row of a 2026 budget is noise, and
+  // omitting it on the one row that *isn't* 2026 would be a bug. The Entries
+  // list is not a ledger — it lists entry *definitions*, whose start dates can
+  // be years old and whose end dates are often in another year — so it passes
+  // null and always shows the year.
+  let _dateFmt = { short: null, withYear: null };
+  function buildDateFormats(locale) {
+    const mk = (opts) => {
+      try {
+        return new Intl.DateTimeFormat(locale, opts);
+      } catch (e) {
+        try {
+          return new Intl.DateTimeFormat(DEFAULT_LOCALE, opts);
+        } catch (e2) {
+          return null;
+        }
+      }
+    };
+    _dateFmt = {
+      short: mk({ month: "short", day: "numeric" }),
+      withYear: mk({ month: "short", day: "numeric", year: "numeric" })
+    };
+  }
+  // `d` is a Date or a YYYY-MM-DD string. `contextYear` is the year the
+  // surrounding view is showing; the year is appended when the date is not in
+  // it. Pass null to always append it.
+  function fmtDate(d, contextYear) {
+    const date = typeof d === "string" ? parseDate(d) : d;
+    if (!date || isNaN(date)) return typeof d === "string" ? d : "\u2014";
+    const showYear = contextYear === null || contextYear === void 0 ? true : date.getFullYear() !== Number(contextYear);
+    const f = showYear ? _dateFmt.withYear : _dateFmt.short;
+    if (f) return f.format(date);
+    // No Intl at all: the ISO date is wrong-looking but never ambiguous.
+    return localDateStr(date);
+  }
   function setMoneyFormat(locale, currency) {
     const loc = locale || DEFAULT_LOCALE;
     const cur = currency || DEFAULT_CURRENCY;
@@ -4289,6 +4352,7 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     }
     _money = { locale: loc, currency: cur, symbol: currencySymbol(loc, cur), nf };
+    buildDateFormats(loc);
   }
   setMoneyFormat(DEFAULT_LOCALE, DEFAULT_CURRENCY);
   // The bare symbol, for the handful of places that put one beside an input
@@ -4296,6 +4360,21 @@ document.addEventListener('DOMContentLoaded',function(){
   // a goal target. They were literal "$" characters, which is how a household
   // set to euros ends up typing into a box labelled with a dollar sign.
   const moneySymbol = () => _money.symbol;
+  // One amount convention app-wide, and this is where it is written down.
+  //
+  //   A column that names the direction — the In and Out columns of Monthly,
+  //   Daily and Forecast — shows an *unsigned* figure. The heading is the
+  //   direction; a minus sign under a column headed "Out" says the same thing
+  //   twice, and a positive one under it would be a contradiction.
+  //
+  //   A single amount that has to carry both directions — the Entries table,
+  //   and every card layout, which has no columns to name it — is *signed*,
+  //   via fmt(signedAmount(e), true).
+  //
+  // The sign always comes from here rather than a hand-rolled "+"/"-" prefix:
+  // two sites built their own and so didn't follow this function's negative
+  // convention (a minus, never parentheses) or the household's currency
+  // symbol.
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
     const d = Math.abs(centsToDollars(n));
@@ -7986,6 +8065,8 @@ document.addEventListener('DOMContentLoaded',function(){
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {
   }, filterScheds = [], setFilterScheds = () => {
+  }, pushUndo = () => {
+  }, setGlobalSearch = () => {
   }, filterStatus = [], setFilterStatus = () => {
   } }) {
     const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_ENTRIES_COLS;
@@ -8018,7 +8099,12 @@ document.addEventListener('DOMContentLoaded',function(){
     const isMobile = useIsMobile();
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const isCoarsePointer = useIsCoarsePointer();
-    const [search, setSearch] = useState("");
+    // Entries used to keep its own search box alongside the header one, so on
+    // desktop there were two searches with undeclared scopes and a placeholder
+    // that had to explain the other one ("Search… (header: …)"). There is one
+    // search now, in one piece of state: the header owns it above 768px, this
+    // box owns it below (where the header search is hidden), and either way it
+    // filters the same list.
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [dragCol, setDragCol] = useState(null);
@@ -8083,6 +8169,38 @@ document.addEventListener('DOMContentLoaded',function(){
       else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
       close();
     };
+    // Bulk selection. The Monthly grid has had row checkboxes and a select-all
+    // since it was written; Entries — the list where "recategorise these six"
+    // and "delete these old one-offs" actually come up — had none, so the only
+    // way to do either was one row menu at a time.
+    const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
+    const [bulkCat, setBulkCat] = useState("");
+    const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+    const toggleSel = (id) => setSelIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+    const clearSel = () => setSelIds(() => /* @__PURE__ */ new Set());
+    const bulkRecategorise = (cat) => {
+      if (!cat) return;
+      const ids = new Set(selIds);
+      const before = entries;
+      setEntries((prev) => prev.map((e) => ids.has(e.id) ? __spreadProps(__spreadValues({}, e), { category: cat }) : e));
+      pushUndo(`${ids.size} ${ids.size === 1 ? "entry" : "entries"} moved to "${cat}"`, () => setEntries(before));
+      setBulkCat("");
+      clearSel();
+    };
+    const bulkDelete = () => {
+      const ids = new Set(selIds);
+      const removed = entries.filter((e) => ids.has(e.id));
+      setEntries((prev) => prev.filter((e) => !ids.has(e.id)));
+      // One undo for the whole selection rather than one per row, so undoing a
+      // ten-row delete is one press.
+      pushUndo(`${removed.length} ${removed.length === 1 ? "entry" : "entries"} deleted`, () => setEntries((prev) => [...prev, ...removed]));
+      setConfirmBulkDelete(false);
+      clearSel();
+    };
     const [confirmDelEntry, setConfirmDelEntry] = useState(null);
     const confirmDelete = () => {
       const deleted = entries.find((e) => e.id === confirmDelEntry);
@@ -8101,7 +8219,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const arc = isArchived(e, activeYear);
       return filterStatus.includes("active") && !arc || filterStatus.includes("historical") && arc;
     }).filter((e) => {
-      const q = (search || globalSearch || "").toLowerCase();
+      const q = (globalSearch || "").toLowerCase();
       return eventMatchesSearch(e, q);
     }).filter((e) => {
       if (!dateFrom && !dateTo) return true;
@@ -8118,7 +8236,7 @@ document.addEventListener('DOMContentLoaded',function(){
       else if (sortCol === "schedule") cmp = a.repeats === b.repeats ? 0 : a.repeats ? 1 : -1;
       else cmp = (a.desc || "").localeCompare(b.desc || "");
       return sortDir === "asc" ? cmp : -cmp;
-    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, search, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
+    }), [entries, yearScoped, activeYear, filter, filterCats, filterScheds, filterStatus, globalSearch, dateFrom, dateTo, sortCol, sortDir]);
     const pgInfo = isMobile ? cumulativeRows(filtered, mobileLoaded, pgSize) : paginateRows(filtered, pgPage, pgSize);
     useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
     const paged = pgInfo.rows;
@@ -8172,13 +8290,13 @@ document.addEventListener('DOMContentLoaded',function(){
         case "type":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-type", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement("span", { className: "entries-type-badge", style: { background: e.type === "income" ? "#E8F8F1" : e.type === "transfer" ? "var(--accentLt)" : "var(--redLt)", color: e.type === "income" ? "var(--greenDk)" : e.type === "transfer" ? "var(--accent)" : "var(--red)" } }, e.type));
         case "amount":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, (signedAmount(e) >= 0 ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount)));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-amount cf-text-mono-13", style: { color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : e.type === "income" ? "var(--greenDk)" : "var(--text)", textDecoration: archived ? "line-through" : "none" } }, e.monthlyAmounts ? (signedAmount(e) >= 0 ? "+" : "-") + fmtVarRange(e.monthlyAmounts) : fmt(signedAmount(e), true));
         case "startDate":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate || "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate ? fmtDate(e.startDate, null) : "\u2014");
         case "schedule":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta }, recurLabel(e));
         case "until":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), e.recurEnd) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), fmtDate(e.recurEnd, null)) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
         case "category":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-cat", style: { opacity: archived ? 0.5 : 1 } }, /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }));
         case "notes":
@@ -8272,18 +8390,14 @@ document.addEventListener('DOMContentLoaded',function(){
       },
       "\u2699\ufe0f Filters",
       activeFilterCount > 0 && /* @__PURE__ */ React.createElement("span", { className: "entries-filter-count-badge" }, activeFilterCount)
-    ), (search || globalSearch) && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement("div", { className: "entries-search-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 13, className: "entries-search-icon" }), /* @__PURE__ */ React.createElement(
+    ), globalSearch && /* @__PURE__ */ React.createElement("label", { className: "entries-allyears-label" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: searchAllYears, onChange: (e) => setSearchAllYears(e.target.checked), className: "cursor-pointer" }), "All years"), /* @__PURE__ */ React.createElement("div", { className: "entries-search-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 13, className: "entries-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
       {
-        // The placeholder used to be empty whenever the header search was
-        // idle, on the grounds that the magnifier carried the meaning. It
-        // doesn't at phone width: the header search is hidden below 768px, so
-        // this is the *only* search in the app there, and it rendered as a
-        // wide unlabelled pill sitting next to "Filters".
-        placeholder: globalSearch ? `Search\u2026 (header: "${globalSearch}")` : "Search entries\u2026",
-        value: search,
-        onChange: (e) => setSearch(e.target.value),
-        "aria-label": "Search entries",
+        // Names its scope, so it is clear what will and won't be searched.
+        placeholder: `Search ${activeYear} entries\u2026`,
+        value: globalSearch,
+        onChange: (e) => setGlobalSearch(e.target.value),
+        "aria-label": `Search ${activeYear} entries`,
         type: "search",
         className: "entries-search-input"
       }
@@ -8295,7 +8409,7 @@ document.addEventListener('DOMContentLoaded',function(){
       "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
-    ), !search && globalSearch && /* @__PURE__ */ React.createElement("div", { className: "entries-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering entries by "', globalSearch, '" from header search \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+    ), globalSearch && /* @__PURE__ */ React.createElement("div", { className: "entries-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -8357,7 +8471,33 @@ document.addEventListener('DOMContentLoaded',function(){
           onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
         }
       ))
-    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "entries-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "entries-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, visibleCols.map((col) => /* @__PURE__ */ React.createElement(
+    ), selIds.size > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-bulkbar budget-bulkbar--accent", role: "status" },
+      /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-count" }, selIds.size, " selected"),
+      /* @__PURE__ */ React.createElement("select", {
+        "aria-label": "Move selected entries to a category",
+        className: "entries-bulk-cat",
+        value: bulkCat,
+        onChange: (e) => bulkRecategorise(e.target.value)
+      }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Move to category\u2026"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmBulkDelete(true), className: "budget-bulk-markpaid-btn entries-bulk-delete" }, "Delete"),
+      /* @__PURE__ */ React.createElement("button", { onClick: clearSel, "aria-label": "Clear selection", className: "budget-bulk-clear-btn" }, "Clear")
+    ), /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "entries-table-wrap", tabIndex: 0, role: "region", "aria-label": "Entries table" }, /* @__PURE__ */ React.createElement("table", { className: "entries-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "entries-th entries-th--select" }, /* @__PURE__ */ React.createElement("input", {
+      type: "checkbox",
+      "aria-label": paged.length && paged.every((e) => selIds.has(e.id)) ? "Clear selection" : "Select all rows on this page",
+      title: "Select every row on this page",
+      checked: paged.length > 0 && paged.every((e) => selIds.has(e.id)),
+      onChange: (ev) => {
+        // Scoped to the page you can see, like the Monthly grid's — selecting
+        // rows that are scrolled out of a filtered list is not something you
+        // can check before acting on it.
+        const all = ev.target.checked;
+        setSelIds((prev) => {
+          const next = new Set(prev);
+          paged.forEach((e) => all ? next.add(e.id) : next.delete(e.id));
+          return next;
+        });
+      }
+    })), visibleCols.map((col) => /* @__PURE__ */ React.createElement(
       "th",
       {
         key: col,
@@ -8401,10 +8541,15 @@ document.addEventListener('DOMContentLoaded',function(){
         ENTRIES_COL_LABELS[col],
         /* @__PURE__ */ React.createElement("span", { className: "entries-sort-arrow", style: { opacity: sortCol === col ? 1 : 0.35 } }, sortCol === col ? sortDir === "asc" ? "\u25B2" : "\u25BC" : "\u283F")
       ) : /* @__PURE__ */ React.createElement(React.Fragment, null, ENTRIES_COL_LABELS[col], col !== "actions" && col !== "notes" ? /* @__PURE__ */ React.createElement("span", { className: "entries-th-drag-hint" }, " \u283F") : "")
-    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "entries-th entries-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "entries-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 1, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
-      message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
-      actionLabel: !(search || globalSearch) && "+ Add Entry",
+    )), /* @__PURE__ */ React.createElement("th", { key: "actions-hdr", className: "entries-th entries-th--actions", "aria-label": "Actions" }))), /* @__PURE__ */ React.createElement("tbody", null, paged.map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: e.id, onContextMenu: (ev) => openCtx(ev, e), className: "entries-tr", style: { background: selIds.has(e.id) ? "var(--stripe)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "entries-col-select" }, /* @__PURE__ */ React.createElement("input", {
+      type: "checkbox",
+      "aria-label": `Select ${e.desc}`,
+      checked: selIds.has(e.id),
+      onChange: () => toggleSel(e.id)
+    })), visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 2, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
+      message: globalSearch ? `No entries matching "${globalSearch}"` : "No entries found matching your filters.",
+      actionLabel: !(globalSearch) && "+ Add Entry",
       onAction: openNew
     })))))), /* @__PURE__ */ React.createElement("div", { className: "entries-cards" }, paged.map((e, i) => {
       const archived = isArchived(e, activeYear);
@@ -8421,9 +8566,9 @@ document.addEventListener('DOMContentLoaded',function(){
           className: "entries-mobile-card"
         },
         /* @__PURE__ */ React.createElement("div", { className: "entries-mobile-card-toprow" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "entries-mobile-desc", style: arcStyle }, e.desc, archived && /* @__PURE__ */ React.createElement("span", { className: "historical-tag" }, " \xB7 historical"))), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 entries-mobile-amount", style: {
-          color: archived ? "var(--textLt)" : isInc ? "var(--greenDk)" : "var(--text)",
+          color: archived ? "var(--textLt)" : e.type === "transfer" ? "var(--accent)" : isInc ? "var(--greenDk)" : "var(--text)",
           textDecoration: archived ? "line-through" : "none"
-        } }, (isInc ? "+" : "-") + (e.monthlyAmounts ? fmtVarRange(e.monthlyAmounts) : fmt(e.amount))), /* @__PURE__ */ React.createElement(
+        } }, e.monthlyAmounts ? (isInc ? "+" : "-") + fmtVarRange(e.monthlyAmounts) : fmt(signedAmount(e), true)), /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: (ev) => {
@@ -8435,12 +8580,12 @@ document.addEventListener('DOMContentLoaded',function(){
           },
           "⋮"
         )),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-date" }, humanShortDate(e.startDate), e.repeats && ` \xB7 ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-notes" }, e.notes))
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, e.category && /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors }), e.startDate && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-date" }, fmtDate(e.startDate, null), e.repeats && ` \xB7 ${recurLabel(e)}`), e.notes && /* @__PURE__ */ React.createElement("span", { className: "entries-mobile-notes" }, e.notes))
       );
     }), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
-      icon: /* @__PURE__ */ React.createElement(Icon, { name: search || globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
-      message: search || globalSearch ? `No entries matching "${search || globalSearch}"` : "No entries found matching your filters.",
-      actionLabel: !(search || globalSearch) && "+ Add Entry",
+      icon: /* @__PURE__ */ React.createElement(Icon, { name: globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
+      message: globalSearch ? `No entries matching "${globalSearch}"` : "No entries found matching your filters.",
+      actionLabel: !(globalSearch) && "+ Add Entry",
       onAction: openNew
     }))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "entries", isMobile })), confirmDelEntry !== null && /* @__PURE__ */ React.createElement(
       ConfirmDialog,
@@ -8477,6 +8622,13 @@ document.addEventListener('DOMContentLoaded',function(){
       scheduledOccurrences: csvScheduled,
       apiKey,
       isOffline
+    }), confirmBulkDelete && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+      title: `Delete ${selIds.size} ${selIds.size === 1 ? "entry" : "entries"}?`,
+      message: `Every scheduled occurrence of ${selIds.size === 1 ? "this entry" : "these entries"} disappears from the budget. The toast that follows offers one undo.`,
+      confirmLabel: "Delete",
+      confirmVariant: "danger",
+      onCancel: () => setConfirmBulkDelete(false),
+      onConfirm: bulkDelete
     }));
   }
   // Shown only when this device has edits the server never received *and* the
@@ -8668,7 +8820,7 @@ document.addEventListener('DOMContentLoaded',function(){
       { id: "dashboard", icon: "home", label: "Dashboard" },
       { id: "budget", icon: "calendar", label: "Budget" },
       { id: "plan", icon: "target", label: "Plan" },
-      { id: "ai", icon: "sparkle", label: "AI" },
+      { id: "ai", icon: "sparkle", label: "AI Insights" },
       { id: "settings", icon: "settings", label: "Settings" }
     ];
     return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => /* @__PURE__ */ React.createElement(
@@ -10271,7 +10423,14 @@ document.addEventListener('DOMContentLoaded',function(){
             },
             /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
-            } }, fmt(actual)), target > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
+            } }, fmt(actual)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
+              className: "bva-set-target",
+              onClick: (e) => {
+                e.stopPropagation();
+                setBvaModalData({ cat, target: "", editCat: cat, rollover: !!(budgetTargets._rollover || {})[cat] });
+                setShowBvaModal(true);
+              }
+            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
             // The kebab is a sibling of .bva-amounts, not a child of it: the
             // amounts group wraps to a second line on a phone once the actual,
             // the target and an overage all have to fit, and a row action that
@@ -10383,7 +10542,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // boundaries and the override machinery is year-scoped — so a row opens
     // nothing; the checkbox is the whole interaction.
     const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => {
-      const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
+      const dateStr = fmtDate(ev.date, today.getFullYear());
       const isDone = !!completed[ev.id];
       const signed = signedAmount(ev);
       return /* @__PURE__ */ React.createElement(
@@ -10437,7 +10596,7 @@ document.addEventListener('DOMContentLoaded',function(){
         onAdd: addEntry ? () => setShowAddEntry(true) : null,
         onCSV: futureEvents.length === 0 ? null : () => {
           const rows = searchedEvents.map((ev) => {
-            const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
+            const dateStr = fmtDate(ev.date, null);
             return [dateStr, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
@@ -10459,7 +10618,7 @@ document.addEventListener('DOMContentLoaded',function(){
     ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && (isMobile ? renderForecastCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Date", "Description", "Category", "In", "Out", "Balance", "vs Target"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "vs Target" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= 3 ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
-      const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
+      const dateStr = fmtDate(ev.date, today.getFullYear());
       return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, isInflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, isOutflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
@@ -10951,7 +11110,7 @@ Fill every field of the response schema. Rules:
     // trip.
     const canRun = aiCanRun(apiKey);
     const disabled = loading || !canRun || isOffline;
-    const blockedReason = isOffline ? "You're offline — generating an assessment needs a connection." : !canRun ? "No AI access configured yet." : "";
+    const blockedReason = isOffline ? "You're offline — generating an assessment needs a connection." : !canRun ? "AI features aren't set up yet." : "";
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" },
       /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
         /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" },
@@ -10961,12 +11120,12 @@ Fill every field of the response schema. Rules:
           ),
           lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())
         ),
-        !canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner" },
-          /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })),
-          /* @__PURE__ */ React.createElement("div", { className: "txm" }, "No AI access configured. Add your Anthropic API key in", " ",
+        blockedReason && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner", role: "status" },
+          /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: isOffline ? "alert-triangle" : "key", size: 18 })),
+          /* @__PURE__ */ React.createElement("div", { className: "txm" }, blockedReason, !canRun && !isOffline && /* @__PURE__ */ React.createElement(React.Fragment, null, " Add your Anthropic API key in", " ",
             /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("settings"), className: "ai-settings-link" }, "Settings → General"),
             ", or deploy the ai-proxy Edge Function so this household shares one server-side key."
-          )
+          ))
         ),
         canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-disclaimer-row" },
           /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })),
@@ -11009,7 +11168,7 @@ Fill every field of the response schema. Rules:
             "Clear"
           )
         ),
-        blockedReason && !loading && /* @__PURE__ */ React.createElement("div", { className: "field-hint-text mt-8" }, blockedReason),
+
         err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "⚠ ", err),
         truncated && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "status" }, "⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.")
       ),
@@ -11081,8 +11240,8 @@ Fill every field of the response schema. Rules:
       ),
       !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "ai-empty-wrap" },
         /* @__PURE__ */ React.createElement("div", { className: "ai-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, "Ready to analyse your finances"),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, "Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, canRun ? "Ready to analyse your finances" : "What an assessment covers"),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, canRun ? /* @__PURE__ */ React.createElement(React.Fragment, null, "Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review") : "Once AI is set up, Claude will review", " your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."),
         /* @__PURE__ */ React.createElement("div", { className: "ai-empty-feature-grid" }, [
           { icon: "chart-bar", label: "Executive Summary" },
           { icon: "banknote", label: "Income Analysis" },
@@ -11946,7 +12105,7 @@ Fill every field of the response schema. Rules:
         )))
       ), /* @__PURE__ */ React.createElement(Card, { className: "mb-20 mt-16" + (planSub === "debt" ? "" : " cf-hidden") }, /* @__PURE__ */ React.createElement("div", { className: "goal-header-row", style: {
         marginBottom: 12
-      } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Debt Payoff Tracker")), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid mt-16" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Balance", value: fmt(debtKpiTotals.balance), color: "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Monthly Payment", value: fmt(debtKpiTotals.payment) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Interest Remaining", value: fmt(debtKpiTotals.interest) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Debt-Free By", value: debtKpiTotals.latestPayoff || "\u2014", color: debtKpiTotals.latestPayoff ? "var(--greenDk)" : void 0 })), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
+      } }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "Debt Payoff Tracker")), allRows.length > 0 && (debtKpiTotals.balance > 0 ? /* @__PURE__ */ React.createElement("div", { className: "kpi-grid mt-16" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Balance", value: fmt(debtKpiTotals.balance), color: "var(--red)" }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Monthly Payment", value: fmt(debtKpiTotals.payment) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Interest Remaining", value: fmt(debtKpiTotals.interest) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Debt-Free By", value: debtKpiTotals.latestPayoff || "\u2014", color: debtKpiTotals.latestPayoff ? "var(--greenDk)" : void 0 })) : /* @__PURE__ */ React.createElement("div", { className: "debt-needs-balance mt-16" }, /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 16 }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, allRows.length === 1 ? "One payment found, no balance yet" : `${allRows.length} payments found, no balances yet`), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Add what's still owed and the interest rate below, and this fills in with a payoff date, the total interest ahead of you, and what an extra payment would save.")))), allRows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row budget-toolbar-row--end" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onCSV: () => downloadCSV(
@@ -13047,10 +13206,17 @@ Fill every field of the response schema. Rules:
           ["Daily", "The same month as one card per day that has something on it, with the balance carried to the end of that day — useful for spotting the week where four bills land together. Desktop only: on a phone the Monthly cards already read day by day."],
           ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
           ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
-          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts — a bare number matches it, and \">500\" or \"<50\" filter by size."]
+          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
+        { sub: "Searching" },
+        { p: "There is one search, in the header on a desktop and above the list on a phone — the same box either way, and its placeholder names what it will search. On Entries and on Plan it filters the list you are looking at. Anywhere else it jumps to the Budget month that matches, so typing a payee finds the month it falls in." },
+        { sub: "Dates and amounts" },
+        { p: "Dates are written the same way everywhere, in the format your Currency & Format setting chooses. The ledgers — Monthly, Daily and Forecast — are scoped to one year, so a date inside that year reads “Aug 28” and only a date outside it carries the year. The Entries list holds definitions rather than a year's events, so it always shows the year." },
+        { p: "Amounts follow one rule: a column that names the direction (the In and Out columns of the grids) shows a plain figure, and a single amount that has to carry both directions — the Entries list, and every card layout on a phone — is signed. Money in is green, money out is the ordinary text colour, and a transfer is blue wherever it appears." },
+        { sub: "What differs on a phone" },
+        { p: "The same five destinations in the same order, named the same way. The one view a phone doesn't show is Budget → Daily, because the Monthly cards there are already grouped day by day and Daily would repeat them; on a wider screen Daily is its own sub-tab." },
         { sub: "The Forecast “vs Target” column" },
         { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [
@@ -16078,14 +16244,21 @@ Fill every field of the response schema. Rules:
       const had = !!prevSearchRef.current;
       prevSearchRef.current = globalSearch;
       if (!globalSearch || had) return;
-      // Plan filters its own goals/debts in place — don't yank the user off
-      // it the moment they start typing.
+      // Plan and Entries filter their own lists in place — don't yank the
+      // user off the thing they are already searching the moment they type.
       if (tab === "plan") return;
+      if (tab === "budget" && budgetSub === "entries") return;
       // Starting a search shows results in the Budget monthly view (which
       // jumps to the most recent matching month), not the Entries list.
       setTab("budget");
       setBudgetSub("monthly");
-    }, [globalSearch, tab]);
+    }, [globalSearch, tab, budgetSub]);
+    // What the header search will actually search, from where the user is.
+    const searchScopeLabel = useMemo(() => {
+      if (tab === "plan") return "Search goals and debts";
+      if (tab === "budget" && budgetSub === "entries") return `Search ${activeYear} entries`;
+      return `Search ${activeYear}`;
+    }, [tab, budgetSub, activeYear]);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
     useEffect(() => {
@@ -16686,7 +16859,8 @@ Fill every field of the response schema. Rules:
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
       { id: "plan", label: "Plan" },
-      { id: "ai", label: "\u2726 AI Insights" }
+      { id: "ai", label: "\u2726 AI Insights" },
+      { id: "settings", label: "Settings" }
     ];
     if (authLoading) {
       return null;
@@ -16719,8 +16893,12 @@ Fill every field of the response schema. Rules:
       "input",
       {
         id: "global-search",
-        "aria-label": "Search",
-        placeholder: "",
+        // Names its scope rather than leaving the magnifier to imply one. What
+        // it searches depends on where you are: Plan and Entries filter in
+        // place, everything else lands on the Budget month that matches.
+        "aria-label": searchScopeLabel,
+        placeholder: searchScopeLabel,
+        title: searchScopeLabel,
         autoComplete: "off",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),
@@ -16794,10 +16972,6 @@ Fill every field of the response schema. Rules:
           setPfErr("");
           setPfOk("");
           setProfileForm("password");
-        } },
-        { label: "Settings", icon: "settings", action: () => {
-          setMenuOpen(false);
-          setTab("settings");
         } },
         ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "lock", action: () => {
           setMenuOpen(false);
@@ -17021,6 +17195,8 @@ Fill every field of the response schema. Rules:
         templates,
         setTemplates,
         globalSearch,
+        setGlobalSearch,
+        pushUndo,
         // Declared as a prop here since the view was written, but never
         // actually passed — which is why CSV import could only compare a
         // statement row against one-time entries.

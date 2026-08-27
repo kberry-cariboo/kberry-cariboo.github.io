@@ -504,14 +504,21 @@
       const had = !!prevSearchRef.current;
       prevSearchRef.current = globalSearch;
       if (!globalSearch || had) return;
-      // Plan filters its own goals/debts in place — don't yank the user off
-      // it the moment they start typing.
+      // Plan and Entries filter their own lists in place — don't yank the
+      // user off the thing they are already searching the moment they type.
       if (tab === "plan") return;
+      if (tab === "budget" && budgetSub === "entries") return;
       // Starting a search shows results in the Budget monthly view (which
       // jumps to the most recent matching month), not the Entries list.
       setTab("budget");
       setBudgetSub("monthly");
-    }, [globalSearch, tab]);
+    }, [globalSearch, tab, budgetSub]);
+    // What the header search will actually search, from where the user is.
+    const searchScopeLabel = useMemo(() => {
+      if (tab === "plan") return "Search goals and debts";
+      if (tab === "budget" && budgetSub === "entries") return `Search ${activeYear} entries`;
+      return `Search ${activeYear}`;
+    }, [tab, budgetSub, activeYear]);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
     useEffect(() => {
@@ -1112,7 +1119,8 @@
       { id: "dashboard", label: "Dashboard" },
       { id: "budget", label: "Budget" },
       { id: "plan", label: "Plan" },
-      { id: "ai", label: "\u2726 AI Insights" }
+      { id: "ai", label: "\u2726 AI Insights" },
+      { id: "settings", label: "Settings" }
     ];
     if (authLoading) {
       return null;
@@ -1145,8 +1153,12 @@
       "input",
       {
         id: "global-search",
-        "aria-label": "Search",
-        placeholder: "",
+        // Names its scope rather than leaving the magnifier to imply one. What
+        // it searches depends on where you are: Plan and Entries filter in
+        // place, everything else lands on the Budget month that matches.
+        "aria-label": searchScopeLabel,
+        placeholder: searchScopeLabel,
+        title: searchScopeLabel,
         autoComplete: "off",
         value: globalSearch,
         onChange: (e) => setGlobalSearch(e.target.value),
@@ -1220,10 +1232,6 @@
           setPfErr("");
           setPfOk("");
           setProfileForm("password");
-        } },
-        { label: "Settings", icon: "settings", action: () => {
-          setMenuOpen(false);
-          setTab("settings");
         } },
         ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "lock", action: () => {
           setMenuOpen(false);
@@ -1447,6 +1455,8 @@
         templates,
         setTemplates,
         globalSearch,
+        setGlobalSearch,
+        pushUndo,
         // Declared as a prop here since the view was written, but never
         // actually passed — which is why CSV import could only compare a
         // statement row against one-time entries.

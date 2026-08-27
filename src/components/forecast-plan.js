@@ -75,7 +75,7 @@
     // boundaries and the override machinery is year-scoped — so a row opens
     // nothing; the checkbox is the whole interaction.
     const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => {
-      const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
+      const dateStr = fmtDate(ev.date, today.getFullYear());
       const isDone = !!completed[ev.id];
       const signed = signedAmount(ev);
       return /* @__PURE__ */ React.createElement(
@@ -129,7 +129,7 @@
         onAdd: addEntry ? () => setShowAddEntry(true) : null,
         onCSV: futureEvents.length === 0 ? null : () => {
           const rows = searchedEvents.map((ev) => {
-            const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
+            const dateStr = fmtDate(ev.date, null);
             return [dateStr, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
@@ -151,7 +151,7 @@
     ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && (isMobile ? renderForecastCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Date", "Description", "Category", "In", "Out", "Balance", "vs Target"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "vs Target" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= 3 ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
-      const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
+      const dateStr = fmtDate(ev.date, today.getFullYear());
       return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, isInflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, isOutflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
@@ -643,7 +643,7 @@ Fill every field of the response schema. Rules:
     // trip.
     const canRun = aiCanRun(apiKey);
     const disabled = loading || !canRun || isOffline;
-    const blockedReason = isOffline ? "You're offline — generating an assessment needs a connection." : !canRun ? "No AI access configured yet." : "";
+    const blockedReason = isOffline ? "You're offline — generating an assessment needs a connection." : !canRun ? "AI features aren't set up yet." : "";
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" },
       /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
         /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" },
@@ -653,12 +653,12 @@ Fill every field of the response schema. Rules:
           ),
           lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())
         ),
-        !canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner" },
-          /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 18 })),
-          /* @__PURE__ */ React.createElement("div", { className: "txm" }, "No AI access configured. Add your Anthropic API key in", " ",
+        blockedReason && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner", role: "status" },
+          /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: isOffline ? "alert-triangle" : "key", size: 18 })),
+          /* @__PURE__ */ React.createElement("div", { className: "txm" }, blockedReason, !canRun && !isOffline && /* @__PURE__ */ React.createElement(React.Fragment, null, " Add your Anthropic API key in", " ",
             /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("settings"), className: "ai-settings-link" }, "Settings → General"),
             ", or deploy the ai-proxy Edge Function so this household shares one server-side key."
-          )
+          ))
         ),
         canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-disclaimer-row" },
           /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })),
@@ -701,7 +701,7 @@ Fill every field of the response schema. Rules:
             "Clear"
           )
         ),
-        blockedReason && !loading && /* @__PURE__ */ React.createElement("div", { className: "field-hint-text mt-8" }, blockedReason),
+
         err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "⚠ ", err),
         truncated && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "status" }, "⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.")
       ),
@@ -773,8 +773,8 @@ Fill every field of the response schema. Rules:
       ),
       !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "ai-empty-wrap" },
         /* @__PURE__ */ React.createElement("div", { className: "ai-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, "Ready to analyse your finances"),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, "Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, canRun ? "Ready to analyse your finances" : "What an assessment covers"),
+        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, canRun ? /* @__PURE__ */ React.createElement(React.Fragment, null, "Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review") : "Once AI is set up, Claude will review", " your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."),
         /* @__PURE__ */ React.createElement("div", { className: "ai-empty-feature-grid" }, [
           { icon: "chart-bar", label: "Executive Summary" },
           { icon: "banknote", label: "Income Analysis" },

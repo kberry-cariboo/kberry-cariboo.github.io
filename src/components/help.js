@@ -160,10 +160,17 @@
           ["Daily", "The same month as one card per day that has something on it, with the balance carried to the end of that day — useful for spotting the week where four bills land together. Desktop only: on a phone the Monthly cards already read day by day."],
           ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
           ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
-          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts — a bare number matches it, and \">500\" or \"<50\" filter by size."]
+          ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
+        { sub: "Searching" },
+        { p: "There is one search, in the header on a desktop and above the list on a phone — the same box either way, and its placeholder names what it will search. On Entries and on Plan it filters the list you are looking at. Anywhere else it jumps to the Budget month that matches, so typing a payee finds the month it falls in." },
+        { sub: "Dates and amounts" },
+        { p: "Dates are written the same way everywhere, in the format your Currency & Format setting chooses. The ledgers — Monthly, Daily and Forecast — are scoped to one year, so a date inside that year reads “Aug 28” and only a date outside it carries the year. The Entries list holds definitions rather than a year's events, so it always shows the year." },
+        { p: "Amounts follow one rule: a column that names the direction (the In and Out columns of the grids) shows a plain figure, and a single amount that has to carry both directions — the Entries list, and every card layout on a phone — is signed. Money in is green, money out is the ordinary text colour, and a transfer is blue wherever it appears." },
+        { sub: "What differs on a phone" },
+        { p: "The same five destinations in the same order, named the same way. The one view a phone doesn't show is Budget → Daily, because the Monthly cards there are already grouped day by day and Daily would repeat them; on a wider screen Daily is its own sub-tab." },
         { sub: "The Forecast “vs Target” column" },
         { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [

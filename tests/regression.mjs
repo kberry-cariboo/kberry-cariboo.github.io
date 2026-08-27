@@ -423,6 +423,73 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // table (rather than calling getMonthSummaries directly) is deliberate: the
   // defect was in what the user saw, and a unit test on the helper would not
   // have caught the grid footer or the annual row.
+  // The app used to call the same destination two names depending on the
+  // width you were at ("Home"/"Dashboard" was fixed earlier; "Budget vs
+  // Actual"/"vs Actual" and "AI Insights"/"AI" are these), and put Settings in
+  // the bottom nav on a phone but the avatar menu on a desktop — two
+  // information architectures rather than two layouts.
+  await test('navigation: the same destinations, named the same way, at every width', async () => {
+    const names = async (p) => p.evaluate(() => {
+      const vis = (el) => { const s = getComputedStyle(el); return s.display !== 'none' && el.getClientRects().length > 0; };
+      const nav = [...document.querySelectorAll('nav')].filter(vis)[0];
+      return [...nav.querySelectorAll('button,a')].filter(vis).map((b) => b.innerText.trim().replace(/^✦\s*/, ''));
+    });
+    const subs = async (p) => p.evaluate(() => [...document.querySelectorAll('.budget-subtab-pill')]
+      .filter((el) => getComputedStyle(el).display !== 'none')
+      .map((el) => el.innerText.trim()));
+
+    const wide = await ctxPage();
+    await wide.page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await wide.page.waitForTimeout(900);
+    const wideNav = await names(wide.page), wideSubs = await subs(wide.page);
+
+    const narrow = await ctxPage({ touch: true });
+    await narrow.page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await narrow.page.waitForTimeout(900);
+    const narrowNav = await names(narrow.page), narrowSubs = await subs(narrow.page);
+
+    if (JSON.stringify(wideNav) !== JSON.stringify(narrowNav)) {
+      throw new Error(`primary nav differs by width:\n  wide:   ${wideNav.join(' / ')}\n  narrow: ${narrowNav.join(' / ')}`);
+    }
+    if (!wideNav.includes('Settings')) throw new Error('Settings is not a primary destination: ' + wideNav.join(' / '));
+    // Daily is deliberately absent on a phone (the Monthly cards there already
+    // read day by day), so the narrow set is a subset — but every label they
+    // share has to be the same string.
+    for (const label of narrowSubs) {
+      if (!wideSubs.includes(label)) throw new Error(`sub-tab "${label}" exists only at phone width; wide has ${wideSubs.join(' / ')}`);
+    }
+    await wide.ctx.close();
+    await narrow.ctx.close();
+  });
+
+  // Entries had no bulk selection at all, while the Monthly grid — where it
+  // matters less — has had row checkboxes since it was written.
+  await test('entries: several rows can be recategorised at once, with one undo', async () => {
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    const rows = page.locator('.entries-table tbody tr');
+    const catOf = (i) => rows.nth(i).locator('.entries-col-cat, .entries-col-category').first().innerText();
+    const before0 = await catOf(0), before1 = await catOf(1);
+
+    await rows.nth(0).locator('input[type=checkbox]').check();
+    await rows.nth(1).locator('input[type=checkbox]').check();
+    await page.waitForTimeout(250);
+    if (!/2 selected/.test(await page.locator('.budget-bulkbar').innerText())) throw new Error('bulk bar does not show the count');
+
+    await page.locator('.entries-bulk-cat').selectOption('Medical');
+    await page.waitForTimeout(500);
+    if (!/Medical/.test(await catOf(0)) || !/Medical/.test(await catOf(1))) throw new Error('bulk recategorise did not apply to both rows');
+
+    // One undo for the whole selection, not one per row.
+    const toast = await page.locator('.undo-toast').innerText();
+    if (!/2 entries/.test(toast)) throw new Error('undo toast does not cover the selection: ' + toast);
+    await page.locator('.undo-btn').click();
+    await page.waitForTimeout(500);
+    if (await catOf(0) !== before0 || await catOf(1) !== before1) throw new Error('undo did not restore both categories');
+  });
+
   // Currency and number format were hardcoded to en-CA and a bare "$" in
   // fmt(), which is the single function every amount in the app goes through.
   await test('settings: changing currency and number format rewrites every amount', async () => {
@@ -1231,7 +1298,7 @@ await test('payroll: a payday on a weekend or a stat holiday stays put and is ma
   await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
   await page.waitForTimeout(800);
   const entryRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
-  if (!(await entryRow.innerText()).includes('2026-01-15')) throw new Error("the recurring entry's date was rewritten: " + await entryRow.innerText());
+  if (!/Jan 15,? 2026/.test(await entryRow.innerText())) throw new Error("the recurring entry's date was rewritten: " + await entryRow.innerText());
   await ctx.close();
 });
 

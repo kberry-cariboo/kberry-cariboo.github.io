@@ -70,6 +70,52 @@
     }
     return currency + "\u00a0";
   }
+  // One date presentation for the whole app, in the household's chosen locale.
+  //
+  // There were four. The Entries table printed ISO (2026-01-01), its own
+  // From/To filters sat directly above it as native inputs showing the
+  // browser's format, the Forecast printed "Aug 28", and the mobile Entries
+  // card printed "Jan 1" — so a user comparing a filter to the row beneath it
+  // was reading two conventions eight pixels apart.
+  //
+  // One format — the locale's medium date — with the year included where it
+  // carries information. The ledgers (Monthly, Daily, Forecast) are scoped to
+  // a year, so they pass that year as the context and a row inside it reads
+  // "Aug 28": repeating "2026" down every row of a 2026 budget is noise, and
+  // omitting it on the one row that *isn't* 2026 would be a bug. The Entries
+  // list is not a ledger — it lists entry *definitions*, whose start dates can
+  // be years old and whose end dates are often in another year — so it passes
+  // null and always shows the year.
+  let _dateFmt = { short: null, withYear: null };
+  function buildDateFormats(locale) {
+    const mk = (opts) => {
+      try {
+        return new Intl.DateTimeFormat(locale, opts);
+      } catch (e) {
+        try {
+          return new Intl.DateTimeFormat(DEFAULT_LOCALE, opts);
+        } catch (e2) {
+          return null;
+        }
+      }
+    };
+    _dateFmt = {
+      short: mk({ month: "short", day: "numeric" }),
+      withYear: mk({ month: "short", day: "numeric", year: "numeric" })
+    };
+  }
+  // `d` is a Date or a YYYY-MM-DD string. `contextYear` is the year the
+  // surrounding view is showing; the year is appended when the date is not in
+  // it. Pass null to always append it.
+  function fmtDate(d, contextYear) {
+    const date = typeof d === "string" ? parseDate(d) : d;
+    if (!date || isNaN(date)) return typeof d === "string" ? d : "\u2014";
+    const showYear = contextYear === null || contextYear === void 0 ? true : date.getFullYear() !== Number(contextYear);
+    const f = showYear ? _dateFmt.withYear : _dateFmt.short;
+    if (f) return f.format(date);
+    // No Intl at all: the ISO date is wrong-looking but never ambiguous.
+    return localDateStr(date);
+  }
   function setMoneyFormat(locale, currency) {
     const loc = locale || DEFAULT_LOCALE;
     const cur = currency || DEFAULT_CURRENCY;
@@ -87,6 +133,7 @@
       }
     }
     _money = { locale: loc, currency: cur, symbol: currencySymbol(loc, cur), nf };
+    buildDateFormats(loc);
   }
   setMoneyFormat(DEFAULT_LOCALE, DEFAULT_CURRENCY);
   // The bare symbol, for the handful of places that put one beside an input
@@ -94,6 +141,21 @@
   // a goal target. They were literal "$" characters, which is how a household
   // set to euros ends up typing into a box labelled with a dollar sign.
   const moneySymbol = () => _money.symbol;
+  // One amount convention app-wide, and this is where it is written down.
+  //
+  //   A column that names the direction — the In and Out columns of Monthly,
+  //   Daily and Forecast — shows an *unsigned* figure. The heading is the
+  //   direction; a minus sign under a column headed "Out" says the same thing
+  //   twice, and a positive one under it would be a contradiction.
+  //
+  //   A single amount that has to carry both directions — the Entries table,
+  //   and every card layout, which has no columns to name it — is *signed*,
+  //   via fmt(signedAmount(e), true).
+  //
+  // The sign always comes from here rather than a hand-rolled "+"/"-" prefix:
+  // two sites built their own and so didn't follow this function's negative
+  // convention (a minus, never parentheses) or the household's currency
+  // symbol.
   const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
     const d = Math.abs(centsToDollars(n));
