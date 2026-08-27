@@ -236,6 +236,9 @@ create table if not exists household_settings (
   reg_filter_status text[] not null default '{}',
   dash_hidden jsonb not null default '{}'::jsonb,
   dash_order text[] not null default '{}',
+  currency text,
+  locale text,
+  holiday_region text,
   debt_data jsonb not null default '{}'::jsonb,
   deleted_copy_ids jsonb not null default '{}'::jsonb,
   schema_version int,
@@ -308,6 +311,12 @@ alter table entry_overrides add column if not exists month int;
 -- Who last edited an occurrence. Null for every row written before this
 -- existed, which reads as "nobody recorded" and displays as nothing.
 alter table entry_overrides add column if not exists updated_by uuid;
+-- Currency, number formatting and which region's statutory holidays to
+-- compute. Null on every existing row, which the client reads as its
+-- defaults (CAD / en-CA / BC) — so an upgrade changes nothing on screen.
+alter table household_settings add column if not exists currency text;
+alter table household_settings add column if not exists locale text;
+alter table household_settings add column if not exists holiday_region text;
 alter table entry_overrides add column if not exists actual_amount numeric(14,2);
 alter table entry_overrides add column if not exists skipped boolean not null default false;
 alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
@@ -725,7 +734,8 @@ returns text[] language sql immutable as $$
     'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon', 'goals',
     'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
-    'completed', 'debtData', 'deletedCopyIds', 'holidays'
+    'completed', 'debtData', 'deletedCopyIds', 'holidays',
+    'currency', 'locale', 'holidayRegion'
   ]::text[];
 $$;
 
@@ -1176,7 +1186,8 @@ begin
   insert into household_settings as s
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
-     reg_filter_status, dash_hidden, dash_order, debt_data, deleted_copy_ids,
+     reg_filter_status, dash_hidden, dash_order, currency, locale, holiday_region,
+     debt_data, deleted_copy_ids,
      rollover, schema_version, updated_at, updated_by)
   values
     (hid,
@@ -1192,6 +1203,9 @@ begin
      cf_text_array(d->'regFilterStatus'),
      case when jsonb_typeof(d->'dashHidden') = 'object' then d->'dashHidden' else '{}'::jsonb end,
      cf_text_array(d->'dashOrder'),
+     d->>'currency',
+     d->>'locale',
+     d->>'holidayRegion',
      case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
      case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
      -- budgetTargets._rollover is a per-category flag, not a per-month target,
@@ -1218,6 +1232,9 @@ begin
      reg_filter_status = case when d ? 'regFilterStatus' then excluded.reg_filter_status else s.reg_filter_status end,
      dash_hidden = case when d ? 'dashHidden' then excluded.dash_hidden else s.dash_hidden end,
      dash_order = case when d ? 'dashOrder' then excluded.dash_order else s.dash_order end,
+     currency = case when d ? 'currency' then excluded.currency else s.currency end,
+     locale = case when d ? 'locale' then excluded.locale else s.locale end,
+     holiday_region = case when d ? 'holidayRegion' then excluded.holiday_region else s.holiday_region end,
      debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
      deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
      rollover = case when d ? 'budgetTargets' then excluded.rollover else s.rollover end,
@@ -1465,6 +1482,9 @@ begin
       'regFilterStatus', to_jsonb(s.reg_filter_status),
       'dashHidden', s.dash_hidden,
       'dashOrder', to_jsonb(s.dash_order),
+      'currency', s.currency,
+      'locale', s.locale,
+      'holidayRegion', s.holiday_region,
       'debtData', s.debt_data,
       'deletedCopyIds', s.deleted_copy_ids,
       'schemaVersion', s.schema_version,

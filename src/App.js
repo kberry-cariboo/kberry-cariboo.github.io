@@ -174,7 +174,10 @@
       completed,
       debtData,
       deletedCopyIds,
-      holidays
+      holidays,
+      currency,
+      locale,
+      holidayRegion: holidayRegionCode
     } = houseValues;
     const {
       entries: setEntries,
@@ -199,7 +202,10 @@
       completed: setCompleted,
       debtData: setDebtData,
       deletedCopyIds: setDeletedCopyIds,
-      holidays: setHolidays
+      holidays: setHolidays,
+      currency: setCurrency,
+      locale: setLocale,
+      holidayRegion: setHolidayRegionCode
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -486,6 +492,12 @@
     // columns are ordered are per-device view preferences.
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
     const [budgetColOrder, setBudgetColOrder] = useLS("cf_budget_col_order", DEFAULT_BUDGET_COLS);
+    // fmt() reads module state, so React has no idea its output changed when
+    // the currency does. This is the one re-render that has to be forced.
+    const [, setMoneyTick] = useState(0);
+    useEffect(() => {
+      setMoneyTick((t) => t + 1);
+    }, [locale, currency]);
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
     useEffect(() => {
@@ -582,8 +594,20 @@
     // same memo that consumes it, is what keeps that reference honest: the
     // flows can never be built against a stale list, which an effect running
     // after render would allow for one paint.
+    // Currency and number format reach fmt() the same way holidays reach
+    // expandEntries: through a module-level registry, because both are read
+    // from synchronous helpers called in dozens of places that have no access
+    // to React state. Done in a layout effect so the first paint after a
+    // change is already formatted correctly.
+    useLayoutEffect(() => {
+      setMoneyFormat(locale, currency);
+    }, [locale, currency]);
     const yearFlows = useMemo(() => {
       setStoredHolidays(holidays);
+      // Same reasoning as setStoredHolidays directly above: pushed in from the
+      // memo that consumes it, so the flows can never be built against the
+      // previous region's computed dates for one paint.
+      setHolidayRegion(holidayRegionCode);
       const flows = {};
       let carry = null;
       const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
@@ -596,7 +620,7 @@
         carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
       });
       return flows;
-    }, [entries, yearConfigs, overridesByYr, holidays]);
+    }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
@@ -1472,6 +1496,12 @@
         houseValues,
         houseSetters,
         pushUndo,
+        currency,
+        setCurrency,
+        locale,
+        setLocale,
+        holidayRegionCode,
+        setHolidayRegionCode,
         setCategories,
         categoryColors,
         setCategoryColors,

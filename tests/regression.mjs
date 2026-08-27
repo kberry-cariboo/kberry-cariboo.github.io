@@ -423,6 +423,56 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // table (rather than calling getMonthSummaries directly) is deliberate: the
   // defect was in what the user saw, and a unit test on the helper would not
   // have caught the grid footer or the annual row.
+  // Currency and number format were hardcoded to en-CA and a bare "$" in
+  // fmt(), which is the single function every amount in the app goes through.
+  await test('settings: changing currency and number format rewrites every amount', async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.locator('#set-currency').selectOption('EUR');
+    await page.locator('#set-locale').selectOption('de-DE');
+    await page.waitForTimeout(500);
+
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+    // German grouping puts points where en-CA puts commas, and the symbol
+    // changes with the currency.
+    if (!kpi.includes('€')) throw new Error('currency symbol did not change: ' + kpi);
+    if (!/\d\.\d{3},\d{2}/.test(kpi)) throw new Error('number format did not change: ' + kpi);
+    // Chart axes format money too, through the same module state.
+    const ticks = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((t) => t.textContent).join(' '));
+    if (!ticks.includes('€')) throw new Error('chart axis still using the old symbol: ' + ticks.slice(0, 120));
+
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    await page.locator('#set-currency').selectOption('CAD');
+    await page.locator('#set-locale').selectOption('en-CA');
+    await page.waitForTimeout(500);
+  });
+
+  // The statutory holidays that decide when a payday lands were British
+  // Columbia's, with no way to pick another province.
+  await test('settings: the holiday region changes which dates are computed', async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    const list = () => page.locator('#sec-holidays').innerText();
+    const bc = await list();
+    if (!/British Columbia Day/.test(bc)) throw new Error('BC list missing BC Day');
+
+    await page.locator('#holiday-region').selectOption('QC');
+    await page.waitForTimeout(700);
+    const qc = await list();
+    if (!/St-Jean-Baptiste Day/.test(qc)) throw new Error('Quebec list missing St-Jean-Baptiste: ' + qc.slice(0, 200));
+    if (/Family Day/.test(qc)) throw new Error('Quebec should have no Family Day');
+    if (!/Canada Day/.test(qc)) throw new Error('Quebec lost a national holiday');
+
+    await page.locator('#holiday-region').selectOption('BC');
+    await page.waitForTimeout(700);
+    if (!/British Columbia Day/.test(await list())) throw new Error('switching back did not restore BC');
+  });
+
   // Every balance in the app is projected from the year's opening figure; the
   // Help page is explicit that marking an occurrence paid is a tick-off, not a
   // reconciliation. Nothing measured the projection against reality, and the
@@ -1327,7 +1377,7 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   if ((await page.evaluate(() => window.__holidayFetches || [])).length !== 0) {
     throw new Error('the app fetched holidays without being asked');
   }
-  await section.getByRole('button', { name: /Fetch 2026 from canada-holidays\.ca/ }).click();
+  await section.getByRole('button', { name: /Fetch 2026 for BC from canada-holidays\.ca/ }).click();
   await page.getByRole('button', { name: 'Fetch', exact: true }).click();
   await page.waitForTimeout(700);
   const asked = await page.evaluate(() => window.__holidayFetches || []);

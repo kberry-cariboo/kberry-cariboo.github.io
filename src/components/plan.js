@@ -664,7 +664,7 @@
               className: "strat-suggest-btn",
               onClick: () => setDebtExtra(String(suggested))
             },
-            "$",
+            moneySymbol(),
             suggested,
             "/mo extra"
           ), ".")));

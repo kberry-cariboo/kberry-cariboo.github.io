@@ -707,31 +707,55 @@
         const aug = onMonth(expandEntries([payroll], 2026, ov), 7);
         return aug.day === 17 && aug.depositShifted === false;
       });
+      // BC is the default and was the only region the rules covered; these two
+      // pin down that adding the others left it exactly as it was.
+      t("BC still computes 13 dates for 2026", () => Object.keys(computeRegionHolidays(2026, "BC")).length === 13);
+      t("regions differ where they actually differ", () => {
+        const on = computeRegionHolidays(2026, "ON");
+        const qc = computeRegionHolidays(2026, "QC");
+        const named = (h) => Object.keys(h).map((k) => h[k].name.replace(" (observed)", ""));
+        const onNames = named(on), qcNames = named(qc);
+        return (
+          // Ontario: no Truth and Reconciliation, no Remembrance Day, a Civic
+          // Holiday rather than BC Day.
+          !onNames.includes("National Day for Truth and Reconciliation") &&
+          !onNames.includes("Remembrance Day") &&
+          onNames.includes("Civic Holiday") &&
+          // Quebec: no February holiday at all, and Victoria Day is National
+          // Patriots' Day on the same date.
+          !qcNames.includes("Family Day") &&
+          qcNames.includes("National Patriots' Day") &&
+          qcNames.includes("St-Jean-Baptiste Day") &&
+          // Everything shared is still shared.
+          ["New Year's Day", "Good Friday", "Canada Day", "Labour Day", "Christmas Day"].every((n) => onNames.includes(n) && qcNames.includes(n))
+        );
+      });
+      t("an unknown region falls back to the default rather than throwing", () => Object.keys(computeRegionHolidays(2026, "ZZ")).length === 13);
       t("BC holiday rules: the computed dates for 2026", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         const on = (d) => (h[d] || {}).name || "\u2014";
         return on("2026-02-16") === "Family Day" && on("2026-04-03") === "Good Friday" && on("2026-05-18") === "Victoria Day" && on("2026-08-03") === "British Columbia Day" && on("2026-09-30") === "National Day for Truth and Reconciliation" && on("2026-10-12") === "Thanksgiving" && on("2026-12-25") === "Christmas Day";
       });
       t("optional BC holidays are included and flagged", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         // Boxing Day 2026 is a Saturday, so it is taken on Monday the 28th.
         return h["2026-04-06"] && h["2026-04-06"].optional === true && h["2026-12-28"] && h["2026-12-28"].optional === true && h["2026-07-01"].optional === false;
       });
       t("a holiday that falls on a weekend is listed once, on the day it's observed", () => {
         // 1 Jan 2028 is a Saturday, taken on Monday the 3rd. Listing the
         // Saturday as well was a duplicate — one day off, one row.
-        const h = computeBCHolidays(2028);
+        const h = computeRegionHolidays(2028, "BC");
         return h["2028-01-01"] === void 0 && /^New Year's Day \(observed\)$/.test((h["2028-01-03"] || {}).name || "");
       });
       t("Christmas week resolves to two consecutive days off, listed once each", () => {
         // 25 Dec 2027 is a Saturday: Christmas is taken Monday the 27th and
         // Boxing Day moves past it to Tuesday the 28th.
-        const h = computeBCHolidays(2027);
+        const h = computeRegionHolidays(2027, "BC");
         const names = Object.keys(h).filter((d) => d >= "2027-12-24").map((d) => `${d}=${h[d].name}`);
         return names.join(" ") === "2027-12-27=Christmas Day (observed) 2027-12-28=Boxing Day (observed)";
       });
       t("a holiday on a weekday keeps its plain name", () => {
-        const h = computeBCHolidays(2026);
+        const h = computeRegionHolidays(2026, "BC");
         return h["2026-07-01"].name === "Canada Day" && h["2026-12-25"].name === "Christmas Day";
       });
       t("a bad holiday payload is ignored rather than believed", () => {

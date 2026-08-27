@@ -160,7 +160,8 @@ re-keyed onto the entry's start-date occurrence by the migration.) All reads/wri
 Statutory holidays (which decide when payroll landing on a closed day is
 actually deposited) are rows too: one per date in `holidays`, plus a
 `holiday_years` row per year the household has taken over from the built-in
-British Columbia rules — that second table is what distinguishes "this household
+rules for its region (`holidayRegion`, any Canadian province or territory,
+defaulting to British Columbia) — that second table is what distinguishes "this household
 deleted every holiday in 2027" from "nobody has touched 2027". Settings →
 Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
 the pair against a scratch database.

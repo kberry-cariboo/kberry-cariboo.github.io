@@ -113,7 +113,14 @@
     // someone edits a year or fetches one; every year without an entry falls
     // back to the rules in holidays.js. Household data like anything else:
     // corrected on one device, right on every device.
-    { key: "holidays", storage: "cf_holidays", initial: () => ({}), kind: "object", backup: true }
+    { key: "holidays", storage: "cf_holidays", initial: () => ({}), kind: "object", backup: true },
+    // Household-wide, not per-device: everyone sharing a budget has to see the
+    // same figures in the same currency, and the statutory holidays that
+    // decide when a payday lands are already household data (the `holidays`
+    // table above).
+    { key: "currency", storage: "cf_currency", initial: () => DEFAULT_CURRENCY, kind: "truthy", backup: true },
+    { key: "locale", storage: "cf_locale", initial: () => DEFAULT_LOCALE, kind: "truthy", backup: true },
+    { key: "holidayRegion", storage: "cf_holiday_region", initial: () => DEFAULT_HOLIDAY_REGION, kind: "truthy", backup: true }
   ];
   // Creates the localStorage-backed state for every field in the table, in
   // table order, and returns the two objects useHouseholdData indexes by field
