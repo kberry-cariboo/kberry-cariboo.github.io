@@ -383,14 +383,14 @@
           } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
           if (col === "income") {
-            const showHere = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+            const showHere = isInflowEvent(ev);
             return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
               textDecoration: isDone ? "line-through" : "none"
             } }, showHere ? fmt(ev.amount) : "");
           }
           if (col === "expense") {
-            const showHere = ev.type === "expense" || ev.type === "transfer" && ev.transferDirection === "out";
+            const showHere = isOutflowEvent(ev);
             return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
               textDecoration: isDone ? "line-through" : "none"
@@ -636,7 +636,13 @@
         "Got it"
       )),
       gq && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
-      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })),
+      // Surplus/Shortfall is the month's balance movement, so when the month
+      // holds transfers it deliberately differs from Total Income minus Total
+      // Expenses sitting beside it — those two exclude transfers by design.
+      // The card says so in its sub-line rather than leaving the reader to
+      // find a gap they can't account for; the year-over-year delta gives up
+      // its place for that, which only happens in months that have transfers.
+      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })),
       budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -656,7 +662,7 @@
         {
           onAdd: openAddEntry,
           onCSV: () => {
-            const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
+            const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
@@ -723,10 +729,17 @@
       }), /* @__PURE__ */ React.createElement("td", { className: "budget-th-actions" })), pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), pagedPeriod1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
         background: "var(--navy)"
       } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td", style: { background: "var(--navy)" } }), bCols.map((col) => {
+        // The In and Out cells sum what the columns above them actually show,
+        // transfers included — this is the ledger's own footer, not the
+        // activity totals. They used to print s.income/s.expense, which leave
+        // transfers out (see getMonthSummaries), so a month with one $500
+        // transfer out showed a $5,180 column of figures under a $4,680
+        // total. The Surplus cell is the balance movement, so the three cells
+        // reconcile with each other and with the Closing Balance above.
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-totals-label" }, "Monthly Totals");
         if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat budget-col-category pad-10-14" });
-        if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-totals-amt", style: { color: "var(--green)" } }, fmt(s.income));
-        if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense));
+        if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-totals-amt", style: { color: "var(--green)" } }, fmt(s.income + s.transfersIn));
+        if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense + s.transfersOut));
         if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true));
         return null;
       }), /* @__PURE__ */ React.createElement("td", { className: "budget-th-actions" })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events" }))), showEntryForm && /* @__PURE__ */ React.createElement(
@@ -837,7 +850,7 @@
         {
           onAdd: openAddEntry,
           onCSV: () => {
-            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
+            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
           onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)

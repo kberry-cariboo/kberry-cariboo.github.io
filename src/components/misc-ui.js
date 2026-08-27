@@ -174,12 +174,17 @@
     }
   }
   function BottomNav({ tab, setTab, lowAlert = false }) {
-    // "Dashboard", not "Home": the tab bar, the keyboard shortcut list, the
-    // hash route and the Settings copy all call this view Dashboard, so an
-    // aria-label of "Home" gave screen-reader users a name that appears
-    // nowhere else in the app. `short` is what the 5-up nav can fit.
+    // "Dashboard" everywhere, visibly and to a screen reader. The tab bar,
+    // the keyboard shortcut list, the hash route and the Settings copy all
+    // call this view Dashboard, so labelling the button "Home" while naming
+    // it "Dashboard" broke WCAG 2.5.3 (Label in Name) — the accessible name
+    // has to contain the visible text, or voice control has no way to act on
+    // what the user can read. "Home" was there because the 5-up nav was
+    // assumed too tight for the longer word; measured at 320px it isn't
+    // (the label ellipsises rather than overflowing, and "Settings" is only
+    // one character shorter), so there's nothing left to trade off.
     const items = [
-      { id: "dashboard", icon: "home", label: "Dashboard", short: "Home" },
+      { id: "dashboard", icon: "home", label: "Dashboard" },
       { id: "budget", icon: "calendar", label: "Budget" },
       { id: "plan", icon: "target", label: "Plan" },
       { id: "ai", icon: "sparkle", label: "AI" },
@@ -204,7 +209,7 @@
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-icon-wrap", style: {
         background: tab === it.id ? "var(--accentLt)" : "transparent"
       } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { className: "bottomnav-alert-dot" })),
-      it.short || it.label
+      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
     )));
   }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {

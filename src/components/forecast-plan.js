@@ -28,6 +28,38 @@
       });
       return all.sort((a, b) => a.date - b.date);
     }, [yearFlows, yearConfigs, horizon, today]);
+    // Running month-to-date outflow per category, keyed by occurrence id, so
+    // the "vs target" column can compare a month's spending against a month's
+    // target.
+    //
+    // The column used to divide a *single* occurrence's amount by the whole
+    // month's target and print the result as a "confidence" percentage. Two
+    // separate problems: the units didn't match — a bi-weekly $260 grocery
+    // against a $560 monthly Food target scored a reassuring ✓ even though
+    // the second one blows it — and no reading of "confidence" describes a
+    // budget ratio, so a row over its target looked like a forecast the app
+    // wasn't sure about.
+    //
+    // Accumulated across the whole year's flow rather than futureEvents,
+    // because a September occurrence has to count what September already
+    // spent before today, which is behind the forecast window.
+    const catMtdById = useMemo(() => {
+      const out = {};
+      yearConfigs.forEach((yc) => {
+        const running = {};
+        (yearFlows[yc.year] || []).forEach((ev) => {
+          // Expenses only, matching what Budget vs Actual counts. Transfers
+          // sit outside the target system by design (see the Help page and
+          // getMonthSummaries), so counting one here would judge a row
+          // against a target Budget vs Actual will never show it against.
+          if (ev.type !== "expense") return;
+          const key = `${ev.month}:${ev.category}`;
+          running[key] = (running[key] || 0) + ev.amount;
+          out[ev.id] = running[key];
+        });
+      });
+      return out;
+    }, [yearFlows, yearConfigs]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
     const searchedEvents = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2));
@@ -98,7 +130,7 @@
         onCSV: futureEvents.length === 0 ? null : () => {
           const rows = searchedEvents.map((ev) => {
             const dateStr = `${MONTHS[ev.month]} ${ev.day}, ${ev.year}`;
-            return [dateStr, ev.desc, ev.category, ev.type === "income" ? centsToDollars(ev.amount) : "", ev.type === "expense" ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
+            return [dateStr, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
         },
@@ -116,11 +148,11 @@
         templates,
         setTemplates
       }
-    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && (isMobile ? renderForecastCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Date", "Description", "Category", "In", "Out", "Balance", "Confidence"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "Confidence" ? "forecast-conf-col " : "") + "forecast-th", style: {
+    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && (isMobile ? renderForecastCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Date", "Description", "Category", "In", "Out", "Balance", "vs Target"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "vs Target" ? "forecast-conf-col " : "") + "forecast-th", style: {
       textAlign: i >= 3 ? "right" : "left"
     } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
       const dateStr = `${MONTHS[ev.month]} ${ev.day}${ev.year !== today.getFullYear() ? ` '${String(ev.year).slice(2)}` : ""}`;
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, ev.type === "income" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, ev.type === "expense" ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
+      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, isInflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, isOutflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
       } }, fmt(ev.balance)), (() => {
@@ -128,16 +160,17 @@
         const cat = ev.category;
         const yr = ev.year;
         const target = (budgetTargets[`${yr}:${m}`] || {})[cat] || 0;
-        const isIncome = ev.type === "income";
-        if (isIncome) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: "Scheduled income" }, "\u2713"));
-        if (!target) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, "\u2014");
-        const pct = Math.round(ev.amount / target * 100);
-        const conf = pct <= 100 ? 100 : pct <= 120 ? 75 : pct <= 150 ? 50 : 25;
-        if (conf === 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: "Within budget target" }, "\u2713"));
-        const color = conf >= 50 ? "var(--amberInk)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: "Amount exceeds the monthly budget target" }, conf, "%"));
+        if (ev.type !== "expense") return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: isInflowEvent(ev) ? "Money in — budget targets cover spending only" : "Transfers sit outside the budget target system" }, "\u2014"));
+        if (!target) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `No monthly budget target set for ${cat}` }, "\u2014"));
+        // Where this occurrence leaves the category's month, not what this one
+        // occurrence is worth on its own — see catMtdById.
+        const mtd = catMtdById[ev.id] != null ? catMtdById[ev.id] : ev.amount;
+        const pct = Math.round(mtd / target * 100);
+        if (pct <= 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, "\u2713"));
+        const color = pct <= 120 ? "var(--amberInk)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, pct, "%"));
       })());
-    })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: false }))));
+    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: false }))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
@@ -354,12 +387,17 @@
       }));
       const expenseCats = {}, incomeCats = {};
       flow.filter((e) => e.month <= currentMonth).forEach((e) => {
-        // Transfers move money between the user's own accounts — neither
-        // real spending nor real income, so a plain if/else here (treating
-        // "not expense" as income) would have quietly folded them into
-        // incomeCats and inflated the AI's income picture.
-        if (e.type === "expense") expenseCats[e.category] = (expenseCats[e.category] || 0) + e.amount;
-        else if (e.type === "income") incomeCats[e.category] = (incomeCats[e.category] || 0) + e.amount;
+        // Classified by flow direction, not by type, so these two add up to
+        // the totalIncome/totalExpenses printed above them in the same
+        // prompt — those come from getMonthSummaries, which counts an
+        // "out"-direction transfer as money leaving. Excluding transfers here
+        // (on the reasoning that they only move between the user's own
+        // accounts) would hand the model a category breakdown that doesn't
+        // reconcile with its own headline totals; and the reasoning doesn't
+        // hold anyway while the app tracks a single account, where a transfer
+        // out leaves and never comes back.
+        if (isOutflowEvent(e)) expenseCats[e.category] = (expenseCats[e.category] || 0) + e.amount;
+        else incomeCats[e.category] = (incomeCats[e.category] || 0) + e.amount;
       });
       const bvaRows = [];
       const targetByCat = {};

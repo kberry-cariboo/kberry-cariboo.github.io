@@ -319,16 +319,25 @@
     });
     return out;
   }
-  // Cents, signed by whether this event adds to or subtracts from the
-  // balance — income and an "in"-direction transfer add, everything else
-  // (expense, and an "out"-direction transfer, the default) subtracts. Used
+  // Which side of the account an event falls on. Income and an "in"-direction
+  // transfer bring money in; an expense and an "out"-direction transfer (the
+  // default) take it out.
+  //
+  // This is *cash direction*, not category of activity, and the two are
+  // deliberately different things here. A transfer is money the household
+  // already had — moving $500 to savings is not spending it — so it stays out
+  // of the income and expense totals and out of Budget vs Actual, which is
+  // what the Help page promises and what the "a transfer nets into the
+  // balance and stays out of income totals" regression case pins down. Cash
+  // direction is what the *ledger* runs on: which column a row prints in, and
+  // which way the running balance moves.
+  const isInflowEvent = (ev) => ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+  const isOutflowEvent = (ev) => !isInflowEvent(ev);
+  // Cents, signed by which side of the account the event falls on. Used
   // anywhere a running total needs a signed amount instead of computeFlow's
-  // per-event balance; a plain `type === "income" ? amount : -amount`
-  // ternary silently treats any non-income type as a subtraction, which is
-  // right for expense but wrong for an "in"-direction transfer.
+  // per-event balance.
   function signedAmount(ev) {
-    const isInflow = ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
-    return isInflow ? ev.amount : -ev.amount;
+    return isInflowEvent(ev) ? ev.amount : -ev.amount;
   }
   function computeFlow(events, openBal) {
     let bal = openBal;
@@ -337,6 +346,24 @@
       return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
     });
   }
+  // Per-month totals. `income` and `expense` are the two *activity* totals and
+  // count only entries of that type, per the rule above.
+  //
+  // `surplus` is the change in the balance — close minus open — and not
+  // `income - expense`, which is what it used to be. With no transfers in the
+  // month the two are identical, which is nearly every month for nearly every
+  // household. With transfers they are not, and the old subtraction produced a
+  // figure that contradicted the Closing Balance printed in the very next
+  // column: a month with one $500 transfer out reported "+$2,670" beside a
+  // balance that had risen $2,170, and the year's "Annual Total" surplus
+  // missed the transfers twelvefold. Deriving it from the balance means the
+  // row always reconciles, whatever mix of types the month holds.
+  //
+  // `transfersIn`/`transfersOut` are what closes the gap for a reader: they
+  // are the difference between the activity totals and the balance movement,
+  // so a UI showing all of them can be checked with mental arithmetic. Both
+  // are 0 for a month with no transfers, which is how callers know not to
+  // spend a column on them.
   function getMonthSummaries(flow, openBal) {
     return MONTHS.map((m, i) => {
       const evs = flow.filter((ev) => ev.month === i);
@@ -344,8 +371,11 @@
       const open = prev.length > 0 ? prev[prev.length - 1].balance : openBal;
       const income = evs.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
       const expense = evs.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);
+      const transfers = evs.filter((e) => e.type === "transfer");
+      const transfersIn = transfers.filter(isInflowEvent).reduce((s, e) => s + e.amount, 0);
+      const transfersOut = transfers.filter(isOutflowEvent).reduce((s, e) => s + e.amount, 0);
       const close = evs.length > 0 ? evs[evs.length - 1].balance : open;
-      return { month: m, monthIdx: i, income, expense, surplus: income - expense, open, close };
+      return { month: m, monthIdx: i, income, expense, transfersIn, transfersOut, surplus: roundMoney(close - open), open, close };
     });
   }
   function getCurrentBalance(flow, openBal, year) {

@@ -195,7 +195,27 @@
     const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
     const totalIncome = summaries.reduce((s, m) => s + m.income, 0);
     const totalExpense = summaries.reduce((s, m) => s + m.expense, 0);
-    const netSurplus = totalIncome - totalExpense;
+    const totalTransfersIn = summaries.reduce((s, m) => s + m.transfersIn, 0);
+    const totalTransfersOut = summaries.reduce((s, m) => s + m.transfersOut, 0);
+    // Sum of the monthly surpluses, each of which is that month's balance
+    // movement — so this telescopes to (year-end close − opening balance) and
+    // matches the Closing Balance column it is printed under. It used to be
+    // totalIncome − totalExpense, which leaves transfers out (they are not
+    // income or expense — see getMonthSummaries) and so reported a year-end
+    // net that missed every transfer: twelve $500 monthly transfers went
+    // $6,000 unaccounted for between the Annual Total row and the balance
+    // directly above it.
+    const netSurplus = summaries.reduce((s, m) => s + m.surplus, 0);
+    // Whether to spend a column on transfers. Zero for the vast majority of
+    // households, and the tables stay exactly as they were for them.
+    const hasTransfers = totalTransfersIn > 0 || totalTransfersOut > 0;
+    // Both Monthly Summary renderings (heatmap and table) share this, so the
+    // sticky last-column rule can key off the array length instead of a
+    // hardcoded index that a new column would silently break.
+    const summaryCols = hasTransfers
+      ? ["Month", "Income", "Expenses", "Transfers", "Surplus / Shortfall", "Closing Balance"]
+      : ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"];
+    const netTransfers = totalTransfersIn - totalTransfersOut;
     const lowestBal = summaries.length ? Math.min(...summaries.map((m) => m.close)) : 0;
     const lowestMon = (_a = summaries.find((m) => m.close === lowestBal)) == null ? void 0 : _a.month;
     const showYoY = yearConfigs.length >= 2;
@@ -638,12 +658,12 @@
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
           }
         )),
-        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary heatmap" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary heatmap" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
-          position: i === 4 ? "sticky" : "static",
-          right: i === 4 ? 0 : "auto",
-          background: i === 4 ? "var(--navy)" : "transparent",
-          boxShadow: i === 4 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
+          position: i === summaryCols.length - 1 ? "sticky" : "static",
+          right: i === summaryCols.length - 1 ? 0 : "auto",
+          background: i === summaryCols.length - 1 ? "var(--navy)" : "transparent",
+          boxShadow: i === summaryCols.length - 1 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
         } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => {
           const maxInc = Math.max(...summaries.map((s) => s.income), 1);
           const maxExp = Math.max(...summaries.map((s) => s.expense), 1);
@@ -653,21 +673,21 @@
           const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
           const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
-          return /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-inc-td", style: { background: heatInc } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-exp-td", style: { background: heatExp } }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: { background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-heat-bal-td", style: { background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(m.close)));
+          return /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-inc-td", style: { background: heatInc } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-exp-td", style: { background: heatExp } }, fmt(m.expense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: { background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-heat-bal-td", style: { background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(m.close)));
         }))))),
-        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary table" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary table" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
-          position: i === 4 ? "sticky" : "static",
-          right: i === 4 ? 0 : "auto",
-          background: i === 4 ? "var(--navy)" : "transparent",
-          boxShadow: i === 4 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
-        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: {
+          position: i === summaryCols.length - 1 ? "sticky" : "static",
+          right: i === summaryCols.length - 1 ? 0 : "auto",
+          background: i === summaryCols.length - 1 ? "var(--navy)" : "transparent",
+          boxShadow: i === summaryCols.length - 1 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
+        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.expense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: {
           color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)",
           background: m.surplus < 0 ? "var(--redLt)" : "transparent"
         } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-table-bal-td", style: {
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
       ),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,

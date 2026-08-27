@@ -41,6 +41,18 @@
     const [dragCol, setDragCol] = useState(null);
     const [dragOver, setDragOver] = useState(null);
     const [showCsvImport, setShowCsvImport] = useState(false);
+    // Flattened across every configured year: a statement can span a year
+    // boundary, and the modal only needs date/amount/desc to match on.
+    const csvScheduled = useMemo(() => {
+      if (!allYearFlows) return [];
+      const out = [];
+      Object.keys(allYearFlows).forEach((yr) => {
+        (allYearFlows[yr] || []).forEach((ev) => {
+          out.push({ date: ev.date, amount: ev.amount, desc: ev.desc });
+        });
+      });
+      return out;
+    }, [allYearFlows]);
     const handleCsvImport = (newEntries) => {
       if (addEntry) newEntries.forEach((e) => addEntry(e));
       else setEntries((prev) => [...prev, ...newEntries]);
@@ -474,6 +486,10 @@
       onImport: handleCsvImport,
       categories,
       existingEntries: entries,
+      // Every scheduled occurrence the app knows about, so the import can
+      // recognise a statement row the budget already predicts (a recurring
+      // bill) and not add a second copy of it.
+      scheduledOccurrences: csvScheduled,
       apiKey,
       isOffline
     }));
