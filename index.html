@@ -2886,7 +2886,7 @@ document.addEventListener('DOMContentLoaded',function(){
           startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : localDateStr(/* @__PURE__ */ new Date()),
           repeats: !!e.repeats,
           recurEvery: parseInt(e.recurEvery) > 0 ? parseInt(e.recurEvery) : 1,
-          recurUnit: ["day", "week", "month", "year", "semimonth"].includes(e.recurUnit) ? e.recurUnit : "month",
+          recurUnit: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(e.recurUnit) ? e.recurUnit : "month",
           recurDays: Array.isArray(e.recurDays) ? e.recurDays : [],
           recurEnd: typeof e.recurEnd === "string" ? e.recurEnd : "",
           category: typeof e.category === "string" && e.category ? e.category : "Uncategorized",
@@ -3424,6 +3424,20 @@ document.addEventListener('DOMContentLoaded',function(){
     const why = hol ? `is ${hol.name}${hol.optional ? " (an optional holiday)" : ""}` : "falls on a weekend";
     return `Payday ${WEEKDAYS[ev.date.getDay()]} ${MONTHS[ev.month]} ${ev.day} ${why} — direct deposit lands ${WEEKDAYS[paid.getDay()]} ${MONTHS[paid.getMonth()]} ${paid.getDate()}. The budget keeps it on the payday.`;
   }
+  // The nth named weekday of a month — nth 1..5 counting forward, or -1 for
+  // the last one. Returns null when a month has no 5th such weekday, so a
+  // "5th Friday" entry simply produces nothing in the months that lack one
+  // rather than silently sliding into the next month.
+  function nthWeekdayInMonth(year, month, weekday, nth) {
+    if (nth === -1) {
+      const last = new Date(year, month, daysInMonth(month, year));
+      last.setDate(last.getDate() - ((last.getDay() - weekday + 7) % 7));
+      return last;
+    }
+    const first = new Date(year, month, 1);
+    const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
+    return day > daysInMonth(month, year) ? null : new Date(year, month, day);
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3547,14 +3561,36 @@ document.addEventListener('DOMContentLoaded',function(){
           }
           cur.setDate(cur.getDate() + every * 7);
         }
-      } else if (unit === "month") {
+      } else if (unit === "month" || unit === "monthend" || unit === "monthweekday") {
+        // All three step month by month from the start month; they differ only
+        // in which day of the month they land on.
+        //
+        //   month         the same day number, clamped into short months
+        //   monthend      the last day, whatever length the month is
+        //   monthweekday  the nth (or last) named weekday
+        //
+        // "monthend" is not the same as a plain monthly entry anchored on the
+        // 31st: that one lands on the 28th in February and the 31st in March,
+        // but an entry *created* in February anchors on the 28th and then
+        // stays on the 28th for the rest of the year. A bill genuinely due on
+        // the last day needs the intent recorded, not inferred from whichever
+        // month it was first entered in.
         const anchorDay = startD.getDate();
+        const nth = Number.isFinite(e.recurNth) ? e.recurNth : 1;
+        const weekday = Array.isArray(e.recurDays) && e.recurDays.length ? e.recurDays[0] : startD.getDay();
         for (let mi = 0; mi < 12; mi++) {
           const startMi = startD.getFullYear() < year ? 0 : startD.getFullYear() === year ? startD.getMonth() : 999;
           if (mi < startMi) continue;
           const totalMo = (year - startD.getFullYear()) * 12 + mi - startD.getMonth();
           if (totalMo < 0 || totalMo % every !== 0) continue;
-          addEv(new Date(year, mi, Math.min(anchorDay, daysInMonth(mi, year))));
+          if (unit === "monthend") {
+            addEv(new Date(year, mi, daysInMonth(mi, year)));
+          } else if (unit === "monthweekday") {
+            const d = nthWeekdayInMonth(year, mi, weekday, nth);
+            if (d) addEv(d);
+          } else {
+            addEv(new Date(year, mi, Math.min(anchorDay, daysInMonth(mi, year))));
+          }
         }
       } else if (unit === "year") {
         const sy = startD.getFullYear();
@@ -3609,6 +3645,11 @@ document.addEventListener('DOMContentLoaded',function(){
       recurEvery: e.recurEvery || 1,
       recurUnit: e.recurUnit || "month",
       recurDays: e.recurDays || [],
+      // Part of the shape: changing only which weekday of the month a bill
+      // falls on is a real change to the schedule, and without it here it
+      // would read as "nothing changed" and be applied retroactively over
+      // months already recorded.
+      recurNth: Number.isFinite(e.recurNth) ? e.recurNth : null,
       startDate: e.startDate,
       monthlyAmounts: e.monthlyAmounts || null
     });
@@ -6695,6 +6736,13 @@ document.addEventListener('DOMContentLoaded',function(){
       recurEvery: 1,
       recurUnit: "month",
       recurDays: [],
+      // Which occurrence in the month, for the "nth weekday" schedule:
+      // 1..5 counting forward, or -1 for the last one. Ignored by every other
+      // unit. Stored rather than derived from the start date, because the
+      // start date can't tell "the fourth Friday" from "the last Friday" —
+      // they are the same day in most months and different in the long ones,
+      // and which one the bill means is not something to guess.
+      recurNth: 1,
       recurEnd: "",
       monthlyAmounts: null,
       transferDirection: "out"
@@ -6707,6 +6755,7 @@ document.addEventListener('DOMContentLoaded',function(){
       recurEvery: (_a = initial.recurEvery) != null ? _a : 1,
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
+      recurNth: Number.isFinite(initial.recurNth) ? initial.recurNth : 1,
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
       repeats: (_e = initial.repeats) != null ? _e : false,
       transferDirection: initial.transferDirection || "out"
@@ -6737,7 +6786,7 @@ document.addEventListener('DOMContentLoaded',function(){
           start_date: { type: "string", description: "Date it first applies, as YYYY-MM-DD. Use today when the text doesn't say." },
           repeats: { type: "boolean", description: "true only when the text describes something recurring." },
           recur_every: { type: "integer", description: "Interval between repeats, e.g. 2 for 'every second week'. 1 otherwise." },
-          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth"] },
+          recur_unit: { type: "string", enum: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"] },
           recur_days: { type: "array", description: "Weekly repeats only: weekday numbers, 0 = Sunday through 6 = Saturday.", items: { type: "integer" } },
           recur_end: { type: "string", description: "Last date as YYYY-MM-DD, or an empty string when ongoing." },
           notes: { type: "string", description: "Anything in the text that doesn't fit the other fields. Empty string if none." }
@@ -6763,7 +6812,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (/^\d{4}-\d{2}-\d{2}$/.test(data.start_date || "")) patch.startDate = data.start_date;
         patch.repeats = !!data.repeats;
         if (patch.repeats) {
-          patch.recurUnit = ["day", "week", "month", "year", "semimonth"].includes(data.recur_unit) ? data.recur_unit : "month";
+          patch.recurUnit = ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(data.recur_unit) ? data.recur_unit : "month";
           patch.recurEvery = Number.isInteger(data.recur_every) && data.recur_every > 0 ? data.recur_every : 1;
           // recurDays is only meaningful for weekly repeats, and the form's
           // own weekday toggles assume clean 0-6 values.
@@ -6787,7 +6836,22 @@ document.addEventListener('DOMContentLoaded',function(){
       const newDays = f.recurUnit === "week" ? wd !== null ? [wd] : f.recurDays : f.recurDays;
       set({ startDate: val, recurDays: newDays });
     };
-    const setUnit = (unit) => set({ recurUnit: unit, recurDays: unit === "week" && startWD !== null ? [startWD] : [] });
+    const setUnit = (unit) => {
+      // recurDays carries the weekday for both "week" and "monthweekday"; the
+      // start date is the natural default for each, so switching to either
+      // pre-selects the day the user already picked rather than Sunday.
+      if (unit === "monthweekday") {
+        const d = startD || null;
+        set({
+          recurUnit: unit,
+          recurDays: startWD !== null ? [startWD] : [],
+          // Which occurrence of that weekday the start date already is.
+          recurNth: d ? Math.floor((d.getDate() - 1) / 7) + 1 : 1
+        });
+        return;
+      }
+      set({ recurUnit: unit, recurDays: unit === "week" && startWD !== null ? [startWD] : [] });
+    };
     const toggleWD = (wd) => {
       if (f.recurEvery > 1 || wd === startWD) return;
       const next = f.recurDays.includes(wd) ? f.recurDays.filter((d) => d !== wd) : [...f.recurDays, wd].sort((a, b) => a - b);
@@ -6797,6 +6861,12 @@ document.addEventListener('DOMContentLoaded',function(){
       if (!f.repeats) return null;
       const e = f.recurEvery, u = f.recurUnit, until = f.recurEnd ? ` until ${f.recurEnd}` : " (ongoing)";
       if (u === "semimonth") return `Semi-monthly (1st & 15th pattern)${until}`;
+      if (u === "monthend") return `The last day of every month${until}`;
+      if (u === "monthweekday") {
+        const ord = { "1": "first", "2": "second", "3": "third", "4": "fourth", "5": "fifth", "-1": "last" }[String(f.recurNth)] || "first";
+        const wd = WEEKDAYS[f.recurDays[0] != null ? f.recurDays[0] : startWD || 0];
+        return `The ${ord} ${wd} of every month${until}`;
+      }
       if (u === "day") return `Every ${e} day${e > 1 ? "s" : ""}${until}`;
       if (u === "month") return `Every ${e} month${e > 1 ? "s" : ""}${until}`;
       if (u === "year") return `Every ${e} year${e > 1 ? "s" : ""}${until}`;
@@ -6825,7 +6895,10 @@ document.addEventListener('DOMContentLoaded',function(){
         amount: dollarsToCents(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
-        recurDays: f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
+        recurNth: f.recurUnit === "monthweekday" ? parseInt(f.recurNth, 10) || 1 : void 0,
+        // "monthweekday" keeps exactly one weekday (the schedule names one);
+        // "week" keeps the start day plus any extras the user ticked.
+        recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
@@ -6933,7 +7006,11 @@ document.addEventListener('DOMContentLoaded',function(){
           );
         }
       }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "monthend" }, "Monthly \u2014 last day"), /* @__PURE__ */ React.createElement("option", { value: "monthweekday" }, "Monthly \u2014 nth weekday"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "monthweekday" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      className: lblCls,
+      helpLabel: "Which weekday",
+      help: "A month with only four of the chosen weekday has no fifth one, so a \u201c5th\u201d entry simply doesn\u2019t occur in those months. Pick \u201cLast\u201d for the one that should always land in the final week."
+    }, "Which weekday"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("select", { "aria-label": "Which occurrence in the month", className: inpCls(false), style: { flex: "0 1 130px" }, value: String(f.recurNth), onChange: (e) => set({ recurNth: parseInt(e.target.value, 10) }) }, [[1, "First"], [2, "Second"], [3, "Third"], [4, "Fourth"], [5, "Fifth"], [-1, "Last"]].map(([v, lbl]) => /* @__PURE__ */ React.createElement("option", { key: v, value: String(v) }, lbl))), /* @__PURE__ */ React.createElement("select", { "aria-label": "Weekday", className: inpCls(false), style: { flex: "0 1 150px" }, value: String(f.recurDays[0] != null ? f.recurDays[0] : startWD || 0), onChange: (e) => set({ recurDays: [parseInt(e.target.value, 10)] }) }, WEEKDAYS.map((wd, i) => /* @__PURE__ */ React.createElement("option", { key: wd, value: String(i) }, wd))))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
       className: lblCls,
       helpLabel: "Weekdays",
       help: f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."
@@ -7869,6 +7946,8 @@ document.addEventListener('DOMContentLoaded',function(){
       if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { className: "recur-onetime" }, "One-time");
       const u = e.recurUnit || "month", ev = e.recurEvery || 1;
       if (u === "semimonth") return "Semi-monthly";
+      if (u === "monthend") return "Month end";
+      if (u === "monthweekday") return "Monthly (weekday)";
       if (u === "week" && ((_a = e.recurDays) == null ? void 0 : _a.length) > 1) return `Every ${ev}w \xB7 ${e.recurDays.map((d) => WEEKDAYS[d].slice(0, 2)).join("/")}`;
       if (u === "week") return `Every ${ev}wk`;
       if (u === "day") return `Every ${ev}d`;
@@ -11207,7 +11286,7 @@ Fill every field of the response schema. Rules:
             // dividing by `every` here (as every other unit correctly does)
             // silently halved this to 12/yr for any semimonth entry that
             // happened to carry a stale/leftover recurEvery of 2.
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
             return sum + (ev.amount || 0) * (ppy / 12);
           }
           return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
@@ -11239,6 +11318,7 @@ Fill every field of the response schema. Rules:
               const u = ev.recurUnit || "month";
               const e = ev.recurEvery || 1;
               if (u === "semimonth") return `2\xD7/mo`;
+              if (u === "monthend" || u === "monthweekday") return `Monthly`;
               if (u === "week" && e === 2) return "Bi-weekly";
               if (u === "week") return `Every ${e} wk`;
               if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
@@ -11528,7 +11608,7 @@ Fill every field of the response schema. Rules:
           if (!recurExpenses.length) return null;
           const entryToMonthly = (e) => {
             const every = e.recurEvery || 1;
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
             return roundMoney((e.amount || 0) * (ppy / 12));
           };
           // Group by description so multiple entries sharing one name (e.g.
@@ -12254,7 +12334,7 @@ Fill every field of the response schema. Rules:
             const ev = occs[0];
             if (ev.repeats) {
               const every = ev.recurEvery || 1;
-              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
               return sum + (ev.amount || 0) * (ppy / 12);
             }
             return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
@@ -12594,6 +12674,8 @@ Fill every field of the response schema. Rules:
           ["One-time", "A single date."],
           ["Daily / weekly / monthly / yearly", "Every N days, weeks, months or years. Weekly repeats can name specific weekdays, so “every second Friday” and “every Monday and Thursday” are both one entry."],
           ["Semi-monthly", "The 1st-and-15th pattern, for pay that lands twice a month."],
+          ["Monthly — last day", "The final day of every month, whatever its length: 28 February, 31 March, 30 April. Not the same as a monthly entry that happens to start on the last day — that one keeps the start date's day number, so one created in February stays on the 28th all year."],
+          ["Monthly — nth weekday", "“The third Friday”, “the last Tuesday”. Pick which one and which weekday; both default to whatever your start date already is. “Last” and “fourth” are the same day in most months and different in the long ones, which is why they are separate choices. A month with only four of the chosen weekday has no fifth one, so a “fifth” entry simply doesn't occur in those months."],
           ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
@@ -14492,6 +14574,38 @@ Fill every field of the response schema. Rules:
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
       const semi = __spreadProps(__spreadValues({}, entry), { id: 2, recurUnit: "semimonth", startDate: "2026-01-01" });
       t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
+      // Last day of the month: every month's real length, not the start
+      // date's day number. An entry created in February is the case that
+      // separates this from a plain monthly entry — that one would stay on
+      // the 28th all year.
+      const mend = __spreadProps(__spreadValues({}, entry), { id: 20, recurUnit: "monthend", startDate: "2026-02-28" });
+      const mendEvs = expandEntries([mend], 2026, {});
+      t("month-end = 11 events (Mar-Dec plus Feb)", () => mendEvs.length === 11);
+      t("month-end lands on 31 Mar, 30 Apr, 31 May", () => mendEvs[1].month === 2 && mendEvs[1].day === 31 && mendEvs[2].day === 30 && mendEvs[3].day === 31);
+      t("month-end differs from a plain monthly anchored the same day", () => {
+        const plain = expandEntries([__spreadProps(__spreadValues({}, mend), { id: 21, recurUnit: "month" })], 2026, {});
+        return plain[1].day === 28 && mendEvs[1].day === 31;
+      });
+      // Third Friday of each month, from Fri 16 Jan 2026.
+      const nth3 = __spreadProps(__spreadValues({}, entry), { id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" });
+      const nth3Evs = expandEntries([nth3], 2026, {});
+      t("3rd Friday = 12 events", () => nth3Evs.length === 12);
+      t("3rd Friday is always a Friday", () => nth3Evs.every((ev) => ev.date.getDay() === 5));
+      t("3rd Friday is always in the third week", () => nth3Evs.every((ev) => ev.day >= 15 && ev.day <= 21));
+      // "Last" is not "fourth": in a month with five Fridays they differ.
+      const nthLast = __spreadProps(__spreadValues({}, entry), { id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" });
+      const lastEvs = expandEntries([nthLast], 2026, {});
+      t("last Friday is always a Friday within 7 days of month end", () => lastEvs.every((ev) => ev.date.getDay() === 5 && ev.day > daysInMonth(ev.month, 2026) - 7));
+      t("last Friday differs from 4th Friday in a 5-Friday month", () => {
+        const fourth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 24, recurNth: 4 })], 2026, {});
+        return lastEvs.some((ev, i) => fourth[i] && fourth[i].day !== ev.day);
+      });
+      // A month with only four of that weekday has no fifth one, and the
+      // occurrence is skipped rather than sliding into the next month.
+      t("5th Friday skips the months that have none", () => {
+        const fifth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 25, recurNth: 5 })], 2026, {});
+        return fifth.length > 0 && fifth.length < 12 && fifth.every((ev) => ev.date.getDay() === 5);
+      });
       const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);

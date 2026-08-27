@@ -601,7 +601,7 @@
             const ev = occs[0];
             if (ev.repeats) {
               const every = ev.recurEvery || 1;
-              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
               return sum + (ev.amount || 0) * (ppy / 12);
             }
             return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;

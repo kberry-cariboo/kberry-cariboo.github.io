@@ -451,7 +451,7 @@
             // dividing by `every` here (as every other unit correctly does)
             // silently halved this to 12/yr for any semimonth entry that
             // happened to carry a stale/leftover recurEvery of 2.
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
             return sum + (ev.amount || 0) * (ppy / 12);
           }
           return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
@@ -483,6 +483,7 @@
               const u = ev.recurUnit || "month";
               const e = ev.recurEvery || 1;
               if (u === "semimonth") return `2\xD7/mo`;
+              if (u === "monthend" || u === "monthweekday") return `Monthly`;
               if (u === "week" && e === 2) return "Bi-weekly";
               if (u === "week") return `Every ${e} wk`;
               if (u === "month") return e === 1 ? "Monthly" : `Every ${e} mo`;
@@ -772,7 +773,7 @@
           if (!recurExpenses.length) return null;
           const entryToMonthly = (e) => {
             const every = e.recurEvery || 1;
-            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
+            const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[e.recurUnit || "month"] ?? 12;
             return roundMoney((e.amount || 0) * (ppy / 12));
           };
           // Group by description so multiple entries sharing one name (e.g.

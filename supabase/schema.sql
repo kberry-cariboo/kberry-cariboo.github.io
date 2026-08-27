@@ -94,7 +94,8 @@ create table if not exists entries (
   start_date date not null,
   repeats boolean not null default false,
   recur_every int not null default 1,
-  recur_unit text not null default 'month' check (recur_unit in ('day','week','month','year','semimonth')),
+  recur_unit text not null default 'month' check (recur_unit in ('day','week','month','year','semimonth','monthend','monthweekday')),
+  recur_nth int,                            -- 'monthweekday' only: 1-5, or -1 for last
   recur_days int[] not null default '{}',   -- weekdays (0-6) for weekly schedules
   recur_end date,                           -- null = ongoing
   category text not null default 'Uncategorized',
@@ -282,6 +283,24 @@ begin
       check (type in ('income', 'expense', 'transfer'));
   end if;
 end $$;
+-- Two further recurrence units — the last day of the month, and the nth named
+-- weekday of the month — widen the same check the same way the 'transfer' type
+-- did above. An older client never sends them, so this is safe to run ahead of
+-- a deploy.
+do $$
+begin
+  if exists (select 1 from pg_constraint
+             where conrelid = 'entries'::regclass and contype = 'c'
+               and pg_get_constraintdef(oid) like '%recur_unit%'
+               and pg_get_constraintdef(oid) not like '%monthweekday%') then
+    alter table entries drop constraint if exists entries_recur_unit_check;
+    alter table entries add constraint entries_recur_unit_check
+      check (recur_unit in ('day','week','month','year','semimonth','monthend','monthweekday'));
+  end if;
+end $$;
+-- Which occurrence of the weekday the 'monthweekday' schedule means: 1-5
+-- counting forward, or -1 for the last one. Null for every other unit.
+alter table entries add column if not exists recur_nth int;
 alter table entries add column if not exists transfer_direction text;
 alter table entries add column if not exists copied_from text;
 alter table entry_overrides add column if not exists month int;
@@ -782,6 +801,7 @@ begin
   if jsonb_typeof(d->'entries') = 'array' then
     insert into entries (household_id, id, sort_order, description, type, amount,
                          start_date, repeats, recur_every, recur_unit, recur_days,
+                         recur_nth,
                          recur_end, category, notes, monthly_amounts, created_by,
                          transfer_direction, copied_from)
     select hid,
@@ -793,9 +813,10 @@ begin
            coalesce(cf_date(e.value->>'startDate'), current_date),
            coalesce(cf_bool(e.value->>'repeats'), false),
            greatest(coalesce(cf_int(e.value->>'recurEvery'), 1), 1),
-           case when e.value->>'recurUnit' in ('day','week','month','year','semimonth')
+           case when e.value->>'recurUnit' in ('day','week','month','year','semimonth','monthend','monthweekday')
                 then e.value->>'recurUnit' else 'month' end,
            cf_int_array(e.value->'recurDays'),
+           cf_int(e.value->>'recurNth'),
            cf_date(e.value->>'recurEnd'),
            coalesce(nullif(e.value->>'category', ''), 'Uncategorized'),
            coalesce(e.value->>'notes', ''),
@@ -817,6 +838,7 @@ begin
       recur_every = excluded.recur_every,
       recur_unit = excluded.recur_unit,
       recur_days = excluded.recur_days,
+      recur_nth = excluded.recur_nth,
       recur_end = excluded.recur_end,
       category = excluded.category,
       notes = excluded.notes,
@@ -826,13 +848,13 @@ begin
       copied_from = excluded.copied_from
     where (entries.sort_order, entries.description, entries.type, entries.amount,
            entries.start_date, entries.repeats, entries.recur_every, entries.recur_unit,
-           entries.recur_days, entries.recur_end, entries.category, entries.notes,
+           entries.recur_days, entries.recur_nth, entries.recur_end, entries.category, entries.notes,
            entries.monthly_amounts, entries.created_by,
            entries.transfer_direction, entries.copied_from)
       is distinct from
           (excluded.sort_order, excluded.description, excluded.type, excluded.amount,
            excluded.start_date, excluded.repeats, excluded.recur_every, excluded.recur_unit,
-           excluded.recur_days, excluded.recur_end, excluded.category, excluded.notes,
+           excluded.recur_days, excluded.recur_nth, excluded.recur_end, excluded.category, excluded.notes,
            excluded.monthly_amounts, excluded.created_by,
            excluded.transfer_direction, excluded.copied_from);
 
@@ -1319,6 +1341,7 @@ begin
         'recurEvery', e.recur_every,
         'recurUnit', e.recur_unit,
         'recurDays', to_jsonb(e.recur_days),
+        'recurNth', e.recur_nth,
         'recurEnd', coalesce(to_char(e.recur_end, 'YYYY-MM-DD'), ''),
         'category', e.category,
         'notes', e.notes,

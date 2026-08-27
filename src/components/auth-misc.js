@@ -502,6 +502,38 @@
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
       const semi = __spreadProps(__spreadValues({}, entry), { id: 2, recurUnit: "semimonth", startDate: "2026-01-01" });
       t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
+      // Last day of the month: every month's real length, not the start
+      // date's day number. An entry created in February is the case that
+      // separates this from a plain monthly entry — that one would stay on
+      // the 28th all year.
+      const mend = __spreadProps(__spreadValues({}, entry), { id: 20, recurUnit: "monthend", startDate: "2026-02-28" });
+      const mendEvs = expandEntries([mend], 2026, {});
+      t("month-end = 11 events (Mar-Dec plus Feb)", () => mendEvs.length === 11);
+      t("month-end lands on 31 Mar, 30 Apr, 31 May", () => mendEvs[1].month === 2 && mendEvs[1].day === 31 && mendEvs[2].day === 30 && mendEvs[3].day === 31);
+      t("month-end differs from a plain monthly anchored the same day", () => {
+        const plain = expandEntries([__spreadProps(__spreadValues({}, mend), { id: 21, recurUnit: "month" })], 2026, {});
+        return plain[1].day === 28 && mendEvs[1].day === 31;
+      });
+      // Third Friday of each month, from Fri 16 Jan 2026.
+      const nth3 = __spreadProps(__spreadValues({}, entry), { id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" });
+      const nth3Evs = expandEntries([nth3], 2026, {});
+      t("3rd Friday = 12 events", () => nth3Evs.length === 12);
+      t("3rd Friday is always a Friday", () => nth3Evs.every((ev) => ev.date.getDay() === 5));
+      t("3rd Friday is always in the third week", () => nth3Evs.every((ev) => ev.day >= 15 && ev.day <= 21));
+      // "Last" is not "fourth": in a month with five Fridays they differ.
+      const nthLast = __spreadProps(__spreadValues({}, entry), { id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" });
+      const lastEvs = expandEntries([nthLast], 2026, {});
+      t("last Friday is always a Friday within 7 days of month end", () => lastEvs.every((ev) => ev.date.getDay() === 5 && ev.day > daysInMonth(ev.month, 2026) - 7));
+      t("last Friday differs from 4th Friday in a 5-Friday month", () => {
+        const fourth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 24, recurNth: 4 })], 2026, {});
+        return lastEvs.some((ev, i) => fourth[i] && fourth[i].day !== ev.day);
+      });
+      // A month with only four of that weekday has no fifth one, and the
+      // occurrence is skipped rather than sliding into the next month.
+      t("5th Friday skips the months that have none", () => {
+        const fifth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 25, recurNth: 5 })], 2026, {});
+        return fifth.length > 0 && fifth.length < 12 && fifth.every((ev) => ev.date.getDay() === 5);
+      });
       const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);

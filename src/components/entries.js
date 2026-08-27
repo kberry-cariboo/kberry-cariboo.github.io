@@ -144,6 +144,8 @@
       if (!e.repeats) return /* @__PURE__ */ React.createElement("span", { className: "recur-onetime" }, "One-time");
       const u = e.recurUnit || "month", ev = e.recurEvery || 1;
       if (u === "semimonth") return "Semi-monthly";
+      if (u === "monthend") return "Month end";
+      if (u === "monthweekday") return "Monthly (weekday)";
       if (u === "week" && ((_a = e.recurDays) == null ? void 0 : _a.length) > 1) return `Every ${ev}w \xB7 ${e.recurDays.map((d) => WEEKDAYS[d].slice(0, 2)).join("/")}`;
       if (u === "week") return `Every ${ev}wk`;
       if (u === "day") return `Every ${ev}d`;
