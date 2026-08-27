@@ -8829,7 +8829,8 @@ document.addEventListener('DOMContentLoaded',function(){
   // see a new component type each render and remount their DOM.
   const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
   const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
-  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, budgetSub = "monthly", setBudgetSub = () => {
+  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
+  }, budgetSub = "monthly", setBudgetSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -9757,8 +9758,14 @@ document.addEventListener('DOMContentLoaded',function(){
               setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
             } },
+            // Removing a target is undoable; editing one is not, deliberately
+            // — an edit leaves the new value on screen in a field you can type
+            // over, so a toast per save would be noise. A removal leaves
+            // nothing behind to correct from.
             { icon: "\u2715", label: "Remove target", action: () => {
               const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+              const prevTargets = budgetTargets, removedCat = bvaCtxMenu.cat;
+              pushUndo(`Target for "${removedCat}" removed`, () => setBudgetTargets(prevTargets));
               setBudgetTargets((prev) => {
                 const n = __spreadValues({}, prev);
                 if (n[bk]) {
@@ -12568,7 +12575,7 @@ Fill every field of the response schema. Rules:
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
         { shot: ["settings-backup", "Settings \u2192 Data Backup & Restore."] },
-        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default. It cannot be undone, which is why it asks first." }
+        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default \u2014 which is why it asks first. The toast that follows offers one undo, for the few seconds it is up; after that the only way back is another backup." }
       ]
     },
     {
@@ -12601,7 +12608,8 @@ Fill every field of the response schema. Rules:
           ["Edit recurring entry", "Changes the entry, and so every occurrence of it."],
           ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates are listed above the grid for that month, each with a Restore button."],
           ["Reset occurrence", "Removes an override and puts the originally scheduled amount back."],
-          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."]
+          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."],
+          ["Undo, generally", "Removing a category or a budget year, resetting a year of targets, removing a budget target and restoring a backup all raise the same undo toast. Ctrl+Z (Cmd+Z on a Mac) does the same thing as its button. Marking an occurrence paid has no toast \u2014 the tick is its own undo."]
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
@@ -13095,7 +13103,8 @@ Fill every field of the response schema. Rules:
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
@@ -13233,6 +13242,7 @@ Fill every field of the response schema. Rules:
         setYearMsg("Cannot delete the only year.");
         return;
       }
+      const prevConfigs = yearConfigs, prevOverrides = overridesByYr, prevActive = activeYear;
       setYearConfigs((prev) => prev.filter((yc) => yc.year !== yr));
       setOverridesByYr((prev) => {
         const n = __spreadValues({}, prev);
@@ -13241,6 +13251,15 @@ Fill every field of the response schema. Rules:
       });
       if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
       setYearMsg(`Year ${yr} removed.`);
+      // The year's per-occurrence edits go with it, and they are not
+      // recoverable from anywhere else — which is exactly why this one needs
+      // an undo more than the entry delete that already had one.
+      pushUndo(`Budget year ${yr} removed`, () => {
+        setYearConfigs(prevConfigs);
+        setOverridesByYr(prevOverrides);
+        setActiveYear(prevActive);
+        setYearMsg("");
+      });
     };
     const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const [catMsg, setCatMsg] = useState("");
@@ -13262,12 +13281,20 @@ Fill every field of the response schema. Rules:
     };
     const delCat = (i) => {
       const name = categories[i];
+      // Snapshot both lists before touching either: a category's colour is
+      // stored separately from its name, so restoring only the name brings it
+      // back grey.
+      const prevCats = categories, prevColors = categoryColors;
       setCategories((p) => p.filter((_, j) => j !== i));
       setCategoryColors((p) => {
         if (!p[name]) return p;
         const n = __spreadValues({}, p);
         delete n[name];
         return n;
+      });
+      pushUndo(`Category "${name}" removed`, () => {
+        setCategories(prevCats);
+        setCategoryColors(prevColors);
       });
     };
     const saveEdit = () => {
@@ -13549,6 +13576,15 @@ Fill every field of the response schema. Rules:
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
         onConfirm: () => {
+          // Everything the restore is about to replace, captured before it
+          // does. This is the most destructive action in the app — the dialog
+          // says so — and until now it was also the only one with no way back
+          // short of having exported a backup first, which is precisely the
+          // habit someone restoring a backup has just discovered they lack.
+          const beforeRestore = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+            acc[f.key] = houseValues[f.key];
+            return acc;
+          }, {});
           try {
             const parsed = pendingRestore.parsed;
             // An old backup can predate any of the storage migrations — before
@@ -13589,6 +13625,13 @@ Fill every field of the response schema. Rules:
               if (!applied) set(f.initial());
             });
             setYearMsg("\u2705 Backup restored successfully!");
+            pushUndo(`Restored "${pendingRestore.fileName}"`, () => {
+              HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
+                const set = houseSetters[f.key];
+                if (set) set(beforeRestore[f.key]);
+              });
+              setYearMsg("");
+            });
           } catch (err) {
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
           }
@@ -13739,6 +13782,7 @@ Fill every field of the response schema. Rules:
         message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
         confirmLabel: "Reset Targets",
         onConfirm: () => {
+          const prevTargets = budgetTargets;
           const byMonthCat = {};
           (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
             const key = `${activeYear}:${ev.month}`;
@@ -13762,6 +13806,12 @@ Fill every field of the response schema. Rules:
           const monthsSet = Object.keys(byMonthCat).length;
           setTgtResetMsg(`Targets for ${activeYear} reset from actuals across ${monthsSet} month${monthsSet !== 1 ? "s" : ""}.`);
           setConfirmTgtReset(false);
+          // A year of hand-set targets is overwritten in one press, and the
+          // confirm dialog is the only thing between the button and the loss.
+          pushUndo(`${activeYear} targets reset from actuals`, () => {
+            setBudgetTargets(prevTargets);
+            setTgtResetMsg("");
+          });
         },
         onCancel: () => setConfirmTgtReset(false)
       }
@@ -14042,10 +14092,10 @@ Fill every field of the response schema. Rules:
       )
     );
   }
-  function UndoToast({ entry, count = 1, onUndo, onDismiss }) {
+  function UndoToast({ label, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
-    // Restart the countdown when a further delete lands while the toast is
-    // still up — the newest deletion gets the full undo window.
+    // Restart the countdown when a further undoable action lands while the
+    // toast is still up — the newest one gets the full undo window.
     useEffect(() => {
       setSecs(5);
       const iv = setInterval(() => setSecs((s) => {
@@ -14057,8 +14107,8 @@ Fill every field of the response schema. Rules:
         return s - 1;
       }), 1e3);
       return () => clearInterval(iv);
-    }, [entry, count]);
-    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast" }, /* @__PURE__ */ React.createElement("span", null, '"', entry.desc.slice(0, 30), entry.desc.length > 30 ? "\u2026" : "", '" deleted', count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
+    }, [label, count]);
+    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast", role: "status" }, /* @__PURE__ */ React.createElement("span", null, label, count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onUndo,
@@ -15543,10 +15593,49 @@ Fill every field of the response schema. Rules:
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
     const [undoStack, setUndoStack] = useState([]);
-    const pushUndo = (e) => {
-      setUndoStack((prev) => [...prev.slice(-9), e]);
+    // An undoable action is a label for the toast plus the function that puts
+    // things back.
+    //
+    // The stack used to hold the deleted *entry*, and App knew how to restore
+    // one — which meant entry deletion was the only action that could ever
+    // offer undo. Everything else destructive (removing a category, removing
+    // a budget year, "Reset Targets to Actuals", restoring a backup over your
+    // data) committed immediately with no way back, having taught the user
+    // through the one case that destructive things here are recoverable.
+    // Holding the revert instead puts that knowledge with the caller, which
+    // is the only place that knows what it just changed.
+    const pushUndo = useCallback((label, revert) => {
+      setUndoStack((prev) => [...prev.slice(-9), { label, revert }]);
+    }, []);
+    // The global shortcut handler mounts once; without this it would close
+    // over an empty stack forever.
+    const undoStackRef = useRef([]);
+    useEffect(() => {
+      undoStackRef.current = undoStack;
+    }, [undoStack]);
+    const undoLast = useCallback(() => {
+      setUndoStack((prev) => {
+        if (!prev.length) return prev;
+        return prev.slice(0, -1);
+      });
+    }, []);
+    // Deleting an entry, expressed in those terms. The copy-provenance
+    // bookkeeping is part of the delete (so a deleted copy doesn't come back
+    // on the next year roll-forward) and part of the undo, so both live here
+    // rather than at the two call sites.
+    const pushUndoEntryDelete = useCallback((e) => {
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
-    };
+      const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
+      pushUndo(`"${shortDesc}" deleted`, () => {
+        setEntries((prev) => [...prev, e]);
+        if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
+          if (!(e.copiedFrom in prev)) return prev;
+          const next = __spreadValues({}, prev);
+          delete next[e.copiedFrom];
+          return next;
+        });
+      });
+    }, [pushUndo, setDeletedCopyIds, setEntries]);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -15774,6 +15863,22 @@ Fill every field of the response schema. Rules:
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
+          return;
+        }
+        // Undo the last undoable action. Guarded the same way the letter
+        // shortcuts are (never while typing, never under a modal), and it only
+        // does anything while the toast is up — this is the toast's button
+        // under a keyboard, not a general document history.
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+          if (!undoStackRef.current.length) return;
+          e.preventDefault();
+          const top = undoStackRef.current[undoStackRef.current.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
           return;
         }
         if (document.querySelector(".modal-overlay")) return;
@@ -16346,6 +16451,7 @@ Fill every field of the response schema. Rules:
         setEntries,
         saveEntryEdit,
         addEntry,
+        pushUndo,
         apiKey: aiApiKey,
         isOffline,
         budgetSub,
@@ -16364,7 +16470,7 @@ Fill every field of the response schema. Rules:
         activeYear,
         budgetColOrder,
         setBudgetColOrder,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
@@ -16380,7 +16486,7 @@ Fill every field of the response schema. Rules:
         activeYear,
         apiKey: aiApiKey,
         isOffline,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         templates,
         setTemplates,
         globalSearch,
@@ -16432,6 +16538,7 @@ Fill every field of the response schema. Rules:
         isOffline,
         houseValues,
         houseSetters,
+        pushUndo,
         setCategories,
         categoryColors,
         setCategoryColors,
@@ -16491,19 +16598,19 @@ Fill every field of the response schema. Rules:
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
-        entry: undoStack[undoStack.length - 1],
+        label: undoStack[undoStack.length - 1].label,
         count: undoStack.length,
         onUndo: () => {
           haptic();
-          const e = undoStack[undoStack.length - 1];
-          setEntries((prev) => [...prev, e]);
-          setUndoStack((prev) => prev.slice(0, -1));
-          if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
-            if (!(e.copiedFrom in prev)) return prev;
-            const next = __spreadValues({}, prev);
-            delete next[e.copiedFrom];
-            return next;
-          });
+          const top = undoStack[undoStack.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            // A revert that throws must still leave the stack consistent —
+            // leaving the entry on it would offer the same broken undo again.
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
         },
         onDismiss: () => setUndoStack([])
       }

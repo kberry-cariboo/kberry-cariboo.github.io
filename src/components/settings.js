@@ -296,7 +296,8 @@
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], budgetTargets = {}, setBudgetTargets = () => {
+  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
@@ -434,6 +435,7 @@
         setYearMsg("Cannot delete the only year.");
         return;
       }
+      const prevConfigs = yearConfigs, prevOverrides = overridesByYr, prevActive = activeYear;
       setYearConfigs((prev) => prev.filter((yc) => yc.year !== yr));
       setOverridesByYr((prev) => {
         const n = __spreadValues({}, prev);
@@ -442,6 +444,15 @@
       });
       if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
       setYearMsg(`Year ${yr} removed.`);
+      // The year's per-occurrence edits go with it, and they are not
+      // recoverable from anywhere else — which is exactly why this one needs
+      // an undo more than the entry delete that already had one.
+      pushUndo(`Budget year ${yr} removed`, () => {
+        setYearConfigs(prevConfigs);
+        setOverridesByYr(prevOverrides);
+        setActiveYear(prevActive);
+        setYearMsg("");
+      });
     };
     const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
     const [catMsg, setCatMsg] = useState("");
@@ -463,12 +474,20 @@
     };
     const delCat = (i) => {
       const name = categories[i];
+      // Snapshot both lists before touching either: a category's colour is
+      // stored separately from its name, so restoring only the name brings it
+      // back grey.
+      const prevCats = categories, prevColors = categoryColors;
       setCategories((p) => p.filter((_, j) => j !== i));
       setCategoryColors((p) => {
         if (!p[name]) return p;
         const n = __spreadValues({}, p);
         delete n[name];
         return n;
+      });
+      pushUndo(`Category "${name}" removed`, () => {
+        setCategories(prevCats);
+        setCategoryColors(prevColors);
       });
     };
     const saveEdit = () => {
@@ -750,6 +769,15 @@
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
         onConfirm: () => {
+          // Everything the restore is about to replace, captured before it
+          // does. This is the most destructive action in the app — the dialog
+          // says so — and until now it was also the only one with no way back
+          // short of having exported a backup first, which is precisely the
+          // habit someone restoring a backup has just discovered they lack.
+          const beforeRestore = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+            acc[f.key] = houseValues[f.key];
+            return acc;
+          }, {});
           try {
             const parsed = pendingRestore.parsed;
             // An old backup can predate any of the storage migrations — before
@@ -790,6 +818,13 @@
               if (!applied) set(f.initial());
             });
             setYearMsg("\u2705 Backup restored successfully!");
+            pushUndo(`Restored "${pendingRestore.fileName}"`, () => {
+              HOUSEHOLD_BACKUP_FIELDS.forEach((f) => {
+                const set = houseSetters[f.key];
+                if (set) set(beforeRestore[f.key]);
+              });
+              setYearMsg("");
+            });
           } catch (err) {
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
           }
@@ -940,6 +975,7 @@
         message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
         confirmLabel: "Reset Targets",
         onConfirm: () => {
+          const prevTargets = budgetTargets;
           const byMonthCat = {};
           (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
             const key = `${activeYear}:${ev.month}`;
@@ -963,6 +999,12 @@
           const monthsSet = Object.keys(byMonthCat).length;
           setTgtResetMsg(`Targets for ${activeYear} reset from actuals across ${monthsSet} month${monthsSet !== 1 ? "s" : ""}.`);
           setConfirmTgtReset(false);
+          // A year of hand-set targets is overwritten in one press, and the
+          // confirm dialog is the only thing between the button and the loss.
+          pushUndo(`${activeYear} targets reset from actuals`, () => {
+            setBudgetTargets(prevTargets);
+            setTgtResetMsg("");
+          });
         },
         onCancel: () => setConfirmTgtReset(false)
       }

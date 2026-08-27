@@ -522,10 +522,49 @@
     const ptrRef = useRef({ startY: 0, active: false });
     const houseLoadRef = useRef(null);
     const [undoStack, setUndoStack] = useState([]);
-    const pushUndo = (e) => {
-      setUndoStack((prev) => [...prev.slice(-9), e]);
+    // An undoable action is a label for the toast plus the function that puts
+    // things back.
+    //
+    // The stack used to hold the deleted *entry*, and App knew how to restore
+    // one — which meant entry deletion was the only action that could ever
+    // offer undo. Everything else destructive (removing a category, removing
+    // a budget year, "Reset Targets to Actuals", restoring a backup over your
+    // data) committed immediately with no way back, having taught the user
+    // through the one case that destructive things here are recoverable.
+    // Holding the revert instead puts that knowledge with the caller, which
+    // is the only place that knows what it just changed.
+    const pushUndo = useCallback((label, revert) => {
+      setUndoStack((prev) => [...prev.slice(-9), { label, revert }]);
+    }, []);
+    // The global shortcut handler mounts once; without this it would close
+    // over an empty stack forever.
+    const undoStackRef = useRef([]);
+    useEffect(() => {
+      undoStackRef.current = undoStack;
+    }, [undoStack]);
+    const undoLast = useCallback(() => {
+      setUndoStack((prev) => {
+        if (!prev.length) return prev;
+        return prev.slice(0, -1);
+      });
+    }, []);
+    // Deleting an entry, expressed in those terms. The copy-provenance
+    // bookkeeping is part of the delete (so a deleted copy doesn't come back
+    // on the next year roll-forward) and part of the undo, so both live here
+    // rather than at the two call sites.
+    const pushUndoEntryDelete = useCallback((e) => {
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
-    };
+      const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
+      pushUndo(`"${shortDesc}" deleted`, () => {
+        setEntries((prev) => [...prev, e]);
+        if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
+          if (!(e.copiedFrom in prev)) return prev;
+          const next = __spreadValues({}, prev);
+          delete next[e.copiedFrom];
+          return next;
+        });
+      });
+    }, [pushUndo, setDeletedCopyIds, setEntries]);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -753,6 +792,22 @@
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
+          return;
+        }
+        // Undo the last undoable action. Guarded the same way the letter
+        // shortcuts are (never while typing, never under a modal), and it only
+        // does anything while the toast is up — this is the toast's button
+        // under a keyboard, not a general document history.
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+          if (!undoStackRef.current.length) return;
+          e.preventDefault();
+          const top = undoStackRef.current[undoStackRef.current.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
           return;
         }
         if (document.querySelector(".modal-overlay")) return;
@@ -1325,6 +1380,7 @@
         setEntries,
         saveEntryEdit,
         addEntry,
+        pushUndo,
         apiKey: aiApiKey,
         isOffline,
         budgetSub,
@@ -1343,7 +1399,7 @@
         activeYear,
         budgetColOrder,
         setBudgetColOrder,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
@@ -1359,7 +1415,7 @@
         activeYear,
         apiKey: aiApiKey,
         isOffline,
-        onDeleted: (e) => pushUndo(e),
+        onDeleted: (e) => pushUndoEntryDelete(e),
         templates,
         setTemplates,
         globalSearch,
@@ -1411,6 +1467,7 @@
         isOffline,
         houseValues,
         houseSetters,
+        pushUndo,
         setCategories,
         categoryColors,
         setCategoryColors,
@@ -1470,19 +1527,19 @@
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
       {
-        entry: undoStack[undoStack.length - 1],
+        label: undoStack[undoStack.length - 1].label,
         count: undoStack.length,
         onUndo: () => {
           haptic();
-          const e = undoStack[undoStack.length - 1];
-          setEntries((prev) => [...prev, e]);
-          setUndoStack((prev) => prev.slice(0, -1));
-          if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
-            if (!(e.copiedFrom in prev)) return prev;
-            const next = __spreadValues({}, prev);
-            delete next[e.copiedFrom];
-            return next;
-          });
+          const top = undoStack[undoStack.length - 1];
+          try {
+            top.revert();
+          } catch (err) {
+            // A revert that throws must still leave the stack consistent —
+            // leaving the entry on it would offer the same broken undo again.
+            toast("Couldn't undo that.", "error");
+          }
+          undoLast();
         },
         onDismiss: () => setUndoStack([])
       }

@@ -94,7 +94,7 @@
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
         { shot: ["settings-backup", "Settings \u2192 Data Backup & Restore."] },
-        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default. It cannot be undone, which is why it asks first." }
+        { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default \u2014 which is why it asks first. The toast that follows offers one undo, for the few seconds it is up; after that the only way back is another backup." }
       ]
     },
     {
@@ -127,7 +127,8 @@
           ["Edit recurring entry", "Changes the entry, and so every occurrence of it."],
           ["Skip this occurrence", "Drops a single date — a month you didn't pay, a bill that was waived. Skipped dates are listed above the grid for that month, each with a Restore button."],
           ["Reset occurrence", "Removes an override and puts the originally scheduled amount back."],
-          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."]
+          ["Delete entry", "Removes the entry and all of its scheduled occurrences. The toast that follows offers an undo."],
+          ["Undo, generally", "Removing a category or a budget year, resetting a year of targets, removing a budget target and restoring a backup all raise the same undo toast. Ctrl+Z (Cmd+Z on a Mac) does the same thing as its button. Marking an occurrence paid has no toast \u2014 the tick is its own undo."]
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },

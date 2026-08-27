@@ -423,6 +423,45 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // table (rather than calling getMonthSummaries directly) is deliberate: the
   // defect was in what the user saw, and a unit test on the helper would not
   // have caught the grid footer or the annual row.
+  // Undo used to exist for exactly one action (deleting an entry) while the
+  // more destructive ones — a category, a budget year, a year of targets,
+  // restoring a backup over your data — committed with no way back. This
+  // covers the one that is easiest to press by accident and hardest to
+  // reconstruct by hand.
+  await test('settings: removing a category can be undone, colour and position included', async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    const names = () => page.evaluate(() => [...document.querySelectorAll('#sec-categories .cat-row')]
+      .map((r) => r.innerText.replace(/\s+/g, ' ').replace(/[⠿↑↓]|Reset|Edit|Remove/g, '').trim()));
+    const swatches = () => page.evaluate(() => [...document.querySelectorAll('#sec-categories .cat-row')]
+      .map((r) => { const d = r.querySelector('[style*="background"]'); return d ? getComputedStyle(d).backgroundColor : ''; }));
+
+    const before = await names(), colorsBefore = await swatches();
+    if (before.length < 2) throw new Error('expected a category list, got ' + JSON.stringify(before));
+
+    await page.locator('#sec-categories .cat-row').first().locator('button', { hasText: /^Remove$/ }).click();
+    await page.waitForTimeout(400);
+    const afterDelete = await names();
+    if (afterDelete.length !== before.length - 1) throw new Error(`remove did not drop a row: ${before.length} -> ${afterDelete.length}`);
+
+    const toast = await page.locator('.undo-toast').innerText();
+    if (!toast.includes(before[0])) throw new Error(`toast does not name the removed category: ${toast}`);
+
+    await page.locator('.undo-btn').click();
+    await page.waitForTimeout(400);
+    const afterUndo = await names(), colorsAfter = await swatches();
+    if (JSON.stringify(afterUndo) !== JSON.stringify(before)) {
+      throw new Error(`undo did not restore the list in order: ${JSON.stringify(before)} vs ${JSON.stringify(afterUndo)}`);
+    }
+    // The colour lives in a separate map from the name, so restoring only the
+    // name would bring the category back grey.
+    if (JSON.stringify(colorsAfter) !== JSON.stringify(colorsBefore)) {
+      throw new Error('undo restored the names but not the colours');
+    }
+  });
+
   await test('dashboard: every monthly summary row reconciles with the balance beside it', async () => {
     await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
     await page.waitForTimeout(900);
