@@ -331,6 +331,8 @@
         .receipt-lightbox-close{position:fixed;top:calc(14px + env(safe-area-inset-top));right:16px;
           width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
           background:rgba(255,255,255,0.15);color:#fff;font-size:18px;}
+        .entry-addedby{font-size:11px;color:var(--textLt);margin-bottom:10px;}
+        .oem-editedby{font-size:11px;color:var(--textLt);margin-bottom:12px;}
         .csvimport-dup-reason{font-size:11px;color:var(--textLt);margin-top:2px;}
         /* Legend for the Forecast's "vs Target" column. The rule it states
            used to live only in a title tooltip, which never fires on touch. */

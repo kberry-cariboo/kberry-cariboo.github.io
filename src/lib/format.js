@@ -38,6 +38,22 @@
   // the revoke past the navigation. It also reports failure instead of
   // silently doing nothing, which matters because Settings names local export
   // as the only backup path and the app nudges for one every 30 days.
+  // Resolve a stored user id to a display name. Ids are what get stamped on
+  // entries and overrides — names are editable in Settings, so a stored copy
+  // would go stale the moment someone corrected theirs — and this is the one
+  // place that turns one back into something to show.
+  //
+  // Returns "" when there is nobody to name: a legacy row with no author, a
+  // household of one (where "by Ken" on every row is noise), or an id no
+  // longer in the member list. Callers render nothing at all in that case
+  // rather than "Unknown".
+  function memberName(userId, members, opts = {}) {
+    if (!userId || !Array.isArray(members) || members.length < 2 && !opts.always) return "";
+    const m = members.find((x) => x && x.user_id === userId);
+    if (!m) return "";
+    if (opts.selfId && m.user_id === opts.selfId) return "you";
+    return m.full_name || m.email || "";
+  }
   function downloadBlob(filename, blob) {
     try {
       const url = URL.createObjectURL(blob);

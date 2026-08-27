@@ -1130,7 +1130,10 @@
         const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
         const hist = ov._history || [];
         const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString(), (() => {
+          const who = memberName(ov._by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` \xB7 by ${who}` : "";
+        })())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
@@ -1152,7 +1155,10 @@
             title: "Restore the originally scheduled values for this date"
           },
           "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), (() => {
+          const who = memberName(h.by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` (${who})` : "";
+        })(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
     })())));
   }

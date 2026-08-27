@@ -423,6 +423,43 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // table (rather than calling getMonthSummaries directly) is deliberate: the
   // defect was in what the user saw, and a unit test on the helper would not
   // have caught the grid footer or the annual row.
+  // A shared budget generates "who changed this?", and nothing answered it:
+  // entries have carried a userId since they were first synced and overrides
+  // carried a timestamp, but neither was ever displayed.
+  await test('household: an occurrence edit records who made it', async () => {
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const row = page.locator('.forecast-table tbody tr').filter({ hasText: 'Rent' }).first();
+    await row.locator('td').nth(2).click();
+    await page.waitForTimeout(500);
+    const amount = page.locator('.modal-card input[inputmode="decimal"]').first();
+    await amount.fill('1751');
+    await page.getByRole('button', { name: /^Save/ }).first().click();
+    await page.waitForTimeout(600);
+
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    await page.getByRole('button', { name: /Audit/i }).first().click();
+    await page.waitForTimeout(600);
+    const entry = await page.locator('.audit-entry').first().innerText();
+    if (!/Saved/.test(entry)) throw new Error('audit row has no save stamp: ' + entry);
+    // The fixture household has a single member, and naming yourself on every
+    // row you touched is noise — so the *absence* of a "by" here is correct,
+    // and what this pins down is that the stamp is recorded and rendered
+    // without throwing.
+    if (/\bby\s*$/.test(entry)) throw new Error('dangling "by" with no name: ' + entry);
+
+    // Put back everything this touched. The suite shares one page session, so
+    // both the override and the Settings sub-page are state later cases read:
+    // leaving the override in place moved the Rent figures a downstream test
+    // asserts on, and leaving Settings on Audit meant the next test to open
+    // Settings found no category list at all.
+    await page.locator('.audit-entry').first().getByRole('button', { name: /Revert/i }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /General/i }).first().click();
+    await page.waitForTimeout(400);
+  });
+
   // Undo used to exist for exactly one action (deleting an entry) while the
   // more destructive ones — a category, a budget year, a year of targets,
   // restoring a backup over your data — committed with no way back. This

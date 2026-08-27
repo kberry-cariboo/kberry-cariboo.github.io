@@ -119,6 +119,7 @@ create table if not exists entry_overrides (
   skipped boolean not null default false,   -- this date was skipped; it generates no occurrence
   notes text,
   saved_at timestamptz,
+  updated_by uuid,                          -- who last edited this occurrence
   history jsonb not null default '[]'::jsonb,
   primary key (household_id, year, occurrence_id)
 );
@@ -304,6 +305,9 @@ alter table entries add column if not exists recur_nth int;
 alter table entries add column if not exists transfer_direction text;
 alter table entries add column if not exists copied_from text;
 alter table entry_overrides add column if not exists month int;
+-- Who last edited an occurrence. Null for every row written before this
+-- existed, which reads as "nobody recorded" and displays as nothing.
+alter table entry_overrides add column if not exists updated_by uuid;
 alter table entry_overrides add column if not exists actual_amount numeric(14,2);
 alter table entry_overrides add column if not exists skipped boolean not null default false;
 alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
@@ -889,7 +893,7 @@ begin
   if jsonb_typeof(d->'overridesByYr') = 'object' then
     insert into entry_overrides (household_id, year, occurrence_id, description,
                                  amount, day, month, actual_amount, skipped,
-                                 notes, saved_at, history)
+                                 notes, saved_at, updated_by, history)
     select hid,
            cf_int(y.key, null),
            o.key,
@@ -901,6 +905,8 @@ begin
            coalesce(cf_bool(o.value->>'skipped'), false),
            o.value->>'notes',
            cf_ts(o.value->>'_savedAt'),
+           case when (o.value->>'_by') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                then (o.value->>'_by')::uuid end,
            coalesce(case when jsonb_typeof(o.value->'_history') = 'array'
                          then o.value->'_history' end, '[]'::jsonb)
     from jsonb_each(d->'overridesByYr') y(key, value),
@@ -916,14 +922,15 @@ begin
       skipped = excluded.skipped,
       notes = excluded.notes,
       saved_at = excluded.saved_at,
+      updated_by = excluded.updated_by,
       history = excluded.history
     where (entry_overrides.description, entry_overrides.amount, entry_overrides.day,
            entry_overrides.month, entry_overrides.actual_amount, entry_overrides.skipped,
-           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.history)
+           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.updated_by, entry_overrides.history)
       is distinct from
           (excluded.description, excluded.amount, excluded.day,
            excluded.month, excluded.actual_amount, excluded.skipped,
-           excluded.notes, excluded.saved_at, excluded.history);
+           excluded.notes, excluded.saved_at, excluded.updated_by, excluded.history);
 
     delete from entry_overrides v
     where v.household_id = hid
@@ -1362,6 +1369,7 @@ begin
                    'day', v.day,
                    'month', v.month,
                    'actualAmount', v.actual_amount,
+                   '_by', v.updated_by,
                    -- false would read as an override that says "not skipped",
                    -- which is not the same as having no opinion.
                    'skipped', case when v.skipped then true end,

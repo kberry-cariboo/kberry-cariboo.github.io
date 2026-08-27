@@ -229,6 +229,12 @@
     const [attachment, setAttachment] = useState(ev.attachment || null);
     const [err, setErr] = useState("");
     const [dayErr, setDayErr] = useState("");
+    // Who last edited this occurrence, in a household of more than one. This
+    // is the question a shared budget actually generates — "who moved the rent
+    // to the 3rd?" — and the override has carried a timestamp all along with
+    // nothing beside it saying whose.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const editedBy = memberName(ev._by, hhMembers, { selfId: hhUser && hhUser.id });
     const attachFile = (e) => {
       compressReceiptImage(e.target.files[0], (b64) => {
         if (b64) setAttachment(b64);
@@ -335,6 +341,7 @@
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21a4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        editedBy && editedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last edited by ", editedBy, ev._savedAt ? ` on ${new Date(ev._savedAt).toLocaleDateString()}` : ""),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {

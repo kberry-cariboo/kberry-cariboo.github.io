@@ -162,6 +162,11 @@
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
+          // Who last edited this occurrence, and when — carried through for
+          // display only, so the occurrence editor can attribute the change in
+          // a shared household. Nothing totals or sorts by either.
+          _by: ov._by,
+          _savedAt: ov._savedAt,
           month: effM,
           day: effD,
           date: effDate,

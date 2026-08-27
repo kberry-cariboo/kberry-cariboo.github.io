@@ -1031,8 +1031,12 @@
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         const existing = yOvs[eventId] || {};
-        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), prev: __spreadValues({}, existing) }].slice(-10);
-        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _history: history });
+        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), by: existing._by, prev: __spreadValues({}, existing) }].slice(-10);
+        // Who made this edit, so a shared budget can answer "who moved the
+        // rent?". The id is stamped rather than the name: names are editable
+        // in Settings, and a stored copy would go stale the moment someone
+        // corrected theirs. Every reader resolves it against the member list.
+        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _by: (sessionUser == null ? void 0 : sessionUser.id) || void 0, _history: history });
         return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
       });
     };
@@ -1111,7 +1115,7 @@
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: { members, sessionUser } }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -1557,7 +1561,7 @@
         className: "cf-footer-link"
       },
       "Terms of Use"
-    ))));
+    )))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

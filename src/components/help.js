@@ -56,7 +56,7 @@
           ["Fill in Actual Amount Paid", "Leave it blank and the occurrence counts as paid exactly as scheduled. Fill it in and your running balance and Budget vs Actual use the real figure."],
           ["Save", "Only that date changes. The entry still says what you expect to pay, so next month is unaffected."]
         ] },
-        { p: "Settings \u2192 Audit lists your twenty most recent overrides, each with a one-click revert, if you want to check or undo what you have changed." },
+        { p: "Settings \u2192 Audit lists the twenty most recent overrides, each with a one-click revert, if you want to check or undo what has been changed. In a household with more than one member each one names who made it, and the occurrence editor says so too \u2014 so \u201cwho moved the rent to the 3rd?\u201d has an answer. Entries carry their author the same way; open one and the form says who added it. Changes made before this existed have no author recorded and simply show nothing." },
 
         { sub: "4. Change or skip a single date" },
         { p: "Right-click a row in the budget grid \u2014 long-press on touch, or use the \u22EE button at the end of the row \u2014 to open the row menu. Every option on it affects one date except Edit recurring entry and Delete entry, which affect all of them." },

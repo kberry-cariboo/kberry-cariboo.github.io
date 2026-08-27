@@ -359,6 +359,8 @@
         .receipt-lightbox-close{position:fixed;top:calc(14px + env(safe-area-inset-top));right:16px;
           width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
           background:rgba(255,255,255,0.15);color:#fff;font-size:18px;}
+        .entry-addedby{font-size:11px;color:var(--textLt);margin-bottom:10px;}
+        .oem-editedby{font-size:11px;color:var(--textLt);margin-bottom:12px;}
         .csvimport-dup-reason{font-size:11px;color:var(--textLt);margin-top:2px;}
         /* Legend for the Forecast's "vs Target" column. The rule it states
            used to live only in a title tooltip, which never fires on touch. */
@@ -3502,6 +3504,11 @@ document.addEventListener('DOMContentLoaded',function(){
           notes: ov.notes !== void 0 ? ov.notes : e.notes || "",
           attachment: ov.attachment !== void 0 ? ov.attachment : null,
           isOverride: Object.keys(ov).length > 0,
+          // Who last edited this occurrence, and when — carried through for
+          // display only, so the occurrence editor can attribute the change in
+          // a shared household. Nothing totals or sorts by either.
+          _by: ov._by,
+          _savedAt: ov._savedAt,
           month: effM,
           day: effD,
           date: effDate,
@@ -4179,6 +4186,22 @@ document.addEventListener('DOMContentLoaded',function(){
   // the revoke past the navigation. It also reports failure instead of
   // silently doing nothing, which matters because Settings names local export
   // as the only backup path and the app nudges for one every 30 days.
+  // Resolve a stored user id to a display name. Ids are what get stamped on
+  // entries and overrides — names are editable in Settings, so a stored copy
+  // would go stale the moment someone corrected theirs — and this is the one
+  // place that turns one back into something to show.
+  //
+  // Returns "" when there is nobody to name: a legacy row with no author, a
+  // household of one (where "by Ken" on every row is noise), or an id no
+  // longer in the member list. Callers render nothing at all in that case
+  // rather than "Unknown".
+  function memberName(userId, members, opts = {}) {
+    if (!userId || !Array.isArray(members) || members.length < 2 && !opts.always) return "";
+    const m = members.find((x) => x && x.user_id === userId);
+    if (!m) return "";
+    if (opts.selfId && m.user_id === opts.selfId) return "you";
+    return m.full_name || m.email || "";
+  }
   function downloadBlob(filename, blob) {
     try {
       const url = URL.createObjectURL(blob);
@@ -5368,6 +5391,12 @@ document.addEventListener('DOMContentLoaded',function(){
     return { ok: true, count: rows.length };
   }
   const CategoriesContext = createContext({ categories: [], categoryColors: {} });
+  // Who is in the household, and which one is looking. Read by anything that
+  // wants to attribute a change to a person — an entry's author, an
+  // occurrence override's — without four layers of prop drilling to reach it.
+  // Empty in the signed-out and single-member cases, which is what makes
+  // memberName() return "" and every consumer render nothing.
+  const HouseholdContext = createContext({ members: [], sessionUser: null });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
   const LOGO_SRC = "data:image/png;base64,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";
   const DEFAULT_ALERT_THRESHOLD = 150000;
@@ -6901,10 +6930,16 @@ document.addEventListener('DOMContentLoaded',function(){
         recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
+    // Who added this entry, when the household has more than one person in it
+    // and it wasn't you. The id has round-tripped as `userId` since entries
+    // were first synced; nothing ever displayed it, so "who put this here?"
+    // had no answer in a shared budget.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const addedBy = initial ? memberName(initial.userId, hhMembers, { selfId: hhUser && hhUser.id }) : "";
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, addedBy && addedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "entry-addedby" }, "Added by ", addedBy), !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
       /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
       /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
         /* @__PURE__ */ React.createElement("input", {
@@ -8529,6 +8564,12 @@ document.addEventListener('DOMContentLoaded',function(){
     const [attachment, setAttachment] = useState(ev.attachment || null);
     const [err, setErr] = useState("");
     const [dayErr, setDayErr] = useState("");
+    // Who last edited this occurrence, in a household of more than one. This
+    // is the question a shared budget actually generates — "who moved the rent
+    // to the 3rd?" — and the override has carried a timestamp all along with
+    // nothing beside it saying whose.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const editedBy = memberName(ev._by, hhMembers, { selfId: hhUser && hhUser.id });
     const attachFile = (e) => {
       compressReceiptImage(e.target.files[0], (b64) => {
         if (b64) setAttachment(b64);
@@ -8635,6 +8676,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
         /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21a4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
+        editedBy && editedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last edited by ", editedBy, ev._savedAt ? ` on ${new Date(ev._savedAt).toLocaleDateString()}` : ""),
         /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -12617,7 +12659,7 @@ Fill every field of the response schema. Rules:
           ["Fill in Actual Amount Paid", "Leave it blank and the occurrence counts as paid exactly as scheduled. Fill it in and your running balance and Budget vs Actual use the real figure."],
           ["Save", "Only that date changes. The entry still says what you expect to pay, so next month is unaffected."]
         ] },
-        { p: "Settings \u2192 Audit lists your twenty most recent overrides, each with a one-click revert, if you want to check or undo what you have changed." },
+        { p: "Settings \u2192 Audit lists the twenty most recent overrides, each with a one-click revert, if you want to check or undo what has been changed. In a household with more than one member each one names who made it, and the occurrence editor says so too \u2014 so \u201cwho moved the rent to the 3rd?\u201d has an answer. Entries carry their author the same way; open one and the form says who added it. Changes made before this existed have no author recorded and simply show nothing." },
 
         { sub: "4. Change or skip a single date" },
         { p: "Right-click a row in the budget grid \u2014 long-press on touch, or use the \u22EE button at the end of the row \u2014 to open the row menu. Every option on it affects one date except Edit recurring entry and Delete entry, which affect all of them." },
@@ -14019,7 +14061,10 @@ Fill every field of the response schema. Rules:
         const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
         const hist = ov._history || [];
         const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString(), (() => {
+          const who = memberName(ov._by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` \xB7 by ${who}` : "";
+        })())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
@@ -14041,7 +14086,10 @@ Fill every field of the response schema. Rules:
             title: "Restore the originally scheduled values for this date"
           },
           "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), (() => {
+          const who = memberName(h.by, members, { selfId: sessionUser && sessionUser.id });
+          return who ? ` (${who})` : "";
+        })(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
     })())));
   }
@@ -16216,8 +16264,12 @@ Fill every field of the response schema. Rules:
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         const existing = yOvs[eventId] || {};
-        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), prev: __spreadValues({}, existing) }].slice(-10);
-        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _history: history });
+        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), by: existing._by, prev: __spreadValues({}, existing) }].slice(-10);
+        // Who made this edit, so a shared budget can answer "who moved the
+        // rent?". The id is stamped rather than the name: names are editable
+        // in Settings, and a stored copy would go stale the moment someone
+        // corrected theirs. Every reader resolves it against the member list.
+        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _by: (sessionUser == null ? void 0 : sessionUser.id) || void 0, _history: history });
         return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
       });
     };
@@ -16296,7 +16348,7 @@ Fill every field of the response schema. Rules:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: { members, sessionUser } }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -16742,7 +16794,7 @@ Fill every field of the response schema. Rules:
         className: "cf-footer-link"
       },
       "Terms of Use"
-    ))));
+    )))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

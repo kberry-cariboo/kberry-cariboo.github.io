@@ -80,7 +80,8 @@ const payload = {
   ],
   overridesByYr: {
     2026: {
-      'e-expense-2026-2-1': { amount: 170000, notes: 'rent went up', _savedAt: '2026-03-01T10:00:00.000Z' },
+      'e-expense-2026-2-1': { amount: 170000, notes: 'rent went up', _savedAt: '2026-03-01T10:00:00.000Z',
+        _by: UID },
       'e-expense-2026-3-1': { skipped: true },
       'e-expense-2026-4-1': { actualAmount: 171050 },
       'e-expense-2026-5-1': { day: 3, month: 6 },

@@ -177,10 +177,16 @@
         recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
       }));
     };
+    // Who added this entry, when the household has more than one person in it
+    // and it wasn't you. The id has round-tripped as `userId` since entries
+    // were first synced; nothing ever displayed it, so "who put this here?"
+    // had no answer in a shared budget.
+    const { members: hhMembers, sessionUser: hhUser } = useContext(HouseholdContext);
+    const addedBy = initial ? memberName(initial.userId, hhMembers, { selfId: hhUser && hhUser.id }) : "";
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, addedBy && addedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "entry-addedby" }, "Added by ", addedBy), !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
       /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
       /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
         /* @__PURE__ */ React.createElement("input", {
