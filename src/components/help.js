@@ -134,6 +134,9 @@
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
+        { sub: "Reconciling to your bank" },
+        { p: "Every balance in the app is projected: the year's opening balance, plus everything scheduled since. Reality drifts from that — cash spent, a rounding, a purchase nobody entered — so the Dashboard's “Balance today” tile has a Reconcile link. Enter what your account actually shows and the difference is recorded as a dated adjustment on today." },
+        { p: "The adjustment is a transfer, not an expense, so it moves the balance without counting as spending: it stays out of your income and expense totals, out of Budget vs Actual and out of the category charts. It sits in the ledger on the day you made it and can be deleted like any other entry. Reconciling this way is why you never have to go back and edit January's opening balance, which would rewrite every month behind it." },
         { p: "To record that a bill actually cost something different, open Edit this occurrence and fill in Actual Amount Paid. Leaving it blank means “paid as scheduled”. An actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
         { sub: "Getting entries in faster" },
         { defs: [

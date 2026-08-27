@@ -212,6 +212,106 @@
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
     )));
   }
+  // "The app says $2,140. What does the bank actually say?"
+  //
+  // Every balance in the app is projected from one figure — the year's opening
+  // balance — plus the entries. Nothing measures it against reality, and the
+  // Help page is explicit that marking an occurrence paid is a tick-off, not a
+  // reconciliation. So the projection drifts: cash spent, a rounding, a
+  // purchase nobody entered. Until now the only correction was to edit
+  // January's opening balance, which rewrites every balance in the year
+  // including the months you had already checked.
+  //
+  // The adjustment is posted as a dated one-time **transfer** rather than an
+  // income or expense entry. That is exactly the meaning transfers already
+  // carry (see getMonthSummaries): it moves the running balance without
+  // pretending to be earnings or spending, so it doesn't land in Budget vs
+  // Actual, distort a category, or turn up in the AI's spending analysis. It
+  // is visible in the ledger on the day it was made, and can be deleted like
+  // any other entry if it was a mistake.
+  function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
+    const [actual, setActual] = useState("");
+    const [err, setErr] = useState("");
+    const parsed = actual.trim() === "" ? null : Number(actual);
+    const valid = parsed !== null && Number.isFinite(parsed);
+    const actualCents = valid ? dollarsToCents(actual) : null;
+    const diff = valid ? actualCents - projected : null;
+    const submit = () => {
+      if (!valid) {
+        setErr("Enter the balance your bank shows today.");
+        return;
+      }
+      if (diff === 0) {
+        setErr("");
+        onCancel();
+        return;
+      }
+      onConfirm({ actualCents, diff });
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Reconcile to bank" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" },
+      /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
+      /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Reconcile to your bank"),
+      /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it."),
+      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled)),
+      /* @__PURE__ */ React.createElement("div", { className: "reconcile-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, "This app projects"), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 reconcile-figure" }, fmt(projected))),
+      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "rec-actual" }, "Your bank shows"),
+      /* @__PURE__ */ React.createElement("input", {
+        id: "rec-actual",
+        type: "number",
+        inputMode: "decimal",
+        step: "0.01",
+        autoFocus: true,
+        className: "field-input field-input--mono" + (err ? " field-error" : ""),
+        placeholder: "0.00",
+        value: actual,
+        onChange: (e) => {
+          setActual(e.target.value);
+          if (err) setErr("");
+        },
+        onKeyDown: (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }
+      }),
+      err && /* @__PURE__ */ React.createElement(FieldError, { msg: err }),
+      valid && /* @__PURE__ */ React.createElement(
+        "div",
+        { className: "reconcile-diff" },
+        diff === 0 ? "Already matches \u2014 nothing to adjust." : /* @__PURE__ */ React.createElement(
+          React.Fragment,
+          null,
+          "Adjustment of ",
+          /* @__PURE__ */ React.createElement("strong", { style: { color: diff > 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(diff, true)),
+          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`
+        )
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: submit, disabled: !valid || diff === 0, className: "cf-btn cf-btn--primary" }, "Record adjustment"))
+    ));
+  }
+  // Where a reconciliation adjustment is filed. "Other" is the default
+  // category list's catch-all and the natural home; a household that renamed
+  // or removed it gets the last category instead, which is where the defaults
+  // put the catch-all anyway.
+  function reconcileCategory(categories) {
+    if (!Array.isArray(categories) || !categories.length) return "Other";
+    return categories.includes("Other") ? "Other" : categories[categories.length - 1];
+  }
+  // The marker that makes an adjustment recognisable later, for the "last
+  // reconciled" line. Deliberately the visible description rather than a
+  // hidden field: it needs no new column, it reads correctly in the ledger and
+  // in a CSV export, and if someone renames one the only consequence is that
+  // this stops counting it.
+  const RECONCILE_DESC = "Balance adjustment";
+  function lastReconciledDate(entries) {
+    if (!Array.isArray(entries)) return null;
+    let latest = null;
+    entries.forEach((e) => {
+      if (e && e.desc === RECONCILE_DESC && e.startDate && (!latest || e.startDate > latest)) latest = e.startDate;
+    });
+    return latest;
+  }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;

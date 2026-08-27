@@ -359,6 +359,14 @@
         .receipt-lightbox-close{position:fixed;top:calc(14px + env(safe-area-inset-top));right:16px;
           width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
           background:rgba(255,255,255,0.15);color:#fff;font-size:18px;}
+        .glance-action{margin-top:6px;background:none;border:none;padding:0;cursor:pointer;
+          font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline;
+          text-underline-offset:2px;font-family:inherit;}
+        .glance-action:hover{color:var(--primary);}
+        .reconcile-row{display:flex;justify-content:space-between;align-items:baseline;
+          padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:14px;}
+        .reconcile-figure{font-weight:700;}
+        .reconcile-diff{font-size:12px;color:var(--textMid);margin-top:10px;line-height:1.5;}
         .entry-addedby{font-size:11px;color:var(--textLt);margin-bottom:10px;}
         .oem-editedby{font-size:11px;color:var(--textLt);margin-bottom:12px;}
         .csvimport-dup-reason{font-size:11px;color:var(--textLt);margin-top:2px;}
@@ -8547,6 +8555,106 @@ document.addEventListener('DOMContentLoaded',function(){
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
     )));
   }
+  // "The app says $2,140. What does the bank actually say?"
+  //
+  // Every balance in the app is projected from one figure — the year's opening
+  // balance — plus the entries. Nothing measures it against reality, and the
+  // Help page is explicit that marking an occurrence paid is a tick-off, not a
+  // reconciliation. So the projection drifts: cash spent, a rounding, a
+  // purchase nobody entered. Until now the only correction was to edit
+  // January's opening balance, which rewrites every balance in the year
+  // including the months you had already checked.
+  //
+  // The adjustment is posted as a dated one-time **transfer** rather than an
+  // income or expense entry. That is exactly the meaning transfers already
+  // carry (see getMonthSummaries): it moves the running balance without
+  // pretending to be earnings or spending, so it doesn't land in Budget vs
+  // Actual, distort a category, or turn up in the AI's spending analysis. It
+  // is visible in the ledger on the day it was made, and can be deleted like
+  // any other entry if it was a mistake.
+  function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
+    const [actual, setActual] = useState("");
+    const [err, setErr] = useState("");
+    const parsed = actual.trim() === "" ? null : Number(actual);
+    const valid = parsed !== null && Number.isFinite(parsed);
+    const actualCents = valid ? dollarsToCents(actual) : null;
+    const diff = valid ? actualCents - projected : null;
+    const submit = () => {
+      if (!valid) {
+        setErr("Enter the balance your bank shows today.");
+        return;
+      }
+      if (diff === 0) {
+        setErr("");
+        onCancel();
+        return;
+      }
+      onConfirm({ actualCents, diff });
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Reconcile to bank" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" },
+      /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
+      /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Reconcile to your bank"),
+      /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it."),
+      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled)),
+      /* @__PURE__ */ React.createElement("div", { className: "reconcile-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, "This app projects"), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 reconcile-figure" }, fmt(projected))),
+      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "rec-actual" }, "Your bank shows"),
+      /* @__PURE__ */ React.createElement("input", {
+        id: "rec-actual",
+        type: "number",
+        inputMode: "decimal",
+        step: "0.01",
+        autoFocus: true,
+        className: "field-input field-input--mono" + (err ? " field-error" : ""),
+        placeholder: "0.00",
+        value: actual,
+        onChange: (e) => {
+          setActual(e.target.value);
+          if (err) setErr("");
+        },
+        onKeyDown: (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }
+      }),
+      err && /* @__PURE__ */ React.createElement(FieldError, { msg: err }),
+      valid && /* @__PURE__ */ React.createElement(
+        "div",
+        { className: "reconcile-diff" },
+        diff === 0 ? "Already matches \u2014 nothing to adjust." : /* @__PURE__ */ React.createElement(
+          React.Fragment,
+          null,
+          "Adjustment of ",
+          /* @__PURE__ */ React.createElement("strong", { style: { color: diff > 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(diff, true)),
+          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`
+        )
+      ),
+      /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: submit, disabled: !valid || diff === 0, className: "cf-btn cf-btn--primary" }, "Record adjustment"))
+    ));
+  }
+  // Where a reconciliation adjustment is filed. "Other" is the default
+  // category list's catch-all and the natural home; a household that renamed
+  // or removed it gets the last category instead, which is where the defaults
+  // put the catch-all anyway.
+  function reconcileCategory(categories) {
+    if (!Array.isArray(categories) || !categories.length) return "Other";
+    return categories.includes("Other") ? "Other" : categories[categories.length - 1];
+  }
+  // The marker that makes an adjustment recognisable later, for the "last
+  // reconciled" line. Deliberately the visible description rather than a
+  // hidden field: it needs no new column, it reads correctly in the ledger and
+  // in a CSV export, and if someone renames one the only consequence is that
+  // this stops counting it.
+  const RECONCILE_DESC = "Balance adjustment";
+  function lastReconciledDate(entries) {
+    if (!Array.isArray(entries)) return null;
+    let latest = null;
+    entries.forEach((e) => {
+      if (e && e.desc === RECONCILE_DESC && e.startDate && (!latest || e.startDate > latest)) latest = e.startDate;
+    });
+    return latest;
+  }
   function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
@@ -11948,6 +12056,30 @@ Fill every field of the response schema. Rules:
       if (sharedView || !sessionUser) return flow;
       return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
+    const [showReconcile, setShowReconcile] = useState(false);
+    // Posts the difference between the projected balance and the real one as a
+    // dated one-time transfer. See ReconcileModal for why a transfer and not
+    // an income/expense entry.
+    const recordReconcile = ({ actualCents, diff }) => {
+      const today = todayStr();
+      addEntry({
+        desc: RECONCILE_DESC,
+        type: "transfer",
+        transferDirection: diff > 0 ? "in" : "out",
+        amount: Math.abs(diff),
+        category: reconcileCategory(categories),
+        notes: `Reconciled to a bank balance of ${fmt(actualCents)} on ${today}.`,
+        startDate: today,
+        repeats: false,
+        recurEvery: 1,
+        recurUnit: "month",
+        recurDays: [],
+        recurEnd: "",
+        monthlyAmounts: null
+      });
+      setShowReconcile(false);
+      toast(`Adjustment of ${fmt(diff, true)} recorded — today's balance now matches your bank.`);
+    };
     const summaries = useMemo(() => getMonthSummaries(effectiveFlow, openBal), [effectiveFlow, openBal]);
     const catTotals = useMemo(() => {
       const map = {};
@@ -12109,7 +12241,15 @@ Fill every field of the response schema. Rules:
     const WIDGET_RENDER = {
       balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
-      } }, glance ? fmt(glance.balanceNow) : "\u2014")),
+      } }, glance ? fmt(glance.balanceNow) : "\u2014"), glance && addEntry && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          className: "glance-action",
+          onClick: () => setShowReconcile(true),
+          title: "Compare this against your real bank balance and record the difference"
+        },
+        "Reconcile\u2026"
+      )),
       nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
       } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
@@ -12506,7 +12646,13 @@ Fill every field of the response schema. Rules:
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner,
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, showReconcile && /* @__PURE__ */ React.createElement(ReconcileModal, {
+      projected: glance ? glance.balanceNow : openBal,
+      categories,
+      lastReconciled: lastReconciledDate(entries),
+      onCancel: () => setShowReconcile(false),
+      onConfirm: recordReconcile
+    }), firstRunPanel, sampleBanner,
     // Customize and the shared-view toggle sit on one line — see .dash-toolbar.
     /* @__PURE__ */ React.createElement("div", { className: "dash-toolbar", "data-noprint": true }, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, /* @__PURE__ */ React.createElement(
       "button",
@@ -12737,6 +12883,9 @@ Fill every field of the response schema. Rules:
         ] },
         { sub: "Marking things paid" },
         { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
+        { sub: "Reconciling to your bank" },
+        { p: "Every balance in the app is projected: the year's opening balance, plus everything scheduled since. Reality drifts from that — cash spent, a rounding, a purchase nobody entered — so the Dashboard's “Balance today” tile has a Reconcile link. Enter what your account actually shows and the difference is recorded as a dated adjustment on today." },
+        { p: "The adjustment is a transfer, not an expense, so it moves the balance without counting as spending: it stays out of your income and expense totals, out of Budget vs Actual and out of the category charts. It sits in the ledger on the day you made it and can be deleted like any other entry. Reconciling this way is why you never have to go back and edit January's opening balance, which would rewrite every month behind it." },
         { p: "To record that a bill actually cost something different, open Edit this occurrence and fill in Actual Amount Paid. Leaving it blank means “paid as scheduled”. An actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
         { sub: "Getting entries in faster" },
         { defs: [

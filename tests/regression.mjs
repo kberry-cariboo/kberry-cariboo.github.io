@@ -423,6 +423,55 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // table (rather than calling getMonthSummaries directly) is deliberate: the
   // defect was in what the user saw, and a unit test on the helper would not
   // have caught the grid footer or the annual row.
+  // Every balance in the app is projected from the year's opening figure; the
+  // Help page is explicit that marking an occurrence paid is a tick-off, not a
+  // reconciliation. Nothing measured the projection against reality, and the
+  // only correction available rewrote the whole year.
+  await test('dashboard: reconciling to the bank adjusts today without touching income or expenses', async () => {
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+
+    const money = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+    const tile = (name) => page.locator('.kpi-tile', { hasText: name }).locator('.kpi-spark-value').innerText();
+    const balanceText = () => page.locator('.glance-tile', { hasText: 'Balance today' }).locator('.glance-value').innerText();
+
+    const incomeBefore = await tile('Annual Income');
+    const expenseBefore = await tile('Annual Expenses');
+    const projected = money(await balanceText());
+    const target = projected - 27985;
+
+    await page.getByRole('button', { name: /Reconcile/ }).click();
+    await page.locator('#rec-actual').waitFor(V);
+    await page.locator('#rec-actual').fill((target / 100).toFixed(2));
+    await page.getByRole('button', { name: 'Record adjustment' }).click();
+    await page.waitForTimeout(800);
+
+    const after = money(await balanceText());
+    if (after !== target) throw new Error(`balance did not match the bank figure: wanted ${target}, got ${after}`);
+
+    // The adjustment is a transfer precisely so it stays out of these two —
+    // it is not earnings and not spending, and putting it in either would
+    // distort a category and Budget vs Actual along with it.
+    if (await tile('Annual Income') !== incomeBefore) throw new Error('reconciliation leaked into Annual Income');
+    if (await tile('Annual Expenses') !== expenseBefore) throw new Error('reconciliation leaked into Annual Expenses');
+
+    // Leave the fixture as it was found — the suite shares one session.
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    await page.getByLabel('Rows per page').first().selectOption('all');
+    await page.waitForTimeout(400);
+    const row = page.locator('tr', { hasText: 'Balance adjustment' }).first();
+    await row.locator('button').last().click();
+    await page.waitForTimeout(400);
+    await page.getByText('Delete', { exact: false }).last().click();
+    await page.waitForTimeout(300);
+    const confirmDel = page.locator('.modal-overlay').getByRole('button', { name: /^Delete$/ });
+    if (await confirmDel.count() > 0) await confirmDel.first().click();
+    await page.waitForTimeout(500);
+  });
+
   // A shared budget generates "who changed this?", and nothing answered it:
   // entries have carried a userId since they were first synced and overrides
   // carried a timestamp, but neither was ever displayed.

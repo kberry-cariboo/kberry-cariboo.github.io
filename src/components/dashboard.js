@@ -173,6 +173,30 @@
       if (sharedView || !sessionUser) return flow;
       return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
+    const [showReconcile, setShowReconcile] = useState(false);
+    // Posts the difference between the projected balance and the real one as a
+    // dated one-time transfer. See ReconcileModal for why a transfer and not
+    // an income/expense entry.
+    const recordReconcile = ({ actualCents, diff }) => {
+      const today = todayStr();
+      addEntry({
+        desc: RECONCILE_DESC,
+        type: "transfer",
+        transferDirection: diff > 0 ? "in" : "out",
+        amount: Math.abs(diff),
+        category: reconcileCategory(categories),
+        notes: `Reconciled to a bank balance of ${fmt(actualCents)} on ${today}.`,
+        startDate: today,
+        repeats: false,
+        recurEvery: 1,
+        recurUnit: "month",
+        recurDays: [],
+        recurEnd: "",
+        monthlyAmounts: null
+      });
+      setShowReconcile(false);
+      toast(`Adjustment of ${fmt(diff, true)} recorded — today's balance now matches your bank.`);
+    };
     const summaries = useMemo(() => getMonthSummaries(effectiveFlow, openBal), [effectiveFlow, openBal]);
     const catTotals = useMemo(() => {
       const map = {};
@@ -334,7 +358,15 @@
     const WIDGET_RENDER = {
       balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
-      } }, glance ? fmt(glance.balanceNow) : "\u2014")),
+      } }, glance ? fmt(glance.balanceNow) : "\u2014"), glance && addEntry && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          className: "glance-action",
+          onClick: () => setShowReconcile(true),
+          title: "Compare this against your real bank balance and record the difference"
+        },
+        "Reconcile\u2026"
+      )),
       nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
       } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
@@ -731,7 +763,13 @@
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
     const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, firstRunPanel, sampleBanner,
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, showReconcile && /* @__PURE__ */ React.createElement(ReconcileModal, {
+      projected: glance ? glance.balanceNow : openBal,
+      categories,
+      lastReconciled: lastReconciledDate(entries),
+      onCancel: () => setShowReconcile(false),
+      onConfirm: recordReconcile
+    }), firstRunPanel, sampleBanner,
     // Customize and the shared-view toggle sit on one line — see .dash-toolbar.
     /* @__PURE__ */ React.createElement("div", { className: "dash-toolbar", "data-noprint": true }, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, /* @__PURE__ */ React.createElement(
       "button",
