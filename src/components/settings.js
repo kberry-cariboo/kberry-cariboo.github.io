@@ -565,17 +565,20 @@
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
     ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
-      // Order matches the sections as they appear down the page.
+      // Order matches the sections as they appear down the page, which is
+      // alphabetical by heading — so the strip is also the index you would
+      // scan for a setting whose name you know.
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
-      ["sec-notifications", "Notifications"],
       ["sec-years", "Budget Years"],
-      ["sec-backup", "Backup"],
-      ...sbConfigured && household ? [["sec-sync", "Sync"]] : [],
-      ["sec-categories", "Categories"],
-      ["sec-holidays", "Holidays"],
+      ["sec-money", "Currency & Format"],
+      ["sec-backup", "Data Backup"],
+      ["sec-categories", "Manage Categories"],
+      ["sec-notifications", "Notifications"],
       ["sec-security", "Security"],
+      ["sec-holidays", "Statutory Holidays"],
+      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
       ["sec-reset", "Target Reset"],
       ["sec-danger", "Danger Zone"]
     ].map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
@@ -636,34 +639,7 @@
         value: centsToDollars(alertThreshold),
         onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
       }
-    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
-      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-currency" }, "Currency"), /* @__PURE__ */ React.createElement("select", {
-        id: "set-currency",
-        className: "field-input settings-input",
-        style: { minWidth: 220 },
-        value: currency,
-        onChange: (e) => setCurrency(e.target.value)
-      }, CURRENCIES.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.code, value: c.code }, `${c.code} \u2014 ${c.name}`)))),
-      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-locale" }, "Number format"), /* @__PURE__ */ React.createElement("select", {
-        id: "set-locale",
-        className: "field-input settings-input",
-        style: { minWidth: 220 },
-        value: locale,
-        onChange: (e) => setLocale(e.target.value)
-      }, NUMBER_LOCALES.map((l) => /* @__PURE__ */ React.createElement("option", { key: l.code, value: l.code }, l.name))))
-    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
-      if (v) enableNotifications();
-      else disableNotifications();
-    }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "notify-hour-select",
-        value: notifyHour,
-        onChange: (e) => setNotifyHour(parseInt(e.target.value, 10)),
-        className: "autolock-select"
-      },
-      HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
-    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), sortedYears.map((yc) => {
+    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -741,7 +717,22 @@
         },
         onCancel: () => setConfirmCopyYear(null)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-currency" }, "Currency"), /* @__PURE__ */ React.createElement("select", {
+        id: "set-currency",
+        className: "field-input settings-input",
+        style: { minWidth: 220 },
+        value: currency,
+        onChange: (e) => setCurrency(e.target.value)
+      }, CURRENCIES.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.code, value: c.code }, `${c.code} \u2014 ${c.name}`)))),
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-locale" }, "Number format"), /* @__PURE__ */ React.createElement("select", {
+        id: "set-locale",
+        className: "field-input settings-input",
+        style: { minWidth: 220 },
+        value: locale,
+        onChange: (e) => setLocale(e.target.value)
+      }, NUMBER_LOCALES.map((l) => /* @__PURE__ */ React.createElement("option", { key: l.code, value: l.code }, l.name))))
+    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       // Built from the household-field table, so a new field is in the backup
       // the moment it is marked `backup: true` — this list used to be written
       // out by hand and drifted from what the app actually stores.
@@ -858,28 +849,7 @@
           setPendingRestore(null);
         }
       }
-    ), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
-      background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
-      border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
-    } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => houseSave(false),
-        disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 12 }),
-      "Save Now"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => houseLoad(),
-        disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
-      "Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
       "div",
       {
         key: cat,
@@ -970,15 +940,19 @@
         },
         onKeyDown: (e) => e.key === "Enter" && addCat()
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(HolidaySettings, {
-          holidayRegionCode,
-          setHolidayRegionCode,
-      holidays,
-      setHolidays,
-      isOffline,
-      activeYear,
-      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
-    }), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+      if (v) enableNotifications();
+      else disableNotifications();
+    }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "notify-hour-select",
+        value: notifyHour,
+        onChange: (e) => setNotifyHour(parseInt(e.target.value, 10)),
+        className: "autolock-select"
+      },
+      HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
+    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)))), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: "auto-lock-select",
@@ -990,7 +964,36 @@
       /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
       /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" })), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement(
+    )), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" })), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))), /* @__PURE__ */ React.createElement(HolidaySettings, {
+          holidayRegionCode,
+          setHolidayRegionCode,
+      holidays,
+      setHolidays,
+      isOffline,
+      activeYear,
+      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
+    }), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+      background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
+      border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
+    } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => houseSave(false),
+        disabled: houseStatus === "syncing",
+        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 12 }),
+      "Save Now"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => houseLoad(),
+        disabled: houseStatus === "syncing",
+        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
+      "Reload from Cloud"
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setConfirmTgtReset(true),

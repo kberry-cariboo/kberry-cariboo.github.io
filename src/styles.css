@@ -997,7 +997,12 @@
           background:var(--bgCard);border:none;border-right:1px solid var(--border);
           border-bottom:1px solid var(--border);cursor:pointer;overflow:hidden;}
         .cal-row .cal-cell:last-child{border-right:none;}
-        .cal-cell--blank{background:var(--stripe);cursor:default;}
+        /* The padding days at either end of the grid. --stripe is byte-identical
+           to --bg in the light theme, so they read as a hole in the card rather
+           than as part of it; --pastBg is the grey the app already uses for
+           "outside what you are looking at", and it is distinct from both the
+           card and the page. */
+        .cal-cell--blank{background:var(--pastBg);cursor:default;}
         .cal-cell--quiet{cursor:default;}
         /* The two states the whole view exists to make visible. Tint plus a
            left rule, not tint alone: --amberLt against --bg is close to
@@ -2022,26 +2027,14 @@
           .settings-page .key-disclaimer-row,
           .ai-subtitle{max-width:68ch;}
         }
-        /* ── Settings: two columns for the short cards ─────────────────────
-           Settings was one column of full-width cards on a 1200px measure,
-           several of which hold a single control — Appearance is one toggle
-           and two words in a 1070px card — which made the page ~2780px of
-           scroll on a 900px viewport.
-
-           The cards that carry a list, a table or a paragraph keep the full
-           measure; the one-control cards pair up. The pairing is declared per
-           card rather than derived from height so the reading order stays
-           the source order and the quicklink anchors still land where the
-           labels say they will. */
-        @media(min-width:1100px){
-          .settings-cards{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;}
-          .settings-cards>.settings-quicklinks,
-          .settings-cards>#sec-ai-key,
-          .settings-cards>#sec-notifications,
-          .settings-cards>#sec-years,
-          .settings-cards>#sec-categories,
-          .settings-cards>#sec-danger{grid-column:1/-1;}
-        }
+        /* ── Settings: one card per row ─────────────────────────────────────
+           The short cards used to pair up above 1100px to cut the scroll. With
+           the sections in alphabetical order that pairing works against the
+           order itself: two cards side by side have no reading sequence, so
+           "the one after Appearance" stops being a place on the page, and the
+           quicklink strip above — which is the alphabetical index — no longer
+           describes what you scroll past. One per row, and the strip is how
+           you skip the scroll. */
         .entries-table{width:100%;border-collapse:collapse;min-width:540px;}
         /* Entries desc: fill available space, truncate */
         .entries-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;padding:10px 12px;width:40%;min-width:120px;}

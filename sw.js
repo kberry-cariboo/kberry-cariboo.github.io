@@ -1,5 +1,5 @@
 // CashFlow service worker. Built to sw.js at the repo root by build.js, which
-// substitutes v189-d5c6a4f35c79 with the CF_VERSION constant in bootstrap-head.js
+// substitutes v189-4539c3cc39e9 with the CF_VERSION constant in bootstrap-head.js
 // so the cache name and the app bundle always bump together.
 //
 // This has to be a real same-origin file: it used to be registered from a
@@ -9,7 +9,7 @@
 // way to receive Web Push — push events are delivered to the worker, not to a
 // page — and on Android it's the only way to show a notification at all
 // (Chrome for Android does not implement the `new Notification()` constructor).
-const CACHE = 'cf-v189-d5c6a4f35c79';
+const CACHE = 'cf-v189-4539c3cc39e9';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -31,14 +31,44 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Navigations: serve the cached page, refresh it behind you.
+  //
+  // This used to be network-first with `cache: 'no-store'`, which made the
+  // cache an offline fallback and nothing else — every launch re-downloaded
+  // the whole app. Measured: 387 KB gzipped, which on a 1.6 Mbps connection is
+  // the better part of two seconds before anything can start, on every launch
+  // rather than only the first.
+  //
+  // Serving the cached copy first does mean a launch immediately after a
+  // deploy can start on the previous build. It corrects itself without anyone
+  // doing anything: the request below still goes out, a changed sw.js installs
+  // and activates (skipWaiting + clients.claim), and the controllerchange
+  // handler in bootstrap-head.js reloads the open app onto the new bundle.
+  // That machinery already existed — this only stops the page waiting on the
+  // network to find out there was nothing new.
+  //
+  // `cache: 'no-store'` stays on the background request: without it the HTTP
+  // cache can answer, and then a deploy would go unnoticed until it expired.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request, { cache: 'no-store' })
-        .then((r) => {
-          if (r.ok) caches.open(CACHE).then((c) => c.put(e.request, r.clone()));
-          return r;
+      // install() caches the registration scope ("/", or "/repo/"), so a
+      // request for "/index.html" — the same page, spelled out — misses on an
+      // exact match. Fall back to the scope entry, which is the app shell this
+      // is serving either way. Without this the offline fallback missed too.
+      caches.match(e.request)
+        .then((c) => c || caches.match(self.registration.scope))
+        .then((cached) => {
+          const fresh = fetch(e.request, { cache: 'no-store' })
+            .then((r) => {
+              if (r.ok) caches.open(CACHE).then((c) => c.put(e.request, r.clone()));
+              return r;
+            })
+            .catch(() => cached);
+          // Nothing cached yet (a first visit, or a fresh cache after an
+          // activate) — there is nothing to be fast with, so wait for the
+          // network.
+          return cached || fresh;
         })
-        .catch(() => caches.match(e.request))
     );
     return;
   }
