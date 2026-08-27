@@ -113,7 +113,11 @@ try { browser = await chromium.launch({ executablePath: exe }); } catch { browse
 const results = [];
 let pageErrors = [];
 
-async function ctxPage({ touch = false, dark = false, loggedIn = true } = {}) {
+// `stub` rewrites the fixture script before it is injected — for the handful of
+// tests that need data the shared fixture doesn't carry (a mid-horizon expense
+// big enough to dip the forecast, a few savings goals). Everything else takes
+// the fixture as it is.
+async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x) => x } = {}) {
   const ctx = await browser.newContext({
     viewport: touch ? { width: 393, height: 852 } : { width: 1440, height: 900 },
     hasTouch: touch, isMobile: touch, colorScheme: dark ? 'dark' : 'light',
@@ -121,7 +125,7 @@ async function ctxPage({ touch = false, dark = false, loggedIn = true } = {}) {
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
-  await page.addInitScript(mkStub(dark, loggedIn));
+  await page.addInitScript(stub(mkStub(dark, loggedIn)));
   await page.addInitScript(`try{localStorage.setItem('cf_darkMode', ${JSON.stringify(JSON.stringify(dark))})}catch(e){}`);
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   return { ctx, page };
@@ -452,11 +456,14 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       throw new Error(`primary nav differs by width:\n  wide:   ${wideNav.join(' / ')}\n  narrow: ${narrowNav.join(' / ')}`);
     }
     if (!wideNav.includes('Settings')) throw new Error('Settings is not a primary destination: ' + wideNav.join(' / '));
-    // Daily is deliberately absent on a phone (the Monthly cards there already
-    // read day by day), so the narrow set is a subset — but every label they
-    // share has to be the same string.
-    for (const label of narrowSubs) {
-      if (!wideSubs.includes(label)) throw new Error(`sub-tab "${label}" exists only at phone width; wide has ${wideSubs.join(' / ')}`);
+    // Exact equality, not a subset. Daily used to be hidden on a phone, so the
+    // narrow set was legitimately shorter; Calendar, which replaced it, renders
+    // at both widths, so there is no longer any reason for the two to differ —
+    // in membership or in wording. The wording half is the one that keeps
+    // biting: an abbreviated "vs Actual" on a phone beside "Budget vs Actual"
+    // on a desktop is two names for one destination.
+    if (JSON.stringify(wideSubs) !== JSON.stringify(narrowSubs)) {
+      throw new Error(`Budget sub-tabs differ by width:\n  wide:   ${wideSubs.join(' / ')}\n  narrow: ${narrowSubs.join(' / ')}`);
     }
     await wide.ctx.close();
     await narrow.ctx.close();
@@ -1061,14 +1068,32 @@ await test('mobile dark mode: the active nav item is highlighted, not dimmed', a
   await ctx.close();
 });
 
-await test('mobile: the Daily subtab is hidden, since Monthly cards already read day by day', async () => {
+// Daily was cut from a phone because it restated Monthly one row per day.
+// Calendar replaced it and does not restate anything, so it renders at both
+// widths — and a #/budget/daily bookmark, or a device that still remembers
+// `daily` as its sub-tab, has to land somewhere real rather than on a view
+// with no tab selected.
+await test('mobile: the Calendar subtab renders on a phone, unlike the Daily view it replaced', async () => {
   const { ctx, page } = await ctxPage({ touch: true });
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
-  await page.waitForTimeout(800);
-  if (await page.locator('.bp-daily').isVisible().catch(() => false)) {
-    throw new Error('Daily subtab is visible on a mobile viewport');
-  }
-  await page.getByRole('button', { name: 'Monthly' }).waitFor(V);
+  await page.goto(BASE + '#/budget/calendar', { waitUntil: 'load' });
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'Calendar' }).waitFor(V);
+  if (await page.locator('.cal-grid').count() !== 1) throw new Error('no calendar grid at phone width');
+  // The phone cell trades the event lines for a dot per event; both are the
+  // same day, so the grid is the same 7 columns either way.
+  const cols = await page.locator('.cal-row').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+  if (cols !== 7) throw new Error(`calendar has ${cols} columns on a phone, not 7`);
+  if (await page.locator('.cal-dots').first().isVisible() !== true) throw new Error('phone cells show no event dots');
+  await ctx.close();
+});
+
+await test('an old #/budget/daily link lands on the Calendar that replaced it', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/daily', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  if (await page.locator('.cal-grid').count() !== 1) throw new Error('#/budget/daily rendered no calendar');
+  const hash = await page.evaluate(() => location.hash);
+  if (hash !== '#/budget/calendar') throw new Error(`#/budget/daily settled on ${hash}, not #/budget/calendar`);
   await ctx.close();
 });
 
@@ -1970,6 +1995,196 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     await ctx.close();
   });
 }
+
+
+// ── Usability & layout ───────────────────────────────────────────────────────
+
+// The Forecast is the one view whose whole job is "where is this heading", and
+// it answered with a paginated table: three pages for a 90-day horizon, the low
+// point unmarked even though the Dashboard puts it in a tile.
+await test('forecast: a balance curve marks the low point and the alert threshold', async () => {
+  // A one-off expense far enough out to dip the curve and let it recover, so
+  // the low point is genuinely ahead rather than being today's opening balance
+  // (which the chart deliberately does not mark — a low on day one is just
+  // today's balance, and a marker on it draws a line down the y axis).
+  const when = new Date(); when.setDate(when.getDate() + 20);
+  const roof = JSON.stringify([{ id: 9901, desc: 'Roof repair', type: 'expense', amount: 3800000,
+    category: 'Housing', repeats: false, recurUnit: 'month', recurEvery: 1,
+    startDate: when.toISOString().slice(0, 10), notes: '' }]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${roof}); const payload = {`) });
+  await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const svg = page.locator('svg[role="img"]').first();
+  if (await svg.count() !== 1) throw new Error('the forecast renders no chart');
+  const alt = await svg.getAttribute('aria-label');
+  if (!/projected balance/i.test(alt || '')) throw new Error('chart has no useful description: ' + alt);
+  const marks = await svg.evaluate((el) => [...el.querySelectorAll('text')].map((t) => t.textContent));
+  if (!marks.some((t) => /^Alert /.test(t))) throw new Error('no alert-threshold reference line: ' + marks.join(' | '));
+  if (!marks.some((t) => /^Low .*\d/.test(t))) throw new Error('the low point is not marked: ' + marks.join(' | '));
+  if (!/dipping to a low of/.test(alt)) throw new Error('the description does not name the low point: ' + alt);
+  // Month boundaries are named; the other ~87 days are not, or the axis would
+  // be a smear.
+  const ticks = marks.filter((t) => /^[A-Z][a-z]{2} \d+$/.test(t));
+  if (ticks.length < 2 || ticks.length > 8) throw new Error(`x axis prints ${ticks.length} date labels across 90 days: ${ticks.join(' ')}`);
+  await ctx.close();
+});
+
+// A rolling window cut into pages stops rolling the moment you have to press
+// Next, and the run-up to the low point is as likely to straddle a break as not.
+await test('forecast: the ledger scrolls rather than paginating', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  if (await page.locator('[aria-label="Next page"]').count() !== 0) throw new Error('the forecast still paginates');
+  const before = await page.locator('.forecast-tr').count();
+  if (before === 0) throw new Error('no forecast rows rendered');
+  const info = await page.locator('.grid-pagination-info').first().innerText();
+  if (!/of \d+ events/.test(info)) throw new Error('no running count of events: ' + info);
+  await ctx.close();
+});
+
+// The month laid out as a month, which is the shape the question comes in.
+await test('calendar: the month is a grid, with a running balance and the low days marked', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/calendar', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const cells = page.locator('.cal-cell:not(.cal-cell--blank)');
+  const n = await cells.count();
+  if (n < 28 || n > 31) throw new Error(`calendar rendered ${n} day cells`);
+  // Every day carries a balance, including the quiet ones — the carry is what
+  // makes the grid a running balance rather than a scatter of busy days.
+  const withBalance = await page.locator('.cal-cell:not(.cal-cell--blank) .cal-bal').count();
+  if (withBalance !== n) throw new Error(`${withBalance} of ${n} days show a balance`);
+  const label = await cells.first().getAttribute('aria-label');
+  if (!/balance /.test(label || '')) throw new Error('a day cell says nothing to a screen reader: ' + label);
+  // Picking a day opens what is on it, with the same card the other views use.
+  const busy = page.locator('.cal-cell:not(.cal-cell--quiet):not(.cal-cell--blank)').first();
+  await busy.click();
+  await page.locator('.cal-day-hdr').waitFor(V);
+  if (await page.locator('.cal-day-hdr + .budget-card-row, .cal-day-hdr ~ .budget-card-row').count() === 0) {
+    throw new Error('opening a day showed none of its events');
+  }
+  await ctx.close();
+});
+
+// Every page said "CashFlow Budget" and no page had an h1 at all, so a screen
+// reader navigating by heading had no way to confirm where it had landed and
+// six history entries read identically.
+await test('a11y: each view names itself in a heading and in the document title', async () => {
+  const { ctx, page } = await ctxPage();
+  const seen = new Set();
+  for (const [route, expected] of [
+    ['#/dashboard', 'Dashboard'],
+    ['#/budget/calendar', 'Budget · Calendar'],
+    ['#/budget/entries', 'Budget · Entries'],
+    ['#/budget/forecast', 'Budget · Forecast'],
+    ['#/plan/goals', 'Plan · Savings Goals'],
+    ['#/settings', 'Settings'],
+  ]) {
+    await page.goto(BASE + route, { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const h1s = await page.locator('h1').allInnerTexts();
+    if (h1s.length !== 1) throw new Error(`${route} has ${h1s.length} h1 elements, not 1`);
+    if (h1s[0] !== expected) throw new Error(`${route} heading is "${h1s[0]}", expected "${expected}"`);
+    const title = await page.title();
+    if (title !== expected + ' — CashFlow Budget') throw new Error(`${route} title is "${title}"`);
+    if (seen.has(title)) throw new Error(`two views share the title "${title}"`);
+    seen.add(title);
+  }
+  await ctx.close();
+});
+
+// The charts were the conspicuous gap in an otherwise well-labelled app: three
+// SVGs wider than 200px with no role, no name and no title element.
+await test('a11y: every chart is either described or hidden, never bare', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const bare = await page.$$eval('svg', (els) => els
+    .filter((e) => e.getAttribute('aria-hidden') !== 'true' && e.getAttribute('role') !== 'img')
+    .map((e) => e.parentElement && e.parentElement.className));
+  if (bare.length) throw new Error(`${bare.length} chart SVG(s) exposed with no description: ${bare.join(', ')}`);
+  const described = await page.$$eval('svg[role="img"]', (els) => els.map((e) => e.getAttribute('aria-label')));
+  if (described.length < 3) throw new Error(`only ${described.length} described charts on the dashboard`);
+  for (const d of described) {
+    if (!d || d.length < 40) throw new Error('a chart description says nothing useful: ' + d);
+    // A description that only names the chart type is no better than none; each
+    // one has to carry the figures a sighted reader takes from the picture.
+    if (!/\$/.test(d)) throw new Error('a chart description carries no figures: ' + d);
+  }
+  await ctx.close();
+});
+
+// The nudge is right — a static site with a 30-day export reminder is exactly
+// right — but as a fixed bottom-right card it sat on top of the numbers it
+// exists to protect.
+await test('backup nudge: it sits in the page, not on top of the data', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+  // The nudge fires five seconds after load.
+  await page.waitForTimeout(6500);
+  const nudge = page.locator('.backup-nudge');
+  await nudge.waitFor(V);
+  const pos = await nudge.evaluate((el) => getComputedStyle(el).position);
+  if (pos === 'fixed' || pos === 'absolute') throw new Error(`the nudge is ${pos}, so it floats over the page`);
+  // Nothing of the page is underneath it: sample its box and check every hit
+  // is the nudge itself.
+  const covered = await page.evaluate(() => {
+    const n = document.querySelector('.backup-nudge');
+    const r = n.getBoundingClientRect();
+    const hits = new Set();
+    for (let x = r.left + 4; x < r.right - 4; x += 40) {
+      for (let y = r.top + 4; y < r.bottom - 4; y += 10) {
+        const el = document.elementFromPoint(x, y);
+        if (el && !n.contains(el)) hits.add(el.tagName + '.' + el.className);
+      }
+    }
+    return [...hits];
+  });
+  if (covered.length) throw new Error('the nudge covers: ' + covered.join(', '));
+  await ctx.close();
+});
+
+// A card was as tall as its neighbour rather than as tall as its content, so a
+// short chart beside a dense one rendered as a large empty area in a stretched
+// card; and lists of small cards ran the full width of a 1440px page one per
+// row, leaving 400-500px of empty page below the last.
+await test('wide screens: cards size to their content, and card lists use the width', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const align = await page.locator('.chart-grid').first().evaluate((el) => getComputedStyle(el).alignItems);
+  if (align !== 'start') throw new Error(`paired dashboard cards are ${align}, so the shorter one stretches`);
+
+  await ctx.close();
+
+  // Measured on what actually renders, not on the computed grid-template: a
+  // display:none grid reports its unresolved template, which counts tokens
+  // rather than columns and would pass at any width.
+  const goals = JSON.stringify([
+    { id: 'g1', name: 'Emergency fund', target: 1000000, saved: 420000, monthly: 50000, targetDate: '2027-06-01' },
+    { id: 'g2', name: 'Kitchen reno', target: 1800000, saved: 230000, monthly: 60000, targetDate: '2028-01-01' },
+    { id: 'g3', name: 'Trip to Japan', target: 700000, saved: 610000, monthly: 30000, targetDate: '2026-12-01' },
+    { id: 'g4', name: 'New laptop', target: 300000, saved: 90000, monthly: 20000, targetDate: '2027-02-01' },
+  ]);
+  const withGoals = (t) => t.replace('goals: [],', `goals: ${goals},`);
+  const rowsOf = async (p) => p.locator('.cf-cardgrid').first().evaluate((el) =>
+    new Set([...el.children].map((c) => Math.round(c.getBoundingClientRect().top))).size);
+
+  const wide = await ctxPage({ stub: withGoals });
+  await wide.page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await wide.page.waitForTimeout(1300);
+  const wideRows = await rowsOf(wide.page);
+  if (wideRows !== 2) throw new Error(`four goal cards fill ${wideRows} rows at 1440px, expected 2 side-by-side pairs`);
+  await wide.ctx.close();
+
+  const narrow = await ctxPage({ touch: true, stub: withGoals });
+  await narrow.page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await narrow.page.waitForTimeout(1300);
+  const narrowRows = await rowsOf(narrow.page);
+  if (narrowRows !== 4) throw new Error(`four goal cards fill ${narrowRows} rows on a phone, expected one each`);
+  await narrow.ctx.close();
+});
 
 await browser.close();
 server.close();

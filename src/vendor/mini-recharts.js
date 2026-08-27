@@ -16,6 +16,16 @@ window.Recharts = (function() {
   function ReferenceLine(p){ return null; }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+  // A chart is a picture, and assistive technology needs to be told which one.
+  // Given a summary it becomes a labelled image; without one it is decoration
+  // hiding a tree of <path>/<text> nodes that a screen reader would otherwise
+  // read out one meaningless number at a time.
+  function a11y(ariaLabel) {
+    return ariaLabel
+      ? { role: 'img', 'aria-label': ariaLabel }
+      : { role: 'presentation', 'aria-hidden': 'true', focusable: 'false' };
+  }
+
   function ys(val, yLo, yHi, innerH) {
     if (yHi === yLo) return innerH / 2;
     return innerH - ((val - yLo) / (yHi - yLo)) * innerH;
@@ -116,7 +126,7 @@ window.Recharts = (function() {
   // ── CartesianChart core ───────────────────────────────────────────────────
   // Uses viewBox so the SVG is always 100% wide regardless of pixel size.
   function CartesianChart({ data=[], children, width=300, height=250,
-                            margin: mg={}, barCategoryGap='20%' }) {
+                            margin: mg={}, barCategoryGap='20%', ariaLabel }) {
     const arr = Children.toArray(children);
     const xDesc     = arr.find(c=>c.type===XAxis);
     const yDesc     = arr.find(c=>c.type===YAxis);
@@ -168,9 +178,12 @@ window.Recharts = (function() {
     const yv   = v => ys(v, yLo, yHi, iH);
     const y0   = yv(0);
 
-    // X label density
+    // X label density. `interval={0}` hands the choice back to the caller:
+    // every row is offered, and the ones it doesn't want labelled carry an
+    // empty x value. A 90-day series wants its month boundaries named, not
+    // every third day, and every-Nth can't express that.
     const maxXL  = Math.max(1, Math.floor(iW / 32));
-    const xStep  = Math.ceil(data.length / maxXL);
+    const xStep  = xDesc?.props?.interval === 0 ? 1 : Math.ceil(data.length / maxXL);
 
     // ── Bars ────────────────────────────────────────────────────────────────
     const ungrouped = barDescs.filter(b=>!b.props.stackId);
@@ -235,6 +248,10 @@ window.Recharts = (function() {
       const areaPath  = linePath
         + ' L' + pts[pts.length-1][0].toFixed(1) + ',' + y0.toFixed(1)
         + ' L' + pts[0][0].toFixed(1) + ',' + y0.toFixed(1) + ' Z';
+      // A dense series (a daily forecast is ~90 points) reads better as a bare
+      // curve; `dot={false}` turns the per-point circles off. The hover columns
+      // below still cover the tooltip, so nothing is lost with them.
+      const showDots = dot !== false;
       const dr = (typeof dot === 'object' && dot?.r) ? dot.r : 3;
       const last = pts[pts.length - 1];
       return h(React.Fragment, { key: dataKey },
@@ -248,7 +265,7 @@ window.Recharts = (function() {
           fill: stroke, stroke: cssSurface, strokeWidth: 3,
           style: { paintOrder: 'stroke', pointerEvents: 'none' }
         }, name || dataKey),
-        pts.map(([cx,cy], i) => h('circle', {
+        showDots && pts.map(([cx,cy], i) => h('circle', {
           key: i, cx, cy, r: dr, fill: stroke, stroke:'none',
           onMouseMove: e => {
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
@@ -321,20 +338,47 @@ window.Recharts = (function() {
         // Use viewBox so the SVG scales with CSS — eliminates overflow
         viewBox: `0 0 ${width} ${height}`,
         width: '100%', height,
-        style:{ display:'block', overflow:'visible' }
+        style:{ display:'block', overflow:'visible' },
+        ...a11y(ariaLabel)
       },
+        ariaLabel && h('title', null, ariaLabel),
         h('g', { transform: `translate(${M.left},${M.top})` },
           // Grid
           gridDesc && ytValues.map((t, i) =>
             h('line', { key:i, x1:0, y1:yv(t), x2:iW, y2:yv(t),
               stroke:cssGrid, strokeDasharray:gridDesc.props.strokeDasharray||'3 3', strokeWidth:1 })
           ),
-          // Reference lines
-          refLines.map((rl, i) =>
-            h('line', { key:i, x1:0, y1:yv(rl.props.y||0), x2:iW, y2:yv(rl.props.y||0),
-              stroke:rl.props.stroke||'#999',
-              strokeDasharray:rl.props.strokeDasharray||'none', strokeWidth:1 })
-          ),
+          // Reference lines. `y` draws a horizontal rule at a value; `x` draws
+          // a vertical one at a data index or at the row whose x value matches
+          // — that is how the forecast marks its low point. `label` writes a
+          // caption at the line, haloed in the surface colour so it stays
+          // readable where it crosses the grid or the series itself.
+          refLines.map((rl, i) => {
+            const { y, x, stroke='#999', strokeDasharray='none', label } = rl.props;
+            const vertical = x !== undefined && x !== null;
+            const xi = vertical
+              ? (typeof x === 'number' ? x : data.findIndex(d => d[xKey] === x))
+              : -1;
+            if (vertical && xi < 0) return null;
+            const lx = vertical ? xMid(xi) : 0;
+            const ly = vertical ? 0 : yv(y||0);
+            const cap = label && (typeof label === 'object' ? label.value : label);
+            return h(React.Fragment, { key:i },
+              h('line', vertical
+                ? { x1:lx, y1:0, x2:lx, y2:iH, stroke, strokeDasharray, strokeWidth:1 }
+                : { x1:0, y1:ly, x2:iW, y2:ly, stroke, strokeDasharray, strokeWidth:1 }),
+              cap && h('text', {
+                x: vertical ? lx : iW,
+                y: vertical ? -3 : ly - 4,
+                // A caption on a line near the right edge would run off the
+                // plot, so it flips to the inside once it gets close.
+                textAnchor: vertical ? (lx > iW - 60 ? 'end' : lx < 60 ? 'start' : 'middle') : 'end',
+                fontSize: 10, fontWeight: 600, fontFamily: 'Inter,sans-serif',
+                fill: stroke, stroke: cssSurface, strokeWidth: 3,
+                style: { paintOrder: 'stroke', pointerEvents: 'none' }
+              }, cap)
+            );
+          }),
           // Areas (behind bars/lines)
           areaDescs.map(d => renderLine(d, true)),
           // Bars
@@ -369,11 +413,17 @@ window.Recharts = (function() {
           data.map((d, i) => {
             if (i % xStep !== 0) return null;
             const t = xDesc?.props?.tick || {};
+            // tickFormatter separates what the axis prints from what the row is
+            // called: the tooltip still says "Sep 3, 2026" while the axis prints
+            // a label only where one earns the space.
+            const xFmt = xDesc?.props?.tickFormatter;
+            const text = xFmt ? xFmt(d[xKey], i) : d[xKey];
+            if (text === '' || text == null) return null;
             return h('text', { key:i, x:xMid(i), y:iH+18, textAnchor:'middle',
               fontSize: t.fontSize || 11,
               fontFamily: t.fontFamily || 'Inter,sans-serif',
               fill: t.fill || cssTick
-            }, d[xKey]);
+            }, text);
           }),
           // Y axis labels — right-aligned in the reserved left gutter
           ytValues.map((t, i) =>
@@ -413,7 +463,7 @@ window.Recharts = (function() {
   function AreaChart(p) { return h(CartesianChart, p); }
 
   // ── PieChart ──────────────────────────────────────────────────────────────
-  function PieChart({ width=300, height=250, children }) {
+  function PieChart({ width=300, height=250, children, ariaLabel }) {
     const [tip, setTip] = useState(null);
     // SVG presentation attributes can't resolve var(); read computed theme colors
     const pcs = typeof document!=='undefined' ? getComputedStyle(document.documentElement) : null;
@@ -473,8 +523,10 @@ window.Recharts = (function() {
       h('svg', {
         viewBox: `0 0 ${width} ${height}`,
         width:'100%', height,
-        style:{ display:'block' }
+        style:{ display:'block' },
+        ...a11y(ariaLabel)
       },
+        ariaLabel && h('title', null, ariaLabel),
         slices.map((s, i) => h(React.Fragment, { key:i },
           h('path', { d:s.path, fill:s.fill, stroke:pieSurface, strokeWidth:1.5,
             onMouseMove: e => {

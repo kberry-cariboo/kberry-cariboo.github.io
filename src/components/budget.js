@@ -12,14 +12,13 @@
     var _a, _b;
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
-    // The Daily sub-tab is hidden on mobile (it's a per-day restatement of
-    // Monthly and the strip has no room), but `daily` persists per device and
-    // is a valid #/budget/daily deep link — so it was reachable with no tab
-    // rendered for it, leaving the sub-tab strip showing nothing selected
-    // while the Daily view was on screen. Land on Monthly instead.
+    // Calendar replaced Daily. The sub-tab is remembered per device and
+    // #/budget/daily was a real deep link, so a phone or a bookmark can still
+    // arrive asking for a view that no longer exists; send it to the one that
+    // took its place rather than rendering nothing with no tab selected.
     useEffect(() => {
-      if (isMobile && budgetSub === "daily") setBudgetSub("monthly");
-    }, [isMobile, budgetSub]);
+      if (budgetSub === "daily") setBudgetSub("calendar");
+    }, [budgetSub]);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -499,16 +498,84 @@
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    const days = useMemo(() => {
+    // ── Calendar ───────────────────────────────────────────────────────────
+    // The month laid out as a month, which is the shape people already hold
+    // this question in: "what's hitting my account, and when". Replaces Daily,
+    // which restated Monthly one row per day — at 1440px that was a day
+    // number, a wide empty middle and a balance pinned to the far right, about
+    // a third of Monthly's density for the same content, which is why it was
+    // cut from a phone. A grid earns the width Daily wasted, and it earns its
+    // place on a phone too.
+    const [calSelDay, setCalSelDay] = useState(null);
+    // Reset the open day whenever the month or year moves — day 19 of the
+    // month you just left is not a selection, it is a stale index.
+    useEffect(() => {
+      setCalSelDay(null);
+    }, [monthIdx, activeYear]);
+    const calendar = useMemo(() => {
+      const total = daysInMonth(monthIdx, activeYear);
+      // Weeks start Sunday, matching the app's other weekday handling
+      // (recurDays, nthWeekdayInMonth) where 0 is Sunday.
+      const lead = new Date(activeYear, monthIdx, 1).getDay();
       let runBal = s ? s.open : openBal;
-      return Array.from({ length: daysInMonth(monthIdx, activeYear) }, (_, i) => {
-        const day = i + 1;
+      const cells = [];
+      for (let i = 0; i < lead; i++) cells.push(null);
+      for (let day = 1; day <= total; day++) {
         const evs = monthEvents.filter((ev) => ev.day === day);
+        // A quiet day carries the balance from the day before — that carry is
+        // what makes the grid a running balance rather than a scatter of the
+        // days something happened.
         if (evs.length > 0) runBal = evs[evs.length - 1].balance;
-        return { day, events: evs, balance: runBal };
-      }).filter((d) => d.events.length > 0);
+        cells.push({
+          day,
+          events: evs,
+          balance: runBal,
+          net: evs.reduce((sum, ev) => sum + signedAmount(ev), 0)
+        });
+      }
+      while (cells.length % 7 !== 0) cells.push(null);
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+      return weeks;
     }, [monthEvents, s, monthIdx, activeYear, openBal]);
-    const renderDailyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : days.map((dayObj) => /* @__PURE__ */ React.createElement(React.Fragment, { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderPeriodCardHdr(`${MONTHS[monthIdx]} ${dayObj.day}`), dayObj.events.map((ev) => renderEventCard(ev, { hideDayLabel: true })))));
+    const calSelected = calSelDay == null ? null : calendar.flat().find((c) => c && c.day === calSelDay) || null;
+    const CAL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const renderCalendar = () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement(
+      "div",
+      { className: "cal-grid", role: "grid", "aria-label": `${MONTHS[monthIdx]} ${activeYear}, balance by day` },
+      /* @__PURE__ */ React.createElement("div", { className: "cal-row cal-row--head", role: "row" }, CAL_DOW.map((d) => /* @__PURE__ */ React.createElement("div", { key: d, className: "cal-dow", role: "columnheader" }, /* @__PURE__ */ React.createElement("span", { className: "cal-dow-full" }, d), /* @__PURE__ */ React.createElement("span", { className: "cal-dow-short", "aria-hidden": true }, d[0])))),
+      calendar.map((week, wi) => /* @__PURE__ */ React.createElement("div", { key: wi, className: "cal-row", role: "row" }, week.map((cell, ci) => {
+        if (!cell) return /* @__PURE__ */ React.createElement("div", { key: ci, className: "cal-cell cal-cell--blank", role: "gridcell", "aria-hidden": true });
+        const low = cell.balance < 0 ? "neg" : cell.balance < alertThreshold ? "warn" : "";
+        const today = isToday(cell.day);
+        const openDay = calSelDay === cell.day;
+        // Everything the cell shows, said once for a screen reader — reading
+        // out a day number, a stack of amounts and a balance as loose text
+        // gives no clue which day they belong to.
+        const label = `${MONTHS[monthIdx]} ${cell.day}` + (today ? ", today" : "") + ", " + (cell.events.length === 0 ? "nothing scheduled" : `${cell.events.length} event${cell.events.length === 1 ? "" : "s"}, net ${fmt(cell.net, true)}`) + `, balance ${fmt(cell.balance)}` + (low === "neg" ? ", overdrawn" : low === "warn" ? ", below your alert threshold" : "");
+        return /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            key: ci,
+            type: "button",
+            role: "gridcell",
+            className: "cal-cell" + (low ? " cal-cell--" + low : "") + (today ? " cal-cell--today" : "") + (openDay ? " cal-cell--open" : "") + (cell.events.length === 0 ? " cal-cell--quiet" : ""),
+            "aria-label": label,
+            "aria-pressed": openDay,
+            onClick: () => {
+              haptic();
+              setCalSelDay(openDay ? null : cell.day);
+            }
+          },
+          /* @__PURE__ */ React.createElement("span", { className: "cal-daynum" }, cell.day),
+          /* @__PURE__ */ React.createElement("span", { className: "cal-bal mno" }, fmt(cell.balance)),
+          /* @__PURE__ */ React.createElement("span", { className: "cal-events" }, cell.events.slice(0, 3).map((ev) => /* @__PURE__ */ React.createElement("span", { key: ev.id, className: "cal-ev" + (completed[ev.id] ? " cal-ev--done" : ""), title: `${ev.desc} ${fmt(signedAmount(ev), true)}` }, /* @__PURE__ */ React.createElement("span", { className: "cal-ev-dot", style: { background: getCatColor(ev.category, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "cal-ev-desc" }, ev.desc), /* @__PURE__ */ React.createElement("span", { className: "cal-ev-amt mno" }, fmt(signedAmount(ev), true)))), cell.events.length > 3 && /* @__PURE__ */ React.createElement("span", { className: "cal-ev-more" }, "+", cell.events.length - 3, " more")),
+          // The phone cell has no room for the lines above; it gets a dot per
+          // event (capped) and the same tint, and opens the day below on tap.
+          cell.events.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "cal-dots", "aria-hidden": true }, cell.events.slice(0, 4).map((ev) => /* @__PURE__ */ React.createElement("span", { key: ev.id, className: "cal-dot", style: { background: getCatColor(ev.category, categories, categoryColors) } })))
+        );
+      })))
+    )), calSelected && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "cal-day-hdr" }, /* @__PURE__ */ React.createElement("span", null, MONTHS[monthIdx], " ", calSelected.day, /* @__PURE__ */ React.createElement("span", { className: "cal-day-bal mno" }, "balance ", fmt(calSelected.balance))), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setCalSelDay(null) }, "Close")), calSelected.events.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, "Nothing scheduled on this day.") : calSelected.events.map((ev) => renderEventCard(ev, { hideDayLabel: true }))));
     const renderYoyCompare = () => {
       const deltaCls = (d) => d > 0 ? "yoy-delta-pos" : d < 0 ? "yoy-delta-neg" : "";
       const amtCell = (v) => v === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(v, true);
@@ -609,7 +676,7 @@
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      (budgetSub === "monthly" || budgetSub === "daily") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+      (budgetSub === "monthly" || budgetSub === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
         "span",
         {
           key: s.occId,
@@ -846,80 +913,17 @@
           ]
         }
       )),
-      budgetSub === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+      budgetSub === "calendar" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onAdd: openAddEntry,
           onCSV: () => {
-            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
-            downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
+            const rows = calendar.flat().filter(Boolean).flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
+            downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Calendar.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
-          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
+          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Calendar)`)
         }
-      )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "daily-today-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
-        background: di % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-col" }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-number" }, dayObj.day), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "caption-10-nomargin" }, "\u2713")), /* @__PURE__ */ React.createElement("div", { className: "daily-events-pad" }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "daily-row-wrap" },
-        // Daily was the only money view with no way to see or set payment
-        // status — it inferred "done" from the date instead. Same control,
-        // wording and colours as the Monthly cards and the Upcoming list.
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            onClick: (e) => {
-              e.stopPropagation();
-              haptic();
-              toggleComplete(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": !!completed[ev.id],
-            "aria-label": (completed[ev.id] ? "Mark unpaid: " : "Mark paid: ") + ev.desc,
-            title: completed[ev.id] ? "Paid \u2014 click to mark unpaid" : "Mark paid",
-            className: "cf-checkbtn paid-btn daily-paid-btn",
-            style: {
-              border: completed[ev.id] ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
-              background: completed[ev.id] ? "var(--greenLt)" : "transparent"
-            }
-          },
-          completed[ev.id] ? "\u2713" : ""
-        ),
-        /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          type: "button",
-          onClick: () => openOccurrenceEdit(ev),
-          onContextMenu: (e) => {
-            e.preventDefault();
-            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          className: "daily-row-btn"
-        },
-        /* @__PURE__ */ React.createElement("span", { className: "daily-row-desc", style: {
-          color: completed[ev.id] ? "var(--textLt)" : "var(--text)",
-          textDecoration: completed[ev.id] ? "line-through" : "none"
-        } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
-        /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
-        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
-          color: completed[ev.id] ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
-          textDecoration: completed[ev.id] ? "line-through" : "none"
-        } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: (e) => {
-            e.stopPropagation();
-            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          "aria-label": ev.desc + " actions",
-          title: ev.desc + " actions",
-          className: "cf-checkbtn row-menu-btn"
-        },
-        "⋮"
-      )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
-        background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
-      } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "daily-balance-caption" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 daily-balance-amt", style: {
-        color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
-      } }, fmt(dayObj.balance))))))), days.length === 0 && /* @__PURE__ */ React.createElement("p", { className: "no-activity-msg" }, "No activity this month."))),
+      )), renderCalendar()),
       bvaCtxMenu && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {

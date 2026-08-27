@@ -3,13 +3,13 @@
   } }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
-    const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useState(20);
-    const [mobileLoaded, setMobileLoaded] = useState(1);
+    // How many pages' worth have been revealed so far. Not a page *number*:
+    // the forecast loads cumulatively at every width (see pgInfo).
+    const [loaded, setLoaded] = useState(1);
     const changePageSize = (v) => {
       setPgSize(v);
-      setPgPage(0);
-      setMobileLoaded(1);
+      setLoaded(1);
     };
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
@@ -61,10 +61,83 @@
       return out;
     }, [yearFlows, yearConfigs]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
-    const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
+    // The balance day by day across the horizon — the one thing the view whose
+    // job is "where is this heading" had no way to show. It was a paginated
+    // table: three pages for a 90-day horizon, with the low point unmarked even
+    // though the Dashboard knows it well enough to put it in a tile.
+    //
+    // Every occurrence already carries the running balance after it, so a day
+    // with something on it takes the balance of its last event and a quiet day
+    // holds the one before — which is what makes this a curve rather than a
+    // scatter of the days something happened.
+    const curve = useMemo(() => {
+      const dayStart = (d) => {
+        const x = new Date(d);
+        x.setHours(0, 0, 0, 0);
+        return x;
+      };
+      const t0 = dayStart(today);
+      // What the horizon opens on: the balance standing before its first
+      // event, or — with nothing scheduled in it at all — the figure the last
+      // event before today left behind.
+      let bal = 0;
+      if (futureEvents.length) {
+        bal = futureEvents[0].balance - signedAmount(futureEvents[0]);
+      } else {
+        let latest = null;
+        yearConfigs.forEach((yc) => (yearFlows[yc.year] || []).forEach((ev) => {
+          if (ev.date <= today && (!latest || ev.date > latest.date)) latest = ev;
+        }));
+        bal = latest ? latest.balance : openBalByYear[today.getFullYear()] || 0;
+      }
+      // Last event of a day wins: futureEvents is date-sorted, so the final
+      // write for a key is that day's closing balance.
+      const closeOf = /* @__PURE__ */ new Map();
+      futureEvents.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
+      const out = [];
+      for (let i = 0; i <= horizon; i++) {
+        const d = new Date(t0);
+        d.setDate(d.getDate() + i);
+        const k = d.getTime();
+        if (closeOf.has(k)) bal = closeOf.get(k);
+        out.push({
+          // `day` names the row — it is what the tooltip shows. `tick` is what
+          // the axis prints, which is not the same thing: ninety date labels
+          // will not fit, and thinning them by every-Nth would land on
+          // arbitrary days. Name the 1st of each month and the day the horizon
+          // opens; everything else prints nothing.
+          day: fmtDate(d, today.getFullYear()),
+          tick: i === 0 || d.getDate() === 1 ? fmtDate(d, today.getFullYear()) : "",
+          date: d,
+          balance: bal
+        });
+      }
+      return out;
+    }, [futureEvents, horizon, today, yearFlows, yearConfigs, openBalByYear]);
+    // Where the curve bottoms out, and how far down. The chart marks it; until
+    // now the number appeared only in the danger banner, without a date.
+    const lowPoint = useMemo(() => {
+      if (!curve.length) return null;
+      let best = 0;
+      curve.forEach((p, i) => {
+        if (p.balance < curve[best].balance) best = i;
+      });
+      return { index: best, balance: curve[best].balance, date: curve[best].date };
+    }, [curve]);
+    // The banner's figure and the chart's marker are the same number, read off
+    // the same curve. They used to be computed two different ways on one
+    // screen — the banner over event balances, which is the same answer only
+    // as long as nothing about how the horizon opens ever differs.
+    const lowestBalance = lowPoint ? lowPoint.balance : null;
     const searchedEvents = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2));
-    const pgInfo = isMobile ? cumulativeRows(searchedEvents, mobileLoaded, pgSize) : paginateRows(searchedEvents, pgPage, pgSize);
-    useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
+    // Cumulative at every width, where the desktop table used to paginate. A
+    // forecast is a rolling window — "the next 90 days" cut into page 1, page 2
+    // and page 3 stops rolling the moment you have to press Next, and the
+    // stretch that matters (the run-up to the low point) is as likely to
+    // straddle a page break as not. Scrolling keeps the run continuous, and the
+    // chart above answers "where is this heading" without any scrolling at all.
+    const pgInfo = cumulativeRows(searchedEvents, loaded, pgSize);
+    useInfiniteScroll(pgInfo.hasMore, () => setLoaded((l) => l + 1));
     const pagedEvents = pgInfo.rows;
     // Mobile presentation matches Budget → Monthly and Entries: the same card,
     // the same paid checkbox, the same category chip. Forecast used to be the
@@ -122,8 +195,27 @@
           color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
         } }, fmt(ev.balance)))))
       );
-    }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
+      AreaChart,
+      {
+        data: curve,
+        // Room above the plot for the low-point marker's caption, which is
+        // drawn just outside the top of the plotting area.
+        margin: { top: 22, right: 8, bottom: 0, left: 4 },
+        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}. The table below lists every event behind it.`
+      },
+      /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
+      /* @__PURE__ */ React.createElement(XAxis, { dataKey: "day", interval: 0, tickFormatter: (v, i) => curve[i] ? curve[i].tick : "", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
+      /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }),
+      /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
+      /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }),
+      // The threshold the danger banner is counting against, drawn where the
+      // curve can be read against it rather than described underneath.
+      /* @__PURE__ */ React.createElement(ReferenceLine, { y: alertThreshold, stroke: "var(--amberInk)", strokeDasharray: "5 4", label: `Alert ${fmt(alertThreshold)}` }),
+      lowPoint && lowPoint.index > 0 && /* @__PURE__ */ React.createElement(ReferenceLine, { x: lowPoint.index, stroke: lowPoint.balance < 0 ? "var(--red)" : "var(--amberInk)", strokeDasharray: "2 3", label: `Low ${fmt(lowPoint.balance)} \u00b7 ${fmtDate(lowPoint.date, null)}` }),
+      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false })
+    )))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onAdd: addEntry ? () => setShowAddEntry(true) : null,
@@ -170,7 +262,7 @@
         const color = pct <= 120 ? "var(--amberInk)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, pct, "%"));
       })());
-    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: false }))));
+    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);

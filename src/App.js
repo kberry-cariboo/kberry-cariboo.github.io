@@ -272,6 +272,22 @@
         // default view is correct.
       }
     }, [tab, budgetSub, planSub]);
+    // Name the view in the one place the browser reads: the tab strip, the
+    // history entry and the bookmark. Every one of them used to say
+    // "CashFlow Budget", which made a back button through six views
+    // indistinguishable from a back button through one.
+    //
+    // printView() swaps the title and puts it back, so this deliberately
+    // does not reset it on unmount — it would race the restore.
+    const docTitle = viewDocTitle(tab, budgetSub, planSub);
+    useEffect(() => {
+      try {
+        document.title = docTitle;
+      } catch (e) {
+        // A document that won't take a title is not worth failing a render
+        // over; the view still renders under whatever title it has.
+      }
+    }, [docTitle]);
     useEffect(() => {
       const onPopState = () => {
         const parsed = parseTabHash();
@@ -1350,25 +1366,25 @@
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
-    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { className: "backup-nudge" }, /* @__PURE__ */ React.createElement("div", { className: "backup-nudge-title" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15 }), "Time for a backup"), /* @__PURE__ */ React.createElement("div", { className: "backup-nudge-msg" }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement(
+    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
+      opacity: Math.max(pullProgress, pullActive ? 1 : 0)
+    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
+      animation: pullActive ? "spin 0.8s linear infinite" : "none"
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, budgetSub, planSub)), showBackupNudge && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page backup-nudge", "data-noprint": true }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "backup-nudge-msg" }, /* @__PURE__ */ React.createElement("strong", null, "Time for a backup."), " It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(false),
-        className: "cf-btn cf-btn--secondary cf-btn--md"
+        className: "cf-btn cf-btn--secondary cf-btn--tiny"
       },
       "Remind me later"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(true),
-        className: "cf-btn cf-btn--primary cf-btn--md fw-700"
+        className: "cf-btn cf-btn--primary cf-btn--tiny fw-700"
       },
       "\u2193 Export backup"
-    ))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
-      opacity: Math.max(pullProgress, pullActive ? 1 : 0)
-    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
-      animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (showBackupNudge ? " content-area--nudged" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
+    ))), showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
       borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
@@ -1401,7 +1417,7 @@
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
