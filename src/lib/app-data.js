@@ -354,8 +354,42 @@
     actions: ""
   };
   const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts", "help"];
-  const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
+  // "daily" is still accepted so an old bookmark or a remembered sub-tab
+  // resolves rather than silently falling back to Monthly; BudgetView forwards
+  // it to calendar, the view that replaced it.
+  const ROUTE_BUDGET_SUBS = ["monthly", "calendar", "daily", "bva", "forecast", "entries"];
   const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt"];
+  // The name of a view, in one place. Two things read it: the visually-hidden
+  // <h1> at the top of <main>, so a screen-reader user navigating by heading
+  // can tell which of the twelve destinations they landed on; and
+  // document.title, so browser history, bookmarks and the tab strip say
+  // something other than "CashFlow Budget" twelve times over.
+  //
+  // The strings are the ones already on the nav buttons and sub-tab pills —
+  // a heading that renamed the view it names would be worse than none.
+  const APP_NAME = "CashFlow Budget";
+  const VIEW_NAMES = {
+    dashboard: "Dashboard",
+    ai: "AI Insights",
+    settings: "Settings",
+    alerts: "Alerts",
+    help: "Help",
+    "budget/monthly": "Budget \u00b7 Monthly",
+    "budget/calendar": "Budget \u00b7 Calendar",
+    "budget/bva": "Budget \u00b7 Budget vs Actual",
+    "budget/forecast": "Budget \u00b7 Forecast",
+    "budget/entries": "Budget \u00b7 Entries",
+    "plan/debt": "Plan \u00b7 Debt Payoff",
+    "plan/strategy": "Plan \u00b7 Payoff Strategy",
+    "plan/goals": "Plan \u00b7 Savings Goals"
+  };
+  function viewName(tab, budgetSub, planSub) {
+    const sub = tab === "budget" ? budgetSub : tab === "plan" ? planSub : null;
+    return VIEW_NAMES[sub ? `${tab}/${sub}` : tab] || VIEW_NAMES.dashboard;
+  }
+  function viewDocTitle(tab, budgetSub, planSub) {
+    return `${viewName(tab, budgetSub, planSub)} \u2014 ${APP_NAME}`;
+  }
   function parseTabHash() {
     let raw = "";
     try {

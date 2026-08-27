@@ -79,7 +79,7 @@
   // was reading two conventions eight pixels apart.
   //
   // One format — the locale's medium date — with the year included where it
-  // carries information. The ledgers (Monthly, Daily, Forecast) are scoped to
+  // carries information. The ledgers (Monthly, Calendar, Forecast) are scoped to
   // a year, so they pass that year as the context and a row inside it reads
   // "Aug 28": repeating "2026" down every row of a 2026 budget is noise, and
   // omitting it on the one row that *isn't* 2026 would be a bug. The Entries
@@ -143,8 +143,8 @@
   const moneySymbol = () => _money.symbol;
   // One amount convention app-wide, and this is where it is written down.
   //
-  //   A column that names the direction — the In and Out columns of Monthly,
-  //   Daily and Forecast — shows an *unsigned* figure. The heading is the
+  //   A column that names the direction — the In and Out columns of Monthly
+  //   and Forecast — shows an *unsigned* figure. The heading is the
   //   direction; a minus sign under a column headed "Out" says the same thing
   //   twice, and a positive one under it would be a contradiction.
   //

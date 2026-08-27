@@ -31,7 +31,7 @@
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
     const lastPt = pts[pts.length - 1];
-    return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
+    return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg", role: "presentation", "aria-hidden": "true", focusable: "false" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
   // Shared row-pagination for grids that used to be internally-scrolling
   // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own

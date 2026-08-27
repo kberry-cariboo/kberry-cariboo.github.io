@@ -157,6 +157,15 @@
           background:var(--primary);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
           font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-decoration:none;}
         .skip-link:focus{left:0;}
+        /* Present to assistive technology, absent from the layout. Used for the
+           per-view <h1>: the view already names itself in the nav and the
+           sub-tab strip, so a second visible title would be a duplicate — but
+           without a heading a screen-reader user has nothing to navigate to and
+           no confirmation of which view they landed on. Clip-based rather than
+           display:none or width:0, both of which take the text out of the
+           accessibility tree along with the layout. */
+        .cf-visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+          overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;}
         /* Typography */
         .cf-text-ui{font-family:Inter,sans-serif;}
         .cf-text-mono{font-family:'IBM Plex Mono',monospace;}
@@ -184,6 +193,25 @@
         .cf-gap-10{gap:10px;}
         .cf-gap-12{gap:12px;}
         .cf-gap-14{gap:14px;}
+        /* A list of cards, one per row on a normal screen and side by side once
+           there is room for two. A savings goal or a debt holds a name, a bar
+           and a couple of figures; stacked in a single column it ran the full
+           1096px of a 1440px page and left 400-500px of empty page below the
+           last one. 480px is about where one of these cards stops looking
+           stretched, so two columns appear at 1200px and a third at ~1660px —
+           auto-fill rather than auto-fit so a lone card keeps its column width
+           instead of springing back to full bleed.
+
+           Must stay below the .cf-gap-* utilities: they set the `gap`
+           shorthand, which would otherwise reset the wider column gap. Side by
+           side, the vertical rhythm that separates one card from the next stops
+           doing the same job horizontally, so the columns get more air than the
+           rows. */
+        .cf-cardgrid{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;}
+        @media(min-width:1200px){
+          .cf-cardgrid{grid-template-columns:repeat(auto-fill,minmax(480px,1fr));
+            column-gap:36px;}
+        }
         .cf-wrap{flex-wrap:wrap;}
         .flex-1{flex:1;}
         .min-w-0{min-width:0;}
@@ -313,30 +341,26 @@
         .tab-alert-dot{margin-left:6px;color:#fff;border-radius:10px;padding:1px 6px;
           font-size:10px;font-weight:700;}
         .tab-search-dot{margin-left:5px;display:inline-flex;}
-        .backup-nudge{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;z-index:1450;
-          background:var(--bgCard);border:1px solid var(--amber);border-radius:14px;padding:16px 20px;
-          max-width:340px;width:calc(100vw - 32px);box-shadow:var(--shadowLg);}
-        .backup-nudge-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;
-          display:flex;align-items:center;gap:6px;}
-        .backup-nudge-msg{font-size:13px;color:var(--textMid);margin-bottom:14px;line-height:1.5;}
+        /* An inline strip at the top of the view, not a card floating over it.
+           As a fixed bottom-right panel this covered the numbers it exists to
+           protect — the TOTAL row of Budget vs Actual, three balance figures on
+           the Forecast, the API key field in Settings at 320px — and the fix
+           for that was ~240px of reserved bottom padding on every page while it
+           showed. Docked below the header it obscures nothing, so both the
+           overlay and the padding hack go away. Shaped like the low-balance
+           banner it sits above: same flex strip, same radius, same tinted
+           severity border. */
+        .backup-nudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;
+          padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--text);
+          background:var(--amberLt);border:1px solid var(--amberInk);
+          border-left:5px solid var(--amberInk);box-shadow:var(--shadowSm);}
+        .backup-nudge-msg{flex:1;min-width:200px;line-height:1.5;}
         .ptr-indicator{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:3000;
           background:var(--primary);color:#fff;border-radius:20px;padding:6px 16px 6px 12px;
           font-size:12px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s;
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:14px;}
         .content-area{padding:28px var(--container-gutter);margin-top:0;outline:none;}
-        /* The backup nudge is position:fixed, so it floats over whatever is
-           at the bottom of the page — on a short page there's nothing to
-           scroll and the covered controls are simply unreachable (at 320px it
-           lands squarely on the API key input in Settings). Reserve enough
-           room underneath for the content to clear it: the nudge sits 80px up
-           and runs ~141px tall here, so ~240px of padding guarantees the last
-           row can scroll out from under it. Only applied while it's shown.
-
-           Doubled-up class + !important because several breakpoints set the
-           `padding` shorthand on .content-area with !important, which would
-           otherwise reset the bottom value back. */
-        .content-area.content-area--nudged{padding-bottom:240px!important;}
         /* The pale tint alone is invisible against the page: --redLt (#FFF0EE)
            on --bg (#F7F4EF) measures 1.01:1, and the old 33%-alpha border only
            reached 1.61:1 — under the 3:1 that a meaningful UI boundary needs.
@@ -386,6 +410,8 @@
         .csvimport-dup-reason{font-size:11px;color:var(--textLt);margin-top:2px;}
         /* Legend for the Forecast's "vs Target" column. The rule it states
            used to live only in a title tooltip, which never fires on touch. */
+        .forecast-chart-label{font-size:11px;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;color:var(--textMid);margin-bottom:10px;}
         .forecast-legend{font-size:11px;line-height:1.6;color:var(--textLt);
           padding:10px 16px 0;border-top:1px solid var(--border);margin-top:2px;}
         .bottomnav-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -553,9 +579,6 @@
         .budget-subtabs-row::-webkit-scrollbar{display:none;}
         .budget-subtab-btn{font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;
           border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;}
-        /* Short labels ride along in the markup and only surface on mobile,
-           where the full ones don't fit — see the ≤768px block. */
-        .bp-label-short{display:none;}
         /* ── forms.js ── */
         .required-mark{color:var(--red);margin-left:2px;}
         .entry-form-row2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
@@ -955,15 +978,7 @@
         .csvimport-drop-zone:hover{border-color:var(--primary);color:var(--text);}
         .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
         .csvimport-cat-select{min-width:120px;font-size:12px;padding:4px 6px;height:auto;}
-        .daily-today-wrap{display:flex;align-items:center;gap:8px;margin:4px 16px;}
-        .daily-day-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
-        .daily-day-number{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--primary);line-height:1;}
         .caption-10-nomargin{font-size:10px;color:var(--textLt);}
-        .daily-events-pad{padding:10px 16px;}
-        .daily-row-desc{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .daily-row-amt{font-weight:700;min-width:90px;text-align:right;}
-        .daily-balance-caption{font-size:11px;color:var(--textLt);text-align:right;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.08em;}
-        .daily-balance-amt{font-weight:700;text-align:right;}
         .no-activity-msg{text-align:center;color:var(--textLt);padding:32px 24px;}
         .rollover-label{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);cursor:pointer;}
         .btn-pad-24{padding:9px 24px;}
@@ -990,10 +1005,51 @@
         .budget-col-cat{padding:8px 14px;}
         .budget-card-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
         .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-        .daily-card{display:grid;grid-template-columns:60px 1fr 180px;border-bottom:1px solid var(--border);align-items:stretch;}
-        .daily-row-wrap{display:flex;align-items:center;gap:2px;}
-        .daily-row-btn{display:flex;align-items:center;gap:10px;margin-bottom:4px;cursor:pointer;border-radius:6px;padding:4px 6px;flex:1;min-width:0;border:none;background:transparent;font:inherit;text-align:left;}
-        .daily-balance{display:flex;align-items:center;justify-content:flex-end;padding:12px 20px;border-left:1px solid var(--border);}
+        /* ── Calendar ────────────────────────────────────────────────────────
+           The month as a month. Seven equal columns whatever the width, so the
+           grid is the same shape on a phone as on a desktop and a week always
+           reads as a row; what changes between them is how much each cell can
+           afford to say. Wide: the day's events line by line, with the balance
+           carried to the end of that day. Narrow: the day number, a dot per
+           event and the same tint, with the day's detail opening below on tap.
+           A fixed min-height keeps every week the same height, so the grid
+           doesn't reflow into a ragged stack as the month changes. */
+        .cal-grid{display:flex;flex-direction:column;}
+        .cal-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
+        .cal-row--head{border-bottom:1px solid var(--border);}
+        .cal-dow{padding:8px 6px;font-size:10px;font-weight:700;letter-spacing:0.08em;
+          text-transform:uppercase;color:var(--textLt);text-align:center;}
+        .cal-dow-short{display:none;}
+        .cal-cell{position:relative;display:flex;flex-direction:column;gap:3px;
+          min-height:104px;padding:6px 7px;text-align:left;font:inherit;color:var(--text);
+          background:var(--bgCard);border:none;border-right:1px solid var(--border);
+          border-bottom:1px solid var(--border);cursor:pointer;overflow:hidden;}
+        .cal-row .cal-cell:last-child{border-right:none;}
+        .cal-cell--blank{background:var(--stripe);cursor:default;}
+        .cal-cell--quiet{cursor:default;}
+        /* The two states the whole view exists to make visible. Tint plus a
+           left rule, not tint alone: --amberLt against --bg is close to
+           invisible, the same reason the low-balance banner carries a border. */
+        .cal-cell--warn{background:var(--amberLt);box-shadow:inset 3px 0 0 0 var(--amberInk);}
+        .cal-cell--neg{background:var(--redLt);box-shadow:inset 3px 0 0 0 var(--red);}
+        .cal-cell--today .cal-daynum{background:var(--primary);color:#fff;}
+        .cal-cell--open{outline:2px solid var(--primary);outline-offset:-2px;}
+        .cal-cell:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .cal-daynum{display:inline-flex;align-items:center;justify-content:center;
+          min-width:21px;height:21px;padding:0 5px;border-radius:11px;
+          font-size:12px;font-weight:700;line-height:1;align-self:flex-start;}
+        .cal-bal{font-size:10.5px;color:var(--textMid);position:absolute;top:8px;right:7px;}
+        .cal-events{display:flex;flex-direction:column;gap:2px;min-width:0;}
+        .cal-ev{display:flex;align-items:center;gap:4px;font-size:11px;min-width:0;}
+        .cal-ev--done{opacity:0.55;text-decoration:line-through;}
+        .cal-ev-dot{width:6px;height:6px;border-radius:3px;flex-shrink:0;}
+        .cal-ev-desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .cal-ev-amt{flex-shrink:0;font-size:10.5px;color:var(--textMid);}
+        .cal-ev-more{font-size:10px;color:var(--textLt);padding-left:10px;}
+        .cal-dots{display:none;}
+        .cal-day-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;
+          padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;}
+        .cal-day-bal{margin-left:10px;font-weight:400;font-size:12px;color:var(--textMid);}
         .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;flex-wrap:nowrap;}
         .bva-amounts{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;flex:1;justify-content:flex-end;min-width:0;}
         .bva-target{color:var(--textMid);white-space:nowrap;flex-shrink:0;}
@@ -1182,7 +1238,13 @@
         .wm-arrow{font-size:13px;width:34px;height:34px;line-height:32px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--textMid);padding:0;}
         .customize-done-row{display:flex;justify-content:flex-end;margin-top:18px;}
         .glance-grid{display:grid;gap:8px;margin-bottom:14px;}
-        .chart-grid{display:grid;gap:16px;margin-bottom:16px;max-width:100%;overflow:hidden;}
+        /* align-items:start, not the grid default of stretch: a pair of cards
+           in one row used to be forced to a common height, so Income Sources
+           beside a dense Budget vs Actual rendered as a short chart followed by
+           a large empty area inside a card stretched to match its neighbour.
+           Each card is now as tall as what it holds. */
+        .chart-grid{display:grid;gap:16px;margin-bottom:16px;max-width:100%;overflow:hidden;
+          align-items:start;}
         /* Inline error/info banner (auth screens, forms) */
         .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
           padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
@@ -1298,8 +1360,6 @@
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
           .alert-row{transition:opacity 0.15s;}
           .alert-row:hover{opacity:0.8;}
-          .daily-row-btn{transition:background 0.1s;}
-          .daily-row-btn:hover{background:rgba(47,84,150,0.06);}
           .ctx-menu-item{font-size:13px;padding:9px 16px;border:none;width:100%;cursor:pointer;
             text-align:left;background:transparent;display:flex;align-items:center;gap:10px;
             transition:background 0.1s;}
@@ -1680,26 +1740,25 @@
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:6px!important;}
           /* Icon-only sub-tabs were unreadable: a scale for "Budget vs
-             Actual" and a mountain for "Payoff Strategy" aren't learnable,
-             and `title` never fires on touch. With Daily hidden there are
-             four tabs (three on Plan), so sharing the row equally leaves
-             ~90px each — enough for a short label beside the icon, and no
-             horizontal scrolling to discover. */
-          .budget-subtab-pill .bp-label-short{display:none!important;}
-          .budget-subtab-pill .bp-label-full{display:block!important;
-            white-space:normal;overflow-wrap:break-word;hyphens:none;
-            line-height:1.15;min-width:0;text-align:center;}
+             Actual" and a mountain for "Payoff Strategy" aren't learnable, and
+             `title` never fires on touch — so the label stays and the icon is
+             what goes.
+
+             The pills used to share the row equally (flex:1 1 0) so the strip
+             never scrolled. With five of them — Calendar shows on a phone too —
+             that leaves ~72px each, and "Budget vs Actual" wrapped onto two
+             lines, making the whole strip a row taller and ragged. The strip
+             already scrolls and BudgetSubTabs already centres the active pill
+             in it, so let the pills keep their natural width instead: the fifth
+             one sits half-visible at the edge, which is what tells you the row
+             scrolls. Shortening the label instead was the other option, and it
+             is the wrong one — a destination called "Budget vs Actual" in one
+             place and "vs Actual" in another is two names for one view. */
           .budget-subtab-pill>svg{display:none!important;}
           .budget-subtabs-row{gap:6px!important;}
-          .budget-subtab-pill{flex:1 1 0!important;min-width:0!important;min-height:44px!important;
-            padding:4px 6px!important;display:inline-flex!important;align-items:center!important;
+          .budget-subtab-pill{min-height:44px!important;
+            padding:4px 12px!important;display:inline-flex!important;align-items:center!important;
             justify-content:center!important;gap:0!important;font-size:11px!important;}
-          /* Daily is a per-day breakdown of what Monthly already shows — on
-             mobile's cramped subtab row it's redundant. BudgetView redirects
-             `daily` to `monthly` on a mobile viewport so a persisted choice
-             or a #/budget/daily deep link can't strand the user on a view
-             whose tab isn't rendered. */
-          .budget-subtab-pill.bp-daily{display:none!important;}
           .budget-subtabs{margin-left:-4px!important;margin-right:-4px!important;padding-left:4px!important;padding-right:4px!important;}
           .year-openbal{flex-basis:100%!important;order:5;}
           .year-openbal input{flex:1 1 auto!important;width:auto!important;}
@@ -1708,25 +1767,32 @@
           .month-picker button{padding:9px 10px!important;font-size:11px!important;}
           .month-nav-arrow{display:none!important;}
           .month-today-pill{display:none!important;}
-          /* Monthly, Daily, Forecast and Entries all swap to card renderers at
-             this breakpoint (useIsMobile shares the 768px threshold), so the
+          /* Monthly, Forecast and Entries all swap to card renderers at this
+             breakpoint (useIsMobile shares the 768px threshold), so the
              table-tuning rules that used to live here — .budget-col-cat,
-             .forecast-*, .daily-card, .entries-table padding — never matched
-             anything. They're gone rather than left to rot; the desktop rules
-             above still apply where the tables actually render. */
+             .forecast-*, .entries-table padding — never matched anything.
+             They're gone rather than left to rot; the desktop rules above
+             still apply where the tables actually render. */
+          /* A 393px phone gives each calendar cell ~54px. That is room for the
+             day number, the tint and a dot per event — not for descriptions or
+             a balance, both of which would truncate to noise. The day's detail
+             opens below the grid on tap instead, which is also what keeps the
+             cell a real touch target. */
+          .cal-cell{min-height:60px;padding:5px 3px;align-items:center;gap:4px;}
+          .cal-daynum{align-self:center;font-size:12px;}
+          .cal-bal{display:none;}
+          .cal-events{display:none;}
+          .cal-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:100%;}
+          .cal-dot{width:5px;height:5px;border-radius:3px;}
+          .cal-dow{padding:6px 2px;}
+          .cal-dow-full{display:none;}
+          .cal-dow-short{display:inline;}
           /* Monthly amounts: 3 columns on mobile instead of 12 */
           .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
-          /* Full width below 768px. It used to sit 134px up to clear the
-             quick-add FAB; with the FAB gone the only fixed chrome beneath it
-             is the bottom nav (~49px + safe area), so 72px — the same
-             clearance .app-scroll and the bulk bar use — puts it back within
-             thumb reach instead of floating a third of the way up the screen. */
-          .backup-nudge{left:12px!important;right:12px!important;
-            width:auto!important;max-width:none!important;
-            bottom:calc(72px + env(safe-area-inset-bottom))!important;}
-          /* Full-width here and the message wraps to more lines, so it grows
-             to ~176px at 320px — 72px offset + 176px + gap. */
-          .content-area.content-area--nudged{padding-bottom:272px!important;}
+          /* On a phone the message wraps to several lines and the two buttons
+             would be squeezed onto the end of the last one; give them their own
+             full-width row instead. */
+          .backup-nudge-msg{min-width:100%;}
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
@@ -2116,6 +2182,16 @@ react-dom/cjs/react-dom-client.production.js:
   function ReferenceLine(p){ return null; }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+  // A chart is a picture, and assistive technology needs to be told which one.
+  // Given a summary it becomes a labelled image; without one it is decoration
+  // hiding a tree of <path>/<text> nodes that a screen reader would otherwise
+  // read out one meaningless number at a time.
+  function a11y(ariaLabel) {
+    return ariaLabel
+      ? { role: 'img', 'aria-label': ariaLabel }
+      : { role: 'presentation', 'aria-hidden': 'true', focusable: 'false' };
+  }
+
   function ys(val, yLo, yHi, innerH) {
     if (yHi === yLo) return innerH / 2;
     return innerH - ((val - yLo) / (yHi - yLo)) * innerH;
@@ -2216,7 +2292,7 @@ react-dom/cjs/react-dom-client.production.js:
   // ── CartesianChart core ───────────────────────────────────────────────────
   // Uses viewBox so the SVG is always 100% wide regardless of pixel size.
   function CartesianChart({ data=[], children, width=300, height=250,
-                            margin: mg={}, barCategoryGap='20%' }) {
+                            margin: mg={}, barCategoryGap='20%', ariaLabel }) {
     const arr = Children.toArray(children);
     const xDesc     = arr.find(c=>c.type===XAxis);
     const yDesc     = arr.find(c=>c.type===YAxis);
@@ -2268,9 +2344,12 @@ react-dom/cjs/react-dom-client.production.js:
     const yv   = v => ys(v, yLo, yHi, iH);
     const y0   = yv(0);
 
-    // X label density
+    // X label density. `interval={0}` hands the choice back to the caller:
+    // every row is offered, and the ones it doesn't want labelled carry an
+    // empty x value. A 90-day series wants its month boundaries named, not
+    // every third day, and every-Nth can't express that.
     const maxXL  = Math.max(1, Math.floor(iW / 32));
-    const xStep  = Math.ceil(data.length / maxXL);
+    const xStep  = xDesc?.props?.interval === 0 ? 1 : Math.ceil(data.length / maxXL);
 
     // ── Bars ────────────────────────────────────────────────────────────────
     const ungrouped = barDescs.filter(b=>!b.props.stackId);
@@ -2335,6 +2414,10 @@ react-dom/cjs/react-dom-client.production.js:
       const areaPath  = linePath
         + ' L' + pts[pts.length-1][0].toFixed(1) + ',' + y0.toFixed(1)
         + ' L' + pts[0][0].toFixed(1) + ',' + y0.toFixed(1) + ' Z';
+      // A dense series (a daily forecast is ~90 points) reads better as a bare
+      // curve; `dot={false}` turns the per-point circles off. The hover columns
+      // below still cover the tooltip, so nothing is lost with them.
+      const showDots = dot !== false;
       const dr = (typeof dot === 'object' && dot?.r) ? dot.r : 3;
       const last = pts[pts.length - 1];
       return h(React.Fragment, { key: dataKey },
@@ -2348,7 +2431,7 @@ react-dom/cjs/react-dom-client.production.js:
           fill: stroke, stroke: cssSurface, strokeWidth: 3,
           style: { paintOrder: 'stroke', pointerEvents: 'none' }
         }, name || dataKey),
-        pts.map(([cx,cy], i) => h('circle', {
+        showDots && pts.map(([cx,cy], i) => h('circle', {
           key: i, cx, cy, r: dr, fill: stroke, stroke:'none',
           onMouseMove: e => {
             const svg = e.currentTarget.ownerSVGElement.getBoundingClientRect();
@@ -2421,20 +2504,47 @@ react-dom/cjs/react-dom-client.production.js:
         // Use viewBox so the SVG scales with CSS — eliminates overflow
         viewBox: `0 0 ${width} ${height}`,
         width: '100%', height,
-        style:{ display:'block', overflow:'visible' }
+        style:{ display:'block', overflow:'visible' },
+        ...a11y(ariaLabel)
       },
+        ariaLabel && h('title', null, ariaLabel),
         h('g', { transform: `translate(${M.left},${M.top})` },
           // Grid
           gridDesc && ytValues.map((t, i) =>
             h('line', { key:i, x1:0, y1:yv(t), x2:iW, y2:yv(t),
               stroke:cssGrid, strokeDasharray:gridDesc.props.strokeDasharray||'3 3', strokeWidth:1 })
           ),
-          // Reference lines
-          refLines.map((rl, i) =>
-            h('line', { key:i, x1:0, y1:yv(rl.props.y||0), x2:iW, y2:yv(rl.props.y||0),
-              stroke:rl.props.stroke||'#999',
-              strokeDasharray:rl.props.strokeDasharray||'none', strokeWidth:1 })
-          ),
+          // Reference lines. `y` draws a horizontal rule at a value; `x` draws
+          // a vertical one at a data index or at the row whose x value matches
+          // — that is how the forecast marks its low point. `label` writes a
+          // caption at the line, haloed in the surface colour so it stays
+          // readable where it crosses the grid or the series itself.
+          refLines.map((rl, i) => {
+            const { y, x, stroke='#999', strokeDasharray='none', label } = rl.props;
+            const vertical = x !== undefined && x !== null;
+            const xi = vertical
+              ? (typeof x === 'number' ? x : data.findIndex(d => d[xKey] === x))
+              : -1;
+            if (vertical && xi < 0) return null;
+            const lx = vertical ? xMid(xi) : 0;
+            const ly = vertical ? 0 : yv(y||0);
+            const cap = label && (typeof label === 'object' ? label.value : label);
+            return h(React.Fragment, { key:i },
+              h('line', vertical
+                ? { x1:lx, y1:0, x2:lx, y2:iH, stroke, strokeDasharray, strokeWidth:1 }
+                : { x1:0, y1:ly, x2:iW, y2:ly, stroke, strokeDasharray, strokeWidth:1 }),
+              cap && h('text', {
+                x: vertical ? lx : iW,
+                y: vertical ? -3 : ly - 4,
+                // A caption on a line near the right edge would run off the
+                // plot, so it flips to the inside once it gets close.
+                textAnchor: vertical ? (lx > iW - 60 ? 'end' : lx < 60 ? 'start' : 'middle') : 'end',
+                fontSize: 10, fontWeight: 600, fontFamily: 'Inter,sans-serif',
+                fill: stroke, stroke: cssSurface, strokeWidth: 3,
+                style: { paintOrder: 'stroke', pointerEvents: 'none' }
+              }, cap)
+            );
+          }),
           // Areas (behind bars/lines)
           areaDescs.map(d => renderLine(d, true)),
           // Bars
@@ -2469,11 +2579,17 @@ react-dom/cjs/react-dom-client.production.js:
           data.map((d, i) => {
             if (i % xStep !== 0) return null;
             const t = xDesc?.props?.tick || {};
+            // tickFormatter separates what the axis prints from what the row is
+            // called: the tooltip still says "Sep 3, 2026" while the axis prints
+            // a label only where one earns the space.
+            const xFmt = xDesc?.props?.tickFormatter;
+            const text = xFmt ? xFmt(d[xKey], i) : d[xKey];
+            if (text === '' || text == null) return null;
             return h('text', { key:i, x:xMid(i), y:iH+18, textAnchor:'middle',
               fontSize: t.fontSize || 11,
               fontFamily: t.fontFamily || 'Inter,sans-serif',
               fill: t.fill || cssTick
-            }, d[xKey]);
+            }, text);
           }),
           // Y axis labels — right-aligned in the reserved left gutter
           ytValues.map((t, i) =>
@@ -2513,7 +2629,7 @@ react-dom/cjs/react-dom-client.production.js:
   function AreaChart(p) { return h(CartesianChart, p); }
 
   // ── PieChart ──────────────────────────────────────────────────────────────
-  function PieChart({ width=300, height=250, children }) {
+  function PieChart({ width=300, height=250, children, ariaLabel }) {
     const [tip, setTip] = useState(null);
     // SVG presentation attributes can't resolve var(); read computed theme colors
     const pcs = typeof document!=='undefined' ? getComputedStyle(document.documentElement) : null;
@@ -2573,8 +2689,10 @@ react-dom/cjs/react-dom-client.production.js:
       h('svg', {
         viewBox: `0 0 ${width} ${height}`,
         width:'100%', height,
-        style:{ display:'block' }
+        style:{ display:'block' },
+        ...a11y(ariaLabel)
       },
+        ariaLabel && h('title', null, ariaLabel),
         slices.map((s, i) => h(React.Fragment, { key:i },
           h('path', { d:s.path, fill:s.fill, stroke:pieSurface, strokeWidth:1.5,
             onMouseMove: e => {
@@ -4298,7 +4416,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // was reading two conventions eight pixels apart.
   //
   // One format — the locale's medium date — with the year included where it
-  // carries information. The ledgers (Monthly, Daily, Forecast) are scoped to
+  // carries information. The ledgers (Monthly, Calendar, Forecast) are scoped to
   // a year, so they pass that year as the context and a row inside it reads
   // "Aug 28": repeating "2026" down every row of a 2026 budget is noise, and
   // omitting it on the one row that *isn't* 2026 would be a bug. The Entries
@@ -4362,8 +4480,8 @@ document.addEventListener('DOMContentLoaded',function(){
   const moneySymbol = () => _money.symbol;
   // One amount convention app-wide, and this is where it is written down.
   //
-  //   A column that names the direction — the In and Out columns of Monthly,
-  //   Daily and Forecast — shows an *unsigned* figure. The heading is the
+  //   A column that names the direction — the In and Out columns of Monthly
+  //   and Forecast — shows an *unsigned* figure. The heading is the
   //   direction; a minus sign under a column headed "Out" says the same thing
   //   twice, and a positive one under it would be a contradiction.
   //
@@ -6021,8 +6139,42 @@ document.addEventListener('DOMContentLoaded',function(){
     actions: ""
   };
   const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts", "help"];
-  const ROUTE_BUDGET_SUBS = ["monthly", "daily", "bva", "forecast", "entries"];
+  // "daily" is still accepted so an old bookmark or a remembered sub-tab
+  // resolves rather than silently falling back to Monthly; BudgetView forwards
+  // it to calendar, the view that replaced it.
+  const ROUTE_BUDGET_SUBS = ["monthly", "calendar", "daily", "bva", "forecast", "entries"];
   const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt"];
+  // The name of a view, in one place. Two things read it: the visually-hidden
+  // <h1> at the top of <main>, so a screen-reader user navigating by heading
+  // can tell which of the twelve destinations they landed on; and
+  // document.title, so browser history, bookmarks and the tab strip say
+  // something other than "CashFlow Budget" twelve times over.
+  //
+  // The strings are the ones already on the nav buttons and sub-tab pills —
+  // a heading that renamed the view it names would be worse than none.
+  const APP_NAME = "CashFlow Budget";
+  const VIEW_NAMES = {
+    dashboard: "Dashboard",
+    ai: "AI Insights",
+    settings: "Settings",
+    alerts: "Alerts",
+    help: "Help",
+    "budget/monthly": "Budget \u00b7 Monthly",
+    "budget/calendar": "Budget \u00b7 Calendar",
+    "budget/bva": "Budget \u00b7 Budget vs Actual",
+    "budget/forecast": "Budget \u00b7 Forecast",
+    "budget/entries": "Budget \u00b7 Entries",
+    "plan/debt": "Plan \u00b7 Debt Payoff",
+    "plan/strategy": "Plan \u00b7 Payoff Strategy",
+    "plan/goals": "Plan \u00b7 Savings Goals"
+  };
+  function viewName(tab, budgetSub, planSub) {
+    const sub = tab === "budget" ? budgetSub : tab === "plan" ? planSub : null;
+    return VIEW_NAMES[sub ? `${tab}/${sub}` : tab] || VIEW_NAMES.dashboard;
+  }
+  function viewDocTitle(tab, budgetSub, planSub) {
+    return `${viewName(tab, budgetSub, planSub)} \u2014 ${APP_NAME}`;
+  }
   function parseTabHash() {
     let raw = "";
     try {
@@ -6476,7 +6628,7 @@ document.addEventListener('DOMContentLoaded',function(){
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
     const lastPt = pts[pts.length - 1];
-    return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
+    return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg", role: "presentation", "aria-hidden": "true", focusable: "false" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
   // Shared row-pagination for grids that used to be internally-scrolling
   // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
@@ -9408,14 +9560,13 @@ document.addEventListener('DOMContentLoaded',function(){
     var _a, _b;
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
-    // The Daily sub-tab is hidden on mobile (it's a per-day restatement of
-    // Monthly and the strip has no room), but `daily` persists per device and
-    // is a valid #/budget/daily deep link — so it was reachable with no tab
-    // rendered for it, leaving the sub-tab strip showing nothing selected
-    // while the Daily view was on screen. Land on Monthly instead.
+    // Calendar replaced Daily. The sub-tab is remembered per device and
+    // #/budget/daily was a real deep link, so a phone or a bookmark can still
+    // arrive asking for a view that no longer exists; send it to the one that
+    // took its place rather than rendering nothing with no tab selected.
     useEffect(() => {
-      if (isMobile && budgetSub === "daily") setBudgetSub("monthly");
-    }, [isMobile, budgetSub]);
+      if (budgetSub === "daily") setBudgetSub("calendar");
+    }, [budgetSub]);
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -9895,16 +10046,84 @@ document.addEventListener('DOMContentLoaded',function(){
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    const days = useMemo(() => {
+    // ── Calendar ───────────────────────────────────────────────────────────
+    // The month laid out as a month, which is the shape people already hold
+    // this question in: "what's hitting my account, and when". Replaces Daily,
+    // which restated Monthly one row per day — at 1440px that was a day
+    // number, a wide empty middle and a balance pinned to the far right, about
+    // a third of Monthly's density for the same content, which is why it was
+    // cut from a phone. A grid earns the width Daily wasted, and it earns its
+    // place on a phone too.
+    const [calSelDay, setCalSelDay] = useState(null);
+    // Reset the open day whenever the month or year moves — day 19 of the
+    // month you just left is not a selection, it is a stale index.
+    useEffect(() => {
+      setCalSelDay(null);
+    }, [monthIdx, activeYear]);
+    const calendar = useMemo(() => {
+      const total = daysInMonth(monthIdx, activeYear);
+      // Weeks start Sunday, matching the app's other weekday handling
+      // (recurDays, nthWeekdayInMonth) where 0 is Sunday.
+      const lead = new Date(activeYear, monthIdx, 1).getDay();
       let runBal = s ? s.open : openBal;
-      return Array.from({ length: daysInMonth(monthIdx, activeYear) }, (_, i) => {
-        const day = i + 1;
+      const cells = [];
+      for (let i = 0; i < lead; i++) cells.push(null);
+      for (let day = 1; day <= total; day++) {
         const evs = monthEvents.filter((ev) => ev.day === day);
+        // A quiet day carries the balance from the day before — that carry is
+        // what makes the grid a running balance rather than a scatter of the
+        // days something happened.
         if (evs.length > 0) runBal = evs[evs.length - 1].balance;
-        return { day, events: evs, balance: runBal };
-      }).filter((d) => d.events.length > 0);
+        cells.push({
+          day,
+          events: evs,
+          balance: runBal,
+          net: evs.reduce((sum, ev) => sum + signedAmount(ev), 0)
+        });
+      }
+      while (cells.length % 7 !== 0) cells.push(null);
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+      return weeks;
     }, [monthEvents, s, monthIdx, activeYear, openBal]);
-    const renderDailyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : days.map((dayObj) => /* @__PURE__ */ React.createElement(React.Fragment, { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderPeriodCardHdr(`${MONTHS[monthIdx]} ${dayObj.day}`), dayObj.events.map((ev) => renderEventCard(ev, { hideDayLabel: true })))));
+    const calSelected = calSelDay == null ? null : calendar.flat().find((c) => c && c.day === calSelDay) || null;
+    const CAL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const renderCalendar = () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement(
+      "div",
+      { className: "cal-grid", role: "grid", "aria-label": `${MONTHS[monthIdx]} ${activeYear}, balance by day` },
+      /* @__PURE__ */ React.createElement("div", { className: "cal-row cal-row--head", role: "row" }, CAL_DOW.map((d) => /* @__PURE__ */ React.createElement("div", { key: d, className: "cal-dow", role: "columnheader" }, /* @__PURE__ */ React.createElement("span", { className: "cal-dow-full" }, d), /* @__PURE__ */ React.createElement("span", { className: "cal-dow-short", "aria-hidden": true }, d[0])))),
+      calendar.map((week, wi) => /* @__PURE__ */ React.createElement("div", { key: wi, className: "cal-row", role: "row" }, week.map((cell, ci) => {
+        if (!cell) return /* @__PURE__ */ React.createElement("div", { key: ci, className: "cal-cell cal-cell--blank", role: "gridcell", "aria-hidden": true });
+        const low = cell.balance < 0 ? "neg" : cell.balance < alertThreshold ? "warn" : "";
+        const today = isToday(cell.day);
+        const openDay = calSelDay === cell.day;
+        // Everything the cell shows, said once for a screen reader — reading
+        // out a day number, a stack of amounts and a balance as loose text
+        // gives no clue which day they belong to.
+        const label = `${MONTHS[monthIdx]} ${cell.day}` + (today ? ", today" : "") + ", " + (cell.events.length === 0 ? "nothing scheduled" : `${cell.events.length} event${cell.events.length === 1 ? "" : "s"}, net ${fmt(cell.net, true)}`) + `, balance ${fmt(cell.balance)}` + (low === "neg" ? ", overdrawn" : low === "warn" ? ", below your alert threshold" : "");
+        return /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            key: ci,
+            type: "button",
+            role: "gridcell",
+            className: "cal-cell" + (low ? " cal-cell--" + low : "") + (today ? " cal-cell--today" : "") + (openDay ? " cal-cell--open" : "") + (cell.events.length === 0 ? " cal-cell--quiet" : ""),
+            "aria-label": label,
+            "aria-pressed": openDay,
+            onClick: () => {
+              haptic();
+              setCalSelDay(openDay ? null : cell.day);
+            }
+          },
+          /* @__PURE__ */ React.createElement("span", { className: "cal-daynum" }, cell.day),
+          /* @__PURE__ */ React.createElement("span", { className: "cal-bal mno" }, fmt(cell.balance)),
+          /* @__PURE__ */ React.createElement("span", { className: "cal-events" }, cell.events.slice(0, 3).map((ev) => /* @__PURE__ */ React.createElement("span", { key: ev.id, className: "cal-ev" + (completed[ev.id] ? " cal-ev--done" : ""), title: `${ev.desc} ${fmt(signedAmount(ev), true)}` }, /* @__PURE__ */ React.createElement("span", { className: "cal-ev-dot", style: { background: getCatColor(ev.category, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "cal-ev-desc" }, ev.desc), /* @__PURE__ */ React.createElement("span", { className: "cal-ev-amt mno" }, fmt(signedAmount(ev), true)))), cell.events.length > 3 && /* @__PURE__ */ React.createElement("span", { className: "cal-ev-more" }, "+", cell.events.length - 3, " more")),
+          // The phone cell has no room for the lines above; it gets a dot per
+          // event (capped) and the same tint, and opens the day below on tap.
+          cell.events.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "cal-dots", "aria-hidden": true }, cell.events.slice(0, 4).map((ev) => /* @__PURE__ */ React.createElement("span", { key: ev.id, className: "cal-dot", style: { background: getCatColor(ev.category, categories, categoryColors) } })))
+        );
+      })))
+    )), calSelected && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "cal-day-hdr" }, /* @__PURE__ */ React.createElement("span", null, MONTHS[monthIdx], " ", calSelected.day, /* @__PURE__ */ React.createElement("span", { className: "cal-day-bal mno" }, "balance ", fmt(calSelected.balance))), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setCalSelDay(null) }, "Close")), calSelected.events.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, "Nothing scheduled on this day.") : calSelected.events.map((ev) => renderEventCard(ev, { hideDayLabel: true }))));
     const renderYoyCompare = () => {
       const deltaCls = (d) => d > 0 ? "yoy-delta-pos" : d < 0 ? "yoy-delta-neg" : "";
       const amtCell = (v) => v === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(v, true);
@@ -10005,7 +10224,7 @@ document.addEventListener('DOMContentLoaded',function(){
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      (budgetSub === "monthly" || budgetSub === "daily") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+      (budgetSub === "monthly" || budgetSub === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
         "span",
         {
           key: s.occId,
@@ -10242,80 +10461,17 @@ document.addEventListener('DOMContentLoaded',function(){
           ]
         }
       )),
-      budgetSub === "daily" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+      budgetSub === "calendar" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onAdd: openAddEntry,
           onCSV: () => {
-            const rows = days.flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
-            downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Daily.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
+            const rows = calendar.flat().filter(Boolean).flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
+            downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Calendar.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
           },
-          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Daily)`)
+          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Calendar)`)
         }
-      )), isMobile ? renderDailyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, days.map((dayObj, di) => /* @__PURE__ */ React.createElement("div", { key: dayObj.day }, isToday(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "daily-today-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" })), /* @__PURE__ */ React.createElement("div", { className: "daily-card", style: {
-        background: di % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-      } }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-col" }, /* @__PURE__ */ React.createElement("div", { className: "daily-day-number" }, dayObj.day), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, MONTHS[monthIdx]), isPast(dayObj.day) && /* @__PURE__ */ React.createElement("div", { className: "caption-10-nomargin" }, "\u2713")), /* @__PURE__ */ React.createElement("div", { className: "daily-events-pad" }, dayObj.events.map((ev) => /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "daily-row-wrap" },
-        // Daily was the only money view with no way to see or set payment
-        // status — it inferred "done" from the date instead. Same control,
-        // wording and colours as the Monthly cards and the Upcoming list.
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            onClick: (e) => {
-              e.stopPropagation();
-              haptic();
-              toggleComplete(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": !!completed[ev.id],
-            "aria-label": (completed[ev.id] ? "Mark unpaid: " : "Mark paid: ") + ev.desc,
-            title: completed[ev.id] ? "Paid \u2014 click to mark unpaid" : "Mark paid",
-            className: "cf-checkbtn paid-btn daily-paid-btn",
-            style: {
-              border: completed[ev.id] ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
-              background: completed[ev.id] ? "var(--greenLt)" : "transparent"
-            }
-          },
-          completed[ev.id] ? "\u2713" : ""
-        ),
-        /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          type: "button",
-          onClick: () => openOccurrenceEdit(ev),
-          onContextMenu: (e) => {
-            e.preventDefault();
-            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          className: "daily-row-btn"
-        },
-        /* @__PURE__ */ React.createElement("span", { className: "daily-row-desc", style: {
-          color: completed[ev.id] ? "var(--textLt)" : "var(--text)",
-          textDecoration: completed[ev.id] ? "line-through" : "none"
-        } }, ev.desc, ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E")),
-        /* @__PURE__ */ React.createElement("span", { className: "daily-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" })),
-        /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 daily-row-amt", title: varianceTitle(ev), style: {
-          color: completed[ev.id] ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : ev.type === "income" ? "var(--greenDk)" : "var(--text)",
-          textDecoration: completed[ev.id] ? "line-through" : "none"
-        } }, signedAmount(ev) >= 0 ? "+" : "-", fmt(ev.amount))
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: (e) => {
-            e.stopPropagation();
-            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          "aria-label": ev.desc + " actions",
-          title: ev.desc + " actions",
-          className: "cf-checkbtn row-menu-btn"
-        },
-        "⋮"
-      )))), /* @__PURE__ */ React.createElement("div", { className: "daily-balance", style: {
-        background: dayObj.balance < 0 ? "var(--redLt)" : dayObj.balance < alertThreshold ? "var(--amberLt)" : "rgba(46,204,138,0.06)"
-      } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "daily-balance-caption" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 daily-balance-amt", style: {
-        color: dayObj.balance < 0 ? "var(--red)" : dayObj.balance < alertThreshold ? "var(--amberInk)" : "var(--greenDk)"
-      } }, fmt(dayObj.balance))))))), days.length === 0 && /* @__PURE__ */ React.createElement("p", { className: "no-activity-msg" }, "No activity this month."))),
+      )), renderCalendar()),
       bvaCtxMenu && /* @__PURE__ */ React.createElement(
         ContextMenu,
         {
@@ -10520,13 +10676,13 @@ document.addEventListener('DOMContentLoaded',function(){
   } }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
-    const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useState(20);
-    const [mobileLoaded, setMobileLoaded] = useState(1);
+    // How many pages' worth have been revealed so far. Not a page *number*:
+    // the forecast loads cumulatively at every width (see pgInfo).
+    const [loaded, setLoaded] = useState(1);
     const changePageSize = (v) => {
       setPgSize(v);
-      setPgPage(0);
-      setMobileLoaded(1);
+      setLoaded(1);
     };
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
@@ -10578,10 +10734,83 @@ document.addEventListener('DOMContentLoaded',function(){
       return out;
     }, [yearFlows, yearConfigs]);
     const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
-    const lowestBalance = futureEvents.length ? Math.min(...futureEvents.map((e) => e.balance)) : null;
+    // The balance day by day across the horizon — the one thing the view whose
+    // job is "where is this heading" had no way to show. It was a paginated
+    // table: three pages for a 90-day horizon, with the low point unmarked even
+    // though the Dashboard knows it well enough to put it in a tile.
+    //
+    // Every occurrence already carries the running balance after it, so a day
+    // with something on it takes the balance of its last event and a quiet day
+    // holds the one before — which is what makes this a curve rather than a
+    // scatter of the days something happened.
+    const curve = useMemo(() => {
+      const dayStart = (d) => {
+        const x = new Date(d);
+        x.setHours(0, 0, 0, 0);
+        return x;
+      };
+      const t0 = dayStart(today);
+      // What the horizon opens on: the balance standing before its first
+      // event, or — with nothing scheduled in it at all — the figure the last
+      // event before today left behind.
+      let bal = 0;
+      if (futureEvents.length) {
+        bal = futureEvents[0].balance - signedAmount(futureEvents[0]);
+      } else {
+        let latest = null;
+        yearConfigs.forEach((yc) => (yearFlows[yc.year] || []).forEach((ev) => {
+          if (ev.date <= today && (!latest || ev.date > latest.date)) latest = ev;
+        }));
+        bal = latest ? latest.balance : openBalByYear[today.getFullYear()] || 0;
+      }
+      // Last event of a day wins: futureEvents is date-sorted, so the final
+      // write for a key is that day's closing balance.
+      const closeOf = /* @__PURE__ */ new Map();
+      futureEvents.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
+      const out = [];
+      for (let i = 0; i <= horizon; i++) {
+        const d = new Date(t0);
+        d.setDate(d.getDate() + i);
+        const k = d.getTime();
+        if (closeOf.has(k)) bal = closeOf.get(k);
+        out.push({
+          // `day` names the row — it is what the tooltip shows. `tick` is what
+          // the axis prints, which is not the same thing: ninety date labels
+          // will not fit, and thinning them by every-Nth would land on
+          // arbitrary days. Name the 1st of each month and the day the horizon
+          // opens; everything else prints nothing.
+          day: fmtDate(d, today.getFullYear()),
+          tick: i === 0 || d.getDate() === 1 ? fmtDate(d, today.getFullYear()) : "",
+          date: d,
+          balance: bal
+        });
+      }
+      return out;
+    }, [futureEvents, horizon, today, yearFlows, yearConfigs, openBalByYear]);
+    // Where the curve bottoms out, and how far down. The chart marks it; until
+    // now the number appeared only in the danger banner, without a date.
+    const lowPoint = useMemo(() => {
+      if (!curve.length) return null;
+      let best = 0;
+      curve.forEach((p, i) => {
+        if (p.balance < curve[best].balance) best = i;
+      });
+      return { index: best, balance: curve[best].balance, date: curve[best].date };
+    }, [curve]);
+    // The banner's figure and the chart's marker are the same number, read off
+    // the same curve. They used to be computed two different ways on one
+    // screen — the banner over event balances, which is the same answer only
+    // as long as nothing about how the horizon opens ever differs.
+    const lowestBalance = lowPoint ? lowPoint.balance : null;
     const searchedEvents = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2));
-    const pgInfo = isMobile ? cumulativeRows(searchedEvents, mobileLoaded, pgSize) : paginateRows(searchedEvents, pgPage, pgSize);
-    useInfiniteScroll(isMobile && pgInfo.hasMore, () => setMobileLoaded((l) => l + 1));
+    // Cumulative at every width, where the desktop table used to paginate. A
+    // forecast is a rolling window — "the next 90 days" cut into page 1, page 2
+    // and page 3 stops rolling the moment you have to press Next, and the
+    // stretch that matters (the run-up to the low point) is as likely to
+    // straddle a page break as not. Scrolling keeps the run continuous, and the
+    // chart above answers "where is this heading" without any scrolling at all.
+    const pgInfo = cumulativeRows(searchedEvents, loaded, pgSize);
+    useInfiniteScroll(pgInfo.hasMore, () => setLoaded((l) => l + 1));
     const pagedEvents = pgInfo.rows;
     // Mobile presentation matches Budget → Monthly and Entries: the same card,
     // the same paid checkbox, the same category chip. Forecast used to be the
@@ -10639,8 +10868,27 @@ document.addEventListener('DOMContentLoaded',function(){
           color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
         } }, fmt(ev.balance)))))
       );
-    }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+    }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
+      AreaChart,
+      {
+        data: curve,
+        // Room above the plot for the low-point marker's caption, which is
+        // drawn just outside the top of the plotting area.
+        margin: { top: 22, right: 8, bottom: 0, left: 4 },
+        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}. The table below lists every event behind it.`
+      },
+      /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
+      /* @__PURE__ */ React.createElement(XAxis, { dataKey: "day", interval: 0, tickFormatter: (v, i) => curve[i] ? curve[i].tick : "", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
+      /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }),
+      /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
+      /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }),
+      // The threshold the danger banner is counting against, drawn where the
+      // curve can be read against it rather than described underneath.
+      /* @__PURE__ */ React.createElement(ReferenceLine, { y: alertThreshold, stroke: "var(--amberInk)", strokeDasharray: "5 4", label: `Alert ${fmt(alertThreshold)}` }),
+      lowPoint && lowPoint.index > 0 && /* @__PURE__ */ React.createElement(ReferenceLine, { x: lowPoint.index, stroke: lowPoint.balance < 0 ? "var(--red)" : "var(--amberInk)", strokeDasharray: "2 3", label: `Low ${fmt(lowPoint.balance)} \u00b7 ${fmtDate(lowPoint.date, null)}` }),
+      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false })
+    )))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
         onAdd: addEntry ? () => setShowAddEntry(true) : null,
@@ -10687,7 +10935,7 @@ document.addEventListener('DOMContentLoaded',function(){
         const color = pct <= 120 ? "var(--amberInk)" : "var(--red)";
         return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, pct, "%"));
       })());
-    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: false }))));
+    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
@@ -11479,7 +11727,7 @@ Fill every field of the response schema. Rules:
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-12" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, goalsFiltered.map((g) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-12" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
         const pct = g.target > 0 ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
         const remaining = Math.max(0, g.target - g.saved);
         let projLabel = null, onTrack = null;
@@ -12019,7 +12267,7 @@ Fill every field of the response schema. Rules:
           monthsDelta > 0 && ` ${monthsDelta} ${monthsDelta === 1 ? "month" : "months"}`,
           " over Snowball on this debt load."
         );
-        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, ariaLabel: `Line chart of the total debt balance falling to zero over ${chartData.length} months, one line per strategy: Avalanche clears it in ${av.months} months paying ${fmt(av.totalInterest)} of interest, Snowball in ${sn.months} months paying ${fmt(sn.totalInterest)}. The two cards above give the same figures.`, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
           onCSV: () => downloadCSV(
             "CashFlow_PayoffStrategy.csv",
             [
@@ -12193,7 +12441,7 @@ Fill every field of the response schema. Rules:
         message: "No debt entries detected \u2014 debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
@@ -12472,6 +12720,28 @@ Fill every field of the response schema. Rules:
     const netTransfers = totalTransfersIn - totalTransfersOut;
     const lowestBal = summaries.length ? Math.min(...summaries.map((m) => m.close)) : 0;
     const lowestMon = (_a = summaries.find((m) => m.close === lowestBal)) == null ? void 0 : _a.month;
+    // One-sentence summaries of what each chart shows, attached to the SVGs as
+    // aria-labels. A chart is a picture: without a description it is either
+    // silence or, worse, a screen reader spelling out every tick and data
+    // label in turn. Each one names the shape and the extreme, then points at
+    // the Monthly Summary table below, which carries the same figures cell by
+    // cell for anyone who wants the detail.
+    const SEE_TABLE = " The same figures are in the Monthly Summary table below.";
+    const chartAlts = useMemo(() => {
+      if (!summaries.length) return {};
+      const span = `${summaries[0].month} to ${summaries[summaries.length - 1].month} ${activeYear}`;
+      const short = summaries.filter((m) => m.surplus < 0).length;
+      const worst = summaries.reduce((a, m) => m.surplus < a.surplus ? m : a, summaries[0]);
+      const best = summaries.reduce((a, m) => m.surplus > a.surplus ? m : a, summaries[0]);
+      const share = (rows, total) => rows.slice(0, 3).map(([n, v]) => `${n} ${fmt(v)}${total > 0 ? ` (${Math.round(v / total * 100)}%)` : ""}`).join(", ");
+      return {
+        balance: `Line chart of the closing balance for each month, ${span}. It opens at ${fmt(summaries[0].close)} and ends at ${fmt(summaries[summaries.length - 1].close)}, with its low of ${fmt(lowestBal)} in ${lowestMon}.` + SEE_TABLE,
+        surplus: `Chart of surplus or shortfall for each month, ${span}. ${short} of ${summaries.length} months spend more than they take in. Best month ${best.month} at ${fmt(best.surplus, true)}, worst ${worst.month} at ${fmt(worst.surplus, true)}.` + SEE_TABLE,
+        incExp: `Chart comparing income against expenses for each month, ${span}. Income totals ${fmt(totalIncome)} against ${fmt(totalExpense)} of expenses, a net of ${fmt(netSurplus, true)}.` + SEE_TABLE,
+        cats: catTotals.length ? `Breakdown of ${fmt(totalExpense)} of expenses across ${catTotals.length} categories. Largest: ${share(catTotals, totalExpense)}.` : "",
+        inc: incTotals.length ? `Breakdown of ${fmt(totalIncome)} of income across ${incTotals.length} sources. Largest: ${share(incTotals, totalIncome)}.` : ""
+      };
+    }, [summaries, activeYear, lowestBal, lowestMon, catTotals, incTotals, totalIncome, totalExpense, netSurplus]);
     const showYoY = yearConfigs.length >= 2;
     const yoyMetrics = [{ id: "income", label: "Income" }, { id: "expense", label: "Expenses" }, { id: "surplus", label: "Surplus" }, { id: "close", label: "Balance" }];
     const YCOLS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623"];
@@ -12684,7 +12954,7 @@ Fill every field of the response schema. Rules:
           onChange: setBalView,
           options: [{ id: "area", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-area", size: 15 }), label: "Area" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }, { id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }]
         }
-      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
+      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, ariaLabel: chartAlts.balance, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, ariaLabel: chartAlts.balance, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, ariaLabel: chartAlts.balance, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
       surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -12692,7 +12962,7 @@ Fill every field of the response schema. Rules:
           onChange: setSurplusView,
           options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
-      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
+      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, ariaLabel: chartAlts.surplus, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
         Line,
         {
           type: "monotone",
@@ -12703,7 +12973,7 @@ Fill every field of the response schema. Rules:
           dot: ({ cx, cy, payload }) => /* @__PURE__ */ React.createElement("circle", { key: cx, cx, cy, r: 4, fill: payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)", stroke: "none" }),
           activeDot: { r: 6 }
         }
-      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
+      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, ariaLabel: chartAlts.surplus, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
       incExpChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -12711,10 +12981,11 @@ Fill every field of the response schema. Rules:
           onChange: setIncExpView,
           options: [{ id: "grouped", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 15 }), label: "Grouped" }, { id: "stacked", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-stacked", size: 15 }), label: "Stacked" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
         }
-      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
+      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, ariaLabel: chartAlts.incExp, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
         BarChart,
         {
           data: summaries,
+          ariaLabel: chartAlts.incExp,
           margin: { top: 4, right: 4, bottom: 34, left: 4 },
           barCategoryGap: incExpView === "stacked" ? "20%" : "10%"
         },
@@ -12732,7 +13003,7 @@ Fill every field of the response schema. Rules:
           width: `${pct}%`,
           background: getCatColor(cat, categories, categoryColors)
         } })));
-      })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
+      })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, { ariaLabel: chartAlts.cats }, /* @__PURE__ */ React.createElement(
         Pie,
         {
           data: catPieData,
@@ -12758,7 +13029,7 @@ Fill every field of the response schema. Rules:
       ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8 mt-4" }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-empty-wrap" }, "No income entries"), incTotals.map(([cat, total], i) => {
         const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
         return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: { width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] } })));
-      })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, null, /* @__PURE__ */ React.createElement(
+      })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, { ariaLabel: chartAlts.inc }, /* @__PURE__ */ React.createElement(
         Pie,
         {
           data: incPieData,
@@ -12951,7 +13222,7 @@ Fill every field of the response schema. Rules:
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
         } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
       ),
-      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, margin: { top: 4, right: 8, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
+      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, ariaLabel: `Line chart comparing ${(yoyMetrics.find((m) => m.id === yoyMetric) || {}).label} month by month across ${yearConfigs.map((y) => y.year).join(", ")}. The Annual Comparison table below carries the same figures.`, margin: { top: 4, right: 8, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
           key: yc.year,
@@ -13253,7 +13524,7 @@ Fill every field of the response schema. Rules:
         { shot: ["budget-toolbar", "Every grid carries the same toolbar: CSV and PDF export the view you are looking at, + Add opens the entry form."] },
         { defs: [
           ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
-          ["Daily", "The same month as one card per day that has something on it, with the balance carried to the end of that day — useful for spotting the week where four bills land together. Desktop only: on a phone the Monthly cards already read day by day."],
+          ["Calendar", "The same month laid out as a month: bills on the day they fall, the balance carried to the end of each day, and any day that drops below your alert threshold tinted — which is what makes the week where four bills land together visible at a glance. Pick a day to open what is on it. On a phone each day shows a dot per event and the same tint, and the day you pick opens below the grid."],
           ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
           ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
           ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
@@ -13263,10 +13534,10 @@ Fill every field of the response schema. Rules:
         { sub: "Searching" },
         { p: "There is one search, in the header on a desktop and above the list on a phone — the same box either way, and its placeholder names what it will search. On Entries and on Plan it filters the list you are looking at. Anywhere else it jumps to the Budget month that matches, so typing a payee finds the month it falls in." },
         { sub: "Dates and amounts" },
-        { p: "Dates are written the same way everywhere, in the format your Currency & Format setting chooses. The ledgers — Monthly, Daily and Forecast — are scoped to one year, so a date inside that year reads “Aug 28” and only a date outside it carries the year. The Entries list holds definitions rather than a year's events, so it always shows the year." },
+        { p: "Dates are written the same way everywhere, in the format your Currency & Format setting chooses. The ledgers — Monthly, Calendar and Forecast — are scoped to one year, so a date inside that year reads “Aug 28” and only a date outside it carries the year. The Entries list holds definitions rather than a year's events, so it always shows the year." },
         { p: "Amounts follow one rule: a column that names the direction (the In and Out columns of the grids) shows a plain figure, and a single amount that has to carry both directions — the Entries list, and every card layout on a phone — is signed. Money in is green, money out is the ordinary text colour, and a transfer is blue wherever it appears." },
         { sub: "What differs on a phone" },
-        { p: "The same five destinations in the same order, named the same way. The one view a phone doesn't show is Budget → Daily, because the Monthly cards there are already grouped day by day and Daily would repeat them; on a wider screen Daily is its own sub-tab." },
+        { p: "The same five destinations in the same order, named the same way, and the same five Budget sub-views — nothing is hidden at phone width. What changes is how much each view can afford to say: the grids become cards, and a Calendar day shows a dot per event rather than a line per event, with the day you pick opening below the grid." },
         { sub: "The Forecast “vs Target” column" },
         { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [
@@ -15704,11 +15975,11 @@ Fill every field of the response schema. Rules:
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "monthly", label: "Monthly", short: "Monthly", icon: "grid" },
-      { id: "daily", label: "Daily", short: "Daily", icon: "day", cls: "bp-daily" },
-      { id: "bva", label: "Budget vs Actual", short: "vs Actual", icon: "scale" },
-      { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
-      { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
+      { id: "monthly", label: "Monthly", icon: "grid" },
+      { id: "calendar", label: "Calendar", icon: "calendar" },
+      { id: "bva", label: "Budget vs Actual", icon: "scale" },
+      { id: "forecast", label: "Forecast", icon: "trending-up" },
+      { id: "entries", label: "Entries", icon: "file-list" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
@@ -15738,8 +16009,7 @@ Fill every field of the response schema. Rules:
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short || s.label)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
     )));
   }
   function PlanSubTabs({ value, onChange }) {
@@ -15752,9 +16022,9 @@ Fill every field of the response schema. Rules:
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "debt", label: "Debt Payoff", short: "Debt", icon: "credit-card" },
-      { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
-      { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
+      { id: "debt", label: "Debt Payoff", icon: "credit-card" },
+      { id: "strategy", label: "Payoff Strategy", icon: "mountain" },
+      { id: "goals", label: "Savings Goals", icon: "target" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
@@ -15784,8 +16054,7 @@ Fill every field of the response schema. Rules:
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short || s.label)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
     )));
   }
   function App() {
@@ -16062,6 +16331,22 @@ Fill every field of the response schema. Rules:
         // default view is correct.
       }
     }, [tab, budgetSub, planSub]);
+    // Name the view in the one place the browser reads: the tab strip, the
+    // history entry and the bookmark. Every one of them used to say
+    // "CashFlow Budget", which made a back button through six views
+    // indistinguishable from a back button through one.
+    //
+    // printView() swaps the title and puts it back, so this deliberately
+    // does not reset it on unmount — it would race the restore.
+    const docTitle = viewDocTitle(tab, budgetSub, planSub);
+    useEffect(() => {
+      try {
+        document.title = docTitle;
+      } catch (e) {
+        // A document that won't take a title is not worth failing a render
+        // over; the view still renders under whatever title it has.
+      }
+    }, [docTitle]);
     useEffect(() => {
       const onPopState = () => {
         const parsed = parseTabHash();
@@ -17140,25 +17425,25 @@ Fill every field of the response schema. Rules:
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
-    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), showBackupNudge && /* @__PURE__ */ React.createElement("div", { className: "backup-nudge" }, /* @__PURE__ */ React.createElement("div", { className: "backup-nudge-title" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15 }), "Time for a backup"), /* @__PURE__ */ React.createElement("div", { className: "backup-nudge-msg" }, "It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement(
+    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
+      opacity: Math.max(pullProgress, pullActive ? 1 : 0)
+    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
+      animation: pullActive ? "spin 0.8s linear infinite" : "none"
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, budgetSub, planSub)), showBackupNudge && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page backup-nudge", "data-noprint": true }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "backup-nudge-msg" }, /* @__PURE__ */ React.createElement("strong", null, "Time for a backup."), " It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(false),
-        className: "cf-btn cf-btn--secondary cf-btn--md"
+        className: "cf-btn cf-btn--secondary cf-btn--tiny"
       },
       "Remind me later"
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(true),
-        className: "cf-btn cf-btn--primary cf-btn--md fw-700"
+        className: "cf-btn cf-btn--primary cf-btn--tiny fw-700"
       },
       "\u2193 Export backup"
-    ))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
-      opacity: Math.max(pullProgress, pullActive ? 1 : 0)
-    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
-      animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" + (showBackupNudge ? " content-area--nudged" : "") }, showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
+    ))), showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
       borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
@@ -17191,7 +17476,7 @@ Fill every field of the response schema. Rules:
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,

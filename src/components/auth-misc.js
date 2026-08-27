@@ -1051,11 +1051,11 @@
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "monthly", label: "Monthly", short: "Monthly", icon: "grid" },
-      { id: "daily", label: "Daily", short: "Daily", icon: "day", cls: "bp-daily" },
-      { id: "bva", label: "Budget vs Actual", short: "vs Actual", icon: "scale" },
-      { id: "forecast", label: "Forecast", short: "Forecast", icon: "trending-up" },
-      { id: "entries", label: "Entries", short: "Entries", icon: "file-list" }
+      { id: "monthly", label: "Monthly", icon: "grid" },
+      { id: "calendar", label: "Calendar", icon: "calendar" },
+      { id: "bva", label: "Budget vs Actual", icon: "scale" },
+      { id: "forecast", label: "Forecast", icon: "trending-up" },
+      { id: "entries", label: "Entries", icon: "file-list" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
@@ -1085,8 +1085,7 @@
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short || s.label)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
     )));
   }
   function PlanSubTabs({ value, onChange }) {
@@ -1099,9 +1098,9 @@
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "debt", label: "Debt Payoff", short: "Debt", icon: "credit-card" },
-      { id: "strategy", label: "Payoff Strategy", short: "Strategy", icon: "mountain" },
-      { id: "goals", label: "Savings Goals", short: "Goals", icon: "target" }
+      { id: "debt", label: "Debt Payoff", icon: "credit-card" },
+      { id: "strategy", label: "Payoff Strategy", icon: "mountain" },
+      { id: "goals", label: "Savings Goals", icon: "target" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
@@ -1131,7 +1130,6 @@
         }
       },
       /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-full" }, " ", s.label),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label-short" }, s.short || s.label)
+      /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
     )));
   }
