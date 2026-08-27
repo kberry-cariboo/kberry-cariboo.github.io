@@ -215,6 +215,30 @@ console.log('\n── 7. Receipts ──');
   await ctx.close();
 }
 
+// Loading is not editing. cf_apply_household_payload aside, the client used to
+// push the cloud's own copy straight back at it on every launch: loadData sets
+// `initialized` synchronously while the setters it just called land a render
+// later, so the render carrying the loaded values looked exactly like a local
+// edit and scheduled a save. That advanced savedAt for every other device, and
+// made "the save quotes the savedAt it loaded with" below a race — the
+// spurious save landed first whenever the machine was slow enough.
+console.log('\n── 9. A load on its own never saves ──');
+{
+  const { ctx, page } = await open({});
+  // Well past the 2s autosave debounce.
+  await page.waitForTimeout(5000);
+  const saves = await page.evaluate(() => window.__cf.saves);
+  check('an untouched household is not written back', saves.length === 0, `${saves.length} save(s): ` + saves.map((s) => s.p_expected_saved_at).join(', '));
+  check('the agreed savedAt is still the one loaded', await page.evaluate(() => localStorage.getItem('cf_last_synced_at')) === '2026-08-01T10:00:00Z', await page.evaluate(() => localStorage.getItem('cf_last_synced_at')));
+  // ...and a real edit still saves, quoting that same savedAt.
+  await page.locator('input[type=number]').first().fill('850');
+  await page.waitForTimeout(4000);
+  const after = await page.evaluate(() => window.__cf.saves);
+  check('a real edit still saves', after.length === 1, `${after.length} save(s)`);
+  check('and quotes the savedAt it loaded with', after.length === 1 && after[0].p_expected_saved_at === '2026-08-01T10:00:00Z', after.length ? String(after[0].p_expected_saved_at) : 'no save');
+  await ctx.close();
+}
+
 console.log('\n── 8. The saved payload never carries receipt images ──');
 {
   const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
