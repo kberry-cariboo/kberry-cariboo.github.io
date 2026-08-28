@@ -1018,6 +1018,24 @@
           .scenario-row{flex-wrap:wrap;}
           .scenario-desc{flex:1 1 100%;}
         }
+        /* Account filter: sits under the sub-tab strip, above the month pills. */
+        .account-filter{display:flex;align-items:center;gap:8px;max-width:var(--container-w);
+          margin:0 auto 14px;}
+        .account-filter-label{font-size:11px;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;color:var(--textLt);}
+        .account-filter-select{font-size:13px;padding:6px 10px;border-radius:8px;
+          border:1px solid var(--border);background:var(--bgCard);color:var(--text);
+          font-family:inherit;min-height:36px;}
+        /* Accounts list in Settings: name, kind, opening share, remove. */
+        .account-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+          padding:8px 0;border-bottom:1px solid var(--border);}
+        .account-row:last-child{border-bottom:none;}
+        .account-name{flex:1 1 180px;min-width:0;}
+        .account-kind{flex:0 0 140px;}
+        .account-opening{width:120px;}
+        .account-opening-note{flex:0 0 auto;}
+        .row-account-tag{margin-left:7px;font-size:10px;color:var(--textLt);
+          border:1px solid var(--border);border-radius:5px;padding:1px 5px;white-space:nowrap;}
         .cal-grid{display:flex;flex-direction:column;}
         .cal-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
         .cal-row--head{border-bottom:1px solid var(--border);}

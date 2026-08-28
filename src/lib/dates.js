@@ -111,6 +111,14 @@
     const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
     return day > daysInMonth(month, year) ? null : new Date(year, month, day);
   }
+  // The account an entry or event belongs to, with the default standing in for
+  // anything written before accounts existed. Every reader goes through this
+  // rather than reading `.accountId` directly, so "unset" has one meaning.
+  const accountIdOf = (x) => (x && x.accountId) || DEFAULT_ACCOUNT_ID;
+  // A transfer that names a destination moves money between two accounts, and
+  // shows up twice: out of one, into the other. Anything else — an old
+  // transfer, or one with no destination — keeps its single-sided meaning.
+  const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -169,6 +177,10 @@
           // this tracked account (default) vs into it. Income/expense
           // entries ignore this entirely.
           transferDirection: e.transferDirection || "out",
+          // Which account this movement is in. Unset on anything written
+          // before accounts existed, which accountIdOf reads as the default —
+          // so a one-account household sees exactly what it always saw.
+          accountId: accountIdOf(e),
           amount: actual,
           plannedAmount: planned,
           category: e.category,
@@ -194,6 +206,30 @@
           recurEvery: e.recurEvery || 1,
           repeats: e.repeats || false
         });
+        // A transfer between two accounts is one entry and two movements: out
+        // of the account it names, into the account it points at. Emitted here
+        // rather than derived later so every downstream consumer — the running
+        // balance, the month summaries, the calendar, the forecast — sees a
+        // complete picture without knowing accounts exist.
+        //
+        // The two legs are equal and opposite, so a combined balance across
+        // every account is unchanged by an internal transfer. That is the
+        // property that lets "combined" stay the default view and still be
+        // right.
+        if (isInterAccountTransfer(e)) {
+          const first = events[events.length - 1];
+          events.push(__spreadProps(__spreadValues({}, first), {
+            // Distinct id: an occurrence id keys overrides, completion ticks
+            // and React lists, and two rows sharing one would collide in all
+            // three.
+            id: `${first.id}-in`,
+            accountId: e.toAccountId,
+            transferDirection: first.transferDirection === "out" ? "in" : "out",
+            // The leg is a consequence of the entry, not an occurrence anyone
+            // edits: the editable one is the first leg.
+            _leg: true
+          }));
+        }
       };
       if (!e.repeats) {
         addEv(new Date(startD));

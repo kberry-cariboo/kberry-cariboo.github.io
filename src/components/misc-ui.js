@@ -76,6 +76,29 @@
       )
     );
   }
+  // The account filter. Only rendered once a household has more than one
+  // account — with a single account "All accounts" and "Chequing" are the same
+  // set, and a control whose two options do the same thing is worse than no
+  // control.
+  //
+  // Combined stands first and is the default. Every view behind this reads a
+  // flow and an opening balance, so narrowing is a matter of handing them a
+  // smaller pair; none of them knows this exists.
+  function AccountFilter({ accounts = [], value = "", onChange = () => {
+  } }) {
+    if (!Array.isArray(accounts) || accounts.length < 2) return null;
+    return /* @__PURE__ */ React.createElement("div", { className: "account-filter", "data-noprint": true }, /* @__PURE__ */ React.createElement("label", { htmlFor: "account-filter-select", className: "account-filter-label" }, "Account"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "account-filter-select",
+        className: "account-filter-select",
+        value,
+        onChange: (e) => onChange(e.target.value)
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "All accounts"),
+      accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
+    ));
+  }
   function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {

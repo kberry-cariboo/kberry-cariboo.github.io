@@ -235,7 +235,8 @@ half the fields missing. Keys the schema has deliberately retired are listed in
 saving.
 
 That covers **top-level** fields. Fields *inside* an entry or an override —
-`transferDirection`, `copiedFrom`, `recurNth`, `bankingDay`, `skipped`, `actualAmount`, `month` — have no
+`transferDirection`, `copiedFrom`, `recurNth`, `bankingDay`, `accountId`, `toAccountId`,
+`skipped`, `actualAmount`, `month` — have no
 equivalent declaration, so they are still only covered by the round-trip test:
 **run it whenever you add a field to the sync payload, and add the field to its
 fixture.** Before it existed, `cf_apply_household_payload` wrote the columns it

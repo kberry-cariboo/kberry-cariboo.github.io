@@ -178,7 +178,8 @@
       currency,
       locale,
       holidayRegion: holidayRegionCode,
-      activity
+      activity,
+      accounts
     } = houseValues;
     const {
       entries: setEntries,
@@ -207,7 +208,8 @@
       currency: setCurrency,
       locale: setLocale,
       holidayRegion: setHolidayRegionCode,
-      activity: setActivity
+      activity: setActivity,
+      accounts: setAccounts
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -597,7 +599,7 @@
     }, [setActivity, sessionUser]);
     // A description short enough for a log line, without cutting a word in half
     // when it already fits.
-    const householdCtx = useMemo(() => ({ members, sessionUser, logActivity }), [members, sessionUser, logActivity]);
+    const householdCtx = useMemo(() => ({ members, sessionUser, accounts, logActivity }), [members, sessionUser, accounts, logActivity]);
     const logDesc = (d) => {
       const t = String(d == null ? "" : d).trim() || "Entry";
       return t.length > 40 ? t.slice(0, 39) + "\u2026" : t;
@@ -715,14 +717,51 @@
     }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
-    const activeOpenBal = useMemo(() => {
+    const openBalOf = (flowsByYear, firstOpening) => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
-      if (idx <= 0) return (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
-      const prevFlow = yearFlows[sortedConfigs[idx - 1].year];
-      return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
-    }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
-    const activeFlow = yearFlows[activeYear] || [];
+      if (idx <= 0) return firstOpening !== void 0 ? firstOpening : (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
+      const prevFlow = flowsByYear[sortedConfigs[idx - 1].year];
+      if ((prevFlow == null ? void 0 : prevFlow.length) > 0) return prevFlow[prevFlow.length - 1].balance;
+      return firstOpening !== void 0 ? firstOpening : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
+    };
+    // ── The account filter ───────────────────────────────────────────────
+    // Combined is the default and always available: every view shows the
+    // household's whole position unless you narrow it. Narrowing recomputes
+    // the running balance from that account's own share of the opening
+    // balance, over only its own events — which is why nothing downstream of
+    // here needs to know accounts exist. It receives a flow and an opening
+    // balance, exactly as it always did; they are just a narrower pair.
+    //
+    // Device-local: which account you are looking at is a view, not a fact
+    // about the household, and syncing it would move a partner's screen.
+    const [accountFilter, setAccountFilter] = useLS("cf_account_filter", "");
+    // A filter naming an account that has since been deleted would silently
+    // show an empty budget, which reads as data loss. Fall back to combined.
+    const activeAccount = accountFilter && accounts.some((a) => a.id === accountFilter) ? accountFilter : "";
+    const accountYearFlows = useMemo(() => {
+      if (!activeAccount) return null;
+      const first = sortedConfigs[0];
+      const openings = accountOpenings(accounts, first ? first.openingBalance : 0);
+      const out = {};
+      let carry = openings[activeAccount] || 0;
+      sortedConfigs.forEach((yc) => {
+        const evs = (yearFlows[yc.year] || []).filter((ev) => accountIdOf(ev) === activeAccount);
+        const flow = computeFlow(evs, carry);
+        out[yc.year] = flow;
+        carry = flow.length ? flow[flow.length - 1].balance : carry;
+      });
+      return out;
+    }, [activeAccount, accounts, sortedConfigs, yearFlows]);
+    const viewFlows = accountYearFlows || yearFlows;
+    const activeFlow = viewFlows[activeYear] || [];
+    const activeOpenBal = useMemo(() => {
+      if (!activeAccount) return openBalOf(yearFlows);
+      const first = sortedConfigs[0];
+      return openBalOf(viewFlows, accountOpenings(accounts, first ? first.openingBalance : 0)[activeAccount] || 0);
+      // openBalOf closes over sortedConfigs/activeYear/yearConfigs, all of
+      // which are listed below so the memo cannot go stale on any of them.
+    }, [activeAccount, accounts, sortedConfigs, activeYear, yearConfigs, yearFlows, viewFlows]);
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
     // Skipped occurrences never appear in activeFlow (expandEntries drops
@@ -1504,7 +1543,7 @@
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), /* @__PURE__ */ React.createElement(AccountFilter, { accounts, value: activeAccount, onChange: setAccountFilter }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -1604,6 +1643,8 @@
       {
         categories,
         activity,
+        accounts,
+        setAccounts,
         holidays,
         setHolidays,
         isOffline,

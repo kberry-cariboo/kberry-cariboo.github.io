@@ -254,7 +254,7 @@ console.log('\n── 8. The saved payload never carries receipt images ──')
     const raw = JSON.stringify(last.p_data);
     check('no base64 image is in the save payload', !raw.includes('data:image/'), 'the payload carries an inline image');
     check('the save quotes the savedAt it loaded with', last.p_expected_saved_at === '2026-08-01T10:00:00Z', String(last.p_expected_saved_at));
-    check('and stamps the current schema version', last.p_data.schemaVersion === 9, String(last.p_data.schemaVersion));
+    check('and stamps the current schema version', last.p_data.schemaVersion === 10, String(last.p_data.schemaVersion));
   }
   await ctx.close();
 }

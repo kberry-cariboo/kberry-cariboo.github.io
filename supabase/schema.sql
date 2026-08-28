@@ -134,6 +134,22 @@ create table if not exists categories (
   primary key (household_id, name)
 );
 
+-- Where a household's money lives. A credit card is an ordinary row here whose
+-- balance simply runs below zero — the client keeps one arithmetic for every
+-- account, and `kind` only decides how the account is described and sorted.
+create table if not exists accounts (
+  household_id uuid not null references households(id) on delete cascade,
+  id text not null,
+  name text not null,
+  kind text not null default 'chequing',
+  -- How much of the budget year's opening balance sits in this account. Only
+  -- meaningful on accounts after the first, which takes the remainder — see
+  -- accountOpenings() in the client.
+  opening numeric(14,2) not null default 0,
+  sort_order int not null default 0,
+  primary key (household_id, id)
+);
+
 create table if not exists year_configs (
   household_id uuid not null references households(id) on delete cascade,
   year int not null,
@@ -312,6 +328,11 @@ end $$;
 -- counting forward, or -1 for the last one. Null for every other unit.
 alter table entries add column if not exists recur_nth int;
 alter table entries add column if not exists banking_day boolean;
+-- Which account an entry moves money in, and — for a transfer between two of
+-- them — which account it moves money into. Both null on everything written
+-- before accounts existed; the client reads null as the default account.
+alter table entries add column if not exists account_id text;
+alter table entries add column if not exists to_account_id text;
 alter table entries add column if not exists transfer_direction text;
 alter table entries add column if not exists copied_from text;
 alter table entry_overrides add column if not exists month int;
@@ -448,6 +469,7 @@ alter table household_data enable row level security;
 alter table entries enable row level security;
 alter table entry_overrides enable row level security;
 alter table categories enable row level security;
+alter table accounts enable row level security;
 alter table year_configs enable row level security;
 alter table budget_targets enable row level security;
 alter table templates enable row level security;
@@ -554,6 +576,10 @@ create policy "member read entry_overrides" on entry_overrides
 
 drop policy if exists "member read categories" on categories;
 create policy "member read categories" on categories
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read accounts" on accounts;
+create policy "member read accounts" on accounts
   for select using (is_household_member(household_id));
 
 drop policy if exists "member read year_configs" on year_configs;
@@ -743,7 +769,7 @@ returns text[] language sql immutable as $$
     'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
     'completed', 'debtData', 'deletedCopyIds', 'holidays',
-    'currency', 'locale', 'holidayRegion', 'activity'
+    'currency', 'locale', 'holidayRegion', 'activity', 'accounts'
   ]::text[];
 $$;
 
@@ -823,7 +849,7 @@ begin
   if jsonb_typeof(d->'entries') = 'array' then
     insert into entries (household_id, id, sort_order, description, type, amount,
                          start_date, repeats, recur_every, recur_unit, recur_days,
-                         recur_nth, banking_day,
+                         recur_nth, banking_day, account_id, to_account_id,
                          recur_end, category, notes, monthly_amounts, created_by,
                          transfer_direction, copied_from)
     select hid,
@@ -840,6 +866,8 @@ begin
            cf_int_array(e.value->'recurDays'),
            cf_int(e.value->>'recurNth'),
            cf_bool(e.value->>'bankingDay'),
+           nullif(e.value->>'accountId', ''),
+           nullif(e.value->>'toAccountId', ''),
            cf_date(e.value->>'recurEnd'),
            coalesce(nullif(e.value->>'category', ''), 'Uncategorized'),
            coalesce(e.value->>'notes', ''),
@@ -863,6 +891,8 @@ begin
       recur_days = excluded.recur_days,
       recur_nth = excluded.recur_nth,
       banking_day = excluded.banking_day,
+      account_id = excluded.account_id,
+      to_account_id = excluded.to_account_id,
       recur_end = excluded.recur_end,
       category = excluded.category,
       notes = excluded.notes,
@@ -872,13 +902,15 @@ begin
       copied_from = excluded.copied_from
     where (entries.sort_order, entries.description, entries.type, entries.amount,
            entries.start_date, entries.repeats, entries.recur_every, entries.recur_unit,
-           entries.recur_days, entries.recur_nth, entries.banking_day, entries.recur_end, entries.category, entries.notes,
+           entries.recur_days, entries.recur_nth, entries.banking_day,
+           entries.account_id, entries.to_account_id, entries.recur_end, entries.category, entries.notes,
            entries.monthly_amounts, entries.created_by,
            entries.transfer_direction, entries.copied_from)
       is distinct from
           (excluded.sort_order, excluded.description, excluded.type, excluded.amount,
            excluded.start_date, excluded.repeats, excluded.recur_every, excluded.recur_unit,
-           excluded.recur_days, excluded.recur_nth, excluded.banking_day, excluded.recur_end, excluded.category, excluded.notes,
+           excluded.recur_days, excluded.recur_nth, excluded.banking_day,
+           excluded.account_id, excluded.to_account_id, excluded.recur_end, excluded.category, excluded.notes,
            excluded.monthly_amounts, excluded.created_by,
            excluded.transfer_direction, excluded.copied_from);
 
@@ -1003,6 +1035,38 @@ begin
       and not exists (
         select 1 from jsonb_array_elements_text(d->'categories') x(v)
         where x.v = c.name
+      );
+  end if;
+
+  -- accounts ------------------------------------------------------------------
+  -- Absent from the payload is not the same as empty: an older client that
+  -- predates accounts sends neither, and wiping the household's accounts
+  -- because of that would strand every entry pointing at one. Only a payload
+  -- that actually carries the array touches this table, matching how every
+  -- other collection here behaves.
+  if jsonb_typeof(d->'accounts') = 'array' then
+    insert into accounts (household_id, id, name, kind, opening, sort_order)
+    select hid,
+           a.value->>'id',
+           coalesce(nullif(a.value->>'name', ''), 'Account'),
+           coalesce(nullif(a.value->>'kind', ''), 'chequing'),
+           coalesce(cf_num(a.value->>'opening'), 0),
+           a.ord
+    from jsonb_array_elements(d->'accounts') with ordinality a(value, ord)
+    where nullif(a.value->>'id', '') is not null
+    on conflict (household_id, id) do update set
+      name = excluded.name,
+      kind = excluded.kind,
+      opening = excluded.opening,
+      sort_order = excluded.sort_order
+    where (accounts.name, accounts.kind, accounts.opening, accounts.sort_order)
+      is distinct from (excluded.name, excluded.kind, excluded.opening, excluded.sort_order);
+
+    delete from accounts a
+    where a.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements(d->'accounts') x
+        where x.value->>'id' = a.id
       );
   end if;
 
@@ -1379,6 +1443,8 @@ begin
         'recurDays', to_jsonb(e.recur_days),
         'recurNth', e.recur_nth,
         'bankingDay', e.banking_day,
+        'accountId', e.account_id,
+        'toAccountId', e.to_account_id,
         'recurEnd', coalesce(to_char(e.recur_end, 'YYYY-MM-DD'), ''),
         'category', e.category,
         'notes', e.notes,
@@ -1412,6 +1478,13 @@ begin
     'categories', coalesce((
       select jsonb_agg(to_jsonb(c.name) order by c.sort_order)
       from categories c where c.household_id = hid), '[]'::jsonb),
+    -- Never emitted empty: a household with no accounts row is one that has
+    -- not saved since accounts existed, and the client's own migration gives
+    -- it the single default account rather than rendering against nothing.
+    'accounts', coalesce((
+      select jsonb_agg(jsonb_build_object('id', a.id, 'name', a.name, 'kind', a.kind, 'opening', a.opening)
+                       order by a.sort_order)
+      from accounts a where a.household_id = hid), '[]'::jsonb),
     'categoryColors', coalesce((
       select jsonb_object_agg(c.name, c.color)
       from categories c where c.household_id = hid and c.color is not null), '{}'::jsonb),

@@ -131,7 +131,18 @@
     // check catches, so this needs no merge rule of its own — and a log is the
     // one field where losing the loser's entries is the same outcome as losing
     // the loser's edits, which is what the user is being told about anyway.
-    { key: "activity", storage: "cf_activity", initial: () => [], kind: "array", backup: true }
+    { key: "activity", storage: "cf_activity", initial: () => [], kind: "array", backup: true },
+    // Where the household's money lives. Never empty: a payload without one is
+    // given the single default account by migrateHouseholdPayload, so every
+    // reader can assume at least one exists.
+    // A custom apply, not the plain array guard: that one accepts `[]`, and a
+    // household with zero accounts is the single state the rest of the app
+    // cannot render — every entry would point at an account that isn't there.
+    // An absent or empty list means "whatever this device already has", which
+    // for a household that predates accounts is the one default below.
+    { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, marksUnsaved: true, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 0) set(v);
+    } }
   ];
   // Long enough to answer "what happened while I was away" across a busy week,
   // short enough that the log never becomes the largest thing in the payload:

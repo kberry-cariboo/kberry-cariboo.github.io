@@ -1046,6 +1046,24 @@
           .scenario-row{flex-wrap:wrap;}
           .scenario-desc{flex:1 1 100%;}
         }
+        /* Account filter: sits under the sub-tab strip, above the month pills. */
+        .account-filter{display:flex;align-items:center;gap:8px;max-width:var(--container-w);
+          margin:0 auto 14px;}
+        .account-filter-label{font-size:11px;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;color:var(--textLt);}
+        .account-filter-select{font-size:13px;padding:6px 10px;border-radius:8px;
+          border:1px solid var(--border);background:var(--bgCard);color:var(--text);
+          font-family:inherit;min-height:36px;}
+        /* Accounts list in Settings: name, kind, opening share, remove. */
+        .account-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+          padding:8px 0;border-bottom:1px solid var(--border);}
+        .account-row:last-child{border-bottom:none;}
+        .account-name{flex:1 1 180px;min-width:0;}
+        .account-kind{flex:0 0 140px;}
+        .account-opening{width:120px;}
+        .account-opening-note{flex:0 0 auto;}
+        .row-account-tag{margin-left:7px;font-size:10px;color:var(--textLt);
+          border:1px solid var(--border);border-radius:5px;padding:1px 5px;white-space:nowrap;}
         .cal-grid{display:flex;flex-direction:column;}
         .cal-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
         .cal-row--head{border-bottom:1px solid var(--border);}
@@ -2953,6 +2971,13 @@ document.addEventListener('DOMContentLoaded',function(){
   // cents, but `8 < 9` sent it through the v8 pass again and multiplied every
   // amount by 100. Bumping to v10 would have done the same to every v9 payload
   // in existence, cloud data included. Gate each step, never the call.
+  // The one account every household is guaranteed to have. Declared here
+  // rather than with the other account helpers in app-data.js because the v10
+  // step below is what creates it, and because this file has to be readable on
+  // its own by tests/payload-migration.mjs, which evaluates it without the
+  // rest of the bundle around it.
+  const DEFAULT_ACCOUNT_ID = "acct-main";
+  const DEFAULT_ACCOUNT_NAME = "Chequing";
   function migrateHouseholdPayload(d, from) {
     if (!d) return d;
     const at = Number(from) || 0;
@@ -3024,9 +3049,24 @@ document.addEventListener('DOMContentLoaded',function(){
       });
       out.debtData = nextDebt;
     }
+    // v10 added accounts and needs no conversion step. A household that
+    // predates them simply carries no `accounts` key, and the field's own
+    // guard in HOUSEHOLD_FIELDS turns that into the single default account —
+    // which is where the "every household has at least one" invariant belongs,
+    // since it has to hold for a payload of any version, not just an old one.
+    //
+    // Nothing stamps `accountId` onto existing entries either: accountIdOf
+    // reads "unset" as the default account, so writing it out several hundred
+    // times would rewrite the whole payload to say what it already meant.
+    //
+    // Deliberately not a step here: this function converts values, and only
+    // ever for versions that predate the conversion. Defaulting a missing
+    // field from here would make "migrate an already-current payload" stop
+    // being a no-op, which is the property tests/payload-migration.mjs exists
+    // to hold on to.
     return out;
   }
-  const SCHEMA_VERSION = 9;
+  const SCHEMA_VERSION = 10;
   function migrateData() {
     let storedVersion = 0;
     try {
@@ -3698,6 +3738,14 @@ document.addEventListener('DOMContentLoaded',function(){
     const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
     return day > daysInMonth(month, year) ? null : new Date(year, month, day);
   }
+  // The account an entry or event belongs to, with the default standing in for
+  // anything written before accounts existed. Every reader goes through this
+  // rather than reading `.accountId` directly, so "unset" has one meaning.
+  const accountIdOf = (x) => (x && x.accountId) || DEFAULT_ACCOUNT_ID;
+  // A transfer that names a destination moves money between two accounts, and
+  // shows up twice: out of one, into the other. Anything else — an old
+  // transfer, or one with no destination — keeps its single-sided meaning.
+  const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3756,6 +3804,10 @@ document.addEventListener('DOMContentLoaded',function(){
           // this tracked account (default) vs into it. Income/expense
           // entries ignore this entirely.
           transferDirection: e.transferDirection || "out",
+          // Which account this movement is in. Unset on anything written
+          // before accounts existed, which accountIdOf reads as the default —
+          // so a one-account household sees exactly what it always saw.
+          accountId: accountIdOf(e),
           amount: actual,
           plannedAmount: planned,
           category: e.category,
@@ -3781,6 +3833,30 @@ document.addEventListener('DOMContentLoaded',function(){
           recurEvery: e.recurEvery || 1,
           repeats: e.repeats || false
         });
+        // A transfer between two accounts is one entry and two movements: out
+        // of the account it names, into the account it points at. Emitted here
+        // rather than derived later so every downstream consumer — the running
+        // balance, the month summaries, the calendar, the forecast — sees a
+        // complete picture without knowing accounts exist.
+        //
+        // The two legs are equal and opposite, so a combined balance across
+        // every account is unchanged by an internal transfer. That is the
+        // property that lets "combined" stay the default view and still be
+        // right.
+        if (isInterAccountTransfer(e)) {
+          const first = events[events.length - 1];
+          events.push(__spreadProps(__spreadValues({}, first), {
+            // Distinct id: an occurrence id keys overrides, completion ticks
+            // and React lists, and two rows sharing one would collide in all
+            // three.
+            id: `${first.id}-in`,
+            accountId: e.toAccountId,
+            transferDirection: first.transferDirection === "out" ? "in" : "out",
+            // The leg is a consequence of the entry, not an occurrence anyone
+            // edits: the editable one is the first leg.
+            _leg: true
+          }));
+        }
       };
       if (!e.repeats) {
         addEv(new Date(startD));
@@ -4915,7 +4991,18 @@ document.addEventListener('DOMContentLoaded',function(){
     // check catches, so this needs no merge rule of its own — and a log is the
     // one field where losing the loser's entries is the same outcome as losing
     // the loser's edits, which is what the user is being told about anyway.
-    { key: "activity", storage: "cf_activity", initial: () => [], kind: "array", backup: true }
+    { key: "activity", storage: "cf_activity", initial: () => [], kind: "array", backup: true },
+    // Where the household's money lives. Never empty: a payload without one is
+    // given the single default account by migrateHouseholdPayload, so every
+    // reader can assume at least one exists.
+    // A custom apply, not the plain array guard: that one accepts `[]`, and a
+    // household with zero accounts is the single state the rest of the app
+    // cannot render — every entry would point at an account that isn't there.
+    // An absent or empty list means "whatever this device already has", which
+    // for a household that predates accounts is the one default below.
+    { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, marksUnsaved: true, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 0) set(v);
+    } }
   ];
   // Long enough to answer "what happened while I was away" across a busy week,
   // short enough that the log never becomes the largest thing in the payload:
@@ -5882,7 +5969,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // and Settings, and prop-drilling a recorder into all three is how half of
   // them end up not calling it. The default is a no-op so a component rendered
   // outside a provider (the self-test harness, a screenshot run) still works.
-  const HouseholdContext = createContext({ members: [], sessionUser: null, logActivity: () => {
+  const HouseholdContext = createContext({ members: [], sessionUser: null, accounts: [], logActivity: () => {
   } });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
   const LOGO_SRC = "data:image/png;base64,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";
@@ -6272,6 +6359,62 @@ document.addEventListener('DOMContentLoaded',function(){
   // How each kind of logged change is labelled in the Activity list. The kind
   // is stored rather than the label so the wording can be changed without
   // rewriting history.
+  // ── Accounts ────────────────────────────────────────────────────────────
+  // A household's money lives in more than one place: a chequing account, a
+  // savings account, a credit card. Every entry belongs to one of them, and a
+  // transfer moves money from one to another — which is what finally gives the
+  // transfer type something coherent to mean.
+  //
+  // Every household has at least one. A household that predates accounts gets
+  // exactly one, holding everything it already had, so nothing it can see
+  // changes until it adds a second (see migrateHouseholdPayload).
+  // DEFAULT_ACCOUNT_ID/_NAME live in migrate.js, which is where the guarantee
+  // that every household has exactly one account is enforced — and which has
+  // to be readable on its own, without the rest of the bundle, by
+  // tests/payload-migration.mjs.
+  // What an account is, which decides only how it is described and sorted —
+  // never how its balance is computed. A credit card is an ordinary account
+  // whose balance is usually below zero; treating it as a special negative
+  // thing would mean two arithmetics in an app that has carefully kept one.
+  const ACCOUNT_KINDS = [
+    { id: "chequing", label: "Chequing" },
+    { id: "savings", label: "Savings" },
+    { id: "credit", label: "Credit card" },
+    { id: "cash", label: "Cash" },
+    { id: "other", label: "Other" }
+  ];
+  const accountById = (accounts, id) => (accounts || []).find((a) => a.id === id) || null;
+  const accountName = (accounts, id) => {
+    const a = accountById(accounts, id);
+    return a ? a.name : id === DEFAULT_ACCOUNT_ID ? DEFAULT_ACCOUNT_NAME : "Unknown account";
+  };
+  // accountIdOf and isInterAccountTransfer live in dates.js: expandEntries
+  // needs them, and dates.js is evaluated on its own by tests/year-copy.mjs.
+  // How the year's opening balance is split between accounts.
+  //
+  // There is one editable total — the budget year's opening balance, in
+  // Settings, exactly where it has always been — and each account beyond the
+  // first says how much of it is sitting there. The first account takes the
+  // remainder, so the shares always sum to the total and there is nothing to
+  // reconcile. Saying "my savings account opened the year with $10,000" moves
+  // $10,000 of the household's opening balance into savings; it does not
+  // conjure $10,000, which is what a second independently-editable total
+  // would have done.
+  //
+  // A household with one account never sees any of this: its single account
+  // holds the whole opening balance and there is nothing to fill in.
+  function accountOpenings(accounts, combinedOpening) {
+    const list = Array.isArray(accounts) && accounts.length ? accounts : [{ id: DEFAULT_ACCOUNT_ID }];
+    const out = {};
+    let allocated = 0;
+    list.slice(1).forEach((a) => {
+      const v = Number.isFinite(a.opening) ? a.opening : 0;
+      out[a.id] = v;
+      allocated += v;
+    });
+    out[list[0].id] = roundMoney((Number(combinedOpening) || 0) - allocated);
+    return out;
+  }
   const ACTIVITY_LABELS = {
     entry: "Entry",
     override: "Date",
@@ -7285,6 +7428,11 @@ document.addEventListener('DOMContentLoaded',function(){
   }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), className: "toggle-label" }, label));
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     var _a, _b, _c, _d, _e;
+    // Off the household context rather than a prop: the form is opened from
+    // six places and threading the account list through all of them is how one
+    // of them ends up without it.
+    const { accounts: formAccounts } = useContext(HouseholdContext);
+    const accounts = Array.isArray(formAccounts) && formAccounts.length ? formAccounts : [];
     const today = todayStr();
     const blank = {
       desc: "",
@@ -7311,7 +7459,14 @@ document.addEventListener('DOMContentLoaded',function(){
       bankingDay: "",
       recurEnd: "",
       monthlyAmounts: null,
-      transferDirection: "out"
+      transferDirection: "out",
+      // Which account the money moves in. "" means the household's first
+      // account, which is also what every entry written before accounts
+      // existed means.
+      accountId: "",
+      // Only for a transfer: the account the money moves into. Set, and the
+      // entry becomes two movements — out of one account, into the other.
+      toAccountId: ""
     };
     const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
       // Money is cents at rest; this form's fields are plain dollar text the
@@ -7325,7 +7480,9 @@ document.addEventListener('DOMContentLoaded',function(){
       bankingDay: initial.bankingDay === true ? "yes" : initial.bankingDay === false ? "no" : "",
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
       repeats: (_e = initial.repeats) != null ? _e : false,
-      transferDirection: initial.transferDirection || "out"
+      transferDirection: initial.transferDirection || "out",
+      accountId: initial.accountId || "",
+      toAccountId: initial.toAccountId || ""
     }) : blank);
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
@@ -7467,6 +7624,10 @@ document.addEventListener('DOMContentLoaded',function(){
         // rule applies to — anything else stores nothing rather than a
         // preference that can never take effect.
         bankingDay: f.repeats && f.type === "income" && (f.bankingDay === "yes" || f.bankingDay === "no") ? f.bankingDay === "yes" : void 0,
+        accountId: f.accountId || void 0,
+        // A destination only means anything on a transfer, and only when it is
+        // somewhere else: "into the account it came out of" is not a movement.
+        toAccountId: f.type === "transfer" && f.toAccountId && f.toAccountId !== (f.accountId || (accounts[0] || {}).id) ? f.toAccountId : void 0,
         // "monthweekday" keeps exactly one weekday (the schedule names one);
         // "week" keeps the start day plus any extras the user ticked.
         recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
@@ -7535,7 +7696,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-amount",
@@ -7551,7 +7712,22 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), accounts.length > 1 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, {
+      htmlFor: "ef-account",
+      className: lblCls,
+      helpLabel: "Account",
+      help: "Which of your accounts this money moves in. A transfer can also name a second account to move it into, which makes it one entry and two movements \u2014 out of the first, into the second \u2014 so the household total is unchanged and each account\u2019s own balance is right."
+    }, f.type === "transfer" ? "From account" : "Account"), /* @__PURE__ */ React.createElement("select", {
+      id: "ef-account",
+      className: inpCls(false),
+      value: f.accountId || (accounts[0] || {}).id || "",
+      onChange: (e) => set({ accountId: e.target.value, toAccountId: f.toAccountId === e.target.value ? "" : f.toAccountId })
+    }, accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))), f.type === "transfer" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: lblCls + " mt-10", htmlFor: "ef-to-account" }, "To account"), /* @__PURE__ */ React.createElement("select", {
+      id: "ef-to-account",
+      className: inpCls(false),
+      value: f.toAccountId,
+      onChange: (e) => set({ toAccountId: e.target.value })
+    }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Outside these accounts \u2014"), accounts.filter((a) => a.id !== (f.accountId || (accounts[0] || {}).id)).map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
       set({ category: e.target.value });
       if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
     } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-date-row" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-160" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-date" }, "Date", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
@@ -9041,6 +9217,29 @@ document.addEventListener('DOMContentLoaded',function(){
       )
     );
   }
+  // The account filter. Only rendered once a household has more than one
+  // account — with a single account "All accounts" and "Chequing" are the same
+  // set, and a control whose two options do the same thing is worse than no
+  // control.
+  //
+  // Combined stands first and is the default. Every view behind this reads a
+  // flow and an opening balance, so narrowing is a matter of handing them a
+  // smaller pair; none of them knows this exists.
+  function AccountFilter({ accounts = [], value = "", onChange = () => {
+  } }) {
+    if (!Array.isArray(accounts) || accounts.length < 2) return null;
+    return /* @__PURE__ */ React.createElement("div", { className: "account-filter", "data-noprint": true }, /* @__PURE__ */ React.createElement("label", { htmlFor: "account-filter-select", className: "account-filter-label" }, "Account"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "account-filter-select",
+        className: "account-filter-select",
+        value,
+        onChange: (e) => onChange(e.target.value)
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "All accounts"),
+      accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
+    ));
+  }
   function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {
@@ -9711,7 +9910,15 @@ document.addEventListener('DOMContentLoaded',function(){
     var _a, _b;
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
-    const { logActivity } = useContext(HouseholdContext);
+    const { logActivity, accounts: hhAccounts } = useContext(HouseholdContext);
+    // Which account a row is in, shown only once there is more than one — with
+    // a single account it would name the only place the money could be, on
+    // every row. It also tells the two halves of an internal transfer apart:
+    // in the combined ledger they are the same description twice, once leaving
+    // one account and once arriving in the other.
+    const acctTag = (ev) => (hhAccounts || []).length > 1
+      ? /* @__PURE__ */ React.createElement("span", { className: "row-account-tag" }, accountName(hhAccounts, accountIdOf(ev)))
+      : null;
     // Calendar replaced Daily. The sub-tab is remembered per device and
     // #/budget/daily was a real deep link, so a phone or a bookmark can still
     // arrive asking for a view that no longer exists; send it to the one that
@@ -10080,7 +10287,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-desc-cell budget-col-desc budget-desc-td", title: ev.desc, style: {
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
-          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"));
+          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"), acctTag(ev));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
           if (col === "income") {
             const showHere = isInflowEvent(ev);
@@ -10174,7 +10381,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎"), acctTag(ev)), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -13769,6 +13976,12 @@ Fill every field of the response schema. Rules:
           ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries. The chart at the top draws the balance day by day, with the low point and your alert threshold marked; the list below it is every event behind that line. Turn on \u201cWhat if\u2026\u201d to drop a recurring entry or put a different amount on it and see the second curve that would result \u2014 nothing there changes your budget, and it stays on the device you try it on."],
           ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
+        { sub: "Accounts" },
+        { p: "A household\u2019s money lives in more than one place, so every entry belongs to an account \u2014 chequing, savings, a credit card, cash. Add and name them under Settings \u2192 Accounts. A credit card is an ordinary account here whose balance simply runs below zero; there is no separate arithmetic for it." },
+        { p: "Every view adds all of them together unless you narrow it with the Account picker above the budget, which appears once you have more than one. Narrowing recomputes the running balance from that account\u2019s own share of the year\u2019s opening balance, over only its own events." },
+        { p: "There is one opening balance, set per budget year under Settings \u2192 Budget Years. Each account after the first says how much of it is sitting there, and the first account takes the remainder \u2014 so the shares always add up to the one figure you set, and saying \u201cmy savings opened with $10,000\u201d moves $10,000 of the household\u2019s opening balance into savings rather than conjuring it." },
+        { p: "A transfer can now name a second account, which makes it one entry and two movements: out of the first, into the second. Each account\u2019s balance changes and the household\u2019s total does not, which is what a transfer between your own accounts actually does. A transfer with no destination keeps its old meaning \u2014 money leaving or arriving from outside the accounts you track." },
+        { p: "Removing an account never removes money: the entries filed under it move back to your first account, unchanged." },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
         { sub: "Searching" },
@@ -14252,7 +14465,8 @@ Fill every field of the response schema. Rules:
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], activity = [], pushUndo = () => {
+  }, templates = [], setTemplates, activeFlow = [], activity = [], accounts = [], setAccounts = () => {
+  }, pushUndo = () => {
   }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
@@ -14278,6 +14492,14 @@ Fill every field of the response schema. Rules:
     const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
+    const [removingAccount, setRemovingAccount] = useState(null);
+    // What each account opens the first budget year with. Derived, never
+    // stored for the first account: it takes the remainder, so the shares can
+    // never drift from the one opening balance the user actually sets.
+    const openingShares = useMemo(() => {
+      const first = [...yearConfigs].sort((a, b) => a.year - b.year)[0];
+      return accountOpenings(accounts, first ? first.openingBalance : 0);
+    }, [accounts, yearConfigs]);
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [showAiKey, setShowAiKey] = useState(false);
     const [inviteCode, setInviteCode] = useState("");
@@ -14515,6 +14737,7 @@ Fill every field of the response schema. Rules:
       // Order matches the sections as they appear down the page, which is
       // alphabetical by heading — so the strip is also the index you would
       // scan for a setting whose name you know.
+      ["sec-accounts", "Accounts"],
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
@@ -14541,7 +14764,54 @@ Fill every field of the response schema. Rules:
         className: "quicklink-pill"
       },
       label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-accounts", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Where the household\u2019s money lives. A credit card is an ordinary account here \u2014 its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget." }, "Accounts"), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, accounts.map((a, i) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "account-row" }, /* @__PURE__ */ React.createElement("input", {
+      "aria-label": `Name of account ${i + 1}`,
+      className: "field-input account-name",
+      value: a.name,
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x))
+    }), /* @__PURE__ */ React.createElement("select", {
+      "aria-label": `Kind of ${a.name}`,
+      className: "field-input account-kind",
+      value: a.kind || "chequing",
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { kind: e.target.value }) : x))
+    }, ACCOUNT_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label))), i === 0 ? /* @__PURE__ */ React.createElement("span", { className: "txl account-opening-note" }, "Opens with the rest \u2014 ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(openingShares[a.id] || 0))) : /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
+      type: "number",
+      inputMode: "decimal",
+      step: "0.01",
+      "aria-label": `Opening balance of ${a.name}`,
+      className: "field-input field-input--mono account-opening",
+      value: centsToDollars(Number.isFinite(a.opening) ? a.opening : 0),
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { opening: dollarsToCents(e.target.value) }) : x))
+    })), accounts.length > 1 && i > 0 && /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary cf-btn--micro",
+      onClick: () => setRemovingAccount(a),
+      "aria-label": `Remove ${a.name}`
+    }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary",
+      onClick: () => setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }])
+    }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+      title: `Remove ${removingAccount.name}?`,
+      message: (() => {
+        const n = entries.filter((e) => accountIdOf(e) === removingAccount.id).length;
+        const t = entries.filter((e) => e.toAccountId === removingAccount.id).length;
+        return n + t === 0 ? "Nothing is filed under this account, so removing it changes no figures." : `${n + t} ${n + t === 1 ? "entry moves" : "entries move"} back to ${accountName(accounts, (accounts[0] || {}).id)}. No entry is deleted and no amount changes \u2014 they simply stop being separated out.`;
+      })(),
+      confirmLabel: "Remove",
+      onCancel: () => setRemovingAccount(null),
+      onConfirm: () => {
+        // Entries are re-homed rather than deleted: an account is a label on
+        // money, and removing the label must not remove the money.
+        setEntries((prev) => prev.map((e) => {
+          if (accountIdOf(e) !== removingAccount.id && e.toAccountId !== removingAccount.id) return e;
+          const next = __spreadValues({}, e);
+          if (accountIdOf(e) === removingAccount.id) delete next.accountId;
+          if (e.toAccountId === removingAccount.id) delete next.toAccountId;
+          return next;
+        }));
+        setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
+        setRemovingAccount(null);
+      }
+    })), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
@@ -16484,7 +16754,8 @@ Fill every field of the response schema. Rules:
       currency,
       locale,
       holidayRegion: holidayRegionCode,
-      activity
+      activity,
+      accounts
     } = houseValues;
     const {
       entries: setEntries,
@@ -16513,7 +16784,8 @@ Fill every field of the response schema. Rules:
       currency: setCurrency,
       locale: setLocale,
       holidayRegion: setHolidayRegionCode,
-      activity: setActivity
+      activity: setActivity,
+      accounts: setAccounts
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -16903,7 +17175,7 @@ Fill every field of the response schema. Rules:
     }, [setActivity, sessionUser]);
     // A description short enough for a log line, without cutting a word in half
     // when it already fits.
-    const householdCtx = useMemo(() => ({ members, sessionUser, logActivity }), [members, sessionUser, logActivity]);
+    const householdCtx = useMemo(() => ({ members, sessionUser, accounts, logActivity }), [members, sessionUser, accounts, logActivity]);
     const logDesc = (d) => {
       const t = String(d == null ? "" : d).trim() || "Entry";
       return t.length > 40 ? t.slice(0, 39) + "\u2026" : t;
@@ -17021,14 +17293,51 @@ Fill every field of the response schema. Rules:
     }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
-    const activeOpenBal = useMemo(() => {
+    const openBalOf = (flowsByYear, firstOpening) => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
-      if (idx <= 0) return (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
-      const prevFlow = yearFlows[sortedConfigs[idx - 1].year];
-      return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
-    }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
-    const activeFlow = yearFlows[activeYear] || [];
+      if (idx <= 0) return firstOpening !== void 0 ? firstOpening : (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
+      const prevFlow = flowsByYear[sortedConfigs[idx - 1].year];
+      if ((prevFlow == null ? void 0 : prevFlow.length) > 0) return prevFlow[prevFlow.length - 1].balance;
+      return firstOpening !== void 0 ? firstOpening : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
+    };
+    // ── The account filter ───────────────────────────────────────────────
+    // Combined is the default and always available: every view shows the
+    // household's whole position unless you narrow it. Narrowing recomputes
+    // the running balance from that account's own share of the opening
+    // balance, over only its own events — which is why nothing downstream of
+    // here needs to know accounts exist. It receives a flow and an opening
+    // balance, exactly as it always did; they are just a narrower pair.
+    //
+    // Device-local: which account you are looking at is a view, not a fact
+    // about the household, and syncing it would move a partner's screen.
+    const [accountFilter, setAccountFilter] = useLS("cf_account_filter", "");
+    // A filter naming an account that has since been deleted would silently
+    // show an empty budget, which reads as data loss. Fall back to combined.
+    const activeAccount = accountFilter && accounts.some((a) => a.id === accountFilter) ? accountFilter : "";
+    const accountYearFlows = useMemo(() => {
+      if (!activeAccount) return null;
+      const first = sortedConfigs[0];
+      const openings = accountOpenings(accounts, first ? first.openingBalance : 0);
+      const out = {};
+      let carry = openings[activeAccount] || 0;
+      sortedConfigs.forEach((yc) => {
+        const evs = (yearFlows[yc.year] || []).filter((ev) => accountIdOf(ev) === activeAccount);
+        const flow = computeFlow(evs, carry);
+        out[yc.year] = flow;
+        carry = flow.length ? flow[flow.length - 1].balance : carry;
+      });
+      return out;
+    }, [activeAccount, accounts, sortedConfigs, yearFlows]);
+    const viewFlows = accountYearFlows || yearFlows;
+    const activeFlow = viewFlows[activeYear] || [];
+    const activeOpenBal = useMemo(() => {
+      if (!activeAccount) return openBalOf(yearFlows);
+      const first = sortedConfigs[0];
+      return openBalOf(viewFlows, accountOpenings(accounts, first ? first.openingBalance : 0)[activeAccount] || 0);
+      // openBalOf closes over sortedConfigs/activeYear/yearConfigs, all of
+      // which are listed below so the memo cannot go stale on any of them.
+    }, [activeAccount, accounts, sortedConfigs, activeYear, yearConfigs, yearFlows, viewFlows]);
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
     // Skipped occurrences never appear in activeFlow (expandEntries drops
@@ -17810,7 +18119,7 @@ Fill every field of the response schema. Rules:
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), /* @__PURE__ */ React.createElement(AccountFilter, { accounts, value: activeAccount, onChange: setAccountFilter }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -17910,6 +18219,8 @@ Fill every field of the response schema. Rules:
       {
         categories,
         activity,
+        accounts,
+        setAccounts,
         holidays,
         setHolidays,
         isOffline,
