@@ -617,7 +617,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
 
     await page.goto(BASE + '#/settings', { waitUntil: 'load' });
     await page.waitForTimeout(700);
-    await page.getByRole('button', { name: /Audit/i }).first().click();
+    await page.getByRole('button', { name: /Activity/i }).first().click();
     await page.waitForTimeout(600);
     const entry = await page.locator('.audit-entry').first().innerText();
     if (!/Saved/.test(entry)) throw new Error('audit row has no save stamp: ' + entry);
@@ -630,7 +630,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     // Put back everything this touched. The suite shares one page session, so
     // both the override and the Settings sub-page are state later cases read:
     // leaving the override in place moved the Rent figures a downstream test
-    // asserts on, and leaving Settings on Audit meant the next test to open
+    // asserts on, and leaving Settings on Activity meant the next test to open
     // Settings found no category list at all.
     await page.locator('.audit-entry').first().getByRole('button', { name: /Revert/i }).click();
     await page.waitForTimeout(500);
@@ -1879,14 +1879,14 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     const { json, type, name } = await exportBackup(page);
     if (type !== 'application/json') throw new Error('blob type ' + type);
     if (!/^CashFlow_Backup_\d{4}-\d{2}-\d{2}\.json$/.test(name || '')) throw new Error('filename ' + name);
-    if (json.schemaVersion !== 9) throw new Error('schemaVersion ' + json.schemaVersion);
+    if (json.schemaVersion !== 10) throw new Error('schemaVersion ' + json.schemaVersion);
     if (isNaN(Date.parse(json.exportedAt))) throw new Error('exportedAt ' + json.exportedAt);
     // Every field HOUSEHOLD_FIELDS marks `backup: true`. Update this list in
     // the same commit that changes that flag — the point is that dropping a
     // field from the backup has to be a decision, not a side effect.
     for (const k of ['entries', 'overridesByYr', 'yearConfigs', 'categories', 'categoryColors',
       'activeYear', 'alertThreshold', 'darkMode', 'goals', 'budgetTargets', 'templates',
-      'completed', 'debtData', 'deletedCopyIds', 'holidays']) {
+      'completed', 'debtData', 'deletedCopyIds', 'holidays', 'activity', 'accounts']) {
       if (!(k in json)) throw new Error('missing from the export: ' + k);
     }
     if (!json.entries.length) throw new Error('exported an empty entry list');
@@ -2378,11 +2378,374 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
     // What has to happen is that it does not stay there: the new worker
     // installs, activates, and the controllerchange handler in
     // bootstrap-head.js reloads the app onto the new bundle.
-    await page.waitForFunction(() => typeof CF_VERSION !== 'undefined' && CF_VERSION === 'v-deploy-test', null, { timeout: 25000 })
+    await page.waitForFunction(() => typeof CF_VERSION !== 'undefined' && CF_VERSION === 'v-deploy-test', null, { timeout: 40000 })
       .catch(() => { throw new Error('the app never picked up the new build — a deploy would strand every installed client on the old one'); });
   } finally {
     serverOverride.clear();
   }
+  await ctx.close();
+});
+
+
+// ── Worth building ───────────────────────────────────────────────────────────
+
+// The banking-day rule was inferred from the description and nothing else, so
+// a direct deposit called "Salary" behaved differently from one called
+// "Payroll" for no reason a user could see. The description heuristic stays as
+// the default; this is the per-entry answer that overrides it.
+await test('deposit dates: an entry can opt in or out of the banking-day rule', async () => {
+  // "Acme deposit" is not payroll to the description heuristic — that is the
+  // point. It is monthly from Saturday 15 August 2026, so every occurrence
+  // lands on a day the banks are shut, and before this setting existed none of
+  // them could ever be marked however obviously they were a direct deposit.
+  const deposits = JSON.stringify([{ id: 9101, desc: 'Acme deposit', type: 'income', amount: 250000,
+    category: 'Income', repeats: true, recurUnit: 'month', recurEvery: 1, recurDays: [],
+    recurEnd: '', startDate: '2026-08-15', notes: '' }]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${deposits}); const payload = {`) });
+  const marksOnIt = async () => {
+    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    return page.locator('tbody tr', { hasText: 'Acme deposit' }).first().locator('.helptip-btn--mark').count();
+  };
+  const setRule = async (value) => {
+    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(1100);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.locator('tbody tr', { hasText: 'Acme deposit' }).first().locator('.row-menu-btn').click();
+    await page.getByText('Edit entry').first().click();
+    await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+    const sel = page.locator('#ef-banking-day');
+    if (await sel.count() !== 1) throw new Error('repeating income has no deposit-date control');
+    const opts = await sel.locator('option').allTextContents();
+    if (opts.length !== 3) throw new Error('deposit-date control offers ' + opts.length + ' choices: ' + opts.join(' / '));
+    await sel.selectOption(value);
+    await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+    await page.getByRole('button', { name: 'Save Entry' }).click();
+    await page.waitForTimeout(900);
+  };
+
+  // Left to the description heuristic, nothing is marked: "Acme deposit" does
+  // not read as payroll.
+  if (await marksOnIt() !== 0) throw new Error('a non-payroll description was shifted without being asked');
+  await setRule('yes');
+  if (await marksOnIt() === 0) throw new Error('opting in marked no deposit date on a Saturday payday');
+  await setRule('no');
+  if (await marksOnIt() !== 0) throw new Error('opting out still marked a deposit date');
+  await ctx.close();
+});
+
+// A shared budget that appears to edit itself. The Audit page could only ever
+// show occurrence overrides — one kind of change out of seven — so an entry
+// somebody added, a target somebody moved and a goal somebody archived all
+// happened silently.
+await test('activity: what changed, who changed it, across every kind of change', async () => {
+  const { ctx, page } = await ctxPage();
+  const feed = async () => {
+    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.waitForTimeout(1100);
+    await page.getByRole('button', { name: 'Activity' }).click();
+    await page.waitForTimeout(500);
+    return page.$$eval('.activity-row', (rs) => rs.map((r) => r.innerText.replace(/\s+/g, ' ')));
+  };
+  if ((await feed()).length !== 0) throw new Error('the feed is not empty on a fresh household');
+
+  // An entry.
+  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(1000);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+  await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+  await page.getByPlaceholder('e.g. Mortgage payment').fill('Window cleaner');
+  await page.getByPlaceholder('0.00').first().fill('45');
+  await page.locator('#ef-category').selectOption({ label: 'Housing' });
+  await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(800);
+
+  // A budget target.
+  await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  await page.getByRole('button', { name: '+ Add' }).first().click();
+  await page.waitForTimeout(500);
+  await page.locator('.modal-card select').first().selectOption({ index: 1 });
+  await page.locator('.modal-card input[type=number]').first().fill('250');
+  await page.getByRole('button', { name: 'Add Line' }).click();
+  await page.waitForTimeout(800);
+
+  const rows = await feed();
+  if (rows.length < 2) throw new Error('the feed recorded ' + rows.length + ' of 2 changes: ' + rows.join(' | '));
+  const joined = rows.join(' | ');
+  if (!/ENTRY Added Window cleaner/.test(joined)) throw new Error('no entry line: ' + joined);
+  if (!/TARGET Set the .* target/.test(joined)) throw new Error('no target line: ' + joined);
+  // Every line carries an author id and a timestamp. Asserted against what is
+  // stored, not what is printed: memberName deliberately renders nothing when
+  // the author is you, and the fixture household has one member — so a text
+  // check here would pass on a record with no author at all, which is the
+  // exact thing this is for.
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_activity') || '[]'));
+  if (stored.length !== rows.length) throw new Error(`${stored.length} records stored against ${rows.length} rows shown`);
+  for (const a of stored) {
+    if (!a.by) throw new Error('a change was recorded with no author: ' + JSON.stringify(a));
+    if (!a.at || Number.isNaN(Date.parse(a.at))) throw new Error('a change has no usable timestamp: ' + JSON.stringify(a));
+    if (!a.kind || !a.what) throw new Error('a change says nothing about itself: ' + JSON.stringify(a));
+  }
+  // Newest first, so "what changed while I was away" is the top of the list.
+  if (stored.length > 1 && Date.parse(stored[0].at) < Date.parse(stored[1].at)) {
+    throw new Error('the feed is in oldest-first order');
+  }
+  await ctx.close();
+});
+
+// The app could project a year and rank debt strategies, but not answer the one
+// question a low-balance warning provokes: what would I have to change?
+await test('what-if: a scenario draws a second curve and says what it is worth', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  const dashedBefore = await page.$$eval('svg[role=img] path[stroke-dasharray]', (p) => p.length);
+  await page.getByRole('switch', { name: 'Try a change' }).click();
+  await page.waitForTimeout(600);
+  const listed = await page.locator('.scenario-row').count();
+  if (listed === 0) throw new Error('no recurring entries offered to vary');
+  // Only recurring entries: a one-time expense is a decision already made on a
+  // date, not something to ask "what if I dropped this" about.
+  const names = await page.locator('.scenario-desc').allTextContents();
+  if (names.includes('Summer vacation')) throw new Error('a one-time entry is offered as a scenario knob');
+
+  // Dropping the largest expense has to move both numbers the right way.
+  const rent = page.locator('.scenario-row', { hasText: 'Rent' }).first();
+  await rent.getByRole('button', { name: 'Drop' }).click();
+  await page.waitForTimeout(900);
+  const summary = (await page.locator('.scenario-summary').innerText()).replace(/\s+/g, ' ');
+  if (!/would end \+\$/.test(summary)) throw new Error('dropping the rent did not improve the end balance: ' + summary);
+  if (!/low point moves to/.test(summary)) throw new Error('no low-point comparison: ' + summary);
+  const dashedAfter = await page.$$eval('svg[role=img] path[stroke-dasharray]', (p) => p.length);
+  if (dashedAfter <= dashedBefore) throw new Error('the chart drew no second curve');
+  const alt = await page.locator('svg[role=img]').getAttribute('aria-label');
+  if (!/dashed line shows the what-if/.test(alt || '')) throw new Error('the scenario is invisible to a screen reader: ' + alt);
+
+  // A scenario is a question, not an edit: the budget behind it is untouched.
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1100);
+  if (await page.getByText('Rent').count() === 0) throw new Error('the scenario deleted the real entry');
+  await ctx.close();
+});
+
+// Reconcile already posted the adjustment; what it could not say was whether
+// that gap was a bad week or a year of small drift.
+await test('reconcile: the adjustment is reported as drift over the time since the last one', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  const open = async () => {
+    await page.getByRole('button', { name: /Reconcile/i }).first().click();
+    await page.locator('#rec-actual').waitFor(V);
+  };
+  // First time round there is nothing to measure against, so no drift line —
+  // an invented rate over an unknown period would be worse than silence.
+  await open();
+  await page.locator('#rec-actual').fill('40000');
+  await page.waitForTimeout(400);
+  if (await page.locator('.reconcile-drift').count() !== 0) {
+    throw new Error('drift reported with no previous reconciliation to measure from');
+  }
+  await page.getByRole('button', { name: 'Record adjustment' }).click();
+  await page.waitForTimeout(900);
+  // Now there is. The adjustment just recorded is dated today, so the second
+  // one spans zero days and still has nothing to divide by — which is the
+  // same case, and has to stay silent rather than divide by zero.
+  await open();
+  await page.locator('#rec-actual').fill('39000');
+  await page.waitForTimeout(400);
+  const lastLine = await page.locator('.oem-editedby').innerText();
+  if (!/Last reconciled/.test(lastLine)) throw new Error('the modal does not say when it was last reconciled: ' + lastLine);
+  if (!/0 days ago|day/.test(lastLine)) throw new Error('no elapsed time on the last-reconciled line: ' + lastLine);
+  const drift = await page.locator('.reconcile-drift').count();
+  if (drift !== 0) throw new Error('a same-day reconciliation reported a drift rate');
+  await ctx.close();
+});
+
+
+// ── Accounts ─────────────────────────────────────────────────────────────────
+
+// The whole app assumed one pot of money, which is why the transfer type had
+// nothing coherent to mean: "out of this account" had no other account to be
+// out of. A household that predates accounts has to see nothing change.
+await test('accounts: a household that predates them gets one, and nothing it can see changes', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  // Asserted through the UI, not localStorage: a field still sitting at its
+  // default has no storage row yet, so an absent row means "the default", not
+  // "no accounts".
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1300);
+  const names = await page.$$eval('#sec-accounts .account-name', (els) => els.map((e) => e.value));
+  if (names.length !== 1 || names[0] !== 'Chequing') throw new Error('accounts are ' + JSON.stringify(names));
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  // Nothing is stamped onto the entries: "unset" already means the default
+  // account, so rewriting several hundred entries to say so would be churn.
+  const stamped = await page.evaluate(() => (JSON.parse(localStorage.getItem('cf_entries') || '[]')).filter((e) => e.accountId).length);
+  if (stamped !== 0) throw new Error(stamped + ' entries were rewritten with an accountId they did not need');
+  // One account means no filter and no per-row account tag: both would name
+  // the only place the money could be.
+  if (await page.locator('#account-filter-select').count() !== 0) throw new Error('the account filter shows with a single account');
+  if (await page.locator('.row-account-tag').count() !== 0) throw new Error('rows are tagged with the only account there is');
+  await ctx.close();
+});
+
+// The property that lets "combined" stay the default and still be right: an
+// internal transfer is two equal and opposite movements, so it changes each
+// account's balance and leaves the household's alone.
+await test('accounts: a transfer moves money between two accounts and nets to nothing overall', async () => {
+  const accts = JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
+  ]);
+  const xfer = JSON.stringify([{ id: 7001, desc: 'To savings', type: 'transfer', transferDirection: 'out',
+    amount: 40000, category: 'Savings / RRSP', repeats: true, recurUnit: 'month', recurEvery: 1,
+    recurDays: [], recurEnd: '', startDate: '2026-01-20', notes: '',
+    accountId: 'acct-main', toAccountId: 'acct-sav' }]);
+  const cents = (s) => { const neg = /-/.test(s); const n = Math.round(parseFloat((s || '').replace(/[^0-9.]/g, '') || '0') * 100); return neg ? -n : n; };
+  // January, because the Monthly view's "Opening Balance" is the month's, not
+  // the year's — by August an account has absorbed seven months of movement
+  // and no longer opens on the share it was configured with.
+  const toJanuary = async (page) => {
+    await page.locator('.month-picker button', { hasText: /^Jan$/ }).first().click();
+    await page.waitForTimeout(600);
+  };
+  const read = async (page) => ({
+    opening: cents(await page.locator('.openbal-row').innerText()),
+    closing: cents(await page.locator('.budget-col-balance').nth(-2).innerText()),
+    net: cents((await page.locator('.budget-totals-row').innerText()).trim().split(/\s+/).pop()),
+  });
+
+  // Baseline: the same household with no transfer at all.
+  const plain = await ctxPage({ stub: (t) => t.replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await plain.page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await plain.page.waitForTimeout(1400);
+  const nudge0 = plain.page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge0.count() > 0) await nudge0.click().catch(() => {});
+  await toJanuary(plain.page);
+  const before = await read(plain.page);
+  await plain.ctx.close();
+
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace('const payload = {', `entries.push(...${xfer}); const payload = {`)
+    .replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await toJanuary(page);
+
+  // Combined: the transfer appears twice — leaving one account, arriving in
+  // the other — and the month's net movement is exactly what it was without it.
+  const legs = await page.locator('tbody tr', { hasText: 'To savings' }).count();
+  if (legs !== 2) throw new Error(`an internal transfer produced ${legs} rows, expected both legs`);
+  const combined = await read(page);
+  if (combined.net !== before.net) {
+    throw new Error(`an internal transfer moved the household's net by ${(combined.net - before.net) / 100}`);
+  }
+  if (combined.opening !== before.opening) throw new Error('the combined opening balance changed');
+
+  // Narrowed: each account carries its own share of the opening balance and
+  // only its own side of the transfer.
+  const per = {};
+  for (const name of ['Chequing', 'Savings']) {
+    await page.locator('#account-filter-select').selectOption({ label: name });
+    await page.waitForTimeout(800);
+    await toJanuary(page);
+    per[name] = await read(page);
+    const rows = await page.locator('tbody tr', { hasText: 'To savings' }).count();
+    if (rows !== 1) throw new Error(`${name} shows ${rows} sides of the transfer, expected exactly one`);
+  }
+  if (per.Chequing.opening + per.Savings.opening !== combined.opening) {
+    throw new Error(`the account openings (${per.Chequing.opening} + ${per.Savings.opening}) do not add to the household's ${combined.opening}`);
+  }
+  if (per.Savings.opening !== 500000) throw new Error('savings did not get the opening share it was given: ' + per.Savings.opening);
+  // The transfer is money out of one and into the other, in equal measure.
+  if (per.Chequing.net + per.Savings.net !== combined.net) {
+    throw new Error(`the accounts' net movements do not add to the household's`);
+  }
+  if (per.Savings.net !== 40000) throw new Error('savings did not receive the transfer: ' + per.Savings.net);
+  await ctx.close();
+});
+
+// A credit card is an ordinary account whose balance runs below zero. There is
+// one arithmetic in this app and it has been kept carefully; a second one for
+// liabilities would be the thing that breaks it.
+await test('accounts: a credit card is an ordinary account that runs negative', async () => {
+  const accts = JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-visa', name: 'Visa', kind: 'credit', opening: -120000 },
+  ]);
+  const card = JSON.stringify([{ id: 7101, desc: 'Card groceries', type: 'expense', amount: 20000,
+    category: 'Food', repeats: true, recurUnit: 'month', recurEvery: 1, recurDays: [],
+    recurEnd: '', startDate: '2026-01-06', notes: '', accountId: 'acct-visa' }]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace('const payload = {', `entries.push(...${card}); const payload = {`)
+    .replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.locator('#account-filter-select').selectOption({ label: 'Visa' });
+  await page.waitForTimeout(900);
+  // January: by August the card has absorbed seven months of purchases.
+  await page.locator('.month-picker button', { hasText: /^Jan$/ }).first().click();
+  await page.waitForTimeout(700);
+  const opening = (await page.locator('.openbal-row').innerText()).replace(/\s+/g, ' ');
+  if (!/-\$1,200\.00/.test(opening)) throw new Error('the card did not open where it was told to: ' + opening);
+  // Spending on it takes the balance further below zero, exactly as spending
+  // from a chequing account takes it towards zero. Same arithmetic.
+  const balances = await page.locator('.budget-col-balance').allInnerTexts();
+  if (!balances.some((b) => /-\$1,[34]\d\d\.00/.test(b))) {
+    throw new Error('a card purchase did not deepen the balance: ' + balances.join(' | '));
+  }
+  await ctx.close();
+});
+
+// Removing an account must not remove the money filed under it.
+await test('accounts: removing one re-homes its entries rather than deleting them', async () => {
+  const accts = JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 0 },
+  ]);
+  const saved = JSON.stringify([{ id: 7201, desc: 'Interest', type: 'income', amount: 500,
+    category: 'Income', repeats: true, recurUnit: 'month', recurEvery: 1, recurDays: [],
+    recurEnd: '', startDate: '2026-01-28', notes: '', accountId: 'acct-sav' }]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace('const payload = {', `entries.push(...${saved}); const payload = {`)
+    .replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.locator('#sec-accounts button[aria-label="Remove Savings"]').click();
+  await page.waitForTimeout(400);
+  const warning = await page.locator('.modal-card').innerText();
+  if (!/1 entry moves/.test(warning)) throw new Error('the dialog does not say what happens to the entries: ' + warning.replace(/\s+/g, ' '));
+  // Scoped to the dialog: "Remove" also matches the "Remove Savings" button
+  // behind the overlay, which is exactly the one that cannot be clicked.
+  await page.locator('.confirm-dialog-card button.cf-btn--danger-solid').click();
+  await page.waitForTimeout(900);
+  const after = await page.evaluate(() => ({
+    accounts: JSON.parse(localStorage.getItem('cf_accounts') || '[]'),
+    interest: (JSON.parse(localStorage.getItem('cf_entries') || '[]')).find((e) => e.desc === 'Interest'),
+  }));
+  if (after.accounts.length !== 1) throw new Error('the account was not removed');
+  if (!after.interest) throw new Error('removing an account deleted an entry filed under it');
+  if (after.interest.accountId) throw new Error('the entry still points at an account that is gone: ' + after.interest.accountId);
   await ctx.close();
 });
 

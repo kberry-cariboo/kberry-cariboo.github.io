@@ -10,22 +10,54 @@
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v189';
+const CF_VERSION='v190';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
+  let refreshed=false;
+  // Attached here — synchronously, before register() — and not inside its
+  // .then(). The registration promise resolves on the main thread, which
+  // immediately after this line is busy compiling the ~1.5MB of script that
+  // makes up the rest of this page; measured at ~1.7s. A worker that finishes
+  // installing inside that window fires controllerchange before a listener
+  // added in the .then() exists, and the event is simply lost.
+  //
+  // That is not a hypothetical window: it is precisely the launch after a
+  // deploy, which is the only launch this listener is for. It went unnoticed
+  // while navigations were network-first, because then the page had already
+  // fetched the new build itself and a missed reload cost nothing. Serving the
+  // cached shell first made the reload the thing that delivers the update.
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    // The first-ever install also fires controllerchange (no controller -> controlled) —
+    // that's not an update, so only reload when a controller already existed before this.
+    if(!hadController) return;
+    if(refreshed) return; refreshed=true; window.location.reload();
+  });
+  // The route that actually delivers an update. The worker revalidates the
+  // page in the background on every launch and reports the build it got back;
+  // if that isn't the build running here, the new one is already in the cache
+  // and a reload lands on it.
+  //
+  // Deliberately not routed through activate/controllerchange: a new worker
+  // can install and then sit in `waiting` while the outgoing one finishes its
+  // requests, and then none of activate, clients.claim or controllerchange
+  // ever fires. This works whatever the incoming worker does, because it is
+  // the outgoing one doing the reporting.
+  //
+  // The version comparison is what makes it loop-proof: it reloads only when
+  // the build on the wire differs from the build in this document, so the
+  // reloaded page — which is that build — has nothing left to react to.
+  navigator.serviceWorker.addEventListener('message',(ev)=>{
+    const d=ev.data;
+    if(!d||d.type!=='CF_BUILD'||!d.version) return;
+    if(d.version===CF_VERSION) return;
+    if(refreshed) return; refreshed=true; window.location.reload();
+  });
   // A real same-origin script, not a blob: URL — see the header comment in
   // src/sw.js. Registered relative to the document so the worker's scope is
   // the app root whether that's a user site (/) or a project page (/repo/).
   navigator.serviceWorker.register('sw.js').then(reg=>{
     reg.update().catch(()=>{});
-    let refreshed=false;
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      // The first-ever install also fires controllerchange (no controller -> controlled) —
-      // that's not an update, so only reload when a controller already existed before this.
-      if(!hadController) return;
-      if(refreshed) return; refreshed=true; window.location.reload();
-    });
   }).catch((err)=>{
     // This is the catch that hid a real bug for months: registration was
     // failing outright (blob: URL) and nothing said so, which silently cost

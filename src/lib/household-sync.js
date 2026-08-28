@@ -120,8 +120,34 @@
     // table above).
     { key: "currency", storage: "cf_currency", initial: () => DEFAULT_CURRENCY, kind: "truthy", backup: true },
     { key: "locale", storage: "cf_locale", initial: () => DEFAULT_LOCALE, kind: "truthy", backup: true },
-    { key: "holidayRegion", storage: "cf_holiday_region", initial: () => DEFAULT_HOLIDAY_REGION, kind: "truthy", backup: true }
+    { key: "holidayRegion", storage: "cf_holiday_region", initial: () => DEFAULT_HOLIDAY_REGION, kind: "truthy", backup: true },
+    // What changed, who changed it, and when — reverse-chronological, newest
+    // first, capped at ACTIVITY_LIMIT. Household data, so a shared budget stops
+    // appearing to edit itself: the Audit page could only ever show occurrence
+    // overrides, which is one kind of change out of seven.
+    //
+    // A plain array under last-write-wins, like everything else in the payload.
+    // Two devices writing concurrently is already the conflict the savedAt
+    // check catches, so this needs no merge rule of its own — and a log is the
+    // one field where losing the loser's entries is the same outcome as losing
+    // the loser's edits, which is what the user is being told about anyway.
+    { key: "activity", storage: "cf_activity", initial: () => [], kind: "array", backup: true },
+    // Where the household's money lives. Never empty: a payload without one is
+    // given the single default account by migrateHouseholdPayload, so every
+    // reader can assume at least one exists.
+    // A custom apply, not the plain array guard: that one accepts `[]`, and a
+    // household with zero accounts is the single state the rest of the app
+    // cannot render — every entry would point at an account that isn't there.
+    // An absent or empty list means "whatever this device already has", which
+    // for a household that predates accounts is the one default below.
+    { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, marksUnsaved: true, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 0) set(v);
+    } }
   ];
+  // Long enough to answer "what happened while I was away" across a busy week,
+  // short enough that the log never becomes the largest thing in the payload:
+  // 200 records at ~120 bytes is ~24 KB against a household of a few hundred KB.
+  const ACTIVITY_LIMIT = 200;
   // Creates the localStorage-backed state for every field in the table, in
   // table order, and returns the two objects useHouseholdData indexes by field
   // key. Calling useLS in a loop is safe here precisely because

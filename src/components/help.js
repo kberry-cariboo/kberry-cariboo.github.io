@@ -119,7 +119,8 @@
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
         { sub: "Paydays that land on a closed day" },
-        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
+        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that by default, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
+        { p: "A guess from a description is only ever a guess, so any repeating income entry can say for itself. Its “Deposit date” setting offers “Paid the last banking day before” for a deposit the description doesn’t give away — a salary, a pension — and “Paid on the date shown” for money that arrives whatever the banks are doing. Left alone it keeps reading the description, which is what every entry did before the setting existed." },
         { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
         { p: "Which province's or territory's holidays apply is set in Settings → Statutory Holidays, and defaults to British Columbia. The built-in list is computed from that region's usual rules and includes the days it commonly treats as optional; each one is listed on the day it is observed and only there. Rules change and one-off days get proclaimed, so the built-in list is a baseline — the Fetch button replaces a year with what canada-holidays.ca publishes for your region, and any date can be added, edited or removed by hand. Outside Canada, add the days that matter to you by hand and the deposit rule works the same way." },
         { sub: "Changing one occurrence without changing the plan" },
@@ -159,9 +160,15 @@
           ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
           ["Calendar", "The same month laid out as a month: bills on the day they fall, the balance carried to the end of each day, and any day that drops below your alert threshold tinted — which is what makes the week where four bills land together visible at a glance. Pick a day to open what is on it. On a phone each day shows a dot per event and the same tint, and the day you pick opens below the grid."],
           ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
-          ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
+          ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries. The chart at the top draws the balance day by day, with the low point and your alert threshold marked; the list below it is every event behind that line. Turn on \u201cWhat if\u2026\u201d to drop a recurring entry or put a different amount on it and see the second curve that would result \u2014 nothing there changes your budget, and it stays on the device you try it on."],
           ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
+        { sub: "Accounts" },
+        { p: "A household\u2019s money lives in more than one place, so every entry belongs to an account \u2014 chequing, savings, a credit card, cash. Add and name them under Settings \u2192 Accounts. A credit card is an ordinary account here whose balance simply runs below zero; there is no separate arithmetic for it." },
+        { p: "Every view adds all of them together unless you narrow it with the Account picker above the budget, which appears once you have more than one. Narrowing recomputes the running balance from that account\u2019s own share of the year\u2019s opening balance, over only its own events." },
+        { p: "There is one opening balance, set per budget year under Settings \u2192 Budget Years. Each account after the first says how much of it is sitting there, and the first account takes the remainder \u2014 so the shares always add up to the one figure you set, and saying \u201cmy savings opened with $10,000\u201d moves $10,000 of the household\u2019s opening balance into savings rather than conjuring it." },
+        { p: "A transfer can now name a second account, which makes it one entry and two movements: out of the first, into the second. Each account\u2019s balance changes and the household\u2019s total does not, which is what a transfer between your own accounts actually does. A transfer with no destination keeps its old meaning \u2014 money leaving or arriving from outside the accounts you track." },
+        { p: "Removing an account never removes money: the entries filed under it move back to your first account, unchanged." },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
         { sub: "Searching" },
@@ -254,8 +261,9 @@
         { p: "Lists the people in your household and creates invite codes for new ones. A family member signs in, enters the code, and shares the same budget." },
         { sub: "Templates" },
         { p: "The entry templates you have saved, with a Remove button for each." },
-        { sub: "Audit" },
-        { p: "Every per-date override you have made this year, newest first, each with a Revert that restores the originally scheduled amount and notes." }
+        { sub: "Activity" },
+        { p: "What anyone in the household has changed, newest first — entries added, edited and deleted, single dates moved or skipped, budget targets, goals and debts — each with who made the change and when. The last 200 changes are kept, and the list is household data, so everyone sharing the budget sees the same one." },
+        { p: "Underneath it, every per-date override you have made this year, each with a Revert that restores the originally scheduled amount and notes." }
       ]
     },
     {

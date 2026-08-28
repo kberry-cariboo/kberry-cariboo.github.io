@@ -41,15 +41,38 @@ The worker serves navigations **cache-first with background revalidation**: a
 launch paints the cached shell immediately and the network request goes out
 behind it. Before, navigations were network-first with `cache: 'no-store'`,
 which made the cache an offline fallback and nothing else — every launch
-re-downloaded the whole app (387 KB gzipped), not just the first. The trade is
-that a launch immediately after a deploy can start on the previous build; it
-corrects itself, because the changed `sw.js` installs, activates, and the
-`controllerchange` handler in `src/bootstrap-head.js` reloads the open app onto
-the new bundle. **That is why the cache name has to change with every build** —
-it always does, since it is a hash of `index.html`, but a scheme that ever
-produced the same name twice would now strand clients rather than merely delay
-them. `tests/regression.mjs` asserts both halves: that a repeat launch pulls
-zero bytes, and that a deploy still reaches a client that has one cached.
+re-downloaded the whole app (387 KB gzipped), not just the first.
+
+That makes the background request the thing that delivers an update, so it
+reports what it found: when the revalidated page carries a different
+`CF_VERSION`, the worker caches it and then posts `{type:'CF_BUILD', version}`
+to every open window, and `src/bootstrap-head.js` reloads onto it. The
+comparison is what makes it loop-proof — it reloads only when the build on the
+wire differs from the build in the document, so the reloaded page has nothing
+left to react to.
+
+**Deliberately not routed through `activate`/`controllerchange`.** A new worker
+can install and then sit in `waiting` while the outgoing one finishes its
+requests, and then `activate`, `clients.claim()` and `controllerchange` never
+fire at all — observed intermittently, and the reason an earlier version of
+this was flaky. The announcement comes from the *outgoing* worker, so it works
+whatever the incoming one does. The `controllerchange` handler stays as a
+second route.
+
+Two related traps this depends on avoiding, both of which have bitten:
+
+- The worker reads and writes through `caches.open(CACHE)`, never the global
+  `caches.match()`. The global form searches *every* cache in the origin, so a
+  new worker can serve a stale entry from a cache it has already deleted — an
+  outgoing worker's revalidation can land its `put` after the sweep and quietly
+  recreate the old cache.
+- `install` precaches with `cache: 'reload'`. A plain `cache.add()` is an
+  ordinary fetch and can be answered from the HTTP cache with the build being
+  replaced, so the new worker would precache the old page. GitHub Pages sends
+  `max-age=600` on HTML, which makes that a ten-minute window on every release.
+
+`tests/regression.mjs` asserts both halves: that a repeat launch pulls zero
+bytes, and that a simulated deploy reaches a client that already has one cached.
 
 `build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
 
@@ -212,7 +235,8 @@ half the fields missing. Keys the schema has deliberately retired are listed in
 saving.
 
 That covers **top-level** fields. Fields *inside* an entry or an override —
-`transferDirection`, `copiedFrom`, `recurNth`, `skipped`, `actualAmount`, `month` — have no
+`transferDirection`, `copiedFrom`, `recurNth`, `bankingDay`, `accountId`, `toAccountId`,
+`skipped`, `actualAmount`, `month` — have no
 equivalent declaration, so they are still only covered by the round-trip test:
 **run it whenever you add a field to the sync payload, and add the field to its
 fixture.** Before it existed, `cf_apply_household_payload` wrote the columns it

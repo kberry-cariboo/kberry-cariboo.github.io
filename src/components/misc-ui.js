@@ -76,6 +76,29 @@
       )
     );
   }
+  // The account filter. Only rendered once a household has more than one
+  // account — with a single account "All accounts" and "Chequing" are the same
+  // set, and a control whose two options do the same thing is worse than no
+  // control.
+  //
+  // Combined stands first and is the default. Every view behind this reads a
+  // flow and an opening balance, so narrowing is a matter of handing them a
+  // smaller pair; none of them knows this exists.
+  function AccountFilter({ accounts = [], value = "", onChange = () => {
+  } }) {
+    if (!Array.isArray(accounts) || accounts.length < 2) return null;
+    return /* @__PURE__ */ React.createElement("div", { className: "account-filter", "data-noprint": true }, /* @__PURE__ */ React.createElement("label", { htmlFor: "account-filter-select", className: "account-filter-label" }, "Account"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "account-filter-select",
+        className: "account-filter-select",
+        value,
+        onChange: (e) => onChange(e.target.value)
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "All accounts"),
+      accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
+    ));
+  }
   function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {
@@ -232,10 +255,30 @@
   function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
     const [actual, setActual] = useState("");
     const [err, setErr] = useState("");
+    // How long the projection has been running unchecked. The adjustment about
+    // to be recorded *is* the drift accumulated over that stretch, which is the
+    // only reading of the number that says anything: $40 out after three days
+    // is a missed transaction, $40 out after five months is the app being
+    // essentially right.
+    const sinceDays = (() => {
+      const from = parseDate(lastReconciled);
+      if (!from) return null;
+      const days = Math.round((new Date(todayStr()) - from) / 864e5);
+      return Number.isFinite(days) && days >= 0 ? days : null;
+    })();
     const parsed = actual.trim() === "" ? null : Number(actual);
     const valid = parsed !== null && Number.isFinite(parsed);
     const actualCents = valid ? dollarsToCents(actual) : null;
     const diff = valid ? actualCents - projected : null;
+    // What the adjustment says about the projection, rather than just its size.
+    // Only worth saying when there is a stretch of time to divide by — the
+    // first reconciliation has nothing to compare against.
+    const driftLine = (() => {
+      if (!valid || !diff || !sinceDays) return "";
+      const perMonth = Math.round(Math.abs(diff) / sinceDays * 30);
+      const direction = diff > 0 ? "under" : "over";
+      return `The forecast has drifted ${fmt(Math.abs(diff))} in ${sinceDays} day${sinceDays === 1 ? "" : "s"} \u2014 about ${fmt(perMonth)} a month, ${direction}-counting what you actually have.`;
+    })();
     const submit = () => {
       if (!valid) {
         setErr("Enter the balance your bank shows today.");
@@ -252,7 +295,7 @@
       /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
       /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Reconcile to your bank"),
       /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it."),
-      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled)),
+      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled), sinceDays !== null && ` \u00b7 ${sinceDays} day${sinceDays === 1 ? "" : "s"} ago`),
       /* @__PURE__ */ React.createElement("div", { className: "reconcile-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, "This app projects"), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 reconcile-figure" }, fmt(projected))),
       /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "rec-actual" }, "Your bank shows"),
       /* @__PURE__ */ React.createElement("input", {
@@ -284,7 +327,8 @@
           null,
           "Adjustment of ",
           /* @__PURE__ */ React.createElement("strong", { style: { color: diff > 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(diff, true)),
-          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`
+          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`,
+          driftLine && /* @__PURE__ */ React.createElement("div", { className: "reconcile-drift" }, driftLine)
         )
       ),
       /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: submit, disabled: !valid || diff === 0, className: "cf-btn cf-btn--primary" }, "Record adjustment"))

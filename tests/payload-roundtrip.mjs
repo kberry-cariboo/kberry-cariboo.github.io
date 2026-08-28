@@ -77,6 +77,29 @@ const payload = {
       recurEvery: 1, recurUnit: 'monthend', recurDays: [], recurEnd: '', startDate: '2026-02-28', notes: '' },
     { id: 'e-nthweekday', desc: 'Cleaner', type: 'expense', amount: 12000, category: 'Personal', repeats: true,
       recurEvery: 1, recurUnit: 'monthweekday', recurDays: [5], recurNth: -1, recurEnd: '', startDate: '2026-01-30', notes: '' },
+    // Both settings of the per-entry banking-day rule, because the field is a
+    // tri-state and `false` is the value a column-less round-trip would turn
+    // back into "unset" without anyone noticing.
+    { id: 'e-bank-yes', desc: 'Salary', type: 'income', amount: 320000, category: 'Income', repeats: true,
+      recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '',
+      bankingDay: true },
+    { id: 'e-bank-no', desc: 'Rent from tenant', type: 'income', amount: 90000, category: 'Income', repeats: true,
+      recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '',
+      bankingDay: false },
+    // A transfer between two accounts: one entry, two account references, and
+    // the only entry in this fixture that is not filed under the default.
+    { id: 'e-xfer', desc: 'To savings', type: 'transfer', transferDirection: 'out', amount: 50000,
+      category: 'Savings / RRSP', repeats: true, recurEvery: 1, recurUnit: 'month', recurDays: [],
+      recurEnd: '', startDate: '2026-01-20', notes: '',
+      accountId: 'acct-main', toAccountId: 'acct-sav' },
+  ],
+  accounts: [
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing', opening: 0 },
+    { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
+    // A credit card is an ordinary account whose balance runs below zero —
+    // there is no second arithmetic for it, and nothing here should treat it
+    // as anything other than a row.
+    { id: 'acct-visa', name: 'Visa', kind: 'credit', opening: -120000 },
   ],
   overridesByYr: {
     2026: {

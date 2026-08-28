@@ -47,16 +47,28 @@
   // Saturday (paid 31 July, budgeted in August), quietly rewriting the totals
   // and Budget vs Actual of two months to fix a display problem.
   //
-  // Which entries this applies to is read from the description rather than a
-  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
-  // Ken" all read as payroll to a person, and the alternative is a checkbox
-  // that every payroll entry has to have ticked by hand.
+  // Which entries this applies to is guessed from the description by default:
+  // "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL — Ken" all read as
+  // payroll to a person, and the alternative would be a checkbox that every
+  // payroll entry has to have ticked by hand before it behaves correctly.
   const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
-  // Repeating income only. A one-time entry's date was typed by hand — it is
-  // already the date the money arrived — and expenses leave when the biller
-  // pulls them, which is not this rule.
+  // ...but a guess from a description is only ever a guess. `bankingDay` is the
+  // per-entry answer, and it wins when it is set:
+  //
+  //   true   always shift to the prior banking day — a direct deposit the
+  //          regex doesn't recognise ("Salary", "Acme Corp", "Pension")
+  //   false  never shift — an e-transfer, a cash payment, or anything else
+  //          that lands on the day it says regardless of what the banks do
+  //   unset  fall back to the description heuristic above, which is what
+  //          every entry written before this field existed does
+  //
+  // Repeating income only, in every case. A one-time entry's date was typed by
+  // hand — it is already the date the money arrived — and expenses leave when
+  // the biller pulls them, which is not this rule.
   function isPayrollDeposit(e, desc) {
-    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+    if (!e.repeats || e.type !== "income") return false;
+    if (e.bankingDay === true || e.bankingDay === false) return e.bankingDay;
+    return PAYROLL_DESC_RE.test(String(desc || ""));
   }
   // The last banking day on or before `date`: steps back over Saturdays,
   // Sundays and BC holidays (see holidays.js, which includes the two BC lists
@@ -99,6 +111,14 @@
     const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
     return day > daysInMonth(month, year) ? null : new Date(year, month, day);
   }
+  // The account an entry or event belongs to, with the default standing in for
+  // anything written before accounts existed. Every reader goes through this
+  // rather than reading `.accountId` directly, so "unset" has one meaning.
+  const accountIdOf = (x) => (x && x.accountId) || DEFAULT_ACCOUNT_ID;
+  // A transfer that names a destination moves money between two accounts, and
+  // shows up twice: out of one, into the other. Anything else — an old
+  // transfer, or one with no destination — keeps its single-sided meaning.
+  const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -157,6 +177,10 @@
           // this tracked account (default) vs into it. Income/expense
           // entries ignore this entirely.
           transferDirection: e.transferDirection || "out",
+          // Which account this movement is in. Unset on anything written
+          // before accounts existed, which accountIdOf reads as the default —
+          // so a one-account household sees exactly what it always saw.
+          accountId: accountIdOf(e),
           amount: actual,
           plannedAmount: planned,
           category: e.category,
@@ -182,6 +206,30 @@
           recurEvery: e.recurEvery || 1,
           repeats: e.repeats || false
         });
+        // A transfer between two accounts is one entry and two movements: out
+        // of the account it names, into the account it points at. Emitted here
+        // rather than derived later so every downstream consumer — the running
+        // balance, the month summaries, the calendar, the forecast — sees a
+        // complete picture without knowing accounts exist.
+        //
+        // The two legs are equal and opposite, so a combined balance across
+        // every account is unchanged by an internal transfer. That is the
+        // property that lets "combined" stay the default view and still be
+        // right.
+        if (isInterAccountTransfer(e)) {
+          const first = events[events.length - 1];
+          events.push(__spreadProps(__spreadValues({}, first), {
+            // Distinct id: an occurrence id keys overrides, completion ticks
+            // and React lists, and two rows sharing one would collide in all
+            // three.
+            id: `${first.id}-in`,
+            accountId: e.toAccountId,
+            transferDirection: first.transferDirection === "out" ? "in" : "out",
+            // The leg is a consequence of the entry, not an occurrence anyone
+            // edits: the editable one is the first leg.
+            _leg: true
+          }));
+        }
       };
       if (!e.repeats) {
         addEv(new Date(startD));
@@ -316,6 +364,10 @@
       // would read as "nothing changed" and be applied retroactively over
       // months already recorded.
       recurNth: Number.isFinite(e.recurNth) ? e.recurNth : null,
+      // Same reasoning as recurNth: switching the banking-day rule on or off
+      // changes which day the money is expected to land, so it is a change to
+      // the schedule rather than a correction to be applied retroactively.
+      bankingDay: e.bankingDay === true || e.bankingDay === false ? e.bankingDay : null,
       startDate: e.startDate,
       monthlyAmounts: e.monthlyAmounts || null
     });

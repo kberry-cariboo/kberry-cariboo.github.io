@@ -26,6 +26,13 @@
   // cents, but `8 < 9` sent it through the v8 pass again and multiplied every
   // amount by 100. Bumping to v10 would have done the same to every v9 payload
   // in existence, cloud data included. Gate each step, never the call.
+  // The one account every household is guaranteed to have. Declared here
+  // rather than with the other account helpers in app-data.js because the v10
+  // step below is what creates it, and because this file has to be readable on
+  // its own by tests/payload-migration.mjs, which evaluates it without the
+  // rest of the bundle around it.
+  const DEFAULT_ACCOUNT_ID = "acct-main";
+  const DEFAULT_ACCOUNT_NAME = "Chequing";
   function migrateHouseholdPayload(d, from) {
     if (!d) return d;
     const at = Number(from) || 0;
@@ -97,9 +104,24 @@
       });
       out.debtData = nextDebt;
     }
+    // v10 added accounts and needs no conversion step. A household that
+    // predates them simply carries no `accounts` key, and the field's own
+    // guard in HOUSEHOLD_FIELDS turns that into the single default account —
+    // which is where the "every household has at least one" invariant belongs,
+    // since it has to hold for a payload of any version, not just an old one.
+    //
+    // Nothing stamps `accountId` onto existing entries either: accountIdOf
+    // reads "unset" as the default account, so writing it out several hundred
+    // times would rewrite the whole payload to say what it already meant.
+    //
+    // Deliberately not a step here: this function converts values, and only
+    // ever for versions that predate the conversion. Defaulting a missing
+    // field from here would make "migrate an already-current payload" stop
+    // being a no-op, which is the property tests/payload-migration.mjs exists
+    // to hold on to.
     return out;
   }
-  const SCHEMA_VERSION = 9;
+  const SCHEMA_VERSION = 10;
   function migrateData() {
     let storedVersion = 0;
     try {

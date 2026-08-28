@@ -305,7 +305,8 @@
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, templates = [], setTemplates, activeFlow = [], activity = [], accounts = [], setAccounts = () => {
+  }, pushUndo = () => {
   }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
@@ -331,6 +332,14 @@
     const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
+    const [removingAccount, setRemovingAccount] = useState(null);
+    // What each account opens the first budget year with. Derived, never
+    // stored for the first account: it takes the remainder, so the shares can
+    // never drift from the one opening balance the user actually sets.
+    const openingShares = useMemo(() => {
+      const first = [...yearConfigs].sort((a, b) => a.year - b.year)[0];
+      return accountOpenings(accounts, first ? first.openingBalance : 0);
+    }, [accounts, yearConfigs]);
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [showAiKey, setShowAiKey] = useState(false);
     const [inviteCode, setInviteCode] = useState("");
@@ -549,7 +558,7 @@
       { id: "general", icon: "settings", label: "General" },
       { id: "household", icon: "users", label: "Household" },
       { id: "templates", icon: "clipboard", label: "Templates" },
-      { id: "audit", icon: "clock", label: "Audit" }
+      { id: "audit", icon: "clock", label: "Activity" }
     ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -568,6 +577,7 @@
       // Order matches the sections as they appear down the page, which is
       // alphabetical by heading — so the strip is also the index you would
       // scan for a setting whose name you know.
+      ["sec-accounts", "Accounts"],
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
@@ -594,7 +604,54 @@
         className: "quicklink-pill"
       },
       label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-accounts", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Where the household\u2019s money lives. A credit card is an ordinary account here \u2014 its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget." }, "Accounts"), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, accounts.map((a, i) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "account-row" }, /* @__PURE__ */ React.createElement("input", {
+      "aria-label": `Name of account ${i + 1}`,
+      className: "field-input account-name",
+      value: a.name,
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x))
+    }), /* @__PURE__ */ React.createElement("select", {
+      "aria-label": `Kind of ${a.name}`,
+      className: "field-input account-kind",
+      value: a.kind || "chequing",
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { kind: e.target.value }) : x))
+    }, ACCOUNT_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label))), i === 0 ? /* @__PURE__ */ React.createElement("span", { className: "txl account-opening-note" }, "Opens with the rest \u2014 ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(openingShares[a.id] || 0))) : /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
+      type: "number",
+      inputMode: "decimal",
+      step: "0.01",
+      "aria-label": `Opening balance of ${a.name}`,
+      className: "field-input field-input--mono account-opening",
+      value: centsToDollars(Number.isFinite(a.opening) ? a.opening : 0),
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { opening: dollarsToCents(e.target.value) }) : x))
+    })), accounts.length > 1 && i > 0 && /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary cf-btn--micro",
+      onClick: () => setRemovingAccount(a),
+      "aria-label": `Remove ${a.name}`
+    }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary",
+      onClick: () => setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }])
+    }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+      title: `Remove ${removingAccount.name}?`,
+      message: (() => {
+        const n = entries.filter((e) => accountIdOf(e) === removingAccount.id).length;
+        const t = entries.filter((e) => e.toAccountId === removingAccount.id).length;
+        return n + t === 0 ? "Nothing is filed under this account, so removing it changes no figures." : `${n + t} ${n + t === 1 ? "entry moves" : "entries move"} back to ${accountName(accounts, (accounts[0] || {}).id)}. No entry is deleted and no amount changes \u2014 they simply stop being separated out.`;
+      })(),
+      confirmLabel: "Remove",
+      onCancel: () => setRemovingAccount(null),
+      onConfirm: () => {
+        // Entries are re-homed rather than deleted: an account is a label on
+        // money, and removing the label must not remove the money.
+        setEntries((prev) => prev.map((e) => {
+          if (accountIdOf(e) !== removingAccount.id && e.toAccountId !== removingAccount.id) return e;
+          const next = __spreadValues({}, e);
+          if (accountIdOf(e) === removingAccount.id) delete next.accountId;
+          if (e.toAccountId === removingAccount.id) delete next.toAccountId;
+          return next;
+        }));
+        setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
+        setRemovingAccount(null);
+      }
+    })), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
@@ -1148,7 +1205,10 @@
         className: "cf-btn cf-btn--danger cf-btn--yearremove"
       },
       "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), (() => {
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everything anyone in the household has changed, newest first \u2014 entries, single dates, budget targets, goals and debts. Kept for the last 200 changes." }, "Activity"), (activity || []).length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "Nothing yet. Every change anyone makes to the budget shows up here, with who made it.") : (activity || []).map((a) => {
+      const who = memberName(a.by, members, { selfId: sessionUser && sessionUser.id });
+      return /* @__PURE__ */ React.createElement("div", { key: a.id, className: "activity-row" }, /* @__PURE__ */ React.createElement("span", { className: "activity-kind activity-kind--" + a.kind }, ACTIVITY_LABELS[a.kind] || a.kind), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "tx" }, a.what), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, new Date(a.at).toLocaleString(), who ? ` \u00b7 ${who}` : "")));
+    })), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Single dates you have edited in the Budget grid, with the value each one had before. Revert puts an occurrence back to what its entry says." }, "Edited dates \u2014 ", activeYear), (() => {
       const ovrs = overridesByYr[activeYear] || {};
       const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
       if (rows.length === 0) {

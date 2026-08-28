@@ -1014,6 +1014,56 @@
            event and the same tint, with the day's detail opening below on tap.
            A fixed min-height keeps every week the same height, so the grid
            doesn't reflow into a ragged stack as the month changes. */
+        .reconcile-drift{margin-top:8px;font-size:12px;color:var(--textMid);line-height:1.5;}
+        /* Activity feed: a kind chip, then what changed and who changed it. */
+        .activity-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
+          border-bottom:1px solid var(--border);}
+        .activity-row:last-child{border-bottom:none;}
+        .activity-kind{flex-shrink:0;min-width:58px;text-align:center;font-size:10px;
+          font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
+          padding:3px 7px;border-radius:6px;background:var(--stripe);
+          color:var(--textMid);border:1px solid var(--border);}
+        .activity-kind--entry{color:var(--primary);}
+        .activity-kind--override{color:var(--amberInk);}
+        .activity-kind--goal{color:var(--greenDk);}
+        .activity-kind--debt{color:var(--red);}
+        /* What-if: one row per recurring entry, amount and a drop toggle. */
+        .scenario-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);
+          border-radius:10px;}
+        .scenario-row{display:flex;align-items:center;gap:10px;padding:8px 12px;
+          border-bottom:1px solid var(--border);}
+        .scenario-row:last-child{border-bottom:none;}
+        .scenario-row--on{background:var(--accentLt);}
+        .scenario-desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .scenario-amt{width:104px;padding:5px 8px;font-size:13px;}
+        .scenario-summary{margin-top:14px;padding:12px 14px;border-radius:10px;
+          background:var(--stripe);border:1px solid var(--border);font-size:13px;line-height:1.5;}
+        .dollar-sm{font-size:12px;color:var(--textMid);}
+        @media(max-width:560px){
+          /* At phone width the description, chip, amount and button do not fit
+             on one line; let the controls wrap under the name rather than
+             crushing the amount field to nothing. */
+          .scenario-row{flex-wrap:wrap;}
+          .scenario-desc{flex:1 1 100%;}
+        }
+        /* Account filter: sits under the sub-tab strip, above the month pills. */
+        .account-filter{display:flex;align-items:center;gap:8px;max-width:var(--container-w);
+          margin:0 auto 14px;}
+        .account-filter-label{font-size:11px;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;color:var(--textLt);}
+        .account-filter-select{font-size:13px;padding:6px 10px;border-radius:8px;
+          border:1px solid var(--border);background:var(--bgCard);color:var(--text);
+          font-family:inherit;min-height:36px;}
+        /* Accounts list in Settings: name, kind, opening share, remove. */
+        .account-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+          padding:8px 0;border-bottom:1px solid var(--border);}
+        .account-row:last-child{border-bottom:none;}
+        .account-name{flex:1 1 180px;min-width:0;}
+        .account-kind{flex:0 0 140px;}
+        .account-opening{width:120px;}
+        .account-opening-note{flex:0 0 auto;}
+        .row-account-tag{margin-left:7px;font-size:10px;color:var(--textLt);
+          border:1px solid var(--border);border-radius:5px;padding:1px 5px;white-space:nowrap;}
         .cal-grid{display:flex;flex-direction:column;}
         .cal-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
         .cal-row--head{border-bottom:1px solid var(--border);}
@@ -2746,22 +2796,54 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v189';
+const CF_VERSION='v190';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
+  let refreshed=false;
+  // Attached here — synchronously, before register() — and not inside its
+  // .then(). The registration promise resolves on the main thread, which
+  // immediately after this line is busy compiling the ~1.5MB of script that
+  // makes up the rest of this page; measured at ~1.7s. A worker that finishes
+  // installing inside that window fires controllerchange before a listener
+  // added in the .then() exists, and the event is simply lost.
+  //
+  // That is not a hypothetical window: it is precisely the launch after a
+  // deploy, which is the only launch this listener is for. It went unnoticed
+  // while navigations were network-first, because then the page had already
+  // fetched the new build itself and a missed reload cost nothing. Serving the
+  // cached shell first made the reload the thing that delivers the update.
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    // The first-ever install also fires controllerchange (no controller -> controlled) —
+    // that's not an update, so only reload when a controller already existed before this.
+    if(!hadController) return;
+    if(refreshed) return; refreshed=true; window.location.reload();
+  });
+  // The route that actually delivers an update. The worker revalidates the
+  // page in the background on every launch and reports the build it got back;
+  // if that isn't the build running here, the new one is already in the cache
+  // and a reload lands on it.
+  //
+  // Deliberately not routed through activate/controllerchange: a new worker
+  // can install and then sit in `waiting` while the outgoing one finishes its
+  // requests, and then none of activate, clients.claim or controllerchange
+  // ever fires. This works whatever the incoming worker does, because it is
+  // the outgoing one doing the reporting.
+  //
+  // The version comparison is what makes it loop-proof: it reloads only when
+  // the build on the wire differs from the build in this document, so the
+  // reloaded page — which is that build — has nothing left to react to.
+  navigator.serviceWorker.addEventListener('message',(ev)=>{
+    const d=ev.data;
+    if(!d||d.type!=='CF_BUILD'||!d.version) return;
+    if(d.version===CF_VERSION) return;
+    if(refreshed) return; refreshed=true; window.location.reload();
+  });
   // A real same-origin script, not a blob: URL — see the header comment in
   // src/sw.js. Registered relative to the document so the worker's scope is
   // the app root whether that's a user site (/) or a project page (/repo/).
   navigator.serviceWorker.register('sw.js').then(reg=>{
     reg.update().catch(()=>{});
-    let refreshed=false;
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      // The first-ever install also fires controllerchange (no controller -> controlled) —
-      // that's not an update, so only reload when a controller already existed before this.
-      if(!hadController) return;
-      if(refreshed) return; refreshed=true; window.location.reload();
-    });
   }).catch((err)=>{
     // This is the catch that hid a real bug for months: registration was
     // failing outright (blob: URL) and nothing said so, which silently cost
@@ -2889,6 +2971,13 @@ document.addEventListener('DOMContentLoaded',function(){
   // cents, but `8 < 9` sent it through the v8 pass again and multiplied every
   // amount by 100. Bumping to v10 would have done the same to every v9 payload
   // in existence, cloud data included. Gate each step, never the call.
+  // The one account every household is guaranteed to have. Declared here
+  // rather than with the other account helpers in app-data.js because the v10
+  // step below is what creates it, and because this file has to be readable on
+  // its own by tests/payload-migration.mjs, which evaluates it without the
+  // rest of the bundle around it.
+  const DEFAULT_ACCOUNT_ID = "acct-main";
+  const DEFAULT_ACCOUNT_NAME = "Chequing";
   function migrateHouseholdPayload(d, from) {
     if (!d) return d;
     const at = Number(from) || 0;
@@ -2960,9 +3049,24 @@ document.addEventListener('DOMContentLoaded',function(){
       });
       out.debtData = nextDebt;
     }
+    // v10 added accounts and needs no conversion step. A household that
+    // predates them simply carries no `accounts` key, and the field's own
+    // guard in HOUSEHOLD_FIELDS turns that into the single default account —
+    // which is where the "every household has at least one" invariant belongs,
+    // since it has to hold for a payload of any version, not just an old one.
+    //
+    // Nothing stamps `accountId` onto existing entries either: accountIdOf
+    // reads "unset" as the default account, so writing it out several hundred
+    // times would rewrite the whole payload to say what it already meant.
+    //
+    // Deliberately not a step here: this function converts values, and only
+    // ever for versions that predate the conversion. Defaulting a missing
+    // field from here would make "migrate an already-current payload" stop
+    // being a no-op, which is the property tests/payload-migration.mjs exists
+    // to hold on to.
     return out;
   }
-  const SCHEMA_VERSION = 9;
+  const SCHEMA_VERSION = 10;
   function migrateData() {
     let storedVersion = 0;
     try {
@@ -3570,16 +3674,28 @@ document.addEventListener('DOMContentLoaded',function(){
   // Saturday (paid 31 July, budgeted in August), quietly rewriting the totals
   // and Budget vs Actual of two months to fix a display problem.
   //
-  // Which entries this applies to is read from the description rather than a
-  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
-  // Ken" all read as payroll to a person, and the alternative is a checkbox
-  // that every payroll entry has to have ticked by hand.
+  // Which entries this applies to is guessed from the description by default:
+  // "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL — Ken" all read as
+  // payroll to a person, and the alternative would be a checkbox that every
+  // payroll entry has to have ticked by hand before it behaves correctly.
   const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
-  // Repeating income only. A one-time entry's date was typed by hand — it is
-  // already the date the money arrived — and expenses leave when the biller
-  // pulls them, which is not this rule.
+  // ...but a guess from a description is only ever a guess. `bankingDay` is the
+  // per-entry answer, and it wins when it is set:
+  //
+  //   true   always shift to the prior banking day — a direct deposit the
+  //          regex doesn't recognise ("Salary", "Acme Corp", "Pension")
+  //   false  never shift — an e-transfer, a cash payment, or anything else
+  //          that lands on the day it says regardless of what the banks do
+  //   unset  fall back to the description heuristic above, which is what
+  //          every entry written before this field existed does
+  //
+  // Repeating income only, in every case. A one-time entry's date was typed by
+  // hand — it is already the date the money arrived — and expenses leave when
+  // the biller pulls them, which is not this rule.
   function isPayrollDeposit(e, desc) {
-    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+    if (!e.repeats || e.type !== "income") return false;
+    if (e.bankingDay === true || e.bankingDay === false) return e.bankingDay;
+    return PAYROLL_DESC_RE.test(String(desc || ""));
   }
   // The last banking day on or before `date`: steps back over Saturdays,
   // Sundays and BC holidays (see holidays.js, which includes the two BC lists
@@ -3622,6 +3738,14 @@ document.addEventListener('DOMContentLoaded',function(){
     const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
     return day > daysInMonth(month, year) ? null : new Date(year, month, day);
   }
+  // The account an entry or event belongs to, with the default standing in for
+  // anything written before accounts existed. Every reader goes through this
+  // rather than reading `.accountId` directly, so "unset" has one meaning.
+  const accountIdOf = (x) => (x && x.accountId) || DEFAULT_ACCOUNT_ID;
+  // A transfer that names a destination moves money between two accounts, and
+  // shows up twice: out of one, into the other. Anything else — an old
+  // transfer, or one with no destination — keeps its single-sided meaning.
+  const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -3680,6 +3804,10 @@ document.addEventListener('DOMContentLoaded',function(){
           // this tracked account (default) vs into it. Income/expense
           // entries ignore this entirely.
           transferDirection: e.transferDirection || "out",
+          // Which account this movement is in. Unset on anything written
+          // before accounts existed, which accountIdOf reads as the default —
+          // so a one-account household sees exactly what it always saw.
+          accountId: accountIdOf(e),
           amount: actual,
           plannedAmount: planned,
           category: e.category,
@@ -3705,6 +3833,30 @@ document.addEventListener('DOMContentLoaded',function(){
           recurEvery: e.recurEvery || 1,
           repeats: e.repeats || false
         });
+        // A transfer between two accounts is one entry and two movements: out
+        // of the account it names, into the account it points at. Emitted here
+        // rather than derived later so every downstream consumer — the running
+        // balance, the month summaries, the calendar, the forecast — sees a
+        // complete picture without knowing accounts exist.
+        //
+        // The two legs are equal and opposite, so a combined balance across
+        // every account is unchanged by an internal transfer. That is the
+        // property that lets "combined" stay the default view and still be
+        // right.
+        if (isInterAccountTransfer(e)) {
+          const first = events[events.length - 1];
+          events.push(__spreadProps(__spreadValues({}, first), {
+            // Distinct id: an occurrence id keys overrides, completion ticks
+            // and React lists, and two rows sharing one would collide in all
+            // three.
+            id: `${first.id}-in`,
+            accountId: e.toAccountId,
+            transferDirection: first.transferDirection === "out" ? "in" : "out",
+            // The leg is a consequence of the entry, not an occurrence anyone
+            // edits: the editable one is the first leg.
+            _leg: true
+          }));
+        }
       };
       if (!e.repeats) {
         addEv(new Date(startD));
@@ -3839,6 +3991,10 @@ document.addEventListener('DOMContentLoaded',function(){
       // would read as "nothing changed" and be applied retroactively over
       // months already recorded.
       recurNth: Number.isFinite(e.recurNth) ? e.recurNth : null,
+      // Same reasoning as recurNth: switching the banking-day rule on or off
+      // changes which day the money is expected to land, so it is a change to
+      // the schedule rather than a correction to be applied retroactively.
+      bankingDay: e.bankingDay === true || e.bankingDay === false ? e.bankingDay : null,
       startDate: e.startDate,
       monthlyAmounts: e.monthlyAmounts || null
     });
@@ -4824,8 +4980,34 @@ document.addEventListener('DOMContentLoaded',function(){
     // table above).
     { key: "currency", storage: "cf_currency", initial: () => DEFAULT_CURRENCY, kind: "truthy", backup: true },
     { key: "locale", storage: "cf_locale", initial: () => DEFAULT_LOCALE, kind: "truthy", backup: true },
-    { key: "holidayRegion", storage: "cf_holiday_region", initial: () => DEFAULT_HOLIDAY_REGION, kind: "truthy", backup: true }
+    { key: "holidayRegion", storage: "cf_holiday_region", initial: () => DEFAULT_HOLIDAY_REGION, kind: "truthy", backup: true },
+    // What changed, who changed it, and when — reverse-chronological, newest
+    // first, capped at ACTIVITY_LIMIT. Household data, so a shared budget stops
+    // appearing to edit itself: the Audit page could only ever show occurrence
+    // overrides, which is one kind of change out of seven.
+    //
+    // A plain array under last-write-wins, like everything else in the payload.
+    // Two devices writing concurrently is already the conflict the savedAt
+    // check catches, so this needs no merge rule of its own — and a log is the
+    // one field where losing the loser's entries is the same outcome as losing
+    // the loser's edits, which is what the user is being told about anyway.
+    { key: "activity", storage: "cf_activity", initial: () => [], kind: "array", backup: true },
+    // Where the household's money lives. Never empty: a payload without one is
+    // given the single default account by migrateHouseholdPayload, so every
+    // reader can assume at least one exists.
+    // A custom apply, not the plain array guard: that one accepts `[]`, and a
+    // household with zero accounts is the single state the rest of the app
+    // cannot render — every entry would point at an account that isn't there.
+    // An absent or empty list means "whatever this device already has", which
+    // for a household that predates accounts is the one default below.
+    { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, marksUnsaved: true, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 0) set(v);
+    } }
   ];
+  // Long enough to answer "what happened while I was away" across a busy week,
+  // short enough that the log never becomes the largest thing in the payload:
+  // 200 records at ~120 bytes is ~24 KB against a household of a few hundred KB.
+  const ACTIVITY_LIMIT = 200;
   // Creates the localStorage-backed state for every field in the table, in
   // table order, and returns the two objects useHouseholdData indexes by field
   // key. Calling useLS in a loop is safe here precisely because
@@ -5782,7 +5964,13 @@ document.addEventListener('DOMContentLoaded',function(){
   // occurrence override's — without four layers of prop drilling to reach it.
   // Empty in the signed-out and single-member cases, which is what makes
   // memberName() return "" and every consumer render nothing.
-  const HouseholdContext = createContext({ members: [], sessionUser: null });
+  // `logActivity(kind, what)` rides along here rather than being threaded
+  // through props: the mutations worth logging are spread across Budget, Plan
+  // and Settings, and prop-drilling a recorder into all three is how half of
+  // them end up not calling it. The default is a no-op so a component rendered
+  // outside a provider (the self-test harness, a screenshot run) still works.
+  const HouseholdContext = createContext({ members: [], sessionUser: null, accounts: [], logActivity: () => {
+  } });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
   const LOGO_SRC = "data:image/png;base64,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";
   const DEFAULT_ALERT_THRESHOLD = 150000;
@@ -6168,6 +6356,73 @@ document.addEventListener('DOMContentLoaded',function(){
   function viewDocTitle(tab, budgetSub, planSub) {
     return `${viewName(tab, budgetSub, planSub)} \u2014 ${APP_NAME}`;
   }
+  // How each kind of logged change is labelled in the Activity list. The kind
+  // is stored rather than the label so the wording can be changed without
+  // rewriting history.
+  // ── Accounts ────────────────────────────────────────────────────────────
+  // A household's money lives in more than one place: a chequing account, a
+  // savings account, a credit card. Every entry belongs to one of them, and a
+  // transfer moves money from one to another — which is what finally gives the
+  // transfer type something coherent to mean.
+  //
+  // Every household has at least one. A household that predates accounts gets
+  // exactly one, holding everything it already had, so nothing it can see
+  // changes until it adds a second (see migrateHouseholdPayload).
+  // DEFAULT_ACCOUNT_ID/_NAME live in migrate.js, which is where the guarantee
+  // that every household has exactly one account is enforced — and which has
+  // to be readable on its own, without the rest of the bundle, by
+  // tests/payload-migration.mjs.
+  // What an account is, which decides only how it is described and sorted —
+  // never how its balance is computed. A credit card is an ordinary account
+  // whose balance is usually below zero; treating it as a special negative
+  // thing would mean two arithmetics in an app that has carefully kept one.
+  const ACCOUNT_KINDS = [
+    { id: "chequing", label: "Chequing" },
+    { id: "savings", label: "Savings" },
+    { id: "credit", label: "Credit card" },
+    { id: "cash", label: "Cash" },
+    { id: "other", label: "Other" }
+  ];
+  const accountById = (accounts, id) => (accounts || []).find((a) => a.id === id) || null;
+  const accountName = (accounts, id) => {
+    const a = accountById(accounts, id);
+    return a ? a.name : id === DEFAULT_ACCOUNT_ID ? DEFAULT_ACCOUNT_NAME : "Unknown account";
+  };
+  // accountIdOf and isInterAccountTransfer live in dates.js: expandEntries
+  // needs them, and dates.js is evaluated on its own by tests/year-copy.mjs.
+  // How the year's opening balance is split between accounts.
+  //
+  // There is one editable total — the budget year's opening balance, in
+  // Settings, exactly where it has always been — and each account beyond the
+  // first says how much of it is sitting there. The first account takes the
+  // remainder, so the shares always sum to the total and there is nothing to
+  // reconcile. Saying "my savings account opened the year with $10,000" moves
+  // $10,000 of the household's opening balance into savings; it does not
+  // conjure $10,000, which is what a second independently-editable total
+  // would have done.
+  //
+  // A household with one account never sees any of this: its single account
+  // holds the whole opening balance and there is nothing to fill in.
+  function accountOpenings(accounts, combinedOpening) {
+    const list = Array.isArray(accounts) && accounts.length ? accounts : [{ id: DEFAULT_ACCOUNT_ID }];
+    const out = {};
+    let allocated = 0;
+    list.slice(1).forEach((a) => {
+      const v = Number.isFinite(a.opening) ? a.opening : 0;
+      out[a.id] = v;
+      allocated += v;
+    });
+    out[list[0].id] = roundMoney((Number(combinedOpening) || 0) - allocated);
+    return out;
+  }
+  const ACTIVITY_LABELS = {
+    entry: "Entry",
+    override: "Date",
+    target: "Target",
+    goal: "Goal",
+    debt: "Debt",
+    year: "Year"
+  };
   function parseTabHash() {
     let raw = "";
     try {
@@ -7173,6 +7428,11 @@ document.addEventListener('DOMContentLoaded',function(){
   }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), className: "toggle-label" }, label));
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     var _a, _b, _c, _d, _e;
+    // Off the household context rather than a prop: the form is opened from
+    // six places and threading the account list through all of them is how one
+    // of them ends up without it.
+    const { accounts: formAccounts } = useContext(HouseholdContext);
+    const accounts = Array.isArray(formAccounts) && formAccounts.length ? formAccounts : [];
     const today = todayStr();
     const blank = {
       desc: "",
@@ -7192,9 +7452,21 @@ document.addEventListener('DOMContentLoaded',function(){
       // they are the same day in most months and different in the long ones,
       // and which one the bill means is not something to guess.
       recurNth: 1,
+      // Whether the banking-day rule applies to this entry, overriding the
+      // description heuristic. "" means unset — keep guessing from the
+      // description, which is what every entry written before this existed
+      // does. See isPayrollDeposit in dates.js.
+      bankingDay: "",
       recurEnd: "",
       monthlyAmounts: null,
-      transferDirection: "out"
+      transferDirection: "out",
+      // Which account the money moves in. "" means the household's first
+      // account, which is also what every entry written before accounts
+      // existed means.
+      accountId: "",
+      // Only for a transfer: the account the money moves into. Set, and the
+      // entry becomes two movements — out of one account, into the other.
+      toAccountId: ""
     };
     const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
       // Money is cents at rest; this form's fields are plain dollar text the
@@ -7205,9 +7477,12 @@ document.addEventListener('DOMContentLoaded',function(){
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
       recurNth: Number.isFinite(initial.recurNth) ? initial.recurNth : 1,
+      bankingDay: initial.bankingDay === true ? "yes" : initial.bankingDay === false ? "no" : "",
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
       repeats: (_e = initial.repeats) != null ? _e : false,
-      transferDirection: initial.transferDirection || "out"
+      transferDirection: initial.transferDirection || "out",
+      accountId: initial.accountId || "",
+      toAccountId: initial.toAccountId || ""
     }) : blank);
     const [errors, setErrors] = useState({});
     const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
@@ -7345,6 +7620,14 @@ document.addEventListener('DOMContentLoaded',function(){
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
         recurNth: f.recurUnit === "monthweekday" ? parseInt(f.recurNth, 10) || 1 : void 0,
+        // Only meaningful on repeating income, which is the only thing the
+        // rule applies to — anything else stores nothing rather than a
+        // preference that can never take effect.
+        bankingDay: f.repeats && f.type === "income" && (f.bankingDay === "yes" || f.bankingDay === "no") ? f.bankingDay === "yes" : void 0,
+        accountId: f.accountId || void 0,
+        // A destination only means anything on a transfer, and only when it is
+        // somewhere else: "into the account it came out of" is not a movement.
+        toAccountId: f.type === "transfer" && f.toAccountId && f.toAccountId !== (f.accountId || (accounts[0] || {}).id) ? f.toAccountId : void 0,
         // "monthweekday" keeps exactly one weekday (the schedule names one);
         // "week" keeps the start day plus any extras the user ticked.
         recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
@@ -7413,7 +7696,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-amount",
@@ -7429,7 +7712,22 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), accounts.length > 1 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, {
+      htmlFor: "ef-account",
+      className: lblCls,
+      helpLabel: "Account",
+      help: "Which of your accounts this money moves in. A transfer can also name a second account to move it into, which makes it one entry and two movements \u2014 out of the first, into the second \u2014 so the household total is unchanged and each account\u2019s own balance is right."
+    }, f.type === "transfer" ? "From account" : "Account"), /* @__PURE__ */ React.createElement("select", {
+      id: "ef-account",
+      className: inpCls(false),
+      value: f.accountId || (accounts[0] || {}).id || "",
+      onChange: (e) => set({ accountId: e.target.value, toAccountId: f.toAccountId === e.target.value ? "" : f.toAccountId })
+    }, accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))), f.type === "transfer" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: lblCls + " mt-10", htmlFor: "ef-to-account" }, "To account"), /* @__PURE__ */ React.createElement("select", {
+      id: "ef-to-account",
+      className: inpCls(false),
+      value: f.toAccountId,
+      onChange: (e) => set({ toAccountId: e.target.value })
+    }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Outside these accounts \u2014"), accounts.filter((a) => a.id !== (f.accountId || (accounts[0] || {}).id)).map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
       set({ category: e.target.value });
       if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
     } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-date-row" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-160" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-date" }, "Date", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
@@ -7500,7 +7798,22 @@ document.addEventListener('DOMContentLoaded',function(){
           if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.repeats && f.type === "income" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      htmlFor: "ef-banking-day",
+      helpLabel: "Banking days",
+      help: "Money paid in by direct deposit doesn\u2019t land on a day the banks are shut \u2014 a payday falling on a weekend or a statutory holiday is in the account on the last banking day before it. The occurrence stays on its own date in the budget either way; only the deposit date it is marked with changes. Left on \u201cDecide from the description\u201d, anything whose description reads as payroll gets the rule."
+    }, "Deposit date"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "ef-banking-day",
+        className: inpCls(false),
+        value: f.bankingDay,
+        onChange: (e) => set({ bankingDay: e.target.value })
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "Decide from the description"),
+      /* @__PURE__ */ React.createElement("option", { value: "yes" }, "Paid the last banking day before"),
+      /* @__PURE__ */ React.createElement("option", { value: "no" }, "Paid on the date shown")
+    )), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
       Toggle,
       {
         value: showMonthly,
@@ -8904,6 +9217,29 @@ document.addEventListener('DOMContentLoaded',function(){
       )
     );
   }
+  // The account filter. Only rendered once a household has more than one
+  // account — with a single account "All accounts" and "Chequing" are the same
+  // set, and a control whose two options do the same thing is worse than no
+  // control.
+  //
+  // Combined stands first and is the default. Every view behind this reads a
+  // flow and an opening balance, so narrowing is a matter of handing them a
+  // smaller pair; none of them knows this exists.
+  function AccountFilter({ accounts = [], value = "", onChange = () => {
+  } }) {
+    if (!Array.isArray(accounts) || accounts.length < 2) return null;
+    return /* @__PURE__ */ React.createElement("div", { className: "account-filter", "data-noprint": true }, /* @__PURE__ */ React.createElement("label", { htmlFor: "account-filter-select", className: "account-filter-label" }, "Account"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "account-filter-select",
+        className: "account-filter-select",
+        value,
+        onChange: (e) => onChange(e.target.value)
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "All accounts"),
+      accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
+    ));
+  }
   function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {
@@ -9060,10 +9396,30 @@ document.addEventListener('DOMContentLoaded',function(){
   function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
     const [actual, setActual] = useState("");
     const [err, setErr] = useState("");
+    // How long the projection has been running unchecked. The adjustment about
+    // to be recorded *is* the drift accumulated over that stretch, which is the
+    // only reading of the number that says anything: $40 out after three days
+    // is a missed transaction, $40 out after five months is the app being
+    // essentially right.
+    const sinceDays = (() => {
+      const from = parseDate(lastReconciled);
+      if (!from) return null;
+      const days = Math.round((new Date(todayStr()) - from) / 864e5);
+      return Number.isFinite(days) && days >= 0 ? days : null;
+    })();
     const parsed = actual.trim() === "" ? null : Number(actual);
     const valid = parsed !== null && Number.isFinite(parsed);
     const actualCents = valid ? dollarsToCents(actual) : null;
     const diff = valid ? actualCents - projected : null;
+    // What the adjustment says about the projection, rather than just its size.
+    // Only worth saying when there is a stretch of time to divide by — the
+    // first reconciliation has nothing to compare against.
+    const driftLine = (() => {
+      if (!valid || !diff || !sinceDays) return "";
+      const perMonth = Math.round(Math.abs(diff) / sinceDays * 30);
+      const direction = diff > 0 ? "under" : "over";
+      return `The forecast has drifted ${fmt(Math.abs(diff))} in ${sinceDays} day${sinceDays === 1 ? "" : "s"} \u2014 about ${fmt(perMonth)} a month, ${direction}-counting what you actually have.`;
+    })();
     const submit = () => {
       if (!valid) {
         setErr("Enter the balance your bank shows today.");
@@ -9080,7 +9436,7 @@ document.addEventListener('DOMContentLoaded',function(){
       /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
       /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Reconcile to your bank"),
       /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it."),
-      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled)),
+      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled), sinceDays !== null && ` \u00b7 ${sinceDays} day${sinceDays === 1 ? "" : "s"} ago`),
       /* @__PURE__ */ React.createElement("div", { className: "reconcile-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, "This app projects"), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 reconcile-figure" }, fmt(projected))),
       /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "rec-actual" }, "Your bank shows"),
       /* @__PURE__ */ React.createElement("input", {
@@ -9112,7 +9468,8 @@ document.addEventListener('DOMContentLoaded',function(){
           null,
           "Adjustment of ",
           /* @__PURE__ */ React.createElement("strong", { style: { color: diff > 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(diff, true)),
-          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`
+          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`,
+          driftLine && /* @__PURE__ */ React.createElement("div", { className: "reconcile-drift" }, driftLine)
         )
       ),
       /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: submit, disabled: !valid || diff === 0, className: "cf-btn cf-btn--primary" }, "Record adjustment"))
@@ -9553,6 +9910,15 @@ document.addEventListener('DOMContentLoaded',function(){
     var _a, _b;
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
+    const { logActivity, accounts: hhAccounts } = useContext(HouseholdContext);
+    // Which account a row is in, shown only once there is more than one — with
+    // a single account it would name the only place the money could be, on
+    // every row. It also tells the two halves of an internal transfer apart:
+    // in the combined ledger they are the same description twice, once leaving
+    // one account and once arriving in the other.
+    const acctTag = (ev) => (hhAccounts || []).length > 1
+      ? /* @__PURE__ */ React.createElement("span", { className: "row-account-tag" }, accountName(hhAccounts, accountIdOf(ev)))
+      : null;
     // Calendar replaced Daily. The sub-tab is remembered per device and
     // #/budget/daily was a real deep link, so a phone or a bookmark can still
     // arrive asking for a view that no longer exists; send it to the one that
@@ -9921,7 +10287,7 @@ document.addEventListener('DOMContentLoaded',function(){
           if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-desc-cell budget-col-desc budget-desc-td", title: ev.desc, style: {
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
-          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"));
+          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"), acctTag(ev));
           if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
           if (col === "income") {
             const showHere = isInflowEvent(ev);
@@ -10015,7 +10381,7 @@ document.addEventListener('DOMContentLoaded',function(){
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
           }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎")), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎"), acctTag(ev)), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
           textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
         } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
@@ -10484,6 +10850,7 @@ document.addEventListener('DOMContentLoaded',function(){
               const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
               const prevTargets = budgetTargets, removedCat = bvaCtxMenu.cat;
               pushUndo(`Target for "${removedCat}" removed`, () => setBudgetTargets(prevTargets));
+              logActivity("target", `Removed the ${MONTHS[monthIdx]} target for ${removedCat}`);
               setBudgetTargets((prev) => {
                 const n = __spreadValues({}, prev);
                 if (n[bk]) {
@@ -10510,6 +10877,7 @@ document.addEventListener('DOMContentLoaded',function(){
             next._rollover = ro;
             return next;
           });
+          logActivity("target", `${bvaModalData.editCat ? "Changed" : "Set"} the ${MONTHS[monthIdx]} target for ${bvaModalData.cat} to ${fmt(t)}`);
           setShowBvaModal(false);
         };
         return /* @__PURE__ */ React.createElement(
@@ -10666,7 +11034,9 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null, completed = {}, toggleComplete = () => {
-  } }) {
+  }, entries = [], scenarioOn = false, setScenarioOn = () => {
+  }, scenarioAdj = {}, setScenarioAdj = () => {
+  }, scenarioFlows = null }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
     const [pgSize, setPgSize] = useState(20);
@@ -10736,7 +11106,26 @@ document.addEventListener('DOMContentLoaded',function(){
     // with something on it takes the balance of its last event and a quiet day
     // holds the one before — which is what makes this a curve rather than a
     // scatter of the days something happened.
-    const curve = useMemo(() => {
+    // The same window over the scenario's flows. Built from the identical
+    // filter so the two curves are comparable day for day: any difference
+    // between them is the adjustments and nothing else.
+    const scenarioEvents = useMemo(() => {
+      if (!scenarioFlows) return null;
+      const end = new Date(today);
+      end.setDate(end.getDate() + horizon);
+      const all = [];
+      yearConfigs.forEach((yc) => {
+        (scenarioFlows[yc.year] || []).forEach((ev) => {
+          if (ev.date >= today && ev.date <= end) all.push(ev);
+        });
+      });
+      return all.sort((a, b) => a.date - b.date);
+    }, [scenarioFlows, yearConfigs, horizon, today]);
+    // A day-by-day balance series over the horizon, from a list of the events
+    // that fall in it. Shared by the real forecast and by a what-if scenario,
+    // so the two curves can never be built differently and disagree about
+    // anything except the adjustments themselves.
+    const curveFrom = useCallback((events, flowsByYear) => {
       const dayStart = (d) => {
         const x = new Date(d);
         x.setHours(0, 0, 0, 0);
@@ -10747,19 +11136,19 @@ document.addEventListener('DOMContentLoaded',function(){
       // event, or — with nothing scheduled in it at all — the figure the last
       // event before today left behind.
       let bal = 0;
-      if (futureEvents.length) {
-        bal = futureEvents[0].balance - signedAmount(futureEvents[0]);
+      if (events.length) {
+        bal = events[0].balance - signedAmount(events[0]);
       } else {
         let latest = null;
-        yearConfigs.forEach((yc) => (yearFlows[yc.year] || []).forEach((ev) => {
+        yearConfigs.forEach((yc) => ((flowsByYear || {})[yc.year] || []).forEach((ev) => {
           if (ev.date <= today && (!latest || ev.date > latest.date)) latest = ev;
         }));
         bal = latest ? latest.balance : openBalByYear[today.getFullYear()] || 0;
       }
-      // Last event of a day wins: futureEvents is date-sorted, so the final
-      // write for a key is that day's closing balance.
+      // Last event of a day wins: the list is date-sorted, so the final write
+      // for a key is that day's closing balance.
       const closeOf = /* @__PURE__ */ new Map();
-      futureEvents.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
+      events.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
       const out = [];
       for (let i = 0; i <= horizon; i++) {
         const d = new Date(t0);
@@ -10779,7 +11168,32 @@ document.addEventListener('DOMContentLoaded',function(){
         });
       }
       return out;
-    }, [futureEvents, horizon, today, yearFlows, yearConfigs, openBalByYear]);
+    }, [today, horizon, yearConfigs, openBalByYear]);
+    const curve = useMemo(() => {
+      const base = curveFrom(futureEvents, yearFlows);
+      if (!scenarioEvents) return base;
+      // Both series on the same rows rather than two charts side by side: the
+      // question is "how far apart do these two get, and when", which is a
+      // comparison you cannot make across two sets of axes.
+      const alt = curveFrom(scenarioEvents, scenarioFlows);
+      return base.map((p, i) => __spreadProps(__spreadValues({}, p), { scenario: alt[i] ? alt[i].balance : p.balance }));
+    }, [curveFrom, futureEvents, yearFlows, scenarioEvents, scenarioFlows]);
+    // What a scenario can vary. One-time entries are already a decision made on
+    // a date; "what if I dropped this" is a question about the things that keep
+    // coming back. Biggest first, which is the order someone looking for room
+    // in a budget reads them in.
+    const recurringEntries = useMemo(
+      () => entries.filter((e) => e.repeats).slice().sort((a, b) => b.amount - a.amount),
+      [entries]
+    );
+    // What the scenario is worth, in the two numbers people actually act on.
+    const scenarioDelta = useMemo(() => {
+      if (!scenarioEvents || !curve.length) return null;
+      const last = curve[curve.length - 1];
+      const lowBase = curve.reduce((m, p) => Math.min(m, p.balance), Infinity);
+      const lowAlt = curve.reduce((m, p) => Math.min(m, p.scenario), Infinity);
+      return { end: last.scenario - last.balance, low: lowAlt - lowBase, lowAlt };
+    }, [scenarioEvents, curve]);
     // Where the curve bottoms out, and how far down. The chart marks it; until
     // now the number appeared only in the danger banner, without a date.
     const lowPoint = useMemo(() => {
@@ -10862,14 +11276,43 @@ document.addEventListener('DOMContentLoaded',function(){
         } }, fmt(ev.balance)))))
       );
     }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
+      const adj = (scenarioAdj || {})[e.id];
+      const dropped = !!(adj && adj.drop);
+      const amt = adj && Number.isFinite(adj.amount) ? adj.amount : e.amount;
+      const setAdj = (next) => setScenarioAdj((prev) => {
+        const out = __spreadValues({}, prev || {});
+        if (next) out[e.id] = next;
+        else delete out[e.id];
+        return out;
+      });
+      return /* @__PURE__ */ React.createElement("div", { key: e.id, className: "scenario-row" + (adj ? " scenario-row--on" : "") }, /* @__PURE__ */ React.createElement("span", { className: "tx scenario-desc", title: e.desc }, e.desc), /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6 shrink-0" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
+        type: "number",
+        inputMode: "decimal",
+        step: "0.01",
+        "aria-label": `New amount for ${e.desc}`,
+        className: "field-input field-input--mono scenario-amt",
+        disabled: dropped,
+        value: centsToDollars(amt),
+        onChange: (ev) => {
+          const v = dollarsToCents(ev.target.value);
+          setAdj(v === e.amount ? null : { amount: v });
+        }
+      }), /* @__PURE__ */ React.createElement("button", {
+        type: "button",
+        "aria-pressed": dropped,
+        title: dropped ? "Put it back" : "Drop it from the scenario",
+        className: "cf-btn cf-btn--secondary cf-btn--micro",
+        onClick: () => setAdj(dropped ? null : { drop: true })
+      }, dropped ? "Restore" : "Drop")));
+    })), scenarioDelta ? /* @__PURE__ */ React.createElement("div", { className: "scenario-summary" }, /* @__PURE__ */ React.createElement("div", null, "In ", horizon, " days you would end ", /* @__PURE__ */ React.createElement("strong", { style: { color: scenarioDelta.end >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(scenarioDelta.end, true)), " on where you are heading now."), /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, "The low point moves to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(scenarioDelta.lowAlt)), " \u2014 ", /* @__PURE__ */ React.createElement("strong", { style: { color: scenarioDelta.low >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(scenarioDelta.low, true)), "."), Object.keys(scenarioAdj || {}).length > 0 && /* @__PURE__ */ React.createElement("button", { type: "button", className: "cf-btn cf-btn--secondary cf-btn--tiny mt-10", onClick: () => setScenarioAdj({}) }, "Clear the scenario")) : /* @__PURE__ */ React.createElement("div", { className: "italic-hint mt-10" }, "Change an amount or drop an entry, and the comparison appears here."))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
       AreaChart,
       {
         data: curve,
         // Room above the plot for the low-point marker's caption, which is
         // drawn just outside the top of the plotting area.
         margin: { top: 22, right: 8, bottom: 0, left: 4 },
-        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}. The table below lists every event behind it.`
+        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}.` + (scenarioDelta ? ` A second, dashed line shows the what-if scenario: it ends ${fmt(scenarioDelta.end, true)} on that, with its low at ${fmt(scenarioDelta.lowAlt)}.` : "") + " The table below lists every event behind it."
       },
       /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
       /* @__PURE__ */ React.createElement(XAxis, { dataKey: "day", interval: 0, tickFormatter: (v, i) => curve[i] ? curve[i].tick : "", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
@@ -10880,7 +11323,11 @@ document.addEventListener('DOMContentLoaded',function(){
       // curve can be read against it rather than described underneath.
       /* @__PURE__ */ React.createElement(ReferenceLine, { y: alertThreshold, stroke: "var(--amberInk)", strokeDasharray: "5 4", label: `Alert ${fmt(alertThreshold)}` }),
       lowPoint && lowPoint.index > 0 && /* @__PURE__ */ React.createElement(ReferenceLine, { x: lowPoint.index, stroke: lowPoint.balance < 0 ? "var(--red)" : "var(--amberInk)", strokeDasharray: "2 3", label: `Low ${fmt(lowPoint.balance)} \u00b7 ${fmtDate(lowPoint.date, null)}` }),
-      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false })
+      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: scenarioEvents ? "As it stands" : "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false }),
+      // Drawn as a line, not a second filled area: two overlapping fills read
+      // as a third colour where they cross, which is the region that matters.
+      scenarioEvents && /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "scenario", name: "What-if", stroke: "var(--accent)", strokeWidth: 2, strokeDasharray: "6 4", dot: false }),
+      scenarioEvents && /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } })
     )))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {
@@ -11585,6 +12032,7 @@ Fill every field of the response schema. Rules:
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
+    const { logActivity } = useContext(HouseholdContext);
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
     const [debtCtx, setDebtCtx] = useState(null);
@@ -11618,6 +12066,7 @@ Fill every field of the response schema. Rules:
           setEntries((prev) => prev.map((e) => e.id === g0.payoutEntryId ? __spreadProps(__spreadValues({}, e), { desc: `Goal payout: ${name}`, amount: target, startDate: goalForm.targetDate || e.startDate }) : e));
         }
         setGoals((prev) => prev.map((g) => g.id === goalForm.id ? __spreadProps(__spreadValues({}, g), { name, target, saved, monthly, targetDate: goalForm.targetDate || "" }) : g));
+        logActivity("goal", `Edited the goal ${name} \u2014 ${fmt(saved)} of ${fmt(target)}`);
       } else {
         const id = genId();
         let entryId = null;
@@ -11659,6 +12108,7 @@ Fill every field of the response schema. Rules:
           }]);
         }
         setGoals((prev) => [...prev, { id, name, target, saved, monthly, targetDate: goalForm.targetDate || "", entryId, payoutEntryId, createdAt: (/* @__PURE__ */ new Date()).toISOString() }]);
+        logActivity("goal", `Added the goal ${name} \u2014 ${fmt(target)}`);
       }
       toast(goalForm.id ? "Goal updated" : "Goal added");
       setShowGoalForm(false);
@@ -11674,6 +12124,7 @@ Fill every field of the response schema. Rules:
       setFundForm(null);
     };
     const archiveGoal = (goal) => {
+      logActivity("goal", `Archived the goal ${goal.name}`);
       setGoals((prev) => prev.map((g) => g.id === goal.id ? __spreadProps(__spreadValues({}, g), { archived: true }) : g));
       toast(`"${goal.name}" archived`);
     };
@@ -12139,9 +12590,11 @@ Fill every field of the response schema. Rules:
         };
         if (editKey) {
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [editKey]: __spreadValues(__spreadValues({}, p[editKey]), formVals) }));
+          logActivity("debt", `Updated the debt ${debtFormData.label || editKey}`);
         } else {
           const id = "manual_" + genId();
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [id]: formVals }));
+          logActivity("debt", `Added the debt ${debtFormData.label || "Untitled"}`);
         }
         setShowDebtForm(false);
         setDebtFormData({ label: "", balance: "", rate: "", payment: "", editKey: null });
@@ -13479,7 +13932,8 @@ Fill every field of the response schema. Rules:
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
         { sub: "Paydays that land on a closed day" },
-        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
+        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that by default, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
+        { p: "A guess from a description is only ever a guess, so any repeating income entry can say for itself. Its “Deposit date” setting offers “Paid the last banking day before” for a deposit the description doesn’t give away — a salary, a pension — and “Paid on the date shown” for money that arrives whatever the banks are doing. Left alone it keeps reading the description, which is what every entry did before the setting existed." },
         { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
         { p: "Which province's or territory's holidays apply is set in Settings → Statutory Holidays, and defaults to British Columbia. The built-in list is computed from that region's usual rules and includes the days it commonly treats as optional; each one is listed on the day it is observed and only there. Rules change and one-off days get proclaimed, so the built-in list is a baseline — the Fetch button replaces a year with what canada-holidays.ca publishes for your region, and any date can be added, edited or removed by hand. Outside Canada, add the days that matter to you by hand and the deposit rule works the same way." },
         { sub: "Changing one occurrence without changing the plan" },
@@ -13519,9 +13973,15 @@ Fill every field of the response schema. Rules:
           ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
           ["Calendar", "The same month laid out as a month: bills on the day they fall, the balance carried to the end of each day, and any day that drops below your alert threshold tinted — which is what makes the week where four bills land together visible at a glance. Pick a day to open what is on it. On a phone each day shows a dot per event and the same tint, and the day you pick opens below the grid."],
           ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
-          ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries, with the running balance beside each row."],
+          ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries. The chart at the top draws the balance day by day, with the low point and your alert threshold marked; the list below it is every event behind that line. Turn on \u201cWhat if\u2026\u201d to drop a recurring entry or put a different amount on it and see the second curve that would result \u2014 nothing there changes your budget, and it stays on the device you try it on."],
           ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
+        { sub: "Accounts" },
+        { p: "A household\u2019s money lives in more than one place, so every entry belongs to an account \u2014 chequing, savings, a credit card, cash. Add and name them under Settings \u2192 Accounts. A credit card is an ordinary account here whose balance simply runs below zero; there is no separate arithmetic for it." },
+        { p: "Every view adds all of them together unless you narrow it with the Account picker above the budget, which appears once you have more than one. Narrowing recomputes the running balance from that account\u2019s own share of the year\u2019s opening balance, over only its own events." },
+        { p: "There is one opening balance, set per budget year under Settings \u2192 Budget Years. Each account after the first says how much of it is sitting there, and the first account takes the remainder \u2014 so the shares always add up to the one figure you set, and saying \u201cmy savings opened with $10,000\u201d moves $10,000 of the household\u2019s opening balance into savings rather than conjuring it." },
+        { p: "A transfer can now name a second account, which makes it one entry and two movements: out of the first, into the second. Each account\u2019s balance changes and the household\u2019s total does not, which is what a transfer between your own accounts actually does. A transfer with no destination keeps its old meaning \u2014 money leaving or arriving from outside the accounts you track." },
+        { p: "Removing an account never removes money: the entries filed under it move back to your first account, unchanged." },
         { sub: "Rollover targets" },
         { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
         { sub: "Searching" },
@@ -13614,8 +14074,9 @@ Fill every field of the response schema. Rules:
         { p: "Lists the people in your household and creates invite codes for new ones. A family member signs in, enters the code, and shares the same budget." },
         { sub: "Templates" },
         { p: "The entry templates you have saved, with a Remove button for each." },
-        { sub: "Audit" },
-        { p: "Every per-date override you have made this year, newest first, each with a Revert that restores the originally scheduled amount and notes." }
+        { sub: "Activity" },
+        { p: "What anyone in the household has changed, newest first — entries added, edited and deleted, single dates moved or skipped, budget targets, goals and debts — each with who made the change and when. The last 200 changes are kept, and the list is household data, so everyone sharing the budget sees the same one." },
+        { p: "Underneath it, every per-date override you have made this year, each with a Revert that restores the originally scheduled amount and notes." }
       ]
     },
     {
@@ -14004,7 +14465,8 @@ Fill every field of the response schema. Rules:
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, templates = [], setTemplates, activeFlow = [], activity = [], accounts = [], setAccounts = () => {
+  }, pushUndo = () => {
   }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
@@ -14030,6 +14492,14 @@ Fill every field of the response schema. Rules:
     const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
+    const [removingAccount, setRemovingAccount] = useState(null);
+    // What each account opens the first budget year with. Derived, never
+    // stored for the first account: it takes the remainder, so the shares can
+    // never drift from the one opening balance the user actually sets.
+    const openingShares = useMemo(() => {
+      const first = [...yearConfigs].sort((a, b) => a.year - b.year)[0];
+      return accountOpenings(accounts, first ? first.openingBalance : 0);
+    }, [accounts, yearConfigs]);
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [showAiKey, setShowAiKey] = useState(false);
     const [inviteCode, setInviteCode] = useState("");
@@ -14248,7 +14718,7 @@ Fill every field of the response schema. Rules:
       { id: "general", icon: "settings", label: "General" },
       { id: "household", icon: "users", label: "Household" },
       { id: "templates", icon: "clipboard", label: "Templates" },
-      { id: "audit", icon: "clock", label: "Audit" }
+      { id: "audit", icon: "clock", label: "Activity" }
     ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -14267,6 +14737,7 @@ Fill every field of the response schema. Rules:
       // Order matches the sections as they appear down the page, which is
       // alphabetical by heading — so the strip is also the index you would
       // scan for a setting whose name you know.
+      ["sec-accounts", "Accounts"],
       ["sec-ai-key", "AI Key"],
       ["sec-alert", "Alert Threshold"],
       ["sec-appearance", "Appearance"],
@@ -14293,7 +14764,54 @@ Fill every field of the response schema. Rules:
         className: "quicklink-pill"
       },
       label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-accounts", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Where the household\u2019s money lives. A credit card is an ordinary account here \u2014 its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget." }, "Accounts"), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, accounts.map((a, i) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "account-row" }, /* @__PURE__ */ React.createElement("input", {
+      "aria-label": `Name of account ${i + 1}`,
+      className: "field-input account-name",
+      value: a.name,
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x))
+    }), /* @__PURE__ */ React.createElement("select", {
+      "aria-label": `Kind of ${a.name}`,
+      className: "field-input account-kind",
+      value: a.kind || "chequing",
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { kind: e.target.value }) : x))
+    }, ACCOUNT_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label))), i === 0 ? /* @__PURE__ */ React.createElement("span", { className: "txl account-opening-note" }, "Opens with the rest \u2014 ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(openingShares[a.id] || 0))) : /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
+      type: "number",
+      inputMode: "decimal",
+      step: "0.01",
+      "aria-label": `Opening balance of ${a.name}`,
+      className: "field-input field-input--mono account-opening",
+      value: centsToDollars(Number.isFinite(a.opening) ? a.opening : 0),
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { opening: dollarsToCents(e.target.value) }) : x))
+    })), accounts.length > 1 && i > 0 && /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary cf-btn--micro",
+      onClick: () => setRemovingAccount(a),
+      "aria-label": `Remove ${a.name}`
+    }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary",
+      onClick: () => setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }])
+    }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+      title: `Remove ${removingAccount.name}?`,
+      message: (() => {
+        const n = entries.filter((e) => accountIdOf(e) === removingAccount.id).length;
+        const t = entries.filter((e) => e.toAccountId === removingAccount.id).length;
+        return n + t === 0 ? "Nothing is filed under this account, so removing it changes no figures." : `${n + t} ${n + t === 1 ? "entry moves" : "entries move"} back to ${accountName(accounts, (accounts[0] || {}).id)}. No entry is deleted and no amount changes \u2014 they simply stop being separated out.`;
+      })(),
+      confirmLabel: "Remove",
+      onCancel: () => setRemovingAccount(null),
+      onConfirm: () => {
+        // Entries are re-homed rather than deleted: an account is a label on
+        // money, and removing the label must not remove the money.
+        setEntries((prev) => prev.map((e) => {
+          if (accountIdOf(e) !== removingAccount.id && e.toAccountId !== removingAccount.id) return e;
+          const next = __spreadValues({}, e);
+          if (accountIdOf(e) === removingAccount.id) delete next.accountId;
+          if (e.toAccountId === removingAccount.id) delete next.toAccountId;
+          return next;
+        }));
+        setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
+        setRemovingAccount(null);
+      }
+    })), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
       "a",
       {
         href: "https://console.anthropic.com",
@@ -14847,7 +15365,10 @@ Fill every field of the response schema. Rules:
         className: "cf-btn cf-btn--danger cf-btn--yearremove"
       },
       "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), (() => {
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everything anyone in the household has changed, newest first \u2014 entries, single dates, budget targets, goals and debts. Kept for the last 200 changes." }, "Activity"), (activity || []).length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "Nothing yet. Every change anyone makes to the budget shows up here, with who made it.") : (activity || []).map((a) => {
+      const who = memberName(a.by, members, { selfId: sessionUser && sessionUser.id });
+      return /* @__PURE__ */ React.createElement("div", { key: a.id, className: "activity-row" }, /* @__PURE__ */ React.createElement("span", { className: "activity-kind activity-kind--" + a.kind }, ACTIVITY_LABELS[a.kind] || a.kind), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "tx" }, a.what), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, new Date(a.at).toLocaleString(), who ? ` \u00b7 ${who}` : "")));
+    })), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Single dates you have edited in the Budget grid, with the value each one had before. Revert puts an occurrence back to what its entry says." }, "Edited dates \u2014 ", activeYear), (() => {
       const ovrs = overridesByYr[activeYear] || {};
       const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
       if (rows.length === 0) {
@@ -16232,7 +16753,9 @@ Fill every field of the response schema. Rules:
       holidays,
       currency,
       locale,
-      holidayRegion: holidayRegionCode
+      holidayRegion: holidayRegionCode,
+      activity,
+      accounts
     } = houseValues;
     const {
       entries: setEntries,
@@ -16260,7 +16783,9 @@ Fill every field of the response schema. Rules:
       holidays: setHolidays,
       currency: setCurrency,
       locale: setLocale,
-      holidayRegion: setHolidayRegionCode
+      holidayRegion: setHolidayRegionCode,
+      activity: setActivity,
+      accounts: setAccounts
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -16626,6 +17151,35 @@ Fill every field of the response schema. Rules:
     const pushUndo = useCallback((label, revert) => {
       setUndoStack((prev) => [...prev.slice(-9), { label, revert }]);
     }, []);
+    // One line in the household's "what changed" log. Newest first, capped at
+    // ACTIVITY_LIMIT.
+    //
+    // Records the author's id, never their name: names are editable in
+    // Settings, and a stored copy would go stale the moment someone corrected
+    // theirs. Every reader resolves it against the current member list, the
+    // same way occurrence overrides already do.
+    //
+    // The summary is composed at the call site rather than reconstructed from
+    // ids at read time, because the thing it describes may not exist any more
+    // — "Rent deleted" has to keep reading correctly after the entry is gone,
+    // which is exactly when someone wants to know about it.
+    const logActivity = useCallback((kind, what) => {
+      if (!what) return;
+      setActivity((prev) => [{
+        id: genId(),
+        at: (/* @__PURE__ */ new Date()).toISOString(),
+        by: (sessionUser == null ? void 0 : sessionUser.id) || void 0,
+        kind,
+        what
+      }, ...Array.isArray(prev) ? prev : []].slice(0, ACTIVITY_LIMIT));
+    }, [setActivity, sessionUser]);
+    // A description short enough for a log line, without cutting a word in half
+    // when it already fits.
+    const householdCtx = useMemo(() => ({ members, sessionUser, accounts, logActivity }), [members, sessionUser, accounts, logActivity]);
+    const logDesc = (d) => {
+      const t = String(d == null ? "" : d).trim() || "Entry";
+      return t.length > 40 ? t.slice(0, 39) + "\u2026" : t;
+    };
     // The global shortcut handler mounts once; without this it would close
     // over an empty stack forever.
     const undoStackRef = useRef([]);
@@ -16643,6 +17197,7 @@ Fill every field of the response schema. Rules:
     // on the next year roll-forward) and part of the undo, so both live here
     // rather than at the two call sites.
     const pushUndoEntryDelete = useCallback((e) => {
+      logActivity("entry", `Deleted ${logDesc(e.desc)} \u2014 ${fmt(signedAmount(e), true)}`);
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
       const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
       pushUndo(`"${shortDesc}" deleted`, () => {
@@ -16654,7 +17209,7 @@ Fill every field of the response schema. Rules:
           return next;
         });
       });
-    }, [pushUndo, setDeletedCopyIds, setEntries]);
+    }, [pushUndo, setDeletedCopyIds, setEntries, logActivity]);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -16699,16 +17254,90 @@ Fill every field of the response schema. Rules:
       });
       return flows;
     }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
+    // ── What-if ──────────────────────────────────────────────────────────
+    // A scenario is a set of adjustments over the entries you already have —
+    // drop this one, change that one's amount — not a second budget. That is
+    // what makes it cheap: the same expandEntries/computeFlow the real year
+    // goes through, run a second time over an adjusted entry list, so a
+    // scenario can never disagree with the budget about how a schedule works.
+    //
+    // Deliberately device-local rather than a synced household field. A
+    // half-finished "what if I quit my job" appearing on a partner's phone is
+    // not a feature, and nothing downstream of it is a record of anything.
+    const [scenarioOn, setScenarioOn] = useLS("cf_scenario_on", false);
+    const [scenarioAdj, setScenarioAdj] = useLS("cf_scenario_adj", {});
+    const scenarioActive = scenarioOn && Object.keys(scenarioAdj || {}).length > 0;
+    const scenarioEntries = useMemo(() => {
+      if (!scenarioActive) return entries;
+      return entries.reduce((out, e) => {
+        const adj = scenarioAdj[e.id];
+        if (!adj) out.push(e);
+        else if (adj.drop) return out;
+        else out.push(__spreadProps(__spreadValues({}, e), { amount: Number.isFinite(adj.amount) ? adj.amount : e.amount }));
+        return out;
+      }, []);
+    }, [entries, scenarioAdj, scenarioActive]);
+    const scenarioFlows = useMemo(() => {
+      if (!scenarioActive) return null;
+      const flows = {};
+      let carry = null;
+      const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
+      sorted.forEach((yc, i) => {
+        const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
+        const events = expandEntries(scenarioEntries, yc.year, overridesByYr[yc.year] || {});
+        const flow = computeFlow(events, openBal);
+        flows[yc.year] = flow;
+        carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
+      });
+      return flows;
+    }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
-    const activeOpenBal = useMemo(() => {
+    const openBalOf = (flowsByYear, firstOpening) => {
       var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
-      if (idx <= 0) return (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
-      const prevFlow = yearFlows[sortedConfigs[idx - 1].year];
-      return (prevFlow == null ? void 0 : prevFlow.length) > 0 ? prevFlow[prevFlow.length - 1].balance : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
-    }, [sortedConfigs, activeYear, yearFlows, yearConfigs]);
-    const activeFlow = yearFlows[activeYear] || [];
+      if (idx <= 0) return firstOpening !== void 0 ? firstOpening : (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
+      const prevFlow = flowsByYear[sortedConfigs[idx - 1].year];
+      if ((prevFlow == null ? void 0 : prevFlow.length) > 0) return prevFlow[prevFlow.length - 1].balance;
+      return firstOpening !== void 0 ? firstOpening : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
+    };
+    // ── The account filter ───────────────────────────────────────────────
+    // Combined is the default and always available: every view shows the
+    // household's whole position unless you narrow it. Narrowing recomputes
+    // the running balance from that account's own share of the opening
+    // balance, over only its own events — which is why nothing downstream of
+    // here needs to know accounts exist. It receives a flow and an opening
+    // balance, exactly as it always did; they are just a narrower pair.
+    //
+    // Device-local: which account you are looking at is a view, not a fact
+    // about the household, and syncing it would move a partner's screen.
+    const [accountFilter, setAccountFilter] = useLS("cf_account_filter", "");
+    // A filter naming an account that has since been deleted would silently
+    // show an empty budget, which reads as data loss. Fall back to combined.
+    const activeAccount = accountFilter && accounts.some((a) => a.id === accountFilter) ? accountFilter : "";
+    const accountYearFlows = useMemo(() => {
+      if (!activeAccount) return null;
+      const first = sortedConfigs[0];
+      const openings = accountOpenings(accounts, first ? first.openingBalance : 0);
+      const out = {};
+      let carry = openings[activeAccount] || 0;
+      sortedConfigs.forEach((yc) => {
+        const evs = (yearFlows[yc.year] || []).filter((ev) => accountIdOf(ev) === activeAccount);
+        const flow = computeFlow(evs, carry);
+        out[yc.year] = flow;
+        carry = flow.length ? flow[flow.length - 1].balance : carry;
+      });
+      return out;
+    }, [activeAccount, accounts, sortedConfigs, yearFlows]);
+    const viewFlows = accountYearFlows || yearFlows;
+    const activeFlow = viewFlows[activeYear] || [];
+    const activeOpenBal = useMemo(() => {
+      if (!activeAccount) return openBalOf(yearFlows);
+      const first = sortedConfigs[0];
+      return openBalOf(viewFlows, accountOpenings(accounts, first ? first.openingBalance : 0)[activeAccount] || 0);
+      // openBalOf closes over sortedConfigs/activeYear/yearConfigs, all of
+      // which are listed below so the memo cannot go stale on any of them.
+    }, [activeAccount, accounts, sortedConfigs, activeYear, yearConfigs, yearFlows, viewFlows]);
     const prevYearConfigured = yearConfigs.some((yc) => Number(yc.year) === Number(activeYear) - 1);
     const prevYearFlow = prevYearConfigured ? yearFlows[activeYear - 1] || [] : [];
     // Skipped occurrences never appear in activeFlow (expandEntries drops
@@ -16749,6 +17378,7 @@ Fill every field of the response schema. Rules:
           return next;
         });
       }
+      logActivity("entry", `Added ${logDesc(entry.desc)} \u2014 ${fmt(signedAmount(entry), true)}`);
       return entry;
     };
     // Single save path for entry edits: recurring entries with history are
@@ -16757,6 +17387,12 @@ Fill every field of the response schema. Rules:
     const saveEntryEdit = (editedId, data) => {
       const res = splitEntryEditFromCurrentMonth(entries, editedId, data);
       setEntries(res.entries);
+      // Name what changed, not just that something did — "Rent edited" is the
+      // log line people complain about. The amount is the one people notice.
+      const before = entries.find((e) => e.id === editedId);
+      const renamed = before && before.desc !== data.desc;
+      const repriced = before && before.amount !== data.amount;
+      logActivity("entry", `Edited ${logDesc(before ? before.desc : data.desc)}` + (renamed ? ` \u2014 renamed to ${logDesc(data.desc)}` : "") + (repriced ? ` \u2014 ${fmt(before.amount)} \u2192 ${fmt(data.amount)}` : ""));
       if (res.newId) {
         setOverridesByYr((prev) => {
           const next = {};
@@ -17130,6 +17766,13 @@ Fill every field of the response schema. Rules:
       }
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
+      // A single date changed. The Audit page has always shown these; the feed
+      // shows them alongside everything else, which is how anyone finds out
+      // that "the rent looks wrong" was somebody moving one month's payment.
+      const parts = String(eventId).split("-");
+      const src = entries.find((e) => String(e.id) === parts[0]);
+      const when = parts.length >= 3 ? `${MONTHS[parseInt(parts[parts.length - 2], 10)] || "?"} ${parts[parts.length - 1]}` : "";
+      logActivity("override", (patch && patch.skipped ? "Skipped " : "Changed ") + logDesc(src ? src.desc : "an occurrence") + (when ? ` on ${when}` : "") + (patch && patch.amount !== void 0 ? ` \u2014 ${fmt(patch.amount)}` : ""));
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         const existing = yOvs[eventId] || {};
@@ -17143,6 +17786,10 @@ Fill every field of the response schema. Rules:
       });
     };
     const clearOverride = (eventId) => {
+      const parts = String(eventId).split("-");
+      const src = entries.find((e) => String(e.id) === parts[0]);
+      const when = parts.length >= 3 ? `${MONTHS[parseInt(parts[parts.length - 2], 10)] || "?"} ${parts[parts.length - 1]}` : "";
+      logActivity("override", `Reverted ${logDesc(src ? src.desc : "an occurrence")}${when ? ` on ${when}` : ""} to its usual value`);
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         delete yOvs[eventId];
@@ -17218,7 +17865,7 @@ Fill every field of the response schema. Rules:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: { members, sessionUser } }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -17472,7 +18119,7 @@ Fill every field of the response schema. Rules:
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), /* @__PURE__ */ React.createElement(AccountFilter, { accounts, value: activeAccount, onChange: setAccountFilter }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -17510,7 +18157,7 @@ Fill every field of the response schema. Rules:
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete, entries, scenarioOn, setScenarioOn, scenarioAdj, setScenarioAdj, scenarioFlows }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       EntriesView,
       {
         entries,
@@ -17571,6 +18218,9 @@ Fill every field of the response schema. Rules:
       SettingsView,
       {
         categories,
+        activity,
+        accounts,
+        setAccounts,
         holidays,
         setHolidays,
         isOffline,
