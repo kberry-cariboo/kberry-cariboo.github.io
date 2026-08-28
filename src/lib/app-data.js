@@ -461,7 +461,8 @@
     target: "Target",
     goal: "Goal",
     debt: "Debt",
-    year: "Year"
+    year: "Year",
+    account: "Account"
   };
   function parseTabHash() {
     let raw = "";

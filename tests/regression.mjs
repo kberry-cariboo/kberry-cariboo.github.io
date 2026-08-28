@@ -2749,6 +2749,262 @@ await test('accounts: removing one re-homes its entries rather than deleting the
   await ctx.close();
 });
 
+
+// ── The four flows that carry data between builds ────────────────────────────
+// Add/copy year, export, restore and cloud sync all move a whole household
+// between shapes, so every field added anywhere else has to be carried by all
+// four. The failure mode is silent: the save succeeds, the app looks right, and
+// the field is simply gone next time. These pin the fields added most recently
+// — the ones with no history of being carried.
+
+await test('carry-through: adding a year keeps the newest entry fields on the copies', async () => {
+  const extra = JSON.stringify([
+    // One-time, so the year roll actually clones it rather than letting the
+    // recurrence span the boundary on its own.
+    { id: 8003, desc: 'Card groceries', type: 'expense', amount: 20000, category: 'Food',
+      repeats: false, recurUnit: 'month', recurEvery: 1, recurDays: [], recurEnd: '',
+      startDate: '2026-03-06', notes: '', accountId: 'acct-visa', bankingDay: false },
+  ]);
+  const accts = JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-visa', name: 'Visa', kind: 'credit', opening: -120000 },
+  ]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace('const payload = {', `entries.push(...${extra}); const payload = {`)
+    .replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  // Named after the year it adds; "+ Add" alone is the category button and
+  // "+ Add account" is the Accounts card.
+  await page.getByRole('button', { name: '+ Add 2027' }).click();
+  await page.waitForTimeout(1800);
+  const copy = await page.evaluate(() => (JSON.parse(localStorage.getItem('cf_entries') || '[]'))
+    .find((e) => String(e.copiedFrom) === '8003'));
+  if (!copy) throw new Error('the one-time entry was not copied into the new year');
+  if (copy.accountId !== 'acct-visa') throw new Error('the copy lost its account: ' + JSON.stringify(copy.accountId));
+  if (copy.bankingDay !== false) throw new Error('the copy lost its deposit-date setting: ' + JSON.stringify(copy.bankingDay));
+
+  // And each account's new year opens exactly where its old one closed —
+  // the carry is per account, not just for the household total.
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const cents = (s2) => { const neg = /-/.test(s2); const n = Math.round(parseFloat((s2 || '').replace(/[^0-9.]/g, '') || '0') * 100); return neg ? -n : n; };
+  const at = async (year, acct, month) => {
+    await page.getByRole('button', { name: 'Budget year ' + year }).click();
+    await page.waitForTimeout(700);
+    await page.locator('#account-filter-select').selectOption({ label: acct });
+    await page.waitForTimeout(700);
+    await page.locator('.month-picker button', { hasText: new RegExp('^' + month + '$') }).first().click();
+    await page.waitForTimeout(700);
+  };
+  for (const acct of ['Chequing', 'Visa']) {
+    await at(2026, acct, 'Dec');
+    const bals = (await page.locator('.budget-col-balance').allInnerTexts()).filter((b) => /\$/.test(b));
+    const open26 = cents(await page.locator('.openbal-row').innerText());
+    const close26 = bals.length > 1 ? cents(bals[bals.length - 2]) : open26;
+    await at(2027, acct, 'Jan');
+    const open27 = cents(await page.locator('.openbal-row').innerText());
+    if (open27 !== close26) {
+      throw new Error(`${acct}: 2026 closed at ${close26 / 100} but 2027 opens at ${open27 / 100}`);
+    }
+  }
+  await ctx.close();
+});
+
+await test('carry-through: a backup round-trips accounts, activity and the entry fields', async () => {
+  const extra = JSON.stringify([
+    { id: 8001, desc: 'To savings', type: 'transfer', transferDirection: 'out', amount: 40000,
+      category: 'Savings / RRSP', repeats: true, recurUnit: 'month', recurEvery: 1, recurDays: [],
+      recurEnd: '', startDate: '2026-01-20', notes: '', accountId: 'acct-main', toAccountId: 'acct-sav' },
+    { id: 8002, desc: 'Acme deposit', type: 'income', amount: 250000, category: 'Income', repeats: true,
+      recurUnit: 'month', recurEvery: 1, recurDays: [], recurEnd: '', startDate: '2026-08-15',
+      notes: '', bankingDay: true },
+  ]);
+  const accts = JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
+  ]);
+  const capture = `(() => {
+    window.__downloads = [];
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { try { b.text().then((t) => window.__downloads.push(t)); } catch (e) {} return orig ? orig.call(URL, b) : 'blob:stub'; };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () { if (this.download) return; return click.apply(this, arguments); };
+  })();`;
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace('const payload = {', `entries.push(...${extra}); const payload = {`)
+    .replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await page.addInitScript(capture);
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.getByRole('button', { name: 'Export Backup' }).click();
+  await page.waitForTimeout(900);
+  const raw = await page.evaluate(() => window.__downloads[0] || null);
+  if (!raw) throw new Error('Export Backup produced no file');
+  const json = JSON.parse(raw);
+  if (!Array.isArray(json.accounts) || json.accounts.length !== 2) throw new Error('accounts missing from the export: ' + JSON.stringify(json.accounts));
+  if (!Array.isArray(json.activity)) throw new Error('activity missing from the export');
+  const xf = json.entries.find((e) => String(e.id) === '8001');
+  if (!xf || xf.accountId !== 'acct-main' || xf.toAccountId !== 'acct-sav') throw new Error('the export lost the account references: ' + JSON.stringify(xf));
+  if (!json.entries.some((e) => e.bankingDay === true)) throw new Error('the export lost bankingDay');
+
+  // Wipe, restore, and check it all comes back.
+  await page.evaluate(() => {
+    localStorage.setItem('cf_entries', '[]');
+    localStorage.setItem('cf_accounts', JSON.stringify([{ id: 'x', name: 'Wrong', kind: 'other' }]));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const nudge2 = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge2.count() > 0) await nudge2.click().catch(() => {});
+  await page.setInputFiles('input[type=file][accept=".json"]', {
+    name: 'CashFlow_Backup_2026-08-25.json', mimeType: 'application/json', buffer: Buffer.from(raw),
+  });
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Restore', exact: true }).last().click();
+  await page.waitForTimeout(1600);
+  const back = await page.evaluate(() => ({
+    accounts: JSON.parse(localStorage.getItem('cf_accounts') || '[]'),
+    entries: JSON.parse(localStorage.getItem('cf_entries') || '[]'),
+  }));
+  if (JSON.stringify(back.accounts) !== JSON.stringify(json.accounts)) throw new Error('accounts did not come back: ' + JSON.stringify(back.accounts));
+  const rxf = back.entries.find((e) => String(e.id) === '8001');
+  if (!rxf || rxf.accountId !== 'acct-main' || rxf.toAccountId !== 'acct-sav') throw new Error('the restore lost the account references: ' + JSON.stringify(rxf));
+  if (!back.entries.some((e) => e.bankingDay === true)) throw new Error('the restore lost bankingDay');
+  await ctx.close();
+});
+
+// A backup taken before accounts existed carries no accounts key. Restore
+// *replaces*, so the field falls to its default — and the default has to be
+// one account, never none: a household with zero accounts is the single state
+// the rest of the app cannot render.
+await test('carry-through: restoring a backup that predates accounts leaves exactly one', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.setInputFiles('input[type=file][accept=".json"]', {
+    name: 'CashFlow_Backup_2026-08-01.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      schemaVersion: 9, exportedAt: '2026-08-01T00:00:00Z',
+      entries: [{ id: 1, desc: 'Rent', type: 'expense', amount: 165000, category: 'Housing', repeats: true,
+        recurUnit: 'month', recurEvery: 1, recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '' }],
+      yearConfigs: [{ year: 2026, openingBalance: 1000000 }],
+      overridesByYr: {}, categories: ['Housing'], goals: [], budgetTargets: {},
+    })),
+  });
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Restore', exact: true }).last().click();
+  await page.waitForTimeout(1700);
+  const accounts = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_accounts') || 'null'));
+  if (!Array.isArray(accounts) || accounts.length !== 1) throw new Error('accounts after restore: ' + JSON.stringify(accounts));
+  if (accounts[0].id !== 'acct-main') throw new Error('the wrong account survived: ' + JSON.stringify(accounts));
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  if (await page.locator('.budget-totals-row').count() !== 1) throw new Error('the restored household renders no budget');
+  if (await page.locator('#account-filter-select').count() !== 0) throw new Error('a filter appeared for a single account');
+  await ctx.close();
+});
+
+// A household with zero accounts is the one state the rest of the app cannot
+// render — every entry would point at an account that is not there. An absent
+// accounts key is safe (restore falls back to the default, a cloud load leaves
+// what the device has); an explicitly empty array is the case that needs a
+// guard of its own, and it can arrive from either.
+await test('accounts: a payload carrying an empty account list never leaves a household with none', async () => {
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('goals: [],', 'goals: [], accounts: [],') });
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  if (pageErrors.length) throw new Error('the empty list threw: ' + pageErrors[0]);
+  if (await page.locator('.budget-totals-row').count() !== 1) throw new Error('an empty account list left no budget to render');
+  // ...and the same through a restore.
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  await page.setInputFiles('input[type=file][accept=".json"]', {
+    name: 'CashFlow_Backup_2026-08-25.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      schemaVersion: 10, exportedAt: '2026-08-25T00:00:00Z', accounts: [],
+      entries: [{ id: 1, desc: 'Rent', type: 'expense', amount: 165000, category: 'Housing', repeats: true,
+        recurUnit: 'month', recurEvery: 1, recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '' }],
+      yearConfigs: [{ year: 2026, openingBalance: 1000000 }], overridesByYr: {}, categories: ['Housing'],
+    })),
+  });
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Restore', exact: true }).last().click();
+  await page.waitForTimeout(1700);
+  const accounts = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_accounts') || 'null'));
+  if (!Array.isArray(accounts) || accounts.length !== 1) throw new Error('after restoring an empty list: ' + JSON.stringify(accounts));
+  await ctx.close();
+});
+
+// The filter is device-local, so signing into a different household — or an
+// account deleted on another device — can leave it naming an id that is gone.
+// Showing an empty budget for that would read as data loss.
+await test('accounts: a filter naming an account that is gone falls back to combined', async () => {
+  const accts = JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
+  ]);
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('goals: [],', `goals: [], accounts: ${accts},`) });
+  await page.addInitScript('try{localStorage.setItem("cf_account_filter", JSON.stringify("acct-gone"))}catch(e){}');
+  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  const sel = await page.locator('#account-filter-select').inputValue();
+  if (sel !== '') throw new Error('the filter settled on a missing account: "' + sel + '"');
+  if (await page.locator('tbody tr').count() < 4) throw new Error('the budget came back empty');
+  await ctx.close();
+});
+
+// The feed advertised a "Year" kind it never emitted, and account changes went
+// unrecorded — both of which are exactly the "the budget edited itself"
+// complaint the feed exists to answer.
+await test('activity: budget years and accounts are recorded too', async () => {
+  const { ctx, page } = await ctxPage();
+  const feed = () => page.evaluate(() => JSON.parse(localStorage.getItem('cf_activity') || '[]'));
+  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+
+  await page.getByRole('button', { name: '+ Add 2027' }).click();
+  await page.waitForTimeout(1200);
+  if (!(await feed()).some((a) => a.kind === 'year' && /Added budget year 2027/.test(a.what))) {
+    throw new Error('adding a budget year was not recorded');
+  }
+  await page.getByRole('button', { name: '+ Add account' }).click();
+  await page.waitForTimeout(700);
+  if (!(await feed()).some((a) => a.kind === 'account' && /Added an account/.test(a.what))) {
+    throw new Error('adding an account was not recorded');
+  }
+  // A rename is one line, on blur — not one per keystroke.
+  const before = (await feed()).length;
+  const name = page.locator('#sec-accounts .account-name').nth(1);
+  await name.fill('Rainy day');
+  await name.blur();
+  await page.waitForTimeout(700);
+  const afterRename = await feed();
+  if (afterRename.length !== before + 1) throw new Error(`${afterRename.length - before} lines written for one rename`);
+  if (!afterRename.some((a) => a.kind === 'account' && /Rainy day/.test(a.what))) throw new Error('the rename says nothing useful: ' + JSON.stringify(afterRename[0]));
+
+  await page.locator('#sec-accounts button[aria-label="Remove Rainy day"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('.confirm-dialog-card button.cf-btn--danger-solid').click();
+  await page.waitForTimeout(900);
+  if (!(await feed()).some((a) => a.kind === 'account' && /Removed the account Rainy day/.test(a.what))) {
+    throw new Error('removing an account was not recorded');
+  }
+  await ctx.close();
+});
+
 await browser.close();
 server.close();
 

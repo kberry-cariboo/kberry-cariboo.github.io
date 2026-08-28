@@ -333,6 +333,10 @@
     const [confirmWipe, setConfirmWipe] = useState(false);
     const [settingsPage, setSettingsPage] = useState("general");
     const [removingAccount, setRemovingAccount] = useState(null);
+    // What each account's name was when its field took focus, so a rename is
+    // logged once on blur rather than once per keystroke.
+    const renamedFrom = useRef({});
+    const { logActivity } = useContext(HouseholdContext);
     // What each account opens the first budget year with. Derived, never
     // stored for the first account: it takes the remainder, so the shares can
     // never drift from the one opening balance the user actually sets.
@@ -448,6 +452,7 @@
       setYearConfigs((prev) => [...prev, { year: y, openingBalance: 0 }].sort((a, b) => a.year - b.year));
       setActiveYear(y);
       const parts = yearRollforwardParts(plan.counts, prevYear);
+      logActivity("year", `Added budget year ${y}` + (parts.length ? ` \u2014 ${parts.join(", ")}` : ""));
       setYearMsg(`Year ${y} added — ${prevYear} is untouched.${parts.length ? ` ${parts.join(", ")}.` : ""} Recurring entries without an end date carry forward automatically.`);
     };
     const delYear = (yr) => {
@@ -464,6 +469,7 @@
         return n;
       });
       if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
+      logActivity("year", `Removed budget year ${yr}, and the per-date edits made in it`);
       setYearMsg(`Year ${yr} removed.`);
       // The year's per-occurrence edits go with it, and they are not
       // recoverable from anywhere else — which is exactly why this one needs
@@ -608,7 +614,17 @@
       "aria-label": `Name of account ${i + 1}`,
       className: "field-input account-name",
       value: a.name,
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x))
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x)),
+      // Recorded on blur, not on every keystroke: a rename would otherwise
+      // write one log line per character typed.
+      onFocus: (e) => {
+        renamedFrom.current[a.id] = e.target.value;
+      },
+      onBlur: (e) => {
+        const was = renamedFrom.current[a.id];
+        delete renamedFrom.current[a.id];
+        if (was !== void 0 && was !== e.target.value) logActivity("account", `Renamed the account ${was} to ${e.target.value}`);
+      }
     }), /* @__PURE__ */ React.createElement("select", {
       "aria-label": `Kind of ${a.name}`,
       className: "field-input account-kind",
@@ -628,7 +644,10 @@
       "aria-label": `Remove ${a.name}`
     }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
       className: "cf-btn cf-btn--secondary",
-      onClick: () => setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }])
+      onClick: () => {
+        setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }]);
+        logActivity("account", "Added an account");
+      }
     }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
       title: `Remove ${removingAccount.name}?`,
       message: (() => {
@@ -649,6 +668,7 @@
           return next;
         }));
         setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
+        logActivity("account", `Removed the account ${removingAccount.name}`);
         setRemovingAccount(null);
       }
     })), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
