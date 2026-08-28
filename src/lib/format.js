@@ -240,12 +240,16 @@
     window.print();
     document.title = prev;
   }
-  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+  // The one export/add toolbar, used on every view that has one. All three
+  // buttons share a single size (cf-btn--md) and differ only in variant —
+  // CSV and PDF used to carry their own inline 11px/4px-12px, which put two
+  // type scales side by side in the same row on every screen.
+  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, className: "export-bar", style }, onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
       title: "Export to CSV",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+      className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
     },
     /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
     "CSV"
@@ -254,7 +258,7 @@
     {
       onClick: onPrint,
       title: "Print / Save as PDF",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+      className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
     },
     /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
     "PDF"

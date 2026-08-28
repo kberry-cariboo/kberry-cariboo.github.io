@@ -179,10 +179,26 @@
         .cf-btn--primary{background:var(--primary);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
-        .cf-btn--danger-solid{background:var(--red);color:#fff;font-weight:700;padding:8px 18px;}
+        .cf-btn--danger-solid{background:var(--red);color:#fff;font-weight:700;}
         .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
-        .cf-btn--compact{font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;}
-        .cf-btn--sm{font-size:11px;padding:6px 12px;}
+        /* ── One button size scale ──
+           Four steps. There used to be thirteen size modifiers describing nine
+           boxes, several a single pixel of padding apart — .cf-btn--micro,
+           --compact and --yearremove were the same button under three names,
+           and --xs and --tiny differed only in font-size, which is how a
+           toolbar ended up with two type sizes in one row. The names are kept
+           because they read at the call site; each now maps onto a step.
+
+             dense — an action inside a list row or a chip
+             base — toolbar and card actions, the common case
+             wide — the same size with room around the label
+             (no modifier) — form and dialog buttons
+
+           Non-size properties (weight, border, icon gaps) stay with the
+           modifier that owns them, below and beside their components. */
+        .cf-btn--compact,.cf-btn--micro,.cf-btn--yearremove{font-size:11px;padding:4px 10px;border-radius:6px;}
+        .cf-btn--sm,.cf-btn--xs,.cf-btn--tiny,.cf-btn--md,.cf-btn--showhide{font-size:12px;padding:7px 14px;}
+        .cf-btn--wide,.cf-btn--action{font-size:12px;padding:8px 18px;}
         /* Layout helpers */
         .cf-hidden{display:none!important;}
         .cf-row{display:flex;align-items:center;}
@@ -251,10 +267,7 @@
         .hidden{display:none;}
         /* .cf-btn size modifiers beyond --sm/--compact, for the sizes that
            recurred as one-off style overrides */
-        .cf-btn--xs{font-size:11px;padding:5px 12px;border-radius:6px;}
-        .cf-btn--md{font-size:12px;padding:7px 14px;}
-        .cf-btn--wide{font-size:12px;padding:10px 18px;}
-        .cf-btn--action{font-size:12px;font-weight:700;padding:8px 18px;}
+        .cf-btn--action{font-weight:700;}
         /* Generic one-off utilities (page-by-page inline-style migration) */
         .fw-600{font-weight:600;}
         .justify-end{justify-content:flex-end;}
@@ -284,7 +297,6 @@
         .toggle-label{font-size:13px;color:var(--text);font-weight:600;cursor:pointer;}
         .shrink-0{flex-shrink:0;}
         .fw-700{font-weight:700;}
-        .cf-btn--tiny{font-size:12px;padding:5px 12px;}
         /* ── App.js ── */
         .app-scroll{background:var(--bg);min-height:100vh;color:var(--text);display:flex;flex-direction:column;}
         .tab-bar-outer{background:var(--headerBg);padding:0;line-height:0;font-size:0;}
@@ -726,6 +738,9 @@
         .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
         .forecast-lowest-value{font-family:'IBM Plex Mono',monospace;}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
+        /* ExportBar's own box. It used to carry inline display/gap, which
+           meant the toolbar could not be adjusted per breakpoint. */
+        .export-bar{display:flex;align-items:center;gap:6px;}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .budget-toolbar-row--end{justify-content:flex-end;}
@@ -857,7 +872,7 @@
           padding:2px 10px;align-self:center;white-space:nowrap;}
         .quicklink-pill{font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);text-decoration:none;white-space:nowrap;flex-shrink:0;}
         .ai-key-input{flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
-        .cf-btn--showhide{font-size:12px;padding:8px 14px;white-space:nowrap;}
+        .cf-btn--showhide{white-space:nowrap;}
         .clear-key-btn{font-size:12px;padding:8px 14px;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--red);white-space:nowrap;}
         .key-disclaimer-row{display:flex;align-items:flex-start;gap:6px;margin-top:10px;font-size:11px;color:var(--textLt);}
         .dollar-md{font-size:16px;color:var(--textMid);}
@@ -874,7 +889,6 @@
         .openbal-input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;max-width:100%;min-width:0;flex:0 1 120px;}
         .year-active-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;}
         .copy-year-btn{font-size:11px;color:var(--primaryInk);background:none;border:1px solid var(--primary);cursor:pointer;padding:4px 10px;border-radius:6px;white-space:nowrap;}
-        .cf-btn--yearremove{font-size:11px;padding:4px 10px;border-radius:6px;}
         .newyear-input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;}
         .cf-btn--iconrow{display:flex;align-items:center;gap:8px;}
         .backup-msg{font-size:12px;margin-top:10px;}
@@ -897,7 +911,7 @@
         .reset-targets-btn{font-size:13px;font-weight:600;padding:9px 20px;border-radius:8px;border:1px solid var(--primary);cursor:pointer;background:var(--primary);color:#fff;}
         .success-text-mt10{font-size:12px;color:var(--greenDk);margin-top:10px;}
         .danger-card{margin-bottom:20px;border:1px solid var(--redLt);}
-        .cf-btn--dangerwide{padding:9px 20px;border:1px solid var(--red);display:inline-flex;align-items:center;gap:6px;}
+        .cf-btn--dangerwide{border:1px solid var(--red);display:inline-flex;align-items:center;gap:6px;}
         .member-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;}
         .flex-1-minw160{flex:1;min-width:160px;}
         .member-edit-input{max-width:260px;}
@@ -906,7 +920,6 @@
         .italic-hint{font-size:13px;color:var(--textLt);font-style:italic;}
         .template-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
         .audit-entry{padding:10px 0;border-bottom:1px solid var(--border);}
-        .cf-btn--micro{font-size:11px;padding:4px 10px;border-radius:6px;}
         .revert-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--amberLt);cursor:pointer;background:var(--amberLt);color:var(--amberInk);}
         .history-list{margin-top:8px;padding-left:12px;border-left:2px solid var(--border);}
         .history-item-text{font-size:11px;color:var(--textLt);margin-bottom:4px;}
@@ -1051,9 +1064,14 @@
           margin:0 auto 14px;}
         .account-filter-label{font-size:11px;font-weight:700;letter-spacing:0.06em;
           text-transform:uppercase;color:var(--textLt);}
-        .account-filter-select{font-size:13px;padding:6px 10px;border-radius:8px;
-          border:1px solid var(--border);background:var(--bgCard);color:var(--text);
-          font-family:inherit;min-height:36px;}
+        /* Matches .field-input rather than inventing a third select look —
+           it is the same kind of control as the account pickers in Settings,
+           and next to the pill strips above and below it a bare white native
+           select read as something the page had borrowed from the browser. */
+        .account-filter-select{font-family:Inter,sans-serif;font-size:13px;padding:8px 12px;
+          border:1.5px solid var(--border);border-radius:8px;
+          background:var(--inputBg);color:var(--text);outline:none;min-height:38px;}
+        .account-filter-select:focus{border-color:var(--navy);}
         /* Accounts list in Settings: name, kind, opening share, remove. */
         .account-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
           padding:8px 0;border-bottom:1px solid var(--border);}
@@ -1494,6 +1512,18 @@
              checkboxes: 15px of visual, 45px of hit area. */
           .helptip-btn{position:relative;}
           .helptip-btn::after{content:'';position:absolute;inset:-15px;}
+          /* The rest of what a finger has to hit. Controls that carry their
+             own box grow to the floor; the two that are a bare run of text on
+             their own line — "Set a target" in an empty BvA cell, the
+             dashboard glance card's action — keep their typography and take
+             the halo instead, so the line they sit in doesn't grow around
+             them. (.link-primary stays as it is: it is a link inside a
+             sentence, which 2.5.5 exempts, and a halo there would sit over
+             the field below it.) */
+          .holiday-remove-btn,.holiday-year-pill,.account-filter-select{min-height:44px;}
+          .glance-action,.bva-set-target{position:relative;}
+          .glance-action::after,.bva-set-target::after{
+            content:'';position:absolute;top:-15px;bottom:-15px;left:0;right:0;}
           /* The ✕ on a dialog header: an 18px glyph, and on a bottom sheet
              the first thing a thumb reaches for. Halo rather than growth so
              the header row keeps its height. */
@@ -1649,9 +1679,17 @@
           .bva-header-row>div:last-child{flex-shrink:0;}
           /* Savings Goals and Payoff Strategy carry two or three controls,
              which don't fit beside a title at this width — the title was being
-             squeezed to 41px. They keep the stack, with the gap tightened. */
-          .goal-header-row{flex-direction:column;align-items:flex-start;row-gap:6px;}
-          .goal-header-row>div:last-child{align-self:stretch;justify-content:flex-end;}
+             squeezed to 41px. Let the row wrap instead of forcing a column:
+             a header that fits stays on one line, and one that doesn't drops
+             its controls to a second line still aligned to the right edge,
+             the same place the budget views put the same toolbar.
+
+             The controls are addressed as "not the title" rather than as the
+             last child, because the Debt Payoff header has no controls at all
+             — under the old rule its own title was the last child and got
+             pushed to the right, the only right-aligned heading in the app. */
+          .goal-header-row{flex-wrap:wrap;row-gap:6px;}
+          .goal-header-row>*:not(:first-child){margin-left:auto;}
         }
         /* Small "which year am I looking at" indicator for Budget/Plan on
            mobile, where the header's year-pills are hidden (see above) and
@@ -1900,8 +1938,27 @@
              width available, not of what's pointing at them. The month strip
              keeps its scroll + fade: twelve months can't wrap into a usable
              row. */
-          .settings-page-pills{flex-wrap:wrap;overflow-x:visible;width:auto;justify-content:flex-start;}
-          .settings-quicklinks{flex-wrap:wrap;overflow-x:visible;row-gap:6px;}
+          /* Same reasoning as the quicklink index below: four tabs wrapping
+             three-then-one left a lone "Activity" hanging off a ragged row.
+             An even two-by-two grid is the same set of tabs, squared off. */
+          .settings-page-pills{display:grid;grid-template-columns:1fr 1fr;
+            overflow-x:visible;width:auto;}
+          .settings-page-pills button{width:100%;box-sizing:border-box;}
+          /* Wrapping fourteen pills of fourteen different widths left a
+             ragged three-per-row staircase. Same pills, two even columns —
+             the strip reads as an index rather than as spill. */
+          .settings-quicklinks{display:grid;grid-template-columns:1fr 1fr;gap:6px;
+            overflow-x:visible;}
+          .settings-quicklinks .quicklink-pill{width:100%;box-sizing:border-box;
+            justify-content:center;text-align:center;white-space:normal;}
+          /* The row-actions kebab belongs on the right edge of its row — that
+             is where it is in the budget grid and in Entries, and where a
+             thumb goes looking for it. In the debt and goal rows it is a
+             sibling of the row's title, so at this width, where those rows
+             wrap to full width, it trailed the text and landed mid-line. */
+          .debt-row-name-col>.cf-row>.row-menu-btn{margin-left:auto;}
+          .goal-title-row>.goal-amounts-row{flex:1 0 100%;}
+          .goal-amounts-row>.row-menu-btn{margin-left:auto;}
           /* Three stacked toolbar rows put ~250px between the top of the tab
              and the first entry. The search takes the rest of the Filters
              line, and Import CSV — a desktop-shaped job whose own preview is
@@ -4726,12 +4783,16 @@ document.addEventListener('DOMContentLoaded',function(){
     window.print();
     document.title = prev;
   }
-  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, style: __spreadValues({ display: "flex", gap: 6 }, style) }, onCSV && /* @__PURE__ */ React.createElement(
+  // The one export/add toolbar, used on every view that has one. All three
+  // buttons share a single size (cf-btn--md) and differ only in variant —
+  // CSV and PDF used to carry their own inline 11px/4px-12px, which put two
+  // type scales side by side in the same row on every screen.
+  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, className: "export-bar", style }, onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
       title: "Export to CSV",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+      className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
     },
     /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
     "CSV"
@@ -4740,7 +4801,7 @@ document.addEventListener('DOMContentLoaded',function(){
     {
       onClick: onPrint,
       title: "Print / Save as PDF",
-      className: "cf-btn cf-btn--secondary", style: { fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 5 }
+      className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
     },
     /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
     "PDF"
