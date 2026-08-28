@@ -3005,6 +3005,117 @@ await test('activity: budget years and accounts are recorded too', async () => {
   await ctx.close();
 });
 
+// ── The phone layout ────────────────────────────────────────────────────────
+// Three properties the mobile pass fixed, each of which had drifted quietly
+// because nothing measured it: a control small enough to miss with a thumb, a
+// toolbar whose buttons came from two different type scales, and a section
+// heading that had ended up right-aligned. All three are measured on what
+// actually renders at 393px, across every view — the defects were spread
+// thinly over many screens rather than concentrated in one.
+await test('phone: every control is big enough to hit', async () => {
+  const { ctx, page } = await ctxPage({ touch: true, stub: (t) => t
+    .replace('goals: [],', 'goals: ' + JSON.stringify([
+      { id: 'g1', name: 'Emergency fund', target: 1000000, saved: 420000, monthly: 50000, targetDate: '2027-06-01' },
+    ]) + ', accounts: ' + JSON.stringify([
+      { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+      { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
+    ]) + ',') });
+  const small = [];
+  for (const [route, label] of [['#/dashboard', 'Dashboard'], ['#/budget/monthly', 'Monthly'],
+    ['#/budget/bva', 'BvA'], ['#/budget/forecast', 'Forecast'], ['#/budget/entries', 'Entries'],
+    ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals'], ['#/settings', 'Settings']]) {
+    await page.goto(BASE + route, { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.waitForTimeout(250);
+    const found = await page.evaluate(() => {
+      // A tap target is the border box grown by any absolutely-positioned
+      // pseudo-element hanging outside it — the padded-halo pattern the app
+      // uses to keep a control visually small without shrinking its hit area.
+      const halo = (el) => {
+        let dx = 0, dy = 0;
+        for (const pe of ['::after', '::before']) {
+          const s = getComputedStyle(el, pe);
+          if (s.content === 'none' || s.position !== 'absolute') continue;
+          const px = (v) => (v.endsWith('px') ? -parseFloat(v) : 0);
+          dx = Math.max(dx, px(s.left) + px(s.right));
+          dy = Math.max(dy, px(s.top) + px(s.bottom));
+        }
+        return [Math.max(0, dx), Math.max(0, dy)];
+      };
+      const out = [];
+      document.querySelectorAll('main button, main a[href], main select, .cf-bottomnav button').forEach((el) => {
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || !el.getClientRects().length) return;
+        // A link inside a sentence is exempt (WCAG 2.5.5) and a halo there
+        // would cover the field under it.
+        if (el.classList.contains('link-primary')) return;
+        const r = el.getBoundingClientRect();
+        const [hx, hy] = halo(el);
+        const w = Math.round(r.width + hx), h = Math.round(r.height + hy);
+        if (w < 44 || h < 44) out.push((el.className || el.tagName) + ' ' + w + 'x' + h);
+      });
+      return out;
+    });
+    found.forEach((f) => small.push(label + ': ' + f));
+  }
+  await ctx.close();
+  if (small.length) throw new Error(small.length + ' controls under 44px — ' + small.slice(0, 4).join('; '));
+});
+
+await test('phone: a toolbar\'s buttons are all the same size', async () => {
+  const { ctx, page } = await ctxPage({ touch: true, stub: (t) => t.replace('goals: [],', 'goals: ' + JSON.stringify([
+    { id: 'g1', name: 'Emergency fund', target: 1000000, saved: 420000, monthly: 50000, targetDate: '2027-06-01' },
+  ]) + ',') });
+  const off = [];
+  let seen = 0;
+  for (const [route, label] of [['#/dashboard', 'Dashboard'], ['#/budget/monthly', 'Monthly'],
+    ['#/budget/calendar', 'Calendar'], ['#/budget/forecast', 'Forecast'], ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals']]) {
+    await page.goto(BASE + route, { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.waitForTimeout(250);
+    // Found through the CSV button rather than through a class name, so the
+    // test measures the toolbar as it renders and not the markup that
+    // happens to describe it today.
+    const boxes = await page.evaluate(() => {
+      const bars = new Set([...document.querySelectorAll('main button')]
+        .filter((b) => b.textContent.trim() === 'CSV').map((b) => b.parentElement));
+      return [...bars].map((bar) => [...bar.querySelectorAll('button')].map((b) => {
+        const s = getComputedStyle(b);
+        return s.fontSize + ' / ' + s.paddingTop + ' ' + s.paddingLeft;
+      }));
+    });
+    seen += boxes.length;
+    boxes.forEach((sizes) => {
+      if (new Set(sizes).size > 1) off.push(label + ': ' + [...new Set(sizes)].join(' vs '));
+    });
+  }
+  await ctx.close();
+  if (seen < 6) throw new Error(`only ${seen} export toolbars found across six views — the selector has gone stale`);
+  if (off.length) throw new Error('mixed button sizes in one toolbar — ' + off.join('; '));
+});
+
+await test('phone: a section heading reads from the left, whatever else is in its row', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/plan/debt', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  // The Debt Payoff header carries no controls, so its title used to be the
+  // last child of the header row and inherited the row's right alignment.
+  const gap = await page.evaluate(() => {
+    const title = [...document.querySelectorAll('h2')].find((h) => /Debt Payoff Tracker/i.test(h.textContent));
+    if (!title) return null;
+    const card = title.closest('.cf-card');
+    const cs = getComputedStyle(card);
+    return Math.round(title.getBoundingClientRect().left - (card.getBoundingClientRect().left + parseFloat(cs.paddingLeft)));
+  });
+  await ctx.close();
+  if (gap === null) throw new Error('no Debt Payoff heading rendered');
+  if (gap > 2) throw new Error(`the heading starts ${gap}px in from the card's text edge, so it is not left-aligned`);
+});
+
 await browser.close();
 server.close();
 
