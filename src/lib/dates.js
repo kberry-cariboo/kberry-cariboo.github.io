@@ -47,16 +47,28 @@
   // Saturday (paid 31 July, budgeted in August), quietly rewriting the totals
   // and Budget vs Actual of two months to fix a display problem.
   //
-  // Which entries this applies to is read from the description rather than a
-  // per-entry setting: "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL —
-  // Ken" all read as payroll to a person, and the alternative is a checkbox
-  // that every payroll entry has to have ticked by hand.
+  // Which entries this applies to is guessed from the description by default:
+  // "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL — Ken" all read as
+  // payroll to a person, and the alternative would be a checkbox that every
+  // payroll entry has to have ticked by hand before it behaves correctly.
   const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
-  // Repeating income only. A one-time entry's date was typed by hand — it is
-  // already the date the money arrived — and expenses leave when the biller
-  // pulls them, which is not this rule.
+  // ...but a guess from a description is only ever a guess. `bankingDay` is the
+  // per-entry answer, and it wins when it is set:
+  //
+  //   true   always shift to the prior banking day — a direct deposit the
+  //          regex doesn't recognise ("Salary", "Acme Corp", "Pension")
+  //   false  never shift — an e-transfer, a cash payment, or anything else
+  //          that lands on the day it says regardless of what the banks do
+  //   unset  fall back to the description heuristic above, which is what
+  //          every entry written before this field existed does
+  //
+  // Repeating income only, in every case. A one-time entry's date was typed by
+  // hand — it is already the date the money arrived — and expenses leave when
+  // the biller pulls them, which is not this rule.
   function isPayrollDeposit(e, desc) {
-    return !!e.repeats && e.type === "income" && PAYROLL_DESC_RE.test(String(desc || ""));
+    if (!e.repeats || e.type !== "income") return false;
+    if (e.bankingDay === true || e.bankingDay === false) return e.bankingDay;
+    return PAYROLL_DESC_RE.test(String(desc || ""));
   }
   // The last banking day on or before `date`: steps back over Saturdays,
   // Sundays and BC holidays (see holidays.js, which includes the two BC lists
@@ -316,6 +328,10 @@
       // would read as "nothing changed" and be applied retroactively over
       // months already recorded.
       recurNth: Number.isFinite(e.recurNth) ? e.recurNth : null,
+      // Same reasoning as recurNth: switching the banking-day rule on or off
+      // changes which day the money is expected to land, so it is a change to
+      // the schedule rather than a correction to be applied retroactively.
+      bankingDay: e.bankingDay === true || e.bankingDay === false ? e.bankingDay : null,
       startDate: e.startDate,
       monthlyAmounts: e.monthlyAmounts || null
     });

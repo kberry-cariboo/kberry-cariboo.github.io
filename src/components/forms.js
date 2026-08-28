@@ -19,6 +19,11 @@
       // they are the same day in most months and different in the long ones,
       // and which one the bill means is not something to guess.
       recurNth: 1,
+      // Whether the banking-day rule applies to this entry, overriding the
+      // description heuristic. "" means unset — keep guessing from the
+      // description, which is what every entry written before this existed
+      // does. See isPayrollDeposit in dates.js.
+      bankingDay: "",
       recurEnd: "",
       monthlyAmounts: null,
       transferDirection: "out"
@@ -32,6 +37,7 @@
       recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
       recurDays: (_c = initial.recurDays) != null ? _c : [],
       recurNth: Number.isFinite(initial.recurNth) ? initial.recurNth : 1,
+      bankingDay: initial.bankingDay === true ? "yes" : initial.bankingDay === false ? "no" : "",
       recurEnd: (_d = initial.recurEnd) != null ? _d : "",
       repeats: (_e = initial.repeats) != null ? _e : false,
       transferDirection: initial.transferDirection || "out"
@@ -172,6 +178,10 @@
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
         recurNth: f.recurUnit === "monthweekday" ? parseInt(f.recurNth, 10) || 1 : void 0,
+        // Only meaningful on repeating income, which is the only thing the
+        // rule applies to — anything else stores nothing rather than a
+        // preference that can never take effect.
+        bankingDay: f.repeats && f.type === "income" && (f.bankingDay === "yes" || f.bankingDay === "no") ? f.bankingDay === "yes" : void 0,
         // "monthweekday" keeps exactly one weekday (the schedule names one);
         // "week" keeps the start day plus any extras the user ticked.
         recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
@@ -327,7 +337,22 @@
           if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.repeats && f.type === "income" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
+      htmlFor: "ef-banking-day",
+      helpLabel: "Banking days",
+      help: "Money paid in by direct deposit doesn\u2019t land on a day the banks are shut \u2014 a payday falling on a weekend or a statutory holiday is in the account on the last banking day before it. The occurrence stays on its own date in the budget either way; only the deposit date it is marked with changes. Left on \u201cDecide from the description\u201d, anything whose description reads as payroll gets the rule."
+    }, "Deposit date"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "ef-banking-day",
+        className: inpCls(false),
+        value: f.bankingDay,
+        onChange: (e) => set({ bankingDay: e.target.value })
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "Decide from the description"),
+      /* @__PURE__ */ React.createElement("option", { value: "yes" }, "Paid the last banking day before"),
+      /* @__PURE__ */ React.createElement("option", { value: "no" }, "Paid on the date shown")
+    )), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
       Toggle,
       {
         value: showMonthly,

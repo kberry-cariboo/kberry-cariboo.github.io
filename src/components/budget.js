@@ -12,6 +12,7 @@
     var _a, _b;
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
+    const { logActivity } = useContext(HouseholdContext);
     // Calendar replaced Daily. The sub-tab is remembered per device and
     // #/budget/daily was a real deep link, so a phone or a bookmark can still
     // arrive asking for a view that no longer exists; send it to the one that
@@ -943,6 +944,7 @@
               const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
               const prevTargets = budgetTargets, removedCat = bvaCtxMenu.cat;
               pushUndo(`Target for "${removedCat}" removed`, () => setBudgetTargets(prevTargets));
+              logActivity("target", `Removed the ${MONTHS[monthIdx]} target for ${removedCat}`);
               setBudgetTargets((prev) => {
                 const n = __spreadValues({}, prev);
                 if (n[bk]) {
@@ -969,6 +971,7 @@
             next._rollover = ro;
             return next;
           });
+          logActivity("target", `${bvaModalData.editCat ? "Changed" : "Set"} the ${MONTHS[monthIdx]} target for ${bvaModalData.cat} to ${fmt(t)}`);
           setShowBvaModal(false);
         };
         return /* @__PURE__ */ React.createElement(

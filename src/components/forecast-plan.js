@@ -1,6 +1,8 @@
   function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null, completed = {}, toggleComplete = () => {
-  } }) {
+  }, entries = [], scenarioOn = false, setScenarioOn = () => {
+  }, scenarioAdj = {}, setScenarioAdj = () => {
+  }, scenarioFlows = null }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
     const [pgSize, setPgSize] = useState(20);
@@ -70,7 +72,26 @@
     // with something on it takes the balance of its last event and a quiet day
     // holds the one before — which is what makes this a curve rather than a
     // scatter of the days something happened.
-    const curve = useMemo(() => {
+    // The same window over the scenario's flows. Built from the identical
+    // filter so the two curves are comparable day for day: any difference
+    // between them is the adjustments and nothing else.
+    const scenarioEvents = useMemo(() => {
+      if (!scenarioFlows) return null;
+      const end = new Date(today);
+      end.setDate(end.getDate() + horizon);
+      const all = [];
+      yearConfigs.forEach((yc) => {
+        (scenarioFlows[yc.year] || []).forEach((ev) => {
+          if (ev.date >= today && ev.date <= end) all.push(ev);
+        });
+      });
+      return all.sort((a, b) => a.date - b.date);
+    }, [scenarioFlows, yearConfigs, horizon, today]);
+    // A day-by-day balance series over the horizon, from a list of the events
+    // that fall in it. Shared by the real forecast and by a what-if scenario,
+    // so the two curves can never be built differently and disagree about
+    // anything except the adjustments themselves.
+    const curveFrom = useCallback((events, flowsByYear) => {
       const dayStart = (d) => {
         const x = new Date(d);
         x.setHours(0, 0, 0, 0);
@@ -81,19 +102,19 @@
       // event, or — with nothing scheduled in it at all — the figure the last
       // event before today left behind.
       let bal = 0;
-      if (futureEvents.length) {
-        bal = futureEvents[0].balance - signedAmount(futureEvents[0]);
+      if (events.length) {
+        bal = events[0].balance - signedAmount(events[0]);
       } else {
         let latest = null;
-        yearConfigs.forEach((yc) => (yearFlows[yc.year] || []).forEach((ev) => {
+        yearConfigs.forEach((yc) => ((flowsByYear || {})[yc.year] || []).forEach((ev) => {
           if (ev.date <= today && (!latest || ev.date > latest.date)) latest = ev;
         }));
         bal = latest ? latest.balance : openBalByYear[today.getFullYear()] || 0;
       }
-      // Last event of a day wins: futureEvents is date-sorted, so the final
-      // write for a key is that day's closing balance.
+      // Last event of a day wins: the list is date-sorted, so the final write
+      // for a key is that day's closing balance.
       const closeOf = /* @__PURE__ */ new Map();
-      futureEvents.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
+      events.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
       const out = [];
       for (let i = 0; i <= horizon; i++) {
         const d = new Date(t0);
@@ -113,7 +134,32 @@
         });
       }
       return out;
-    }, [futureEvents, horizon, today, yearFlows, yearConfigs, openBalByYear]);
+    }, [today, horizon, yearConfigs, openBalByYear]);
+    const curve = useMemo(() => {
+      const base = curveFrom(futureEvents, yearFlows);
+      if (!scenarioEvents) return base;
+      // Both series on the same rows rather than two charts side by side: the
+      // question is "how far apart do these two get, and when", which is a
+      // comparison you cannot make across two sets of axes.
+      const alt = curveFrom(scenarioEvents, scenarioFlows);
+      return base.map((p, i) => __spreadProps(__spreadValues({}, p), { scenario: alt[i] ? alt[i].balance : p.balance }));
+    }, [curveFrom, futureEvents, yearFlows, scenarioEvents, scenarioFlows]);
+    // What a scenario can vary. One-time entries are already a decision made on
+    // a date; "what if I dropped this" is a question about the things that keep
+    // coming back. Biggest first, which is the order someone looking for room
+    // in a budget reads them in.
+    const recurringEntries = useMemo(
+      () => entries.filter((e) => e.repeats).slice().sort((a, b) => b.amount - a.amount),
+      [entries]
+    );
+    // What the scenario is worth, in the two numbers people actually act on.
+    const scenarioDelta = useMemo(() => {
+      if (!scenarioEvents || !curve.length) return null;
+      const last = curve[curve.length - 1];
+      const lowBase = curve.reduce((m, p) => Math.min(m, p.balance), Infinity);
+      const lowAlt = curve.reduce((m, p) => Math.min(m, p.scenario), Infinity);
+      return { end: last.scenario - last.balance, low: lowAlt - lowBase, lowAlt };
+    }, [scenarioEvents, curve]);
     // Where the curve bottoms out, and how far down. The chart marks it; until
     // now the number appeared only in the danger banner, without a date.
     const lowPoint = useMemo(() => {
@@ -196,14 +242,43 @@
         } }, fmt(ev.balance)))))
       );
     }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
+      const adj = (scenarioAdj || {})[e.id];
+      const dropped = !!(adj && adj.drop);
+      const amt = adj && Number.isFinite(adj.amount) ? adj.amount : e.amount;
+      const setAdj = (next) => setScenarioAdj((prev) => {
+        const out = __spreadValues({}, prev || {});
+        if (next) out[e.id] = next;
+        else delete out[e.id];
+        return out;
+      });
+      return /* @__PURE__ */ React.createElement("div", { key: e.id, className: "scenario-row" + (adj ? " scenario-row--on" : "") }, /* @__PURE__ */ React.createElement("span", { className: "tx scenario-desc", title: e.desc }, e.desc), /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6 shrink-0" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
+        type: "number",
+        inputMode: "decimal",
+        step: "0.01",
+        "aria-label": `New amount for ${e.desc}`,
+        className: "field-input field-input--mono scenario-amt",
+        disabled: dropped,
+        value: centsToDollars(amt),
+        onChange: (ev) => {
+          const v = dollarsToCents(ev.target.value);
+          setAdj(v === e.amount ? null : { amount: v });
+        }
+      }), /* @__PURE__ */ React.createElement("button", {
+        type: "button",
+        "aria-pressed": dropped,
+        title: dropped ? "Put it back" : "Drop it from the scenario",
+        className: "cf-btn cf-btn--secondary cf-btn--micro",
+        onClick: () => setAdj(dropped ? null : { drop: true })
+      }, dropped ? "Restore" : "Drop")));
+    })), scenarioDelta ? /* @__PURE__ */ React.createElement("div", { className: "scenario-summary" }, /* @__PURE__ */ React.createElement("div", null, "In ", horizon, " days you would end ", /* @__PURE__ */ React.createElement("strong", { style: { color: scenarioDelta.end >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(scenarioDelta.end, true)), " on where you are heading now."), /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, "The low point moves to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(scenarioDelta.lowAlt)), " \u2014 ", /* @__PURE__ */ React.createElement("strong", { style: { color: scenarioDelta.low >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(scenarioDelta.low, true)), "."), Object.keys(scenarioAdj || {}).length > 0 && /* @__PURE__ */ React.createElement("button", { type: "button", className: "cf-btn cf-btn--secondary cf-btn--tiny mt-10", onClick: () => setScenarioAdj({}) }, "Clear the scenario")) : /* @__PURE__ */ React.createElement("div", { className: "italic-hint mt-10" }, "Change an amount or drop an entry, and the comparison appears here."))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
       AreaChart,
       {
         data: curve,
         // Room above the plot for the low-point marker's caption, which is
         // drawn just outside the top of the plotting area.
         margin: { top: 22, right: 8, bottom: 0, left: 4 },
-        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}. The table below lists every event behind it.`
+        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}.` + (scenarioDelta ? ` A second, dashed line shows the what-if scenario: it ends ${fmt(scenarioDelta.end, true)} on that, with its low at ${fmt(scenarioDelta.lowAlt)}.` : "") + " The table below lists every event behind it."
       },
       /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
       /* @__PURE__ */ React.createElement(XAxis, { dataKey: "day", interval: 0, tickFormatter: (v, i) => curve[i] ? curve[i].tick : "", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
@@ -214,7 +289,11 @@
       // curve can be read against it rather than described underneath.
       /* @__PURE__ */ React.createElement(ReferenceLine, { y: alertThreshold, stroke: "var(--amberInk)", strokeDasharray: "5 4", label: `Alert ${fmt(alertThreshold)}` }),
       lowPoint && lowPoint.index > 0 && /* @__PURE__ */ React.createElement(ReferenceLine, { x: lowPoint.index, stroke: lowPoint.balance < 0 ? "var(--red)" : "var(--amberInk)", strokeDasharray: "2 3", label: `Low ${fmt(lowPoint.balance)} \u00b7 ${fmtDate(lowPoint.date, null)}` }),
-      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false })
+      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: scenarioEvents ? "As it stands" : "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false }),
+      // Drawn as a line, not a second filled area: two overlapping fills read
+      // as a third colour where they cross, which is the region that matters.
+      scenarioEvents && /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "scenario", name: "What-if", stroke: "var(--accent)", strokeWidth: 2, strokeDasharray: "6 4", dot: false }),
+      scenarioEvents && /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } })
     )))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
       ExportBar,
       {

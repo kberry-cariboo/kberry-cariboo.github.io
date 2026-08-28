@@ -12,6 +12,7 @@
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
+    const { logActivity } = useContext(HouseholdContext);
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
     const [debtCtx, setDebtCtx] = useState(null);
@@ -45,6 +46,7 @@
           setEntries((prev) => prev.map((e) => e.id === g0.payoutEntryId ? __spreadProps(__spreadValues({}, e), { desc: `Goal payout: ${name}`, amount: target, startDate: goalForm.targetDate || e.startDate }) : e));
         }
         setGoals((prev) => prev.map((g) => g.id === goalForm.id ? __spreadProps(__spreadValues({}, g), { name, target, saved, monthly, targetDate: goalForm.targetDate || "" }) : g));
+        logActivity("goal", `Edited the goal ${name} \u2014 ${fmt(saved)} of ${fmt(target)}`);
       } else {
         const id = genId();
         let entryId = null;
@@ -86,6 +88,7 @@
           }]);
         }
         setGoals((prev) => [...prev, { id, name, target, saved, monthly, targetDate: goalForm.targetDate || "", entryId, payoutEntryId, createdAt: (/* @__PURE__ */ new Date()).toISOString() }]);
+        logActivity("goal", `Added the goal ${name} \u2014 ${fmt(target)}`);
       }
       toast(goalForm.id ? "Goal updated" : "Goal added");
       setShowGoalForm(false);
@@ -101,6 +104,7 @@
       setFundForm(null);
     };
     const archiveGoal = (goal) => {
+      logActivity("goal", `Archived the goal ${goal.name}`);
       setGoals((prev) => prev.map((g) => g.id === goal.id ? __spreadProps(__spreadValues({}, g), { archived: true }) : g));
       toast(`"${goal.name}" archived`);
     };
@@ -566,9 +570,11 @@
         };
         if (editKey) {
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [editKey]: __spreadValues(__spreadValues({}, p[editKey]), formVals) }));
+          logActivity("debt", `Updated the debt ${debtFormData.label || editKey}`);
         } else {
           const id = "manual_" + genId();
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [id]: formVals }));
+          logActivity("debt", `Added the debt ${debtFormData.label || "Untitled"}`);
         }
         setShowDebtForm(false);
         setDebtFormData({ label: "", balance: "", rate: "", payment: "", editKey: null });

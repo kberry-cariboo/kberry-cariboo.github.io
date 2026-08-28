@@ -986,6 +986,38 @@
            event and the same tint, with the day's detail opening below on tap.
            A fixed min-height keeps every week the same height, so the grid
            doesn't reflow into a ragged stack as the month changes. */
+        .reconcile-drift{margin-top:8px;font-size:12px;color:var(--textMid);line-height:1.5;}
+        /* Activity feed: a kind chip, then what changed and who changed it. */
+        .activity-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
+          border-bottom:1px solid var(--border);}
+        .activity-row:last-child{border-bottom:none;}
+        .activity-kind{flex-shrink:0;min-width:58px;text-align:center;font-size:10px;
+          font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
+          padding:3px 7px;border-radius:6px;background:var(--stripe);
+          color:var(--textMid);border:1px solid var(--border);}
+        .activity-kind--entry{color:var(--primary);}
+        .activity-kind--override{color:var(--amberInk);}
+        .activity-kind--goal{color:var(--greenDk);}
+        .activity-kind--debt{color:var(--red);}
+        /* What-if: one row per recurring entry, amount and a drop toggle. */
+        .scenario-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);
+          border-radius:10px;}
+        .scenario-row{display:flex;align-items:center;gap:10px;padding:8px 12px;
+          border-bottom:1px solid var(--border);}
+        .scenario-row:last-child{border-bottom:none;}
+        .scenario-row--on{background:var(--accentLt);}
+        .scenario-desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .scenario-amt{width:104px;padding:5px 8px;font-size:13px;}
+        .scenario-summary{margin-top:14px;padding:12px 14px;border-radius:10px;
+          background:var(--stripe);border:1px solid var(--border);font-size:13px;line-height:1.5;}
+        .dollar-sm{font-size:12px;color:var(--textMid);}
+        @media(max-width:560px){
+          /* At phone width the description, chip, amount and button do not fit
+             on one line; let the controls wrap under the name rather than
+             crushing the amount field to nothing. */
+          .scenario-row{flex-wrap:wrap;}
+          .scenario-desc{flex:1 1 100%;}
+        }
         .cal-grid{display:flex;flex-direction:column;}
         .cal-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
         .cal-row--head{border-bottom:1px solid var(--border);}

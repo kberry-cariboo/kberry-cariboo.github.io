@@ -96,6 +96,8 @@ create table if not exists entries (
   recur_every int not null default 1,
   recur_unit text not null default 'month' check (recur_unit in ('day','week','month','year','semimonth','monthend','monthweekday')),
   recur_nth int,                            -- 'monthweekday' only: 1-5, or -1 for last
+  banking_day boolean,                      -- repeating income only: true = always shift a payday off a
+                                            -- closed day, false = never, null = guess from the description
   recur_days int[] not null default '{}',   -- weekdays (0-6) for weekly schedules
   recur_end date,                           -- null = ongoing
   category text not null default 'Uncategorized',
@@ -241,6 +243,10 @@ create table if not exists household_settings (
   holiday_region text,
   debt_data jsonb not null default '{}'::jsonb,
   deleted_copy_ids jsonb not null default '{}'::jsonb,
+  -- Reverse-chronological "what changed" log, capped client-side. Opaque
+  -- jsonb like debt_data above rather than a table of its own: it is
+  -- append-only, bounded, and only ever read back whole.
+  activity jsonb not null default '[]'::jsonb,
   schema_version int,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id)
@@ -305,6 +311,7 @@ end $$;
 -- Which occurrence of the weekday the 'monthweekday' schedule means: 1-5
 -- counting forward, or -1 for the last one. Null for every other unit.
 alter table entries add column if not exists recur_nth int;
+alter table entries add column if not exists banking_day boolean;
 alter table entries add column if not exists transfer_direction text;
 alter table entries add column if not exists copied_from text;
 alter table entry_overrides add column if not exists month int;
@@ -317,6 +324,7 @@ alter table entry_overrides add column if not exists updated_by uuid;
 alter table household_settings add column if not exists currency text;
 alter table household_settings add column if not exists locale text;
 alter table household_settings add column if not exists holiday_region text;
+alter table household_settings add column if not exists activity jsonb not null default '[]'::jsonb;
 alter table entry_overrides add column if not exists actual_amount numeric(14,2);
 alter table entry_overrides add column if not exists skipped boolean not null default false;
 alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
@@ -735,7 +743,7 @@ returns text[] language sql immutable as $$
     'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
     'completed', 'debtData', 'deletedCopyIds', 'holidays',
-    'currency', 'locale', 'holidayRegion'
+    'currency', 'locale', 'holidayRegion', 'activity'
   ]::text[];
 $$;
 
@@ -815,7 +823,7 @@ begin
   if jsonb_typeof(d->'entries') = 'array' then
     insert into entries (household_id, id, sort_order, description, type, amount,
                          start_date, repeats, recur_every, recur_unit, recur_days,
-                         recur_nth,
+                         recur_nth, banking_day,
                          recur_end, category, notes, monthly_amounts, created_by,
                          transfer_direction, copied_from)
     select hid,
@@ -831,6 +839,7 @@ begin
                 then e.value->>'recurUnit' else 'month' end,
            cf_int_array(e.value->'recurDays'),
            cf_int(e.value->>'recurNth'),
+           cf_bool(e.value->>'bankingDay'),
            cf_date(e.value->>'recurEnd'),
            coalesce(nullif(e.value->>'category', ''), 'Uncategorized'),
            coalesce(e.value->>'notes', ''),
@@ -853,6 +862,7 @@ begin
       recur_unit = excluded.recur_unit,
       recur_days = excluded.recur_days,
       recur_nth = excluded.recur_nth,
+      banking_day = excluded.banking_day,
       recur_end = excluded.recur_end,
       category = excluded.category,
       notes = excluded.notes,
@@ -862,13 +872,13 @@ begin
       copied_from = excluded.copied_from
     where (entries.sort_order, entries.description, entries.type, entries.amount,
            entries.start_date, entries.repeats, entries.recur_every, entries.recur_unit,
-           entries.recur_days, entries.recur_nth, entries.recur_end, entries.category, entries.notes,
+           entries.recur_days, entries.recur_nth, entries.banking_day, entries.recur_end, entries.category, entries.notes,
            entries.monthly_amounts, entries.created_by,
            entries.transfer_direction, entries.copied_from)
       is distinct from
           (excluded.sort_order, excluded.description, excluded.type, excluded.amount,
            excluded.start_date, excluded.repeats, excluded.recur_every, excluded.recur_unit,
-           excluded.recur_days, excluded.recur_nth, excluded.recur_end, excluded.category, excluded.notes,
+           excluded.recur_days, excluded.recur_nth, excluded.banking_day, excluded.recur_end, excluded.category, excluded.notes,
            excluded.monthly_amounts, excluded.created_by,
            excluded.transfer_direction, excluded.copied_from);
 
@@ -1187,7 +1197,7 @@ begin
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
      reg_filter_status, dash_hidden, dash_order, currency, locale, holiday_region,
-     debt_data, deleted_copy_ids,
+     debt_data, deleted_copy_ids, activity,
      rollover, schema_version, updated_at, updated_by)
   values
     (hid,
@@ -1208,6 +1218,7 @@ begin
      d->>'holidayRegion',
      case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
      case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
+     case when jsonb_typeof(d->'activity') = 'array' then d->'activity' else '[]'::jsonb end,
      -- budgetTargets._rollover is a per-category flag, not a per-month target,
      -- so it has no row in budget_targets to live in and is kept here.
      case when jsonb_typeof(d->'budgetTargets'->'_rollover') = 'object'
@@ -1237,6 +1248,7 @@ begin
      holiday_region = case when d ? 'holidayRegion' then excluded.holiday_region else s.holiday_region end,
      debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
      deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
+     activity = case when d ? 'activity' then excluded.activity else s.activity end,
      rollover = case when d ? 'budgetTargets' then excluded.rollover else s.rollover end,
      schema_version = case when d ? 'schemaVersion' then excluded.schema_version else s.schema_version end,
      updated_at = now(),
@@ -1366,6 +1378,7 @@ begin
         'recurUnit', e.recur_unit,
         'recurDays', to_jsonb(e.recur_days),
         'recurNth', e.recur_nth,
+        'bankingDay', e.banking_day,
         'recurEnd', coalesce(to_char(e.recur_end, 'YYYY-MM-DD'), ''),
         'category', e.category,
         'notes', e.notes,
@@ -1485,6 +1498,7 @@ begin
       'currency', s.currency,
       'locale', s.locale,
       'holidayRegion', s.holiday_region,
+      'activity', coalesce(s.activity, '[]'::jsonb),
       'debtData', s.debt_data,
       'deletedCopyIds', s.deleted_copy_ids,
       'schemaVersion', s.schema_version,

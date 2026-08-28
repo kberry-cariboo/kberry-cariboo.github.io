@@ -305,7 +305,7 @@
   }, deletedCopyIds = {}, setDeletedCopyIds = () => {
   }, installPrompt = null, triggerInstall = () => {
   }, lockTimeout = 15, setLockTimeout = () => {
-  }, templates = [], setTemplates, activeFlow = [], pushUndo = () => {
+  }, templates = [], setTemplates, activeFlow = [], activity = [], pushUndo = () => {
   }, budgetTargets = {}, setBudgetTargets = () => {
   }, sessionUser = null, logout = () => {
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
@@ -549,7 +549,7 @@
       { id: "general", icon: "settings", label: "General" },
       { id: "household", icon: "users", label: "Household" },
       { id: "templates", icon: "clipboard", label: "Templates" },
-      { id: "audit", icon: "clock", label: "Audit" }
+      { id: "audit", icon: "clock", label: "Activity" }
     ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -1148,7 +1148,10 @@
         className: "cf-btn cf-btn--danger cf-btn--yearremove"
       },
       "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Recent Edits \u2014 ", activeYear), (() => {
+    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everything anyone in the household has changed, newest first \u2014 entries, single dates, budget targets, goals and debts. Kept for the last 200 changes." }, "Activity"), (activity || []).length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "Nothing yet. Every change anyone makes to the budget shows up here, with who made it.") : (activity || []).map((a) => {
+      const who = memberName(a.by, members, { selfId: sessionUser && sessionUser.id });
+      return /* @__PURE__ */ React.createElement("div", { key: a.id, className: "activity-row" }, /* @__PURE__ */ React.createElement("span", { className: "activity-kind activity-kind--" + a.kind }, ACTIVITY_LABELS[a.kind] || a.kind), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "tx" }, a.what), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, new Date(a.at).toLocaleString(), who ? ` \u00b7 ${who}` : "")));
+    })), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Single dates you have edited in the Budget grid, with the value each one had before. Revert puts an occurrence back to what its entry says." }, "Edited dates \u2014 ", activeYear), (() => {
       const ovrs = overridesByYr[activeYear] || {};
       const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
       if (rows.length === 0) {

@@ -77,6 +77,15 @@ const payload = {
       recurEvery: 1, recurUnit: 'monthend', recurDays: [], recurEnd: '', startDate: '2026-02-28', notes: '' },
     { id: 'e-nthweekday', desc: 'Cleaner', type: 'expense', amount: 12000, category: 'Personal', repeats: true,
       recurEvery: 1, recurUnit: 'monthweekday', recurDays: [5], recurNth: -1, recurEnd: '', startDate: '2026-01-30', notes: '' },
+    // Both settings of the per-entry banking-day rule, because the field is a
+    // tri-state and `false` is the value a column-less round-trip would turn
+    // back into "unset" without anyone noticing.
+    { id: 'e-bank-yes', desc: 'Salary', type: 'income', amount: 320000, category: 'Income', repeats: true,
+      recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-15', notes: '',
+      bankingDay: true },
+    { id: 'e-bank-no', desc: 'Rent from tenant', type: 'income', amount: 90000, category: 'Income', repeats: true,
+      recurEvery: 1, recurUnit: 'month', recurDays: [], recurEnd: '', startDate: '2026-01-01', notes: '',
+      bankingDay: false },
   ],
   overridesByYr: {
     2026: {

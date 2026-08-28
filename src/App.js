@@ -177,7 +177,8 @@
       holidays,
       currency,
       locale,
-      holidayRegion: holidayRegionCode
+      holidayRegion: holidayRegionCode,
+      activity
     } = houseValues;
     const {
       entries: setEntries,
@@ -205,7 +206,8 @@
       holidays: setHolidays,
       currency: setCurrency,
       locale: setLocale,
-      holidayRegion: setHolidayRegionCode
+      holidayRegion: setHolidayRegionCode,
+      activity: setActivity
     } = houseSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
@@ -571,6 +573,35 @@
     const pushUndo = useCallback((label, revert) => {
       setUndoStack((prev) => [...prev.slice(-9), { label, revert }]);
     }, []);
+    // One line in the household's "what changed" log. Newest first, capped at
+    // ACTIVITY_LIMIT.
+    //
+    // Records the author's id, never their name: names are editable in
+    // Settings, and a stored copy would go stale the moment someone corrected
+    // theirs. Every reader resolves it against the current member list, the
+    // same way occurrence overrides already do.
+    //
+    // The summary is composed at the call site rather than reconstructed from
+    // ids at read time, because the thing it describes may not exist any more
+    // — "Rent deleted" has to keep reading correctly after the entry is gone,
+    // which is exactly when someone wants to know about it.
+    const logActivity = useCallback((kind, what) => {
+      if (!what) return;
+      setActivity((prev) => [{
+        id: genId(),
+        at: (/* @__PURE__ */ new Date()).toISOString(),
+        by: (sessionUser == null ? void 0 : sessionUser.id) || void 0,
+        kind,
+        what
+      }, ...Array.isArray(prev) ? prev : []].slice(0, ACTIVITY_LIMIT));
+    }, [setActivity, sessionUser]);
+    // A description short enough for a log line, without cutting a word in half
+    // when it already fits.
+    const householdCtx = useMemo(() => ({ members, sessionUser, logActivity }), [members, sessionUser, logActivity]);
+    const logDesc = (d) => {
+      const t = String(d == null ? "" : d).trim() || "Entry";
+      return t.length > 40 ? t.slice(0, 39) + "\u2026" : t;
+    };
     // The global shortcut handler mounts once; without this it would close
     // over an empty stack forever.
     const undoStackRef = useRef([]);
@@ -588,6 +619,7 @@
     // on the next year roll-forward) and part of the undo, so both live here
     // rather than at the two call sites.
     const pushUndoEntryDelete = useCallback((e) => {
+      logActivity("entry", `Deleted ${logDesc(e.desc)} \u2014 ${fmt(signedAmount(e), true)}`);
       if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
       const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
       pushUndo(`"${shortDesc}" deleted`, () => {
@@ -599,7 +631,7 @@
           return next;
         });
       });
-    }, [pushUndo, setDeletedCopyIds, setEntries]);
+    }, [pushUndo, setDeletedCopyIds, setEntries, logActivity]);
     const C = darkMode ? DARK : LIGHT;
     useLayoutEffect(() => {
       const theme = sessionUser ? C : LIGHT;
@@ -644,6 +676,43 @@
       });
       return flows;
     }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
+    // ── What-if ──────────────────────────────────────────────────────────
+    // A scenario is a set of adjustments over the entries you already have —
+    // drop this one, change that one's amount — not a second budget. That is
+    // what makes it cheap: the same expandEntries/computeFlow the real year
+    // goes through, run a second time over an adjusted entry list, so a
+    // scenario can never disagree with the budget about how a schedule works.
+    //
+    // Deliberately device-local rather than a synced household field. A
+    // half-finished "what if I quit my job" appearing on a partner's phone is
+    // not a feature, and nothing downstream of it is a record of anything.
+    const [scenarioOn, setScenarioOn] = useLS("cf_scenario_on", false);
+    const [scenarioAdj, setScenarioAdj] = useLS("cf_scenario_adj", {});
+    const scenarioActive = scenarioOn && Object.keys(scenarioAdj || {}).length > 0;
+    const scenarioEntries = useMemo(() => {
+      if (!scenarioActive) return entries;
+      return entries.reduce((out, e) => {
+        const adj = scenarioAdj[e.id];
+        if (!adj) out.push(e);
+        else if (adj.drop) return out;
+        else out.push(__spreadProps(__spreadValues({}, e), { amount: Number.isFinite(adj.amount) ? adj.amount : e.amount }));
+        return out;
+      }, []);
+    }, [entries, scenarioAdj, scenarioActive]);
+    const scenarioFlows = useMemo(() => {
+      if (!scenarioActive) return null;
+      const flows = {};
+      let carry = null;
+      const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
+      sorted.forEach((yc, i) => {
+        const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
+        const events = expandEntries(scenarioEntries, yc.year, overridesByYr[yc.year] || {});
+        const flow = computeFlow(events, openBal);
+        flows[yc.year] = flow;
+        carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
+      });
+      return flows;
+    }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
     const activeOpenBal = useMemo(() => {
@@ -694,6 +763,7 @@
           return next;
         });
       }
+      logActivity("entry", `Added ${logDesc(entry.desc)} \u2014 ${fmt(signedAmount(entry), true)}`);
       return entry;
     };
     // Single save path for entry edits: recurring entries with history are
@@ -702,6 +772,12 @@
     const saveEntryEdit = (editedId, data) => {
       const res = splitEntryEditFromCurrentMonth(entries, editedId, data);
       setEntries(res.entries);
+      // Name what changed, not just that something did — "Rent edited" is the
+      // log line people complain about. The amount is the one people notice.
+      const before = entries.find((e) => e.id === editedId);
+      const renamed = before && before.desc !== data.desc;
+      const repriced = before && before.amount !== data.amount;
+      logActivity("entry", `Edited ${logDesc(before ? before.desc : data.desc)}` + (renamed ? ` \u2014 renamed to ${logDesc(data.desc)}` : "") + (repriced ? ` \u2014 ${fmt(before.amount)} \u2192 ${fmt(data.amount)}` : ""));
       if (res.newId) {
         setOverridesByYr((prev) => {
           const next = {};
@@ -1075,6 +1151,13 @@
       }
     }, [notifyEnabled, notifPerm, navLowInfo, activeFlow, completed, activeYear, todayKey]);
     const setOverride = (eventId, patch) => {
+      // A single date changed. The Audit page has always shown these; the feed
+      // shows them alongside everything else, which is how anyone finds out
+      // that "the rent looks wrong" was somebody moving one month's payment.
+      const parts = String(eventId).split("-");
+      const src = entries.find((e) => String(e.id) === parts[0]);
+      const when = parts.length >= 3 ? `${MONTHS[parseInt(parts[parts.length - 2], 10)] || "?"} ${parts[parts.length - 1]}` : "";
+      logActivity("override", (patch && patch.skipped ? "Skipped " : "Changed ") + logDesc(src ? src.desc : "an occurrence") + (when ? ` on ${when}` : "") + (patch && patch.amount !== void 0 ? ` \u2014 ${fmt(patch.amount)}` : ""));
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         const existing = yOvs[eventId] || {};
@@ -1088,6 +1171,10 @@
       });
     };
     const clearOverride = (eventId) => {
+      const parts = String(eventId).split("-");
+      const src = entries.find((e) => String(e.id) === parts[0]);
+      const when = parts.length >= 3 ? `${MONTHS[parseInt(parts[parts.length - 2], 10)] || "?"} ${parts[parts.length - 1]}` : "";
+      logActivity("override", `Reverted ${logDesc(src ? src.desc : "an occurrence")}${when ? ` on ${when}` : ""} to its usual value`);
       setOverridesByYr((prev) => {
         const yOvs = __spreadValues({}, prev[activeYear] || {});
         delete yOvs[eventId];
@@ -1163,7 +1250,7 @@
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: { members, sessionUser } }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -1455,7 +1542,7 @@
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete, entries, scenarioOn, setScenarioOn, scenarioAdj, setScenarioAdj, scenarioFlows }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
       EntriesView,
       {
         entries,
@@ -1516,6 +1603,7 @@
       SettingsView,
       {
         categories,
+        activity,
         holidays,
         setHolidays,
         isOffline,
