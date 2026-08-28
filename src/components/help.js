@@ -262,7 +262,7 @@
         { sub: "Templates" },
         { p: "The entry templates you have saved, with a Remove button for each." },
         { sub: "Activity" },
-        { p: "What anyone in the household has changed, newest first — entries added, edited and deleted, single dates moved or skipped, budget targets, goals and debts — each with who made the change and when. The last 200 changes are kept, and the list is household data, so everyone sharing the budget sees the same one." },
+        { p: "What anyone in the household has changed, newest first — entries added, edited and deleted, single dates moved or skipped, budget targets, goals, debts, accounts and budget years — each with who made the change and when. The last 200 changes are kept, and the list is household data, so everyone sharing the budget sees the same one." },
         { p: "Underneath it, every per-date override you have made this year, each with a Revert that restores the originally scheduled amount and notes." }
       ]
     },
