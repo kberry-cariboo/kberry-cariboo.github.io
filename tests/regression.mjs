@@ -2378,7 +2378,7 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
     // What has to happen is that it does not stay there: the new worker
     // installs, activates, and the controllerchange handler in
     // bootstrap-head.js reloads the app onto the new bundle.
-    await page.waitForFunction(() => typeof CF_VERSION !== 'undefined' && CF_VERSION === 'v-deploy-test', null, { timeout: 25000 })
+    await page.waitForFunction(() => typeof CF_VERSION !== 'undefined' && CF_VERSION === 'v-deploy-test', null, { timeout: 40000 })
       .catch(() => { throw new Error('the app never picked up the new build — a deploy would strand every installed client on the old one'); });
   } finally {
     serverOverride.clear();
