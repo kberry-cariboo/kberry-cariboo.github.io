@@ -5,8 +5,8 @@
   // view) so they aren't recreated as new object/function identities on
   // every render — DASH_AXIS_TICK_X/Y in particular used to be recreated at
   // each of DashboardView's ~6 chart call sites.
-  const DASH_AXIS_TICK_X = { fontFamily: "Inter", fontSize: 11, fill: "var(--textMid)" };
-  const DASH_AXIS_TICK_Y = { fontFamily: "'IBM Plex Mono'", fontSize: 11, fill: "var(--textMid)" };
+  const DASH_AXIS_TICK_X = { fontFamily: "var(--font-ui)", fontSize: 11, fill: "var(--textMid)" };
+  const DASH_AXIS_TICK_Y = { fontFamily: "var(--font-mono)", fontSize: 11, fill: "var(--textMid)" };
   // Projected balance trajectory for a debt payoff sparkline — same
   // amortization step (accrue interest, then apply payment capped at the
   // remaining balance) used by both PlanView's Debt Payoff Tracker and

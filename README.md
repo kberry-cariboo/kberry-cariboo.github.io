@@ -199,7 +199,7 @@ actually deposited) are rows too: one per date in `holidays`, plus a
 `holiday_years` row per year the household has taken over from the built-in
 rules for its region (`holidayRegion`, any Canadian province or territory,
 defaulting to British Columbia) — that second table is what distinguishes "this household
-deleted every holiday in 2027" from "nobody has touched 2027". Settings →
+deleted every holiday in 2027" from "nobody has touched 2027". You →
 Statutory Holidays is the UI over them, and `supabase/schema-test.sql` round-trips
 the pair against a scratch database.
 
@@ -264,7 +264,7 @@ migration block at the end automatically copies each household's old
 images into `receipts`) the first time it runs. The legacy `household_data`
 table is left untouched as a backup — verify your data in the app, then drop it
 whenever you like. The earlier GitHub Gist sync/backup feature has been removed
-entirely; use **Settings → Backup** for local JSON export/import.
+entirely; use **You → Backup** for local JSON export/import.
 
 ## AI features
 
@@ -272,11 +272,11 @@ Five places in the app call Claude:
 
 | Where | What it does |
 | --- | --- |
-| **AI Insights** tab | Full assessment of the year: cash flow, budget performance, debt, goals, and a 1–10 health score. |
-| **Dashboard → What changed this month** | Compares this month with last and says which movements matter. |
-| **Import CSV → Suggest categories** | Classifies the description column against your own category list, per row. |
+| **Plan → Insights** | Full assessment of the year: cash flow, budget performance, debt, goals, and a 1–10 health score. |
+| **Today → What changed this month** | Compares this month with last and says which movements matter. |
+| **Flow → Entries → Import CSV → Suggest categories** | Classifies the description column against your own category list, per row. |
 | **Occurrence editor → Read receipt** | Reads an attached receipt photo for merchant, date and total. |
-| **Add entry → Describe it** | Turns "hydro $180 every second Tuesday" into a filled-in entry form. |
+| **Add → Describe it** | Turns "hydro $180 every second Tuesday" into a filled-in entry form. |
 
 Nothing is ever written on the model's say-so: every feature fills in fields
 you then confirm, and the assessment is a report. All five go through
@@ -304,7 +304,7 @@ it's deployed, no one needs to enter a key at all.
 
 ### Transport 2: a browser-held key (fallback)
 
-Paste a key into **Settings → General**. It is stored in that device's
+Paste a key into **You → General**. It is stored in that device's
 `localStorage` and sent straight from the browser to Anthropic. It is
 deliberately **not** synced to Supabase — `household_settings` is readable by
 every member, so syncing it would hand your key (and your bill) to everyone you
@@ -323,7 +323,7 @@ Two independent layers:
 **Foreground** works out of the box, no setup. While the app is open it raises
 a single alert per day listing every bill due that day, plus a warning when the
 forecast balance is heading below your threshold. Turn it on in
-**Settings → Notifications**.
+**You → Notifications**.
 
 **Background (Web Push)** is what reaches your phone with the app and browser
 both closed — Android renders these as ordinary system notifications. It needs

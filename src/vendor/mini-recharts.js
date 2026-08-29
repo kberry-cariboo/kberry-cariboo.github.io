@@ -226,7 +226,7 @@ window.Recharts = (function() {
           lblFmt && v !== 0 && h('text', {
             x: x + bwi/2,
             y: v >= 0 ? barY - 4 : barY + barH + 11,
-            textAnchor:'middle', fontSize:9, fontFamily:'Inter,sans-serif',
+            textAnchor:'middle', fontSize:9, fontFamily:'var(--font-ui)',
             fill:cssTick, pointerEvents:'none'
           }, lblFmt(v))
         );
@@ -261,7 +261,7 @@ window.Recharts = (function() {
         // legend (colorblind/print case). Halo keeps it readable over the grid.
         endLabel && h('text', {
           x: last[0], y: last[1] - 9, textAnchor: 'end',
-          fontSize: 11, fontWeight: 600, fontFamily: 'Inter,sans-serif',
+          fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-ui)',
           fill: stroke, stroke: cssSurface, strokeWidth: 3,
           style: { paintOrder: 'stroke', pointerEvents: 'none' }
         }, name || dataKey),
@@ -285,7 +285,7 @@ window.Recharts = (function() {
         })),
         lblFmt && pts.map(([cx,cy], i) => h('text', {
           key: 'lbl'+i, x:cx, y:cy-8, textAnchor:'middle', fontSize:9,
-          fontFamily:'Inter,sans-serif', fill:cssTick, pointerEvents:'none'
+          fontFamily:'var(--font-ui)', fill:cssTick, pointerEvents:'none'
         }, lblFmt(Number(data[i][dataKey]) || 0)))
       );
     }
@@ -307,7 +307,7 @@ window.Recharts = (function() {
       const cStyle = tipDesc.props.contentStyle || {};
       const base   = {
         background:'var(--bgCard, #fff)', border:'1px solid var(--border, #ddd)', color:'var(--text, #222)', borderRadius:6,
-        padding:'8px 12px', fontSize:12, fontFamily:'Inter,sans-serif',
+        padding:'8px 12px', fontSize:12, fontFamily:'var(--font-ui)',
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'
       };
       if (custom) {
@@ -373,7 +373,7 @@ window.Recharts = (function() {
                 // A caption on a line near the right edge would run off the
                 // plot, so it flips to the inside once it gets close.
                 textAnchor: vertical ? (lx > iW - 60 ? 'end' : lx < 60 ? 'start' : 'middle') : 'end',
-                fontSize: 10, fontWeight: 600, fontFamily: 'Inter,sans-serif',
+                fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-ui)',
                 fill: stroke, stroke: cssSurface, strokeWidth: 3,
                 style: { paintOrder: 'stroke', pointerEvents: 'none' }
               }, cap)
@@ -421,7 +421,7 @@ window.Recharts = (function() {
             if (text === '' || text == null) return null;
             return h('text', { key:i, x:xMid(i), y:iH+18, textAnchor:'middle',
               fontSize: t.fontSize || 11,
-              fontFamily: t.fontFamily || 'Inter,sans-serif',
+              fontFamily: t.fontFamily || 'var(--font-ui)',
               fill: t.fill || cssTick
             }, text);
           }),
@@ -429,7 +429,7 @@ window.Recharts = (function() {
           ytValues.map((t, i) =>
             h('text', { key:i, x:-8, y:yv(t)+3, textAnchor:'end',
               fontSize: yDesc?.props?.tick?.fontSize || 10,
-              fontFamily: yDesc?.props?.tick?.fontFamily || 'IBM Plex Mono,monospace',
+              fontFamily: yDesc?.props?.tick?.fontFamily || 'var(--font-mono)',
               fill: yDesc?.props?.tick?.fill || cssTick,
               style:{ pointerEvents:'none' }
             }, yFmt(t))
@@ -437,7 +437,7 @@ window.Recharts = (function() {
           // X axis title
           xLabelText && h('text', {
             key:'xlabel', x:iW/2, y:iH+40, textAnchor:'middle',
-            fontSize:11, fontWeight:600, fontFamily:'Inter,sans-serif', fill:cssTick
+            fontSize:11, fontWeight:600, fontFamily:'var(--font-ui)', fill:cssTick
           }, xLabelText)
         )
       ),
@@ -450,7 +450,7 @@ window.Recharts = (function() {
           padding:'4px 0', flexWrap:'wrap'
         }, legDesc.props.wrapperStyle)
       }, legItems.map((item, i) =>
-        h('div', { key:i, style:{ display:'flex', alignItems:'center', gap:4, fontSize:12, fontFamily:'Inter,sans-serif' } },
+        h('div', { key:i, style:{ display:'flex', alignItems:'center', gap:4, fontSize:12, fontFamily:'var(--font-ui)' } },
           h('div', { style:{ width:12, height:12, borderRadius:2, background:item.color, flexShrink:0 } }),
           h('span', null, item.name)
         )
@@ -511,7 +511,7 @@ window.Recharts = (function() {
       const fv = fmt2 ? fmt2(tip.value) : (typeof tip.value==='number' ? tip.value.toFixed(2) : tip.value);
       return h(TipBox, { x: tip.x, y: tip.y, chartW: width, style: Object.assign({
         background:'var(--bgCard, #fff)', border:'1px solid var(--border, #ddd)', color:'var(--text, #222)', borderRadius:6,
-        padding:'8px 12px', fontSize:12, fontFamily:'Inter,sans-serif',
+        padding:'8px 12px', fontSize:12, fontFamily:'var(--font-ui)',
         boxShadow:'0 2px 8px rgba(0,0,0,0.12)'
       }, cStyle) },
         h('div', { style:{ fontWeight:600, marginBottom:2 } }, tip.name),
@@ -548,7 +548,7 @@ window.Recharts = (function() {
           s.labelText && h('text', {
             x:s.lx, y:s.ly,
             textAnchor: s.lx > width/2 ? 'start' : 'end',
-            fontSize:11, fontFamily:'Inter,sans-serif', fill:pieText,
+            fontSize:11, fontFamily:'var(--font-ui)', fill:pieText,
             dominantBaseline:'middle', pointerEvents:'none'
           }, s.labelText)
         ))

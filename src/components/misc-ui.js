@@ -102,6 +102,8 @@
   function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {
+      case "plus":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 5v14" }), /* @__PURE__ */ React.createElement("path", { d: "M5 12h14" }));
       case "home":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 11.5 12 4l8 7.5" }), /* @__PURE__ */ React.createElement("path", { d: "M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" }), /* @__PURE__ */ React.createElement("path", { d: "M10 20v-6h4v6" }));
       case "calendar":
@@ -196,24 +198,35 @@
         return null;
     }
   }
-  function BottomNav({ tab, setTab, lowAlert = false }) {
-    // "Dashboard" everywhere, visibly and to a screen reader. The tab bar,
-    // the keyboard shortcut list, the hash route and the Settings copy all
-    // call this view Dashboard, so labelling the button "Home" while naming
-    // it "Dashboard" broke WCAG 2.5.3 (Label in Name) — the accessible name
-    // has to contain the visible text, or voice control has no way to act on
-    // what the user can read. "Home" was there because the 5-up nav was
-    // assumed too tight for the longer word; measured at 320px it isn't
-    // (the label ellipsises rather than overflowing, and "Settings" is only
-    // one character shorter), so there's nothing left to trade off.
+  // Four destinations and one action. Settings, Help and the account moved
+  // behind the avatar as "You" — they are things you visit occasionally, and
+  // they were taking a fifth of the thumb's reach from the money.
+  //
+  // The centre button is the one thing the old nav had no room for: adding an
+  // entry. It was reachable only through Budget → Entries → the toolbar, which
+  // is three taps for the app's most common act.
+  function BottomNav({ tab, setTab, lowAlert = false, onCompose }) {
     const items = [
-      { id: "dashboard", icon: "home", label: "Dashboard" },
-      { id: "budget", icon: "calendar", label: "Budget" },
-      { id: "plan", icon: "target", label: "Plan" },
-      { id: "ai", icon: "sparkle", label: "AI Insights" },
-      { id: "settings", icon: "settings", label: "Settings" }
+      { id: "today", icon: "home", label: "Today" },
+      { id: "flow", icon: "trending-up", label: "Flow" },
+      { compose: true, icon: "plus", label: "Add" },
+      { id: "envelopes", icon: "scale", label: "Envelopes" },
+      { id: "plan", icon: "target", label: "Plan" }
     ];
-    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => it.compose ? /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: "compose",
+        onClick: () => {
+          haptic();
+          if (onCompose) onCompose();
+        },
+        "aria-label": "Add an entry",
+        className: "bottomnav-btn bottomnav-compose"
+      },
+      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-compose-mark" }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 21 })),
+      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
+    ) : /* @__PURE__ */ React.createElement(
       "button",
       {
         key: it.id,
@@ -231,7 +244,7 @@
       },
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-icon-wrap", style: {
         background: tab === it.id ? "var(--accentLt)" : "transparent"
-      } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "dashboard" && lowAlert && /* @__PURE__ */ React.createElement("span", { className: "bottomnav-alert-dot" })),
+      } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "today" && lowAlert && /* @__PURE__ */ React.createElement("span", { className: "bottomnav-alert-dot" })),
       /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
     )));
   }

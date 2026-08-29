@@ -170,7 +170,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
 // ── Desktop, light theme ────────────────────────────────────────────────────────
 {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
 
   await test('dashboard: KPI tiles and charts render', async () => {
@@ -228,7 +228,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('budget monthly: changing the month reloads the ledger', async () => {
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: /^Mar$/ }).click();
     await page.waitForTimeout(400);
@@ -257,14 +257,14 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('budget vs actual: rows show spent against budget and flag overspend', async () => {
-    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByText('Budget vs Actual', { exact: false }).first().waitFor(V);
     await page.getByText('over', { exact: false }).first().waitFor(V);
   });
 
   await test('budget forecast: the horizon toggle switches between 30 and 90 days', async () => {
-    await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '30 days' }).click();
     await page.waitForTimeout(300);
@@ -274,7 +274,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('entries: adding an entry from the desktop form saves it and lists it', async () => {
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Entry' }).first().click();
     await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
@@ -310,7 +310,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('settings: adding a category lists it', async () => {
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByPlaceholder('New category name').fill('QA Category');
     await page.getByRole('button', { name: '+ Add', exact: true }).first().click();
@@ -328,13 +328,13 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('ai insights: the tab renders without an API key configured', async () => {
-    await page.goto(BASE + '#/ai', { waitUntil: 'load' });
+    await page.goto(BASE + '#/plan/insights', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByText('AI Financial Assessment', { exact: false }).waitFor(V);
   });
 
   await test('budget monthly: skipping an occurrence hides it and restoring brings it back', async () => {
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: /^Jul$/ }).click();
     await page.waitForTimeout(400);
@@ -352,7 +352,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('entries: CSV import uploads, auto-maps columns, previews and adds the rows', async () => {
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: 'Import CSV' }).click();
     await page.locator('.modal-card').waitFor(V);
@@ -378,11 +378,11 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('entries: a transfer nets into the balance and stays out of income totals', async () => {
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const incomeBefore = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
 
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.locator('#global-search').fill('');
     await page.getByRole('button', { name: '+ Add Entry' }).first().click();
@@ -412,7 +412,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     const rowText = await row.innerText();
     if (!rowText.includes('+$50.00')) throw new Error('transfer-in row did not show +$50.00: ' + rowText);
 
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const incomeAfter = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
     if (incomeBefore !== incomeAfter) throw new Error(`transfer leaked into Annual Income: ${incomeBefore} -> ${incomeAfter}`);
@@ -441,26 +441,41 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     const names = async (p) => p.evaluate(() => {
       const vis = (el) => { const s = getComputedStyle(el); return s.display !== 'none' && el.getClientRects().length > 0; };
       const nav = [...document.querySelectorAll('nav')].filter(vis)[0];
-      return [...nav.querySelectorAll('button,a')].filter(vis).map((b) => b.innerText.trim().replace(/^✦\s*/, ''));
+      // The centre compose button is an action, not a destination — the phone
+      // nav carries it and the desktop tab strip does not, and that is the
+      // design rather than a drift between widths.
+      return [...nav.querySelectorAll('button,a')].filter(vis)
+        .filter((b) => !b.classList.contains('bottomnav-compose'))
+        .map((b) => b.innerText.trim().replace(/^✦\s*/, ''));
     });
     const subs = async (p) => p.evaluate(() => [...document.querySelectorAll('.budget-subtab-pill')]
       .filter((el) => getComputedStyle(el).display !== 'none')
       .map((el) => el.innerText.trim()));
 
     const wide = await ctxPage();
-    await wide.page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await wide.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await wide.page.waitForTimeout(900);
     const wideNav = await names(wide.page), wideSubs = await subs(wide.page);
 
     const narrow = await ctxPage({ touch: true });
-    await narrow.page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await narrow.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await narrow.page.waitForTimeout(900);
     const narrowNav = await names(narrow.page), narrowSubs = await subs(narrow.page);
 
     if (JSON.stringify(wideNav) !== JSON.stringify(narrowNav)) {
       throw new Error(`primary nav differs by width:\n  wide:   ${wideNav.join(' / ')}\n  narrow: ${narrowNav.join(' / ')}`);
     }
-    if (!wideNav.includes('Settings')) throw new Error('Settings is not a primary destination: ' + wideNav.join(' / '));
+    const expected = ['Today', 'Flow', 'Envelopes', 'Plan'];
+    if (JSON.stringify(wideNav) !== JSON.stringify(expected)) {
+      throw new Error('primary destinations are ' + wideNav.join(' / ') + ', expected ' + expected.join(' / '));
+    }
+    for (const { page } of [wide, narrow]) {
+      await page.locator('.user-avatar-btn').click();
+      await page.waitForTimeout(300);
+      const inMenu = await page.evaluate(() => [...document.querySelectorAll('.user-menu-panel button')].map((b) => b.innerText.trim()));
+      if (!inMenu.includes('Settings')) throw new Error('Settings is not reachable from the avatar: ' + inMenu.join(' / '));
+      await page.keyboard.press('Escape');
+    }
     // Exact equality, not a subset. Daily used to be hidden on a phone, so the
     // narrow set was legitimately shorter; Calendar, which replaced it, renders
     // at both widths, so there is no longer any reason for the two to differ —
@@ -477,7 +492,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // Entries had no bulk selection at all, while the Monthly grid — where it
   // matters less — has had row checkboxes since it was written.
   await test('entries: several rows can be recategorised at once, with one undo', async () => {
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -505,7 +520,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // Currency and number format were hardcoded to en-CA and a bare "$" in
   // fmt(), which is the single function every amount in the app goes through.
   await test('settings: changing currency and number format rewrites every amount', async () => {
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -513,7 +528,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     await page.locator('#set-locale').selectOption('de-DE');
     await page.waitForTimeout(500);
 
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
     // German grouping puts points where en-CA puts commas, and the symbol
@@ -524,7 +539,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     const ticks = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((t) => t.textContent).join(' '));
     if (!ticks.includes('€')) throw new Error('chart axis still using the old symbol: ' + ticks.slice(0, 120));
 
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(700);
     await page.locator('#set-currency').selectOption('CAD');
     await page.locator('#set-locale').selectOption('en-CA');
@@ -534,7 +549,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // The statutory holidays that decide when a payday lands were British
   // Columbia's, with no way to pick another province.
   await test('settings: the holiday region changes which dates are computed', async () => {
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const list = () => page.locator('#sec-holidays').innerText();
     const bc = await list();
@@ -557,7 +572,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // reconciliation. Nothing measured the projection against reality, and the
   // only correction available rewrote the whole year.
   await test('dashboard: reconciling to the bank adjusts today without touching income or expenses', async () => {
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -587,7 +602,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     if (await tile('Annual Expenses') !== expenseBefore) throw new Error('reconciliation leaked into Annual Expenses');
 
     // Leave the fixture as it was found — the suite shares one session.
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(700);
     await page.getByLabel('Rows per page').first().selectOption('all');
     await page.waitForTimeout(400);
@@ -605,7 +620,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // entries have carried a userId since they were first synced and overrides
   // carried a timestamp, but neither was ever displayed.
   await test('household: an occurrence edit records who made it', async () => {
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const row = page.locator('.forecast-table tbody tr').filter({ hasText: 'Rent' }).first();
     await row.locator('td').nth(2).click();
@@ -615,7 +630,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     await page.getByRole('button', { name: /^Save/ }).first().click();
     await page.waitForTimeout(600);
 
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(700);
     await page.getByRole('button', { name: /Activity/i }).first().click();
     await page.waitForTimeout(600);
@@ -644,7 +659,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // covers the one that is easiest to press by accident and hardest to
   // reconstruct by hand.
   await test('settings: removing a category can be undone, colour and position included', async () => {
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -678,7 +693,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('dashboard: every monthly summary row reconciles with the balance beside it', async () => {
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const grid = await page.evaluate(() => {
       const money = (t) => {
@@ -739,12 +754,12 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       const nudge = page.getByRole('button', { name: 'Remind me later' });
       if (await nudge.count() > 0) await nudge.click().catch(() => {});
     };
-    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const housingRowBefore = page.locator('.bva-row', { hasText: 'Housing' }).first();
     const actualBeforeCents = parseMoney(await housingRowBefore.locator('.bva-actual-amt').innerText());
 
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: /^Jul$/ }).click();
     await page.waitForTimeout(400);
@@ -772,7 +787,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     if (scheduledAmount !== '1650') throw new Error('scheduled Amount field was overwritten by the actual: ' + scheduledAmount);
     await page.getByRole('button', { name: 'Cancel' }).click();
 
-    await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+    await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const housingRowAfter = page.locator('.bva-row', { hasText: 'Housing' }).first();
     const actualAfterCents = parseMoney(await housingRowAfter.locator('.bva-actual-amt').innerText());
@@ -781,7 +796,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     }
 
     // Reset back to the scheduled amount so later tests see the original fixture.
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: /^Jul$/ }).click();
     await page.waitForTimeout(400);
@@ -807,7 +822,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       }
     };
     await step('grant', () => ctx.grantPermissions(['notifications']).catch(() => {}));
-    await step('goto', () => page.goto(BASE + '#/settings', { waitUntil: 'load' }));
+    await step('goto', () => page.goto(BASE + '#/you', { waitUntil: 'load' }));
     // This test is only about the Settings toggle's permission-request flow.
     // App.js has its own separate effect that fires a *real* Notification
     // for low-balance/due-bill conditions once notifyEnabled flips on, and
@@ -864,7 +879,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('modals: a backdrop click keeps the dialog open, only X and Cancel close it', async () => {
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: '+ Add Entry' }).first().click();
     await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
@@ -887,7 +902,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('help: the account menu opens the docs and "?" jumps to the shortcuts', async () => {
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(600);
     await page.locator('.user-avatar-btn').click();
     await page.getByRole('button', { name: 'Help' }).click();
@@ -896,7 +911,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     if (sections < 8) throw new Error('help page rendered only ' + sections + ' sections');
     // The shortcuts moved out of their modal into this page — the modal is
     // gone, so "?" has to land here instead.
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(600);
     await page.keyboard.press('?');
     await page.locator('#help-shortcuts').waitFor(V);
@@ -910,18 +925,18 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     // that aren't routes — the skip link's #main-content, in-page anchors —
     // reach the same handler, and claiming the sync guard for one of those
     // used to leave the URL stuck on it through the next tab change.
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(600);
     await page.evaluate(() => document.querySelector('.skip-link').click());
     await page.waitForTimeout(300);
     await page.evaluate(() => document.querySelectorAll('.tab-bar-btn')[1].click());
     await page.waitForTimeout(500);
     const hash = await page.evaluate(() => location.hash);
-    if (!hash.startsWith('#/budget')) throw new Error('hash stuck at "' + hash + '" after switching to Budget');
+    if (!hash.startsWith('#/flow/list')) throw new Error('hash stuck at "' + hash + '" after switching to Budget');
   });
 
   await test('dashboard: Customize closes on Escape, like every other dialog', async () => {
-    await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: /Customize/i }).first().click();
     await page.locator('.customize-modal-card').waitFor(V);
@@ -939,7 +954,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
 // ── Desktop, dark theme spot-checks ─────────────────────────────────────────────
 await test('dark mode: the active month pill stays visibly styled', async () => {
   const { ctx, page } = await ctxPage({ dark: true });
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
   const active = page.locator('.month-picker button[data-active="true"]').first();
   const bg = await active.evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -950,7 +965,7 @@ await test('dark mode: the active month pill stays visibly styled', async () => 
 
 await test('dark mode: charts render with theme colours', async () => {
   const { ctx, page } = await ctxPage({ dark: true });
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const n = await page.locator('.cf-card svg').count();
   if (n < 3) throw new Error('expected ≥3 chart svgs, got ' + n);
@@ -960,15 +975,15 @@ await test('dark mode: charts render with theme colours', async () => {
 // ── Mobile ───────────────────────────────────────────────────────────────
 {
   const { ctx, page } = await ctxPage({ touch: true });
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
 
   await test('mobile: the bottom nav switches tabs', async () => {
-    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Budget' }).tap();
+    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Flow' }).tap();
     await page.waitForTimeout(600);
     await page.getByText('Opening Balance', { exact: false }).first().waitFor(V);
     const cur = await page.locator('.cf-bottomnav button[aria-current="page"]').getAttribute('aria-label');
-    if (cur !== 'Budget') throw new Error('aria-current on ' + cur);
+    if (cur !== 'Flow') throw new Error('aria-current on ' + cur);
   });
 
   await test('mobile: ledger cards show signed amounts', async () => {
@@ -984,7 +999,7 @@ await test('dark mode: charts render with theme colours', async () => {
   });
 
   await test('mobile: the top-right Add button opens the entry form', async () => {
-    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Budget' }).tap({ force: true });
+    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Flow' }).tap({ force: true });
     await page.waitForTimeout(400);
     await page.locator('button[title="Add Entry"]').first().tap({ force: true });
     await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
@@ -999,7 +1014,7 @@ await test('dark mode: charts render with theme colours', async () => {
   // affordance that floats over the content is a regression, not a feature.
   await test('mobile: nothing floats over the content offering to add an entry', async () => {
     for (const tab of ['dashboard', 'budget']) {
-      await page.locator('.cf-bottomnav').getByRole('button', { name: tab === 'dashboard' ? 'Dashboard' : 'Budget' }).tap({ force: true });
+      await page.locator('.cf-bottomnav').getByRole('button', { name: tab === 'today' ? 'Today' : 'Flow' }).tap({ force: true });
       await page.waitForTimeout(500);
       if (await page.locator('.cf-fab').count() > 0) throw new Error('floating add button back on ' + tab);
     }
@@ -1011,7 +1026,7 @@ await test('dark mode: charts render with theme colours', async () => {
   // bug (a grid track floored at min-content, a row that can't wrap) has now
   // produced it three times in three different places.
   await test('mobile: no tab scrolls sideways onto blank page', async () => {
-    for (const [tab, label] of [['dashboard', 'Dashboard'], ['budget', 'Budget'], ['plan', 'Plan'], ['settings', 'Settings']]) {
+    for (const [tab, label] of [['today', 'Today'], ['flow', 'Flow'], ['envelopes', 'Envelopes'], ['plan', 'Plan']]) {
       await page.locator('.cf-bottomnav').getByRole('button', { name: label }).tap({ force: true });
       await page.waitForTimeout(600);
       const slop = await page.evaluate(() => {
@@ -1028,11 +1043,15 @@ await test('dark mode: charts render with theme colours', async () => {
   // are on screen. It used to run off the right edge, taking the last line of
   // the explanation with it.
   await test('mobile: an opened help tip stays inside the viewport', async () => {
-    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Settings' }).tap({ force: true });
+    // Settings is behind the avatar now, not in the bottom nav, so this is
+    // also the check that the only route into it works on a phone.
+    await page.locator('.user-avatar-btn').tap({ force: true });
+    await page.waitForTimeout(300);
+    await page.locator('.user-menu-panel button', { hasText: 'Settings' }).first().tap({ force: true });
     await page.waitForTimeout(700);
     const tips = page.locator('.helptip-btn');
     const n = await tips.count();
-    if (n === 0) throw new Error('no help tips on Settings');
+    if (n === 0) throw new Error('no help tips on You');
     for (let i = 0; i < n; i++) {
       const btn = tips.nth(i);
       await btn.scrollIntoViewIfNeeded();
@@ -1052,8 +1071,8 @@ await test('dark mode: charts render with theme colours', async () => {
   });
 
   await test('mobile: settings hides biometric unlock on a device with no authenticator', async () => {
-    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Settings' }).tap();
-    await page.waitForTimeout(800);
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
     await page.getByText('Auto-lock when in background', { exact: false }).waitFor(V);
     // headless chromium: no platform authenticator → toggle must be absent
     if (await page.getByText('Unlock with fingerprint / face').count() > 0) throw new Error('biometric toggle shown without authenticator');
@@ -1064,7 +1083,7 @@ await test('dark mode: charts render with theme colours', async () => {
 
 await test('mobile dark mode: the active nav item is highlighted, not dimmed', async () => {
   const { ctx, page } = await ctxPage({ touch: true, dark: true });
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
   const activeColor = await page.locator('.cf-bottomnav button[aria-current="page"]').evaluate((el) => getComputedStyle(el).color);
   const inactiveColor = await page.locator('.cf-bottomnav button:not([aria-current])').first().evaluate((el) => getComputedStyle(el).color);
@@ -1073,14 +1092,11 @@ await test('mobile dark mode: the active nav item is highlighted, not dimmed', a
   await ctx.close();
 });
 
-// Daily was cut from a phone because it restated Monthly one row per day.
-// Calendar replaced it and does not restate anything, so it renders at both
-// widths — and a #/budget/daily bookmark, or a device that still remembers
-// `daily` as its sub-tab, has to land somewhere real rather than on a view
-// with no tab selected.
-await test('mobile: the Calendar subtab renders on a phone, unlike the Daily view it replaced', async () => {
+// Daily was cut from a phone because it restated the ledger one row per day.
+// Calendar does not restate anything, so it renders at both widths.
+await test('mobile: the Calendar lens renders on a phone, unlike the Daily view it replaced', async () => {
   const { ctx, page } = await ctxPage({ touch: true });
-  await page.goto(BASE + '#/budget/calendar', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/calendar', { waitUntil: 'load' });
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: 'Calendar' }).waitFor(V);
   if (await page.locator('.cal-grid').count() !== 1) throw new Error('no calendar grid at phone width');
@@ -1092,14 +1108,44 @@ await test('mobile: the Calendar subtab renders on a phone, unlike the Daily vie
   await ctx.close();
 });
 
-await test('an old #/budget/daily link lands on the Calendar that replaced it', async () => {
+// Bookmarks, shared links and home-screen shortcuts outlive an information
+// architecture. Every route the app has ever published is in LEGACY_ROUTES,
+// and a link that quietly lands on the home screen is worse than one that
+// errors, because nothing tells you it went wrong — so each mapping is
+// asserted rather than assumed.
+await test('every retired route still lands where its view moved to', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/daily', { waitUntil: 'load' });
-  await page.waitForTimeout(1200);
-  if (await page.locator('.cal-grid').count() !== 1) throw new Error('#/budget/daily rendered no calendar');
-  const hash = await page.evaluate(() => location.hash);
-  if (hash !== '#/budget/calendar') throw new Error(`#/budget/daily settled on ${hash}, not #/budget/calendar`);
+  const moves = [
+    ['#/dashboard', '#/today'],
+    ['#/budget', '#/flow/list'],
+    ['#/budget/monthly', '#/flow/list'],
+    ['#/budget/daily', '#/flow/list'],
+    ['#/budget/calendar', '#/flow/calendar'],
+    ['#/budget/forecast', '#/flow/curve'],
+    ['#/budget/entries', '#/flow/entries'],
+    ['#/budget/bva', '#/envelopes'],
+    ['#/ai', '#/plan/insights'],
+    ['#/settings', '#/you']
+  ];
+  const wrong = [];
+  for (const [from, to] of moves) {
+    await page.goto(BASE + from, { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    const hash = await page.evaluate(() => location.hash);
+    if (hash !== to) wrong.push(`cold load ${from} -> ${hash}, expected ${to}`);
+  }
+  // Now the same list without reloading between them: an old link tapped while
+  // the app is already open, which is the commoner case and the one that broke.
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(700);
+  for (const [from, to] of moves) {
+    await page.evaluate((h) => { location.hash = h.slice(1); }, from);
+    await page.waitForTimeout(400);
+    const hash = await page.evaluate(() => location.hash);
+    if (hash !== to) wrong.push(`in-app ${from} -> ${hash}, expected ${to}`);
+  }
   await ctx.close();
+  if (wrong.length) throw new Error(wrong.join('; '));
 });
 
 // ── Auth surfaces ────────────────────────────────────────────────────────
@@ -1172,7 +1218,7 @@ await test('migration: a pre-v8 dollar-scale cloud payload is upgraded to cents 
   lastPage = page;
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(stub);
-  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
   await page.getByText('Old Format Rent', { exact: false }).first().waitFor(V);
   await page.getByText('-$1,234.56', { exact: false }).first().waitFor(V);
   const wrongScale = await page.getByText('$123,456', { exact: false }).count();
@@ -1183,7 +1229,7 @@ await test('migration: a pre-v8 dollar-scale cloud payload is upgraded to cents 
 // ── Field-level help ────────────────────────────────────────────────────────
 await test('help tips: a field explains itself on hover instead of in permanent body copy', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
   await page.waitForTimeout(1000);
   await page.getByRole('button', { name: '+ Add Entry' }).first().click();
   await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
@@ -1276,7 +1322,7 @@ await test('payroll: a payday on a weekend or a stat holiday stays put and is ma
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(stub);
 
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: /^Aug$/ }).click();
   await page.waitForTimeout(500);
@@ -1325,7 +1371,7 @@ await test('payroll: a payday on a weekend or a stat holiday stays put and is ma
   if (!/Canada Day/.test(holWhy) || !/Tue Jun 30/.test(holWhy)) throw new Error('marker does not name the holiday and the deposit date: ' + holWhy);
 
   // The entry itself still pays on the 15th — only the marker moved.
-  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
   await page.waitForTimeout(800);
   const entryRow = page.locator('tr', { hasText: 'Ken - Payroll (15th)' }).first();
   if (!/Jan 15,? 2026/.test(await entryRow.innerText())) throw new Error("the recurring entry's date was rewritten: " + await entryRow.innerText());
@@ -1399,7 +1445,7 @@ await test('holidays: Settings lists the BC dates the app is using, and a manual
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(holidayFixture());
 
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const section = page.locator('#sec-holidays');
   await section.scrollIntoViewIfNeeded();
@@ -1426,7 +1472,7 @@ await test('holidays: Settings lists the BC dates the app is using, and a manual
   if (!(await section.innerText()).includes('saved in your household')) throw new Error('the year did not become household-stored after an edit');
 
   // It reaches the budget: the September payday is now marked.
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: /^Sep$/ }).click();
   await page.waitForTimeout(500);
@@ -1440,14 +1486,14 @@ await test('holidays: Settings lists the BC dates the app is using, and a manual
   if (!/Mon Sep 14/.test(why)) throw new Error('deposit date not worked out from the manual holiday: ' + why);
 
   // Removing it puts the payday back to depositing on the day.
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(900);
   await section.scrollIntoViewIfNeeded();
   await section.locator('.holiday-row', { hasText: 'QA Company Shutdown' }).getByRole('button', { name: /Remove/ }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).last().click();
   await page.waitForTimeout(400);
   if (await section.locator('.holiday-row', { hasText: 'QA Company Shutdown' }).count() > 0) throw new Error('the holiday was not removed');
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: /^Sep$/ }).click();
   await page.waitForTimeout(500);
@@ -1465,7 +1511,7 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(holidayFixture());
 
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const section = page.locator('#sec-holidays');
   await section.scrollIntoViewIfNeeded();
@@ -1488,7 +1534,7 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   // The published list replaces the computed one outright.
   if ((await section.innerText()).includes('Canada Day')) throw new Error('the computed list survived a fetch that did not include it');
 
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: /^Sep$/ }).click();
   await page.waitForTimeout(500);
@@ -1632,7 +1678,7 @@ await test('sync: an entry added while a save is still in flight is not swallowe
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(syncFixture(4000));
 
-  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   await addEntryVia(page, 'QA First Entry', '42.00');
   // 2s debounce + a slow request: the first save is now in the air.
@@ -1665,7 +1711,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(syncFixture(0));
 
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const section = page.locator('#sec-holidays');
   await section.scrollIntoViewIfNeeded();
@@ -1713,7 +1759,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
 
   await test('year copy: Settings "+ Add" creates the year and carries the work forward', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     await page.getByRole('button', { name: '+ Add 2027' }).click();
     await page.waitForTimeout(900);
@@ -1728,7 +1774,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   // Same button, different door. This is the one that was doing less.
   await test('year copy: the Budget grid\'s "+ Add" pill does exactly what Settings does', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/budget', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     // The pill only appears once the month picker is late in the year.
     await page.locator('.month-picker').getByRole('button', { name: 'Dec', exact: true }).click();
@@ -1747,7 +1793,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
 
   await test('year copy: "Copy →" is safe to press twice', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     await page.getByRole('button', { name: '+ Add 2027' }).click();
     await page.waitForTimeout(900);
@@ -1774,13 +1820,13 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   // "+ Add" path used not to pass it at all.
   await test('year copy: a copy the user deletes does not come back on the next copy', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     await page.getByRole('button', { name: '+ Add 2027' }).click();
     await page.waitForTimeout(900);
     // Delete the 2027 copy the way a user would — the row menu in Entries,
     // which is what records the tombstone in the first place.
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(1200);
     await page.getByPlaceholder(/search/i).first().fill('Vet checkup');
     await page.waitForTimeout(600);
@@ -1795,7 +1841,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     const tomb = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('cf_deleted_copy_ids') || '{}')).length);
     if (tomb !== 1) throw new Error('deleting a copy recorded ' + tomb + ' tombstones, expected 1');
     // Now re-run the copy. The entry is "missing" from 2027, but deliberately.
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(1400);
     const copy = page.getByRole('button', { name: /^Copy .*2027$/ });
     if (await copy.count() === 0) throw new Error('no Copy button after the delete');
@@ -1841,7 +1887,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   const openSettings = async () => {
     const { ctx, page } = await ctxPage();
     await page.addInitScript(CAPTURE_DOWNLOADS);
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     return { ctx, page };
   };
@@ -2017,7 +2063,7 @@ await test('forecast: a balance curve marks the low point and the alert threshol
     category: 'Housing', repeats: false, recurUnit: 'month', recurEvery: 1,
     startDate: when.toISOString().slice(0, 10), notes: '' }]);
   const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${roof}); const payload = {`) });
-  await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const svg = page.locator('svg[role="img"]').first();
   if (await svg.count() !== 1) throw new Error('the forecast renders no chart');
@@ -2038,7 +2084,7 @@ await test('forecast: a balance curve marks the low point and the alert threshol
 // Next, and the run-up to the low point is as likely to straddle a break as not.
 await test('forecast: the ledger scrolls rather than paginating', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   if (await page.locator('[aria-label="Next page"]').count() !== 0) throw new Error('the forecast still paginates');
   const before = await page.locator('.forecast-tr').count();
@@ -2051,7 +2097,7 @@ await test('forecast: the ledger scrolls rather than paginating', async () => {
 // The month laid out as a month, which is the shape the question comes in.
 await test('calendar: the month is a grid, with a running balance and the low days marked', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/calendar', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/calendar', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const cells = page.locator('.cal-cell:not(.cal-cell--blank)');
   const n = await cells.count();
@@ -2079,12 +2125,12 @@ await test('a11y: each view names itself in a heading and in the document title'
   const { ctx, page } = await ctxPage();
   const seen = new Set();
   for (const [route, expected] of [
-    ['#/dashboard', 'Dashboard'],
-    ['#/budget/calendar', 'Budget · Calendar'],
-    ['#/budget/entries', 'Budget · Entries'],
-    ['#/budget/forecast', 'Budget · Forecast'],
-    ['#/plan/goals', 'Plan · Savings Goals'],
-    ['#/settings', 'Settings'],
+    ['#/today', 'Today'],
+    ['#/flow/calendar', 'Flow · Calendar'],
+    ['#/flow/entries', 'Flow · Entries'],
+    ['#/flow/curve', 'Flow · Curve'],
+    ['#/plan/goals', 'Plan · Goals'],
+    ['#/you', 'You'],
   ]) {
     await page.goto(BASE + route, { waitUntil: 'load' });
     await page.waitForTimeout(900);
@@ -2103,7 +2149,7 @@ await test('a11y: each view names itself in a heading and in the document title'
 // SVGs wider than 200px with no role, no name and no title element.
 await test('a11y: every chart is either described or hidden, never bare', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const bare = await page.$$eval('svg', (els) => els
     .filter((e) => e.getAttribute('aria-hidden') !== 'true' && e.getAttribute('role') !== 'img')
@@ -2125,7 +2171,7 @@ await test('a11y: every chart is either described or hidden, never bare', async 
 // exists to protect.
 await test('backup nudge: it sits in the page, not on top of the data', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
   // The nudge fires five seconds after load.
   await page.waitForTimeout(6500);
   const nudge = page.locator('.backup-nudge');
@@ -2156,7 +2202,7 @@ await test('backup nudge: it sits in the page, not on top of the data', async ()
 // row, leaving 400-500px of empty page below the last.
 await test('wide screens: cards size to their content, and card lists use the width', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const align = await page.locator('.chart-grid').first().evaluate((el) => getComputedStyle(el).alignItems);
   if (align !== 'start') throw new Error(`paired dashboard cards are ${align}, so the shorter one stretches`);
@@ -2220,7 +2266,7 @@ await test('invariant: every printed surplus agrees with the balances printed be
   const OPENING = 1250000;
 
   // ── The Dashboard's Monthly Summary ───────────────────────────────────────
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1800);
   const table = await page.evaluate(() => {
     const tb = [...document.querySelectorAll('table')].find((t) =>
@@ -2280,7 +2326,7 @@ await test('invariant: every printed surplus agrees with the balances printed be
   // Same invariant one level down: the running balance printed against each row
   // has to be the previous one plus that row's own In and Out, and the totals
   // bar has to be the sum of the column above it.
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   for (const mon of ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) {
     await page.locator('.month-picker button', { hasText: new RegExp('^' + mon + '$') }).first().click();
@@ -2403,12 +2449,12 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
     recurEnd: '', startDate: '2026-08-15', notes: '' }]);
   const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${deposits}); const payload = {`) });
   const marksOnIt = async () => {
-    await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(1200);
     return page.locator('tbody tr', { hasText: 'Acme deposit' }).first().locator('.helptip-btn--mark').count();
   };
   const setRule = async (value) => {
-    await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
     await page.waitForTimeout(1100);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2442,7 +2488,7 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
 await test('activity: what changed, who changed it, across every kind of change', async () => {
   const { ctx, page } = await ctxPage();
   const feed = async () => {
-    await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you', { waitUntil: 'load' });
     await page.waitForTimeout(1100);
     await page.getByRole('button', { name: 'Activity' }).click();
     await page.waitForTimeout(500);
@@ -2451,7 +2497,7 @@ await test('activity: what changed, who changed it, across every kind of change'
   if ((await feed()).length !== 0) throw new Error('the feed is not empty on a fresh household');
 
   // An entry.
-  await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
   await page.waitForTimeout(1000);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2465,7 +2511,7 @@ await test('activity: what changed, who changed it, across every kind of change'
   await page.waitForTimeout(800);
 
   // A budget target.
-  await page.goto(BASE + '#/budget/bva', { waitUntil: 'load' });
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: '+ Add' }).first().click();
   await page.waitForTimeout(500);
@@ -2502,7 +2548,7 @@ await test('activity: what changed, who changed it, across every kind of change'
 // question a low-balance warning provokes: what would I have to change?
 await test('what-if: a scenario draws a second curve and says what it is worth', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/forecast', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2529,7 +2575,7 @@ await test('what-if: a scenario draws a second curve and says what it is worth',
   if (!/dashed line shows the what-if/.test(alt || '')) throw new Error('the scenario is invisible to a screen reader: ' + alt);
 
   // A scenario is a question, not an edit: the budget behind it is untouched.
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1100);
   if (await page.getByText('Rent').count() === 0) throw new Error('the scenario deleted the real entry');
   await ctx.close();
@@ -2539,7 +2585,7 @@ await test('what-if: a scenario draws a second curve and says what it is worth',
 // that gap was a bad week or a year of small drift.
 await test('reconcile: the adjustment is reported as drift over the time since the last one', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/dashboard', { waitUntil: 'load' });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2579,18 +2625,18 @@ await test('reconcile: the adjustment is reported as drift over the time since t
 // out of. A household that predates accounts has to see nothing change.
 await test('accounts: a household that predates them gets one, and nothing it can see changes', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
   // Asserted through the UI, not localStorage: a field still sitting at its
   // default has no storage row yet, so an absent row means "the default", not
   // "no accounts".
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1300);
   const names = await page.$$eval('#sec-accounts .account-name', (els) => els.map((e) => e.value));
   if (names.length !== 1 || names[0] !== 'Chequing') throw new Error('accounts are ' + JSON.stringify(names));
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1200);
   // Nothing is stamped onto the entries: "unset" already means the default
   // account, so rewriting several hundred entries to say so would be churn.
@@ -2631,7 +2677,7 @@ await test('accounts: a transfer moves money between two accounts and nets to no
 
   // Baseline: the same household with no transfer at all.
   const plain = await ctxPage({ stub: (t) => t.replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await plain.page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await plain.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await plain.page.waitForTimeout(1400);
   const nudge0 = plain.page.getByRole('button', { name: 'Remind me later' });
   if (await nudge0.count() > 0) await nudge0.click().catch(() => {});
@@ -2642,7 +2688,7 @@ await test('accounts: a transfer moves money between two accounts and nets to no
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace('const payload = {', `entries.push(...${xfer}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2695,7 +2741,7 @@ await test('accounts: a credit card is an ordinary account that runs negative', 
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace('const payload = {', `entries.push(...${card}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2727,7 +2773,7 @@ await test('accounts: removing one re-homes its entries rather than deleting the
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace('const payload = {', `entries.push(...${saved}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2772,7 +2818,7 @@ await test('carry-through: adding a year keeps the newest entry fields on the co
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace('const payload = {', `entries.push(...${extra}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2788,7 +2834,7 @@ await test('carry-through: adding a year keeps the newest entry fields on the co
 
   // And each account's new year opens exactly where its old one closed —
   // the carry is per account, not just for the household total.
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const cents = (s2) => { const neg = /-/.test(s2); const n = Math.round(parseFloat((s2 || '').replace(/[^0-9.]/g, '') || '0') * 100); return neg ? -n : n; };
   const at = async (year, acct, month) => {
@@ -2837,7 +2883,7 @@ await test('carry-through: a backup round-trips accounts, activity and the entry
     .replace('const payload = {', `entries.push(...${extra}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
   await page.addInitScript(capture);
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2884,7 +2930,7 @@ await test('carry-through: a backup round-trips accounts, activity and the entry
 // the rest of the app cannot render.
 await test('carry-through: restoring a backup that predates accounts leaves exactly one', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2904,7 +2950,7 @@ await test('carry-through: restoring a backup that predates accounts leaves exac
   const accounts = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_accounts') || 'null'));
   if (!Array.isArray(accounts) || accounts.length !== 1) throw new Error('accounts after restore: ' + JSON.stringify(accounts));
   if (accounts[0].id !== 'acct-main') throw new Error('the wrong account survived: ' + JSON.stringify(accounts));
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   if (await page.locator('.budget-totals-row').count() !== 1) throw new Error('the restored household renders no budget');
   if (await page.locator('#account-filter-select').count() !== 0) throw new Error('a filter appeared for a single account');
@@ -2918,14 +2964,14 @@ await test('carry-through: restoring a backup that predates accounts leaves exac
 // guard of its own, and it can arrive from either.
 await test('accounts: a payload carrying an empty account list never leaves a household with none', async () => {
   const { ctx, page } = await ctxPage({ stub: (t) => t.replace('goals: [],', 'goals: [], accounts: [],') });
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
   if (pageErrors.length) throw new Error('the empty list threw: ' + pageErrors[0]);
   if (await page.locator('.budget-totals-row').count() !== 1) throw new Error('an empty account list left no budget to render');
   // ...and the same through a restore.
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   await page.setInputFiles('input[type=file][accept=".json"]', {
     name: 'CashFlow_Backup_2026-08-25.json', mimeType: 'application/json',
@@ -2954,7 +3000,7 @@ await test('accounts: a filter naming an account that is gone falls back to comb
   ]);
   const { ctx, page } = await ctxPage({ stub: (t) => t.replace('goals: [],', `goals: [], accounts: ${accts},`) });
   await page.addInitScript('try{localStorage.setItem("cf_account_filter", JSON.stringify("acct-gone"))}catch(e){}');
-  await page.goto(BASE + '#/budget/monthly', { waitUntil: 'load' });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -2970,7 +3016,7 @@ await test('accounts: a filter naming an account that is gone falls back to comb
 await test('activity: budget years and accounts are recorded too', async () => {
   const { ctx, page } = await ctxPage();
   const feed = () => page.evaluate(() => JSON.parse(localStorage.getItem('cf_activity') || '[]'));
-  await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -3021,9 +3067,9 @@ await test('phone: every control is big enough to hit', async () => {
       { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
     ]) + ',') });
   const small = [];
-  for (const [route, label] of [['#/dashboard', 'Dashboard'], ['#/budget/monthly', 'Monthly'],
-    ['#/budget/bva', 'BvA'], ['#/budget/forecast', 'Forecast'], ['#/budget/entries', 'Entries'],
-    ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals'], ['#/settings', 'Settings']]) {
+  for (const [route, label] of [['#/today', 'Today'], ['#/flow/list', 'Monthly'],
+    ['#/envelopes', 'BvA'], ['#/flow/curve', 'Forecast'], ['#/flow/entries', 'Entries'],
+    ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals'], ['#/you', 'You']]) {
     await page.goto(BASE + route, { waitUntil: 'load' });
     await page.waitForTimeout(1200);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
@@ -3070,8 +3116,8 @@ await test('phone: a toolbar\'s buttons are all the same size', async () => {
   ]) + ',') });
   const off = [];
   let seen = 0;
-  for (const [route, label] of [['#/dashboard', 'Dashboard'], ['#/budget/monthly', 'Monthly'],
-    ['#/budget/calendar', 'Calendar'], ['#/budget/forecast', 'Forecast'], ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals']]) {
+  for (const [route, label] of [['#/today', 'Today'], ['#/flow/list', 'Monthly'],
+    ['#/flow/calendar', 'Calendar'], ['#/flow/curve', 'Forecast'], ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals']]) {
     await page.goto(BASE + route, { waitUntil: 'load' });
     await page.waitForTimeout(1200);
     const nudge = page.getByRole('button', { name: 'Remind me later' });

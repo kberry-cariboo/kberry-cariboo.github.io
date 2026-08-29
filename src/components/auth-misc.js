@@ -1051,13 +1051,12 @@
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "monthly", label: "Monthly", icon: "grid" },
+      { id: "list", label: "List", icon: "file-list" },
       { id: "calendar", label: "Calendar", icon: "calendar" },
-      { id: "bva", label: "Budget vs Actual", icon: "scale" },
-      { id: "forecast", label: "Forecast", icon: "trending-up" },
-      { id: "entries", label: "Entries", icon: "file-list" }
+      { id: "curve", label: "Curve", icon: "trending-up" },
+      { id: "entries", label: "Entries", icon: "grid" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Lenses", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
@@ -1098,9 +1097,10 @@
       if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
     }, [value]);
     const tabs = [
-      { id: "debt", label: "Debt Payoff", icon: "credit-card" },
-      { id: "strategy", label: "Payoff Strategy", icon: "mountain" },
-      { id: "goals", label: "Savings Goals", icon: "target" }
+      { id: "goals", label: "Goals", icon: "target" },
+      { id: "debt", label: "Debts", icon: "credit-card" },
+      { id: "strategy", label: "Payoff", icon: "mountain" },
+      { id: "insights", label: "Insights", icon: "sparkle" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
       "button",

@@ -3,7 +3,7 @@
   const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
   const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
   function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
-  }, budgetSub = "monthly", setBudgetSub = () => {
+  }, flowSub = "list", showEnvelopes = false, setFlowSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
@@ -21,13 +21,9 @@
     const acctTag = (ev) => (hhAccounts || []).length > 1
       ? /* @__PURE__ */ React.createElement("span", { className: "row-account-tag" }, accountName(hhAccounts, accountIdOf(ev)))
       : null;
-    // Calendar replaced Daily. The sub-tab is remembered per device and
-    // #/budget/daily was a real deep link, so a phone or a bookmark can still
-    // arrive asking for a view that no longer exists; send it to the one that
-    // took its place rather than rendering nothing with no tab selected.
-    useEffect(() => {
-      if (budgetSub === "daily") setBudgetSub("calendar");
-    }, [budgetSub]);
+    // Envelopes is its own destination, so it wins over whichever lens the
+    // Flow tab was last left on.
+    const lens = showEnvelopes ? "bva" : flowSub;
     const [showSwipeCoach, setShowSwipeCoach] = useState(() => {
       try {
         return window.matchMedia && window.matchMedia("(pointer:coarse)").matches && !localStorage.getItem("cf_coach_swipe");
@@ -176,7 +172,7 @@
     }, [flow]);
     const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
-    const yoyActive = budgetSub === "monthly" && compareYoy && prevYearConfigured;
+    const yoyActive = lens === "list" && compareYoy && prevYearConfigured;
     const prevSummaries = useMemo(() => getMonthSummaries(prevYearFlow, 0), [prevYearFlow]);
     const ps = prevSummaries[monthIdx] || { income: 0, expense: 0, surplus: 0 };
     const prevHasData = prevYearFlow.length > 0;
@@ -290,7 +286,7 @@
     };
     useEffect(() => {
       clearSel();
-    }, [monthIdx, budgetSub, activeYear]);
+    }, [monthIdx, flowSub, activeYear]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
@@ -654,7 +650,7 @@
         onTouchStart: handleTouchStart,
         onTouchEnd: handleTouchEnd
       },
-      selIds.size > 0 && budgetSub === "monthly" && /* @__PURE__ */ React.createElement("div", { className: "budget-bulkbar budget-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
+      selIds.size > 0 && lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-bulkbar budget-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: markSelectedPaid,
@@ -680,12 +676,12 @@
             setMonthIdx(v);
           },
           noMargin: false,
-          matchingMonths: budgetSub !== "bva" && gq ? matchingMonths : null,
+          matchingMonths: true && gq ? matchingMonths : null,
           onAddNextYear,
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      (budgetSub === "monthly" || budgetSub === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+      (lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
         "span",
         {
           key: s.occId,
@@ -704,7 +700,7 @@
           "↺"
         )
       )))),
-      budgetSub === "monthly" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
+      lens === "list" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: dismissSwipeCoach,
@@ -719,8 +715,8 @@
       // The card says so in its sub-line rather than leaving the reader to
       // find a gap they can't account for; the year-over-year delta gives up
       // its place for that, which only happens in months that have transfers.
-      /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })),
-      budgetSub === "monthly" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
+      lens !== "bva" && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })),
+      lens === "list" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => {
@@ -922,7 +918,7 @@
           ]
         }
       )),
-      budgetSub === "calendar" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
+      lens === "calendar" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
         ExportBar,
         {
           onAdd: openAddEntry,
@@ -1031,7 +1027,7 @@
           )))
         );
       })(),
-      budgetSub === "bva" && (() => {
+      lens === "bva" && (() => {
         const yr = activeYear || (/* @__PURE__ */ new Date()).getFullYear();
         const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
@@ -1078,7 +1074,7 @@
           const target = roundMoney((baseTarget + carry));
           const diff = roundMoney((actual - target));
           const over = target > 0 && diff > 0;
-          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amberInk)" : "var(--red)";
+          const color = !over ? "color-mix(in srgb, var(--primary) 45%, transparent)" : diff <= 5000 ? "var(--amberInk)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           return /* @__PURE__ */ React.createElement(
             "div",
