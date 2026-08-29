@@ -228,6 +228,26 @@
     }
     return v;
   }
+  // The horizon the runway strip covers. 90 days is the same window the
+  // Forecast offers as its longest, and far enough out to catch the annual
+  // bills that are exactly what a monthly view hides.
+  const RUNWAY_DAYS = 90;
+  // ── The balance rail ────────────────────────────────────────────────────
+  // One rule for "how is the money doing here", declared once and used by
+  // every surface that draws a running balance: the rail down the ledger, the
+  // 90-day runway on Today, the calendar day tints.
+  //
+  // A healthy balance is deliberately NOT green. Green would paint most of a
+  // good year, and a wall of green is exactly as uninformative as a wall of
+  // nothing — the eye stops seeing it, and the two amber weeks that matter
+  // stop standing out. Healthy is a quiet brand tint; colour arrives only
+  // when the balance has something to say.
+  function railTone(balance, threshold) {
+    if (!(balance > -Infinity)) return "transparent";
+    if (balance < 0) return "var(--red)";
+    if (balance < threshold) return "var(--amber)";
+    return "color-mix(in srgb, var(--primary) 30%, transparent)";
+  }
   const YEAR_COLORS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623", "#8E44AD", "#16A085"];
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function compressReceiptImage(file, cb) {
