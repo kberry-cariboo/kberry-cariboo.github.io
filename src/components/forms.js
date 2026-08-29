@@ -153,24 +153,17 @@
       const next = f.recurDays.includes(wd) ? f.recurDays.filter((d) => d !== wd) : [...f.recurDays, wd].sort((a, b) => a - b);
       set({ recurDays: next });
     };
+    // One description of a schedule, shared with the Entries list rather than
+    // written twice — the two used to disagree, this one saying "Fri" where
+    // the list said "Monthly (weekday)" and neither saying which Friday.
     const recurSummary = () => {
       if (!f.repeats) return null;
-      const e = f.recurEvery, u = f.recurUnit, until = f.recurEnd ? ` until ${f.recurEnd}` : " (ongoing)";
-      if (u === "semimonth") return `Semi-monthly (1st & 15th pattern)${until}`;
-      if (u === "monthend") return `The last day of every month${until}`;
-      if (u === "monthweekday") {
-        const ord = { "1": "first", "2": "second", "3": "third", "4": "fourth", "5": "fifth", "-1": "last" }[String(f.recurNth)] || "first";
-        const wd = WEEKDAYS[f.recurDays[0] != null ? f.recurDays[0] : startWD || 0];
-        return `The ${ord} ${wd} of every month${until}`;
-      }
-      if (u === "day") return `Every ${e} day${e > 1 ? "s" : ""}${until}`;
-      if (u === "month") return `Every ${e} month${e > 1 ? "s" : ""}${until}`;
-      if (u === "year") return `Every ${e} year${e > 1 ? "s" : ""}${until}`;
-      if (u === "week") {
-        const days = (f.recurDays.length ? f.recurDays : [startWD]).filter(Boolean).map((d) => WEEKDAYS[d]).join(", ");
-        return `Every ${e} week${e > 1 ? "s" : ""} on ${days}${until}`;
-      }
-      return "";
+      const sentence = scheduleSentence({
+        repeats: true, recurUnit: f.recurUnit, recurEvery: f.recurEvery,
+        recurDays: f.recurDays && f.recurDays.length ? f.recurDays : (startWD !== null ? [startWD] : []),
+        recurNth: f.recurNth, recurEnd: f.recurEnd, startDate: f.startDate
+      });
+      return f.recurEnd ? sentence : sentence + " (ongoing)";
     };
     const validate = () => {
       const errs = {};
@@ -432,6 +425,18 @@
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
   // open a blank entry form.
   function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
+    // Escape closes, the backdrop doesn't — the same bargain every other
+    // overlay here strikes. It matters more now: this modal is mounted at app
+    // level and opens over whatever you were reading, so the way out has to be
+    // the one your fingers already know.
+    useEffect(() => {
+      if (!show) return void 0;
+      const h = (e) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [show, onClose]);
     if (!show) return null;
     return /* @__PURE__ */ React.createElement(
       "div",

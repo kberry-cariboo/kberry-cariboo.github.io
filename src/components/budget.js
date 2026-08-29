@@ -441,6 +441,7 @@
       onToggleSelect: toggleSel,
       onOpen: openOccurrenceEdit,
       onMenu: (e, row) => setBudgetCtx({ x: e.clientX, y: e.clientY, ev: row }),
+      onSwipeLeft: (row) => skipOccurrence(row),
       categories,
       categoryColors
     });
@@ -561,7 +562,7 @@
       const t = e.target;
       // .hscroll panes scroll horizontally themselves — a fast table fling
       // must never double as a change-month swipe.
-      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable],.hscroll")) {
+      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable],.hscroll,.ledger-row-wrap")) {
         touchStart.current = null;
         return;
       }
@@ -620,6 +621,10 @@
             setMonthIdx(v);
           },
           noMargin: false,
+          // Which months close below the alert threshold, so the strip marks
+          // them rather than making you open each one to find out.
+          monthCloses: summaries.map((m) => m.close),
+          alertThreshold,
           matchingMonths: true && gq ? matchingMonths : null,
           onAddNextYear,
           nextYear: onAddNextYear ? activeYear + 1 : null

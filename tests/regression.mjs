@@ -1038,6 +1038,63 @@ await test('dark mode: charts render with theme colours', async () => {
     }
   });
 
+  // Marking paid and skipping are the two things people actually do to a row,
+  // and both used to live behind a kebab. They are gestures now: right pays,
+  // left skips. The grid's own change-month swipe excludes .ledger-row-wrap,
+  // so a drag that starts on a row belongs to the row — that exclusion is what
+  // this checks as much as the gesture itself.
+  await test('mobile: swiping a ledger row right marks it paid', async () => {
+    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Flow' }).tap({ force: true });
+    await page.waitForTimeout(800);
+    await page.locator('.ledger-row-wrap .budget-card-row').first().waitFor(V);
+    // Dispatched rather than driven through page.mouse: the handler ignores
+    // pointerType 'mouse' on purpose, because a swipe is a touch gesture and
+    // a mouse has the kebab. Playwright's mouse API cannot express the other.
+    const r = await page.evaluate(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const wrap = [...document.querySelectorAll('.ledger-row-wrap')]
+        .find((x) => x.querySelector('.budget-card-row [role=checkbox]').getAttribute('aria-checked') === 'false');
+      if (!wrap) return { err: 'no unpaid row on screen' };
+      const row = wrap.querySelector('.budget-card-row');
+      const b = row.getBoundingClientRect();
+      const y = b.y + b.height / 2, x0 = b.x + b.width / 2;
+      const fire = (t, x) => row.dispatchEvent(new PointerEvent(t, { pointerId: 9, pointerType: 'touch',
+        isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y }));
+      fire('pointerdown', x0);
+      const moved = [];
+      for (const dx of [14, 40, 80, 110]) { fire('pointermove', x0 + dx); await sleep(40);
+        moved.push(getComputedStyle(row).transform); }
+      fire('pointerup', x0 + 110);
+      await sleep(600);
+      return { moved, checked: row.querySelector('[role=checkbox]').getAttribute('aria-checked'),
+               sheet: !!document.querySelector('.modal-card') };
+    });
+    if (r.err) throw new Error(r.err);
+    if (!r.moved.some((t) => t !== 'none')) throw new Error('the row never followed the finger');
+    if (r.checked !== 'true') throw new Error('row not marked paid (aria-checked=' + r.checked + ')');
+    // A finished swipe still fires a click. If that click reaches the row the
+    // gesture also opens the edit sheet, on top of its own toast.
+    if (r.sheet) throw new Error('the swipe also opened the edit sheet');
+  });
+
+  // Adding an entry is the app's most common act and it should not cost you
+  // your place. It used to jump to Flow -> Entries, so composing from Today
+  // meant navigating back to whatever you had been reading.
+  await test('mobile: composing an entry does not leave the screen you are on', async () => {
+    for (const [hash, label] of [['#/today', 'Today'], ['#/plan/goals', 'Plan']]) {
+      await page.evaluate((h) => { location.hash = h; }, hash);
+      await page.waitForTimeout(700);
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('cf:quickadd')));
+      await page.waitForTimeout(500);
+      await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+      const at = await page.evaluate(() => location.hash);
+      if (at !== hash) throw new Error(label + ': compose navigated to ' + at);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(400);
+      if (await page.locator('.modal-overlay').count() > 0) throw new Error(label + ': Escape did not close the form');
+    }
+  });
+
   // A help bubble is up to 272px wide and hangs off a 15px control, so on a
   // 393px screen neither edge alignment fits — it has to slide until both ends
   // are on screen. It used to run off the right edge, taking the last line of
@@ -1080,6 +1137,36 @@ await test('dark mode: charts render with theme colours', async () => {
 
   await ctx.close();
 }
+
+// The month strip used to tell you only which month you were in. Finding the
+// month your balance dips below your buffer meant opening all twelve. Now each
+// pill carries its closing balance, and the ones that close under the
+// threshold are underscored in the rail's own colour.
+//
+// The shipped fixture is a comfortable year, so the marking never fires
+// against its $500 threshold. Raising the threshold rather than authoring a
+// second fixture keeps the money identical: same household, fatter buffer.
+await test('the month strip marks the months that close below the alert threshold', async () => {
+  const { ctx, page } = await ctxPage({ stub: (x) => x.replace(/alertThreshold: 50000/g, 'alertThreshold: 3000000') });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const pills = await page.evaluate(() => [...document.querySelectorAll('.month-pill')]
+    .filter((b) => /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/.test(b.textContent.trim()))
+    .map((b) => ({ m: b.textContent.trim(), title: b.getAttribute('title'),
+                   marked: getComputedStyle(b).boxShadow !== 'none', active: b.dataset.active === 'true' })));
+  if (pills.length !== 12) throw new Error(pills.length + ' month pills, expected 12');
+  const untitled = pills.filter((p) => !p.title || !/Closing balance/.test(p.title));
+  if (untitled.length) throw new Error('no closing balance on ' + untitled.map((p) => p.m).join(','));
+  const cents = (p) => Math.round(parseFloat(p.title.replace(/[^0-9.-]/g, '')) * 100);
+  // Marked exactly when it closes under the buffer. The active pill is drawn
+  // by its own fill, so it is the one legitimate exception.
+  for (const p of pills) {
+    const low = cents(p) < 3000000;
+    if (!p.active && low !== p.marked) throw new Error(p.m + ' closes ' + p.title + ' but marked=' + p.marked);
+  }
+  if (!pills.some((p) => p.marked)) throw new Error('no month marked at a $30,000 threshold');
+  await ctx.close();
+});
 
 await test('mobile dark mode: the active nav item is highlighted, not dimmed', async () => {
   const { ctx, page } = await ctxPage({ touch: true, dark: true });
