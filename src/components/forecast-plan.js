@@ -128,7 +128,7 @@
           // arbitrary days. Name the 1st of each month and the day the horizon
           // opens; everything else prints nothing.
           day: fmtDate(d, today.getFullYear()),
-          tick: i === 0 || d.getDate() === 1 ? fmtDate(d, today.getFullYear()) : "",
+          tick: (i === 0 && d.getDate() <= 25) || d.getDate() === 1 ? fmtDate(d, today.getFullYear()) : "",
           date: d,
           balance: bal
         });

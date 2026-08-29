@@ -61,9 +61,9 @@ const SCALE = 2;
 // what the thing looks like, and a full year of rows is both unreadable at the
 // width Help renders it and several hundred kilobytes.
 const SHOTS = [
-  { name: 'settings-years', hash: '#/settings', at: '#sec-years',
+  { name: 'settings-years', hash: '#/you', at: '#sec-years',
     prepare: async (page) => { await page.locator('#sec-years').scrollIntoViewIfNeeded(); } },
-  { name: 'entry-form', hash: '#/budget/entries', at: '.modal-card',
+  { name: 'entry-form', hash: '#/flow/entries', at: '.modal-card',
     prepare: async (page) => {
       await page.getByRole('button', { name: '+ Add Entry' }).first().click();
       await page.getByPlaceholder('e.g. Mortgage payment').fill('Hydro & gas');
@@ -73,20 +73,20 @@ const SHOTS = [
       await page.evaluate(() => document.activeElement && document.activeElement.blur());
       await page.waitForTimeout(200);
     } },
-  { name: 'budget-toolbar', hash: '#/budget', at: '.budget-toolbar-row, .forecast-exportbar-row', width: 560 },
-  { name: 'budget-grid', hash: '#/budget', at: '.forecast-table, .entries-table', maxHeight: 320 },
-  { name: 'row-menu', hash: '#/budget', at: '.ctx-menu-desktop',
+  { name: 'budget-toolbar', hash: '#/flow/list', at: '.budget-toolbar-row, .forecast-exportbar-row', width: 560 },
+  { name: 'budget-grid', hash: '#/flow/list', at: '.forecast-table, .entries-table', maxHeight: 320 },
+  { name: 'row-menu', hash: '#/flow/list', at: '.ctx-menu-desktop',
     prepare: async (page) => {
       await page.locator('.forecast-table tbody tr .row-menu-btn').first().click();
       await page.waitForTimeout(300);
     } },
-  { name: 'bva', hash: '#/budget/bva', at: '.cf-card', maxHeight: 300 },
-  { name: 'dashboard-kpis', hash: '#/dashboard', at: '.kpi-grid-4' },
-  { name: 'dashboard-upcoming', hash: '#/dashboard', at: '.cf-card',
+  { name: 'bva', hash: '#/envelopes', at: '.cf-card', maxHeight: 300 },
+  { name: 'dashboard-kpis', hash: '#/today', at: '.kpi-grid-4' },
+  { name: 'dashboard-upcoming', hash: '#/today', at: '.cf-card',
     prepare: async (page) => { await page.getByText('UPCOMING', { exact: false }).first().scrollIntoViewIfNeeded(); },
     pick: (page) => page.locator('.cf-card', { hasText: 'UPCOMING' }).first(), maxHeight: 260 },
   { name: 'plan-goals', hash: '#/plan/goals', at: '.cf-card' },
-  { name: 'settings-backup', hash: '#/settings', at: '#sec-backup',
+  { name: 'settings-backup', hash: '#/you', at: '#sec-backup',
     prepare: async (page) => { await page.locator('#sec-backup').scrollIntoViewIfNeeded(); } },
 ];
 

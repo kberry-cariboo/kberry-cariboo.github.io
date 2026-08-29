@@ -9,11 +9,14 @@
     const cats = categories || ctxCats.categories;
     const catColors = categoryColors || ctxCats.categoryColors;
     const color = getCatColor(category, cats, catColors);
-    return /* @__PURE__ */ React.createElement("span", { className: ("cat-chip " + className).trim(), style: __spreadValues({
-      background: color + "22",
-      color: chipInk(color, ctxCats.chipSurface),
-      border: `1px solid ${color}44`
-    }, style) }, category);
+    // A dot, not a filled pill. Category is an attribute of a row, not a
+    // verdict on it, and a list of twenty filled chips reads as confetti —
+    // which is exactly what drowns out the two or three amounts that do
+    // carry a warning. The hue still identifies the category; it just stops
+    // competing with the state colours for attention.
+    return /* @__PURE__ */ React.createElement("span", { className: ("cat-chip " + className).trim(), style: __spreadValues({}, style) },
+      /* @__PURE__ */ React.createElement("i", { className: "cat-dot", style: { background: chipDot(color, ctxCats.chipSurface) }, "aria-hidden": "true" }),
+      category);
   };
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green

@@ -17,9 +17,9 @@
         { steps: [
           ["Set your opening balance", "Settings → Budget Years holds the starting balance for your first budget year. Every later year carries forward from the one before it, so it is only entered once."],
           ["Add your recurring entries", "Pay, rent or mortgage, loan payments, utilities, subscriptions. Recurring entries fill the whole year from one definition."],
-          ["Set an alert threshold", "Settings → Alert Threshold. Balances below it are flagged amber on the Dashboard, in the Forecast and in the Budget grid; below zero is red."]
+          ["Set an alert threshold", "Settings → Alert Threshold. Balances below it are flagged amber on Today, in the Forecast and in the Budget grid; below zero is red."]
         ] },
-        { shot: ["settings-years", "Settings \u2192 Budget Years. The opening balance sits on the first year in the list; later years say what they carry forward from."] },
+        { shot: ["settings-years", "You \u2192 Budget Years. The opening balance sits on the first year in the list; later years say what they carry forward from."] },
         { p: "Everything is stored on your device first. If the app is configured with a Supabase project, your household's data also syncs to the cloud and to other devices signed in to the same household." }
       ]
     },
@@ -31,20 +31,20 @@
 
         { sub: "1. Set up your first budget" },
         { steps: [
-          ["Open Settings \u2192 Budget Years", "The avatar at the top right opens the menu; Settings is in it. On a phone, Settings is the last item in the bottom bar."],
+          ["Open You \u2192 Budget Years", "The avatar at the top right opens the menu; Settings is in it. On a phone, Settings is the last item in the bottom bar."],
           ["Type your opening balance", "What is in the account today. It goes on the first year in the list \u2014 every later year carries forward from the one before it, so you enter this once and never again."],
-          ["Add your income", "Budget \u2192 Entries \u2192 + Add Entry. Start with pay: choose Income, enter the amount of one paycheque, and set how often it repeats."],
+          ["Add your income", "Flow \u2192 Entries \u2192 + Add Entry. Start with pay: choose Income, enter the amount of one paycheque, and set how often it repeats."],
           ["Add the bills you already know", "Rent or mortgage, loans, utilities, subscriptions. One entry each, with its own schedule \u2014 a monthly bill entered once fills the whole year."],
-          ["Set an alert threshold", "Settings \u2192 Alert Threshold. Any projected balance below it is flagged amber; below zero is red. Pick the number that would actually worry you."]
+          ["Set an alert threshold", "You \u2192 Alert Threshold. Any projected balance below it is flagged amber; below zero is red. Pick the number that would actually worry you."]
         ] },
-        { p: "That is enough for a working forecast. The Dashboard will now show a balance for any date in the year." },
+        { p: "That is enough for a working forecast. Today will now show a balance for any date in the year." },
 
         { sub: "2. Add a recurring bill" },
         { steps: [
           ["Open the entry form", "+ Add on any budget view, or + Add Entry on the Entries list. Both open the same form."],
           ["Describe it and enter the amount", "Always a positive number \u2014 choosing Expense is what makes it subtract."],
           ["Pick the schedule", "Monthly on the 12th, every second Friday, the 1st and the 15th, every Monday and Thursday: all of these are one entry, not twelve."],
-          ["Set Ends on if it finishes", "A car loan with nine payments left stops generating occurrences after the last one, and the Dashboard flags it as ending soon."],
+          ["Set Ends on if it finishes", "A car loan with nine payments left stops generating occurrences after the last one, and Today flags it as ending soon."],
           ["Save", "The bill appears on every date it falls on, for the whole year, with the running balance adjusted after each one."]
         ] },
         { shot: ["entry-form", "The entry form. Describe it in words at the top fills the rest in for you when AI access is configured."] },
@@ -56,7 +56,7 @@
           ["Fill in Actual Amount Paid", "Leave it blank and the occurrence counts as paid exactly as scheduled. Fill it in and your running balance and Budget vs Actual use the real figure."],
           ["Save", "Only that date changes. The entry still says what you expect to pay, so next month is unaffected."]
         ] },
-        { p: "Settings \u2192 Audit lists the twenty most recent overrides, each with a one-click revert, if you want to check or undo what has been changed. In a household with more than one member each one names who made it, and the occurrence editor says so too \u2014 so \u201cwho moved the rent to the 3rd?\u201d has an answer. Entries carry their author the same way; open one and the form says who added it. Changes made before this existed have no author recorded and simply show nothing." },
+        { p: "You \u2192 Audit lists the twenty most recent overrides, each with a one-click revert, if you want to check or undo what has been changed. In a household with more than one member each one names who made it, and the occurrence editor says so too \u2014 so \u201cwho moved the rent to the 3rd?\u201d has an answer. Entries carry their author the same way; open one and the form says who added it. Changes made before this existed have no author recorded and simply show nothing." },
 
         { sub: "4. Change or skip a single date" },
         { p: "Right-click a row in the budget grid \u2014 long-press on touch, or use the \u22EE button at the end of the row \u2014 to open the row menu. Every option on it affects one date except Edit recurring entry and Delete entry, which affect all of them." },
@@ -80,7 +80,7 @@
         { sub: "6. Roll into next year" },
         { p: "Recurring entries without an end date flow into a new year on their own. What needs carrying over is everything else \u2014 and one button does all of it." },
         { steps: [
-          ["Add the year", "Settings \u2192 Budget Years \u2192 + Add <year>, or the + Add <year> pill at the end of the month strip once you are in November or December. Both do exactly the same work."],
+          ["Add the year", "You \u2192 Budget Years \u2192 + Add <year>, or the + Add <year> pill at the end of the month strip once you are in November or December. Both do exactly the same work."],
           ["Check what it says it did", "It reports the budget targets copied, the one-time entries brought forward, the modified occurrences carried over, and the occurrences it mirrored last year's amount pattern onto."],
           ["Fill in the gaps and re-run it if you like", "Copy \u2192 <year> on the earlier year syncs anything you have added since. It is safe to press repeatedly: it only ever adds what is missing, and never touches anything you have already edited in the new year."]
         ] },
@@ -89,11 +89,11 @@
         { sub: "7. Back up, and restore" },
         { p: "Export a backup before anything you are unsure about. The app reminds you every 30 days." },
         { steps: [
-          ["Settings \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, categories, holidays and receipt photos."],
+          ["You \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, categories, holidays and receipt photos."],
           ["Keep it somewhere that isn't this device", "That is the point of it."],
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
-        { shot: ["settings-backup", "Settings \u2192 Data Backup & Restore."] },
+        { shot: ["settings-backup", "You \u2192 Data Backup & Restore."] },
         { p: "Restoring replaces everything with what is in the file, and anything the file doesn't carry goes back to its default \u2014 which is why it asks first. The toast that follows offers one undo, for the few seconds it is up; after that the only way back is another backup." }
       ]
     },
@@ -106,7 +106,7 @@
         { defs: [
           ["Income", "Adds to the balance and to income totals."],
           ["Expense", "Subtracts from the balance and adds to expense totals."],
-          ["Transfer", "Moves money without counting as income or expense — it changes the running balance and appears in the In or Out column of every grid, but stays out of the income and expense totals and out of Budget vs Actual. When a year has any transfers, the Dashboard's monthly summary grows a Transfers column so each row still adds up: income, less expenses, plus transfers, is the surplus — and the surplus is always the movement in the closing balance beside it."]
+          ["Transfer", "Moves money without counting as income or expense — it changes the running balance and appears in the In or Out column of every grid, but stays out of the income and expense totals and out of Budget vs Actual. When a year has any transfers, Today's monthly summary grows a Transfers column so each row still adds up: income, less expenses, plus transfers, is the surplus — and the surplus is always the movement in the closing balance beside it."]
         ] },
         { sub: "How often it repeats" },
         { defs: [
@@ -115,11 +115,11 @@
           ["Semi-monthly", "The 1st-and-15th pattern, for pay that lands twice a month."],
           ["Monthly — last day", "The final day of every month, whatever its length: 28 February, 31 March, 30 April. Not the same as a monthly entry that happens to start on the last day — that one keeps the start date's day number, so one created in February stays on the 28th all year."],
           ["Monthly — nth weekday", "“The third Friday”, “the last Tuesday”. Pick which one and which weekday; both default to whatever your start date already is. “Last” and “fourth” are the same day in most months and different in the long ones, which is why they are separate choices. A month with only four of the chosen weekday has no fifth one, so a “fifth” entry simply doesn't occur in those months."],
-          ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and the Dashboard flags it as ending soon."]
+          ["Ends on", "Optional. A loan that finishes in September stops generating occurrences after it, and Today flags it as ending soon."]
         ] },
         { p: "Amounts are always entered as positive numbers — the type decides the sign. An amount of $0.00 is allowed but needs a note explaining it." },
         { sub: "Paydays that land on a closed day" },
-        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that by default, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on the Dashboard and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
+        { p: "Direct deposit doesn't arrive on a Saturday, a Sunday or a statutory holiday — it lands on the last banking day before. Any repeating income entry with “payroll” in its description is checked against that by default, so “Ken - Payroll (15th)” on Saturday 15 August is marked ↤ in the budget grid, on Today and in the Forecast; hover, tap or tab to the marker and it tells you the money is in the account on Friday the 14th, and why." },
         { p: "A guess from a description is only ever a guess, so any repeating income entry can say for itself. Its “Deposit date” setting offers “Paid the last banking day before” for a deposit the description doesn’t give away — a salary, a pension — and “Paid on the date shown” for money that arrives whatever the banks are doing. Left alone it keeps reading the description, which is what every entry did before the setting existed." },
         { p: "The occurrence itself does not move, on purpose. It stays on the payday, in the month you budgeted it, and every total, running balance and Budget vs Actual figure is worked out from that date. A 1st-of-month payday paid on the 31st of the month before would otherwise move income between two months' totals to fix what is really a display question — the marker answers it without touching your budget." },
         { p: "Which province's or territory's holidays apply is set in Settings → Statutory Holidays, and defaults to British Columbia. The built-in list is computed from that region's usual rules and includes the days it commonly treats as optional; each one is listed on the day it is observed and only there. Rules change and one-off days get proclaimed, so the built-in list is a baseline — the Fetch button replaces a year with what canada-holidays.ca publishes for your region, and any date can be added, edited or removed by hand. Outside Canada, add the days that matter to you by hand and the deposit rule works the same way." },
@@ -134,9 +134,9 @@
           ["Undo, generally", "Removing a category or a budget year, resetting a year of targets, removing a budget target and restoring a backup all raise the same undo toast. Ctrl+Z (Cmd+Z on a Mac) does the same thing as its button. Marking an occurrence paid has no toast \u2014 the tick is its own undo."]
         ] },
         { sub: "Marking things paid" },
-        { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and the Dashboard's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
+        { p: "The circle beside a row marks that occurrence paid. Paid rows dim and strike through, and Today's next-seven-days list drops them. Marking paid does not change any amount — it is a tick-off, not a reconciliation." },
         { sub: "Reconciling to your bank" },
-        { p: "Every balance in the app is projected: the year's opening balance, plus everything scheduled since. Reality drifts from that — cash spent, a rounding, a purchase nobody entered — so the Dashboard's “Balance today” tile has a Reconcile link. Enter what your account actually shows and the difference is recorded as a dated adjustment on today." },
+        { p: "Every balance in the app is projected: the year's opening balance, plus everything scheduled since. Reality drifts from that — cash spent, a rounding, a purchase nobody entered — so Today's “Balance today” tile has a Reconcile link. Enter what your account actually shows and the difference is recorded as a dated adjustment on today." },
         { p: "The adjustment is a transfer, not an expense, so it moves the balance without counting as spending: it stays out of your income and expense totals, out of Budget vs Actual and out of the category charts. It sits in the ledger on the day you made it and can be deleted like any other entry. Reconciling this way is why you never have to go back and edit January's opening balance, which would rewrite every month behind it." },
         { p: "To record that a bill actually cost something different, open Edit this occurrence and fill in Actual Amount Paid. Leaving it blank means “paid as scheduled”. An actual updates your running balance and Budget vs Actual totals without editing the plan, so next month still shows the amount you expect to pay." },
         { sub: "Getting entries in faster" },
@@ -151,22 +151,22 @@
     },
     {
       id: "help-budget",
-      title: "The Budget tab",
+      title: "The Flow tab",
       blocks: [
-        { p: "Five views of the same year. The month strip switches months; the year pills beside the logo switch budget years." },
-        { shot: ["budget-grid", "Budget \u2192 Monthly. The month splits at the 15th, today is marked, and the balance after every row is on the right."] },
+        { p: "Four lenses on the same timeline. Switching lens keeps the month, the account, the filters and the search you already had \u2014 which is what makes them lenses rather than tabs. The month strip switches months; the year pills beside the logo switch budget years." },
+        { shot: ["budget-grid", "Flow \u2192 List. The month splits at the 15th, today is marked, and the balance after every row is on the right."] },
         { shot: ["budget-toolbar", "Every grid carries the same toolbar: CSV and PDF export the view you are looking at, + Add opens the entry form."] },
         { defs: [
-          ["Monthly", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
+          ["List", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
           ["Calendar", "The same month laid out as a month: bills on the day they fall, the balance carried to the end of each day, and any day that drops below your alert threshold tinted — which is what makes the week where four bills land together visible at a glance. Pick a day to open what is on it. On a phone each day shows a dot per event and the same tint, and the day you pick opens below the grid."],
-          ["Budget vs Actual", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
-          ["Forecast", "A rolling 30, 60 or 90 days from today, across year boundaries. The chart at the top draws the balance day by day, with the low point and your alert threshold marked; the list below it is every event behind that line. Turn on \u201cWhat if\u2026\u201d to drop a recurring entry or put a different amount on it and see the second curve that would result \u2014 nothing there changes your budget, and it stays on the device you try it on."],
+          ["Envelopes", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
+          ["Curve", "A rolling 30, 60 or 90 days from today, across year boundaries. The chart at the top draws the balance day by day, with the low point and your alert threshold marked; the list below it is every event behind that line. Turn on \u201cWhat if\u2026\u201d to drop a recurring entry or put a different amount on it and see the second curve that would result \u2014 nothing there changes your budget, and it stays on the device you try it on."],
           ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
         { sub: "Accounts" },
-        { p: "A household\u2019s money lives in more than one place, so every entry belongs to an account \u2014 chequing, savings, a credit card, cash. Add and name them under Settings \u2192 Accounts. A credit card is an ordinary account here whose balance simply runs below zero; there is no separate arithmetic for it." },
+        { p: "A household\u2019s money lives in more than one place, so every entry belongs to an account \u2014 chequing, savings, a credit card, cash. Add and name them under You \u2192 Accounts. A credit card is an ordinary account here whose balance simply runs below zero; there is no separate arithmetic for it." },
         { p: "Every view adds all of them together unless you narrow it with the Account picker above the budget, which appears once you have more than one. Narrowing recomputes the running balance from that account\u2019s own share of the year\u2019s opening balance, over only its own events." },
-        { p: "There is one opening balance, set per budget year under Settings \u2192 Budget Years. Each account after the first says how much of it is sitting there, and the first account takes the remainder \u2014 so the shares always add up to the one figure you set, and saying \u201cmy savings opened with $10,000\u201d moves $10,000 of the household\u2019s opening balance into savings rather than conjuring it." },
+        { p: "There is one opening balance, set per budget year under You \u2192 Budget Years. Each account after the first says how much of it is sitting there, and the first account takes the remainder \u2014 so the shares always add up to the one figure you set, and saying \u201cmy savings opened with $10,000\u201d moves $10,000 of the household\u2019s opening balance into savings rather than conjuring it." },
         { p: "A transfer can now name a second account, which makes it one entry and two movements: out of the first, into the second. Each account\u2019s balance changes and the household\u2019s total does not, which is what a transfer between your own accounts actually does. A transfer with no destination keeps its old meaning \u2014 money leaving or arriving from outside the accounts you track." },
         { p: "Removing an account never removes money: the entries filed under it move back to your first account, unchanged." },
         { sub: "Rollover targets" },
@@ -177,7 +177,7 @@
         { p: "Dates are written the same way everywhere, in the format your Currency & Format setting chooses. The ledgers — Monthly, Calendar and Forecast — are scoped to one year, so a date inside that year reads “Aug 28” and only a date outside it carries the year. The Entries list holds definitions rather than a year's events, so it always shows the year." },
         { p: "Amounts follow one rule: a column that names the direction (the In and Out columns of the grids) shows a plain figure, and a single amount that has to carry both directions — the Entries list, and every card layout on a phone — is signed. Money in is green, money out is the ordinary text colour, and a transfer is blue wherever it appears." },
         { sub: "What differs on a phone" },
-        { p: "The same five destinations in the same order, named the same way, and the same five Budget sub-views — nothing is hidden at phone width. What changes is how much each view can afford to say: the grids become cards, and a Calendar day shows a dot per event rather than a line per event, with the day you pick opening below the grid." },
+        { p: "The same four destinations in the same order, named the same way, and the same four Flow lenses — nothing is hidden at phone width. What changes is how much each view can afford to say: the grids become cards, and a Calendar day shows a dot per event rather than a line per event, with the day you pick opening below the grid." },
         { sub: "The Forecast “vs Target” column" },
         { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [
@@ -190,9 +190,9 @@
     },
     {
       id: "help-dashboard",
-      title: "The Dashboard",
+      title: "Today",
       blocks: [
-        { p: "The Dashboard answers “am I all right?” at a glance, and every number on it is drawn from the same projection as the Budget tab." },
+        { p: "Today answers “am I all right?” at a glance, and every number on it is drawn from the same projection as the Budget tab." },
         { shot: ["dashboard-upcoming", "Upcoming \u2014 next 7 days. The circle beside each row ticks it off; ticked rows drop out of this list."] },
         { shot: ["dashboard-kpis", "The year as four numbers, each with a sparkline of its shape across the months."] },
         { defs: [
@@ -204,7 +204,7 @@
           ["Monthly summary and year-over-year", "The twelve-month table, exportable to CSV or PDF, and a comparison against your other budget years once you have more than one."]
         ] },
         { p: "Customize (top left) shows, hides and reorders each widget individually. Your layout is part of your data, so it syncs across your devices." },
-        { p: "When a projected balance drops below your alert threshold, a banner appears at the top of the Dashboard and Budget tabs; View alerts opens the full list, and Dismiss hides the banner until tomorrow." }
+        { p: "When a projected balance drops below your alert threshold, a banner appears at the top of the Today and Flow tabs; View alerts opens the full list, and Dismiss hides the banner until tomorrow." }
       ]
     },
     {
@@ -226,7 +226,7 @@
     },
     {
       id: "help-ai",
-      title: "AI Insights",
+      title: "Plan \u2192 Insights",
       blocks: [
         { p: "The AI features are optional and off until you configure access. They cover the yearly financial assessment, the monthly “what changed” summary, receipt scanning, CSV categorisation and natural-language entry capture." },
         { sub: "Two ways to give the app access" },
@@ -240,11 +240,11 @@
     },
     {
       id: "help-settings",
-      title: "Settings reference",
+      title: "You \u2014 settings reference",
       blocks: [
         { sub: "General" },
         { defs: [
-          ["Alert Threshold", "The balance you want to be warned about. Used for Dashboard alerts, Forecast warnings and the amber balances in the Budget grid."],
+          ["Alert Threshold", "The balance you want to be warned about. Used for the alerts on Today, the warnings on the Curve lens and the amber balances in the ledger."],
           ["Currency & Format", "The currency symbol, and where the thousands and decimal separators go. It changes how amounts are written, not what they are worth — nothing is converted. Only two-decimal currencies are listed, because amounts are stored as whole cents throughout the app. Shared with the household, so everyone sees the same figures the same way."],
           ["Appearance", "Light or dark theme. The choice is per device."],
           ["Notifications", "One notification a day at the hour you choose, listing every bill due that day with its amount, plus a warning when your forecast balance is heading below your threshold. With background delivery configured these arrive as ordinary system notifications whether or not the app is open; without it they only appear while the app is open."],
@@ -272,16 +272,16 @@
       blocks: [
         { p: "Shortcuts work whenever you are not typing in a field." },
         { keys: [
-          ["1–5", "Switch tabs, in order"],
-          ["D / B / P / A / S", "Dashboard · Budget · Plan · AI · Settings"],
-          ["F / R", "Budget → Forecast · Entries"],
+          ["1–4", "Switch tabs, in order"],
+          ["D / B / P / A / S", "Today · Flow · Plan · Insights · You"],
+          ["F / R", "Flow → Curve · Entries"],
           ["N", "Quick add entry"],
           ["/", "Focus search"],
-          ["←  →", "Previous / next month, in Budget"],
+          ["←  →", "Previous / next month, in Flow and Envelopes"],
           ["Esc", "Clear search / close"],
           ["?", "Open this page"]
         ] },
-        { p: "On a phone, swipe left or right across the budget grid to change months, and pull down at the top of the page to sync." }
+        { p: "On a phone, swipe left or right across the ledger to change months, and pull down at the top of the page to sync." }
       ]
     },
     {

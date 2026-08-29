@@ -12,7 +12,7 @@
   const HouseholdContext = createContext({ members: [], sessionUser: null, accounts: [], logActivity: () => {
   } });
   const { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell } = Recharts;
-  const LOGO_SRC = "data:image/png;base64,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";
+  const LOGO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAdAAAABgCAYAAACt4CPBAAAQAElEQVR4AezdC9BuVXkf8JPjAQJptWMz1KiB0IqKwY6lEzMebNIaMN6oKNXgmAjEkphCo8k0xoFqKQ6Ol5lU21qNxOJ1RCyGNKBEEjWJkqlOaWYgQsWKh2jqOKnTEMMXvnPQnN/B57BY7Mval/f2sRies27PbT177fXfa+317m/3rl27Kq1BDB71xBPPPeGM099Tr0cdj3UM1DFQx8BmjAHgefBa1f9XEYGDoPmyp1x47m3PuOrt9zzp0ldd/ojjH7N3V/2vRqBGoEagRmAjIlABdMmX6eAq878CTHTKG37lnY9+xt7jwoW/2Pe1GyNf0xqBGoEagRqB9Y5ABdAFX590lfmcj77r7pPOe9HZ37vniHuZ/esD+x+G5NVt3f6VT8tXqhGoEagRqBFY/whUAF3ANUpB85TvrjL3PPxvfQ+wDMrNqv/6bbe/L6+v5YVFoCquEagRqBGYFIEKoJPCd7+wrdl4nxmgqRUwogN3fes7ypVqBGoEagRqBHZGBCqAjryOVpknn/Wc3/IuM7Zmvc+0FQswkTwqMfHNP/j8HSV8ladGYEdEoHaiRmAHRKAC6ICLCDSxA02rzBPOf8kzASSwTEkdwovSvHJOtnfzulquEagRqBGoEVjvCKwNgAKn817+r25Bl1/xgS+h7f37t7sIDyKD6Jg73OnWrJ+anHH9+7cCEO+9e+vQtqxySqkPAaxpXZ7fc/c9B+oJ3DwqtVwjUCOwoAhUtTNFYGUACuyAHgAEknfe/IXf+PV3vu3x6Jyf/qnjUF8f8SAyiA666KSbjT4dfe1Ozf7g837i+OADmgGKkUbblHSrnsCdEr4qWyNQI1AjsPQILB1AARuAA3ZADwDO3Ws66WaDLTbHgulNF73lFX911127rTDDT3mkHKn8WALE9QTu2OhVuRqBGoEagdVEYBSADnUVeAGy7YNbsoANwA3VMZafLTYDTPkyRBdg++SLLzgKyH3fwx/+bSmiowk8taWEr43I1/efbdGp9TUCNQI1AusdgYUCKLACnMALkK06FHzgC5/4NsQfIGolCkTJAUnpHFRP4M4RxaqjRqBGoEZguRFYCIACJyAFrIDWcrvUb41PfONjP/f9HED0T6/9vX0Bove3jMsB4eEHiMbZqlI1AjUCNQI1AvNGYHYA9b4ROAGpeV2dXxsfbSvzuVT7H//n9zwxQBQAlsp18W3VA0Rd4altNQI1AjUCaxmB2QA0Vp2//s63PX4te9rhFJ+tRvWhg+1wU4Cod5iHKydkvGedIF5FlxiBaqpGoEagRiAiMAuAWsFtyqozOp6nVqP68LS9p70jb1tU2QGiuVaxi/Kx6q0RqBGoEagRaI7AZAD91Ysv+99WcM3qx9e+9wMfvjPo51/xyi+mFPXS8RaaJX//9z/+8tN/8p//ZnPrfbU+4ee3oXOAXz1AdF9M6781Av0RqBw1AusVgUkAatvz9Ze8+oSpXTryiCOOREDyuCc/6V/Kn3/eTz8u6Ip3/5eTU4p6KV4yz33eWde99pI336E81Z+b993aCqC+THTcS8883YncqVu4R+3afW/9AtHUq1XlawRqBGoEVhOB0QAKPG17TnEb4AG/0AEkx7wPJHPD7/z3F7zpsoufQBedwFh+KJ1y6tN/jb4mOe9IfZlojpUn/b5qVA8QiUSlGoEagXWPQPXvwREYDaBjwdMKEbhJAV4bWD3Y1fIaOoExG2yVbvXiveVz/+M1bZZ8Cxd4WnmiNr4h9Xwdwl95awRqBGoEagTWIwKDAdTKc3v//u0x7ttmJQfcpMsgtmz1hu02m8ATb1u7v8ASv/8Eojm1ybXVA2A62tprfY1AjUCNQI3AekdgEIACzzErT+B05MH3nLZZVxUOtmNFmvtghdoFnk+58NzbgKf3nrsa/gOGqgFi5JWDmuoOHHPUnnqAKCJU0xqBGoEagc2LQDGAjgFPwOR9ZBc4LTtkfOET39iWWqHKN5FDQ07cloAneSAqBZpIPq1Tjvp6gEg0KtUI1AjUCGxmBIoA1O88h648rToB0zq+4+MT32zrvvZN//7StksXh4bawJMccETyQVarf/bJG+9E8lEvDfD0Cb+t5X2BiOlKNQKNEfCzLfd4G7kPGgVrZXEETn7qj74ReSCXiilSlhYrqoxrFYFeAHVxh/7OE3ha6a1VTxucsa0LTBuadum3Q0NNbV11Po4AcH2tCPnsX4AmoEXkpW22tW8iiZkPUcREbNcip2gziWxiH3eiz9dde/Vz3eNt9Ppf/Xev24n9XmafTrj0wlce95qX/+LJF7zsJfKnvOFX3vkP3/pvf0P5UaedetEyfam25otAL4D6Os8Qcz/+489+9yaAZ1+fgCfgA3R9vNGO/8Bd3/rOJ198wVFRB0StRLVFnfefkd/0FGACSf0wVnyIIiZiuxY5RdtNn/3ML29/9zCaj3EAXzp2JNVOzR4B48XBvnUgZyS6OshHD9XmEimSN1f4KVuXbG1b7wh0AqiJbYj7wPOPbvzdXxgis468BrytV4M8Bb4uX4PvC6976/k5Xw6iPqCwyQeITF5WkgAQYAJJ+bzfJWVyPsYBfPHTK61UI9AXgbjn+vgW2W7H6ZE/9iOdH5NZBz8XGYOHsu5WADVJmthKg+N94k4AT0+TwNNTooEPREtjcNNFb3lF27ZsgCjd9+z69sM28QCRMeGhCthZSZbGpZQPmNIrrUBaGrWHLl/hvbnQAFlF9hlYBz/7fKzt4yLQCqBD3nt45+l94jgX1kfKC/1HP2PvcUO3VYDirVd85Mo28IweAlHvRD/xrHOO3NqwA0QADXAOeaiKfo9JA0htEY+RrzI1AjUCNQKLjkAjgDqVZ1uuxLifgeyEd55WVyf8zJkvTZ8W5a1Cu+KgHSje8ds3/GwXX7QBUR+j7wPb4F91Ki7ecQK0Vfhii9iqdxW2q80agRqBiRHY4eKNAOpUXmm//RyklHdd+YCEU3HhH+CMfFfq/YcDQkCxiy9vu+Xqjz0/r1vHsgcpq87Sh6lF9cGqF4gvSn/VWyNQI1AjMCYCDwJQk2apolNOffqvlfKuM5/V4DVnnLfHajL1U7kNTLV5/zEUPFP965y3ZTvkQWrRfQHi2/v3b3vYWbStqr9GoEagRqAkAg8C0NJ3mbZuuz68XmK8n2fxHFY2JmaWgGj8BAVAqkORj1QdYA1e5Z1EwHNVW7Z9cfSw08dT22sEIgLuWWcUhlLISVNK9crTK6300IzAAwDUj9sDTPrC0fUFnz7ZdWkHnlY2qT/6DxgBJNIWqXzcTE0/V9G+6TQHePrmsAcsqT9Z55CZFKlHY+Pk+rhuY+Wr3M6JgHuxrTfR5hWLMwpDKeSkKfn5GVInpfcbH77u+jY/av3OjsADAPSVv/Cv/0VJd02Im74SABQ5eEbfTdJxA0adcgBp189Vgn8TU9v36cpzSB+AonHhO8Pk4t24P1nnkJkUqUf48JPDP4R2wsPbkP5W3vER8Ipl0bQpZxrGR7FKtkXgMIB6t9QGKLmwCTGv26RyCVA0bedamd75wWtu2PSHh6Zr5fqPeecJAIEhUDQuSmODDz858vQ0+ZXX+b0x2by+lmsEagRqBJYdgcMA+uxTT391iXGrhhK+deWxTV0KFFaiQNPK82Mv/LljfGRhpz5tDvndb1xbX54CgFMBjTw9DqV1AamxV/qOPnzc3LR6PiUC7tkp8lW2RqAkAocBdO/T935vicDHP3vDm0v41pHHKss3WIf4FiDq8362gtpkAfOm/l6xazu7qb9AzvvNub885VAaIKU/tws8rVjz+lquEagRqBFYVQQOA2jJ9q2JzWphEc4CN1+dkS5CP51TfLcSpaOJ+AyYX3/Jqzu/idkku+o6vg9572kMALlF+k0/wAwbbC4KPPXfhy08ROS06PEY/WtL+RY+xcOZNOq0t8muop4/4Rs/kbJXJtpW4dNYmztBTsx9XS3IDhoy3tVp3wn9XGUfDgGoAV7ixFVXXnVzCd8QHhfRqUo/2PfVGalVnxtviJ4+Xjbo7eNraudjU33Upduffbwhsy7pOWede3GpL4AMuJXyT+EDmEB0bpuxUxDjwXi76crferaHiJzS8Yh/7jHZFB/3IlvGKt/CJw9n6qRRp10dfr6tYuyJJ/v84E/4xk+k7JWJNjxAdRV+NsV6WXUOIC7LltgCSTtmPg5z0nkvOjvIZ0rRcS8983R12p/z0XfdjReokh3qZ9iSIrpQ5KVDdbbxA32622hOW2LBDp2Rpnl1/DkEoI997GNPbHM6rZ/7/ZOb3o3VtPp147kxU/tj827aJhsl+rzn61q58jHVXfouucT2onkMEpNcqZ1lgWf4A0TnsKmfxpoJPHYK0msW9rpS/MYkHXR18Y5po5NuYMPWEB34+eZeMh6B8BD5MbxiypZ4sl+qw3gLP+kolat83REwmZvUgeKxz/tnfz/l9j64iwD8Cee/5JlkgcTQ6+K3sP4iDXCmyxfaIv+Dz/uJ4/mW+tOfb+bwqVW2tLIjRewpe8U2l61HnXbqRWxFP6SIPX2NHclDAFry/tNKgPBcZHvMTd+lz43pJu3i6WszMblp+/ia2q2Aut7z0c3HVLYklin/KvNDwN7p11X6OsZ2TAQm7L6xNkQ/XcAu9A+RzXnpMMbpzNvGlI1HIEx2UUBq3IspW+yMIbJ0LMrHMT4tSgZ4LUq38QM4T77gZS8BImz5Qhp78kg+J7xIPR5/fUoK8AJItfXR13/3s28gi4+8lH155A9zPOL4x+xVP4X0k3xuSx/C3jOvf+/2HLbYAZJs6UNK7CEx9/3zQwBqMBPqohs/c+Nfd7UPaRMM22MlMnwzwZTw5jxP23vaO8ZOTMDTCijXGWWTSJPuOVZMYWPRaVf/UtsenubefUj1LyLv+pigAd0i9NNJPzvyY8i2GR3G+Bj5Lhn9BqRj750u3U3jvou/q42PU2LYpXunt1ltATsrJUClvyb3IGUU5TQNUNCeEtBQBqS2d83Vym0Uu3OhO/iU5dkBRvJTyIrQSjN00I/ojzpAGqvEqBuTiivduay6sOcjGtp39wUIE7rt1i/+oXQOiqCX6jLBDLjJDqnVr1KQPiSQ/AMwusDFe5+2ScTElaha26z4lPq6SR8u0C+g0XZ95r4g7IxZRRlD3r3O7U+uz72T140pR1xLx8wQG2LoYWKIzEOd11arVac4AM+Y2KVBJnykjE+K5NVLc1KPJ4AUQAOUnC8tB5iQQ9FGl7zU+JEfS0AYQIY8O0iZfmnQVFslq1grb/Z2l27jdW1lUlRKJrcxN6GbbAiIerIv9SnlA55dq0gXx3ufVCbP48nr1q1cet3FY+gDzyr76rrPBRql/bCKGnrN+8ZQqe0+vjm23r/0pX33Gi+LjKuHiaEx7Op7Pql28W5aG/C00gqQ43/0N1J1KEAm0qiLMn6kPic8yIGjLhANMEnlyaGos4KM/NDUuGjzsUnXFFv0iW3quzoUddKYEw9tHjFdBwAAEABJREFU4WpcBk05zMO/UhAF0vjHUN9qKz1x26b/hEce/7S2tnWpL31XO/jk9Yo76PepY12YIlsyLsKvMePTg0xQ6OlL8c+x9e4MgXuvz97U9iExnGprU+WBp+1Vk7g+RBp5ZWCDDhxz1B7bu0g5pajDj8hrj7wyUicFooBMPidgksulPNqsINO6Ifnv/+ETz3rYMUd/T5sM/eGnPABs4+2rb+tjyIlbrLjV7e7aqsSA3IjSKWT16EacooOsG7lru8fkNPZJ2SflDAZ22qhE9xNPevw/aZNfl/qSfvB1jgmYnnUjY9p7btcccCI+SpF67epKSDz7bj568OCV7yI+sM8PebsiQcrIl5vwtOl52zv+039ra5uzPmLJlyB1Q22Ii/gMlWviN5E21W9ynVUgcLBlCzCQ/ugrkkfyAGfP3fcc8LH7W97+vg/5fnfQnW98939Uhw9/qkc5J3zA2HZu2/UBKsAll40yG22ywdOWHvtTz31Wutpu40vrx9qyehW7VFeaF/t0xb0b4KQMi8hPOczT5E/bdg+QdhM2yfTV9f1cpU9+k9pLB9eYSXAd4gB02vwwwQMfYOThse2BSb12vKhNX1pfsoKyFZrKNOUj7uzzo4lHnS834eGf8fveD3z4TvWIDu3yiyD6bQ+zHbHkS5A6beI9xH5JDIfo2ym87lmrQP0BaEHKwAml+Tsu/9AnfH7UTzucFjWOgowLdX6K4a9K+csyIU9HSuwoA2PAAmCUcwIqwCWvj3KXbPA0pfrdVJ/XhZ/qx9oia6UMrLviIY540cK3cAVg7GEeDraRd110R7uDHFanUR6SuslL3/GaFIboXkfeJx9/0gvW0a+5fDLAXdNUn7JrZ4JP60vzAKOPt+ThrWTrHPj02crbjV9yAaR9ryJy+SFlsWSrZHdCvLseaHK7JTHMZR4KZduYABFQmNyDrPoAhhio026lWfrNbvcKkL31io9cSZ6eNgIsVsDpvBu89ES+KSULnJrauur0Wx+7ePK2sbb0qysG2qy0U3tFADrlJyyALjU4Zz5067iDHGN0mwzc5KWyy1ixl/oylq/0wxlTrvtY3+aSc02BHtA0gStP0Q0wSuSNxRK+Nh4+t7WV1AeQ9k1oJbqaeIbeL3TwxTWQLyE7ViV8wKKPzzvDRdGDrnWfMw3tJX0gFoBo1QggEdD77Wf9zNG2afHQpV28lYeQFSmdQAKFrDyiWx2wftKlr7pcPicr2SawI49XOjRmtm+7Vrb0NtEYW+nqOvobuulTZ6UdddIiAMU4hpYBNmwEkA710WQ1dWIdanOT+D///7/yfzbJ39zXAL0xE0quSxkYS7toJ6/up9wvroEt367YRducZwiseqyapCn5Wg9K69K8tqC0PnQ5yBP+DklNxMHvd41NgBPtbalYIqCHxwrS6hR4Ko8lOoFyLg84wm+rO/kmIAQuTWBHPnQefeIP/dPI96VssJXKk1GH5NsI0KeA2MaX1rvOabkpL0Zp/cIAFLAtYztmrA2TQUywaUBq/v4I/Pmf3H71/aWa8469Lwqlq/s2PcaziaOtfZX1U+8XW74lDyEl29xD4pBPwGT9phDJN5G2oLQ9dAGStL4rn0/2yoj+z7/q0p8HgCFv9W2cmT+Rn/w1EX7teLsOVeIbQkBZHwPY5UOez5FvAifgkvIHb5r6HF9a7srbvtWe2lVmA2X1mg4TIC8BxBBwz9FHb9SlKUC+4/3XfDCtky8C0GMf9ZgjMJeSi2oiKOVfBd/UyWAVPlebq43AslbkDtK4oVfb2wdat3X7wJpxJXPDOMnNlconZWXbpVaMQEdMgCGgdF7EWQ7zJ2rrNV7teB2qVKaDrqljx8EiAARQUO6DE7lW4nm9sneEVtbyuSy5vA5fG9m+Faumdnra2vBHW2ks2lbG7NDngWnr9q98Wj6lIgB93OOOf1gq1JV3AV3ULp62Nu9JSrd52nSU1LNTwtfEU4G3KSq1rjQCJe+VTYzxWqJ0Aii1P5Zvrr8DPJeesf1YlZyJGNkiBZz88Lv47f37t82Xrrm6KUQHXTF2zMVjxg9Q9z7Tqos//JYieStn+SbdtnGd2NUeRMaKlpyf0PBL36O9KW3SnfMBenX0S3MC5E0r5ZxPuW1lHECMR1ykKRUBaCrQlT/5qT/6Rhewi6etDahx0DbPXE+7Tbb8do6dvK2WHxyB2EJ5cMtDs+Zv/9/tP5va8yEAYnI1GcbKwv011f5Y+bnumbn0jO3HKuQAJkCy6rRFCkBc1zl+F9/WH2PHXMyO8eNXCm28TfV/se9rNzbVqwNYwLVpfnB9A3SkgJOM351anfoCF7++8fWv7VffRnSHLD0pH/vq2GraVk15S7ZxA6zpTGUjz16bnd0+0xWMU1JOCM4YHY7eC0bIOtjz2kvefEeU50oBs99ATdFnYE6R3yTZH/k7P/QPNsnfPl+NUROJCcykMpSccO2z0ddunHv/3seXtsfKwv1l/PFbH/Qn5VtUfqi/i/JjU/V6R2ll5oCZ6wdAltkX4yd+pWDclNgG9LZxu3j3/MCxT2hqB5QBfk4IW3Ve9MJzfuxz/+Hyw39mre9B0vbtPbu+fXjnE4iFLeDNhvJWw7aqemTFy4+++8T2baqfbJB6wNpmZ3ffkwBFLoC0izzpdLW3tQG1ponpTZdd/IQ5b1x2AHObHyX1fRcidHz+5v95beTXMf3qV796e4lfcx/maLe5uBaHMgDO9sGtMmPURGICM6aHEh1zeDr1N5r81gf90bfSSXEO3zdNhwkwfLalh6IsVW4ibV2U6u3i0+YnKN5rG3vKXWTOM1cFWVzYNZM+9ZfO/zKKNrwlh7LCnvFr3EiNmb75DHAAq5DP07bVnYcFwGnl7YCUBz9jNuT57UEyynnKL/EFgNK8HbCzoZ4efjbxRV3fNm7b9i39QexEPk13l/yVFR1OhfK8mzivKylbZXaBmveNfbZL7NDRZadEBx7bCtI++vO7vvmFPp5Vtt+879bfLLGfDvoS/nXisdLkj0MZ69YPN6NJkH9TSd9iUvReyeQzVedOkje5Rn9MyCjKUuUm0tZFqd4uPm3mR9dJPicAaCwASXlznrkq6OhXveBnj/03L/slKcBC+37yh0/8X0ffvQev6+31Fx3muVx/W9mYiQcwOtr4uuoDoHKe73/4I590wT8+bQ+gRml79DGty/NWhDlwR7w97Mi7h0Iu317lF8KHR8ykTaTvKW/O4+BTrj/l2X3HN/f9UVqR510UFyqvj3LX4AieppReq8ymtrSObUFP64bk2aFjiEwbb+mWZnpx23Stsn6IfwbYKn0dY9uY9LSf37xjdC1KxgRp0ptTv3dqJkWriyF6dzKvVdCiqOQ+MhabwNO8dMrZz/+499q2M5teLbn3TO5AwzWSR8rxO1Rgww/jyTwXYIq/hPhmzPDTuGEz5GyTWu0BIhT18k6leq8bdeTIK+crTnUo5nG8ym1kRUh/W/s3Pnzd9WnbVsc2Lj1i1mZT/HKwDt3kPFzZzo66PN0t+HllWnZR0nKaFzAXIK0ryRs8XXpLdJTyzGmnZEtT30p9WyVfqZ8l325dZT+abI8Zk016Fl1n0jPhlV6LUn+sLkyIpfyVbzERaJofPTRZbZqXvOc74dILX9n2ZZ/wyiRuMo+yU66A7Tkffdfd33fkEX836qXmc+MKWNn2LR1b7hnjBpjSY/z8o61jDvy96/74y4AUAUwkf/zv/MntfsqCb/u7r0fIy5PPiR9ADEV/5XM+dWlfgXXKo+/579P1GV/IySNlBCDbtnH7wFpfU/t5/tApXJ3LG5Td3NImMjgErKmtr87g6ePJ27t8yXmjPEYmZJtSg6ypPq0r+ZlCyr+qfKmfY6/xKvoVN/MqbI+16eZ3P/j5Vtt9OEa3sSoeY2SrzPQIAIL03gngtPV67MEt2TOuf/8WK/fevfWdtkna2MCTEmAIsr34V9v7/1/anuadLTG2zINDxhYQNH74jxz+yUn9NWectwdfarMp71Wd9/62dv1FFzzAvwnUrAi1t5G+N8UlVqUAs0m2bRu3jZ8O8e06jYznEIA2TaZu6CZHCdl2EED5oeRiDpXBzxdPbvIlhJdMCW8JT7xT6+MtPaDTp2fR7UMOOnlYWrQ/U/W7PiU3c2rHpOLmNrmVEN5Ufs68n2/FZMcXK4ip+sXDe9GpeuaWn6Nvc/s0t76Ye2zTmvOsCo97zct/MbZebS0OsQk4gj8m/aN27b73Ecc/Zm/Ut6V8ScdWG9/c9a7zoVXw1e+5DFjqf9qPJlCzIgRcTb7odwBl3p6vSqOdPbEm66Em6qX+PJy0jax2u7ZvyR0C0PwgkRvYDY0hJ07c9NnP/HJeX1IWTBezhLeJx3sCOpra0jrgjzetm5p/8dkvfnKJjtIDOiW6FskzJD5jH5YW6X+uu2285nxA04Tm5japeA9vciuhP/jUpz6Z65u77P7gC738dC/yWXkMvf6SV5/gnh0jW2XGReBpe097h4dOY8wJXKsuK86YzIdoJTOEv4s3xha/zJFTxlWXHfqNWzzO2Oi/7d7oCzDTJs3Hpjpb1tpzIt8GlPqmPZdJy/nq1sNH2p7m+WG7Oq1ryh8CUEv9aBTUuIGjLk05mpZL8wKa2imVy/noMLHwM29Tp610Ms3lu8qe5rvatbE/Nj7kl02uSanNdd4OdBPadurri0kDaI69Rn/5A0c+us/GnO38dC/y2aTk4VE61MY5Z5178VCZyj8+AuYo140GY1NqFSSdgwIovAcFTGN0miONK/OlecDcNUZPKkOHe0xd9N8Y9g4yfAZM2qOcglrfipAcfdImclqWrbQt7FnVWt2mbWIXfqgPXnnUt32L5xCAyug8ElTlJjKJlkxUuawLFAHN28aUBZGfJhMDAMmr0zZGZ5eM7cGu9mhr2gqPtnVMnf4r9csDhKfqUv45+GLy6dNVctDJGDRp9Onqap/jS0Rd+vvaTMx4jHUTlftVuY+GfIqzT9cc7WPmkDnsrkLH1PnI+9GY2NPJXl+iXHqfkMmJf+Zmc6d51LhyrxhbxlnOH2VtePDGgx0d+T32jKvefo8PIugDCp/pyUHNijAHQHyILICUb6Ot27/yaQ8V0f4AW3d96zt0RKyAdW4r5Zfv275l5zCAeskrACqbyLsUk2hTW1edILtAXTxT2gwANEVHn2zr9m0mOASQMtGVFMXN9Sk1bivX++9S/il8wNqJQOOuT0/J6ehNuzZ9fTZRuV9L3suOuW/77Nf24REwgQ+VOvC5W68hE7JpKg+EvF/EM5XMB8aV+drYog9QIuCK5JE2PHjjwU5dTkDPu0T1QEkaZKtWHwLUvBNNATD4pGQBpHwb8R+frw8Fj3LkAWaseIE1YNfGB2mQsgeXKHelhwGU8TZGk5l3KW3tbfUmZ0Fua9+Eehe3ZAIyqLpiuK599eA0xDfvv0tX5EP0przGG7BWZ9wpy0+hOa7NnH+nckpfUlnvcN1naZjyN40AAAszSURBVF1T3jhuqq91y4tAOpmXWnVWIZWLvBQBIVuRc17f0BUpX90/SD6tV+6iAD2+Bp88kFIOUPNgDvi0qW+isN/UFnVth4y0A0zbuPwH1mIXfmhPKb50lNY15Q8DaFOjOi/EYzJTHkKbDp766hNc0j6aY5Lvs7GIdoPSNswQ3T5SsKj+ek2QjzflBntDXJ6Ft2SlW2LIDey+KuEt4dm0VwceNkv6VXnui4DVEKC5r9T871yrUNr9TtPPTBz+kdqGRZFXj6+EzC8Bik1gZcVpNbjnqSedKU9nE5+VrLY+csgo9OS8AFMdn1Ib4Z82pIxHvo86AdSN7lNofUqa2i33m+o3qc4kV7L61CdbGdJNJL6XrGLSvgE1YGeMpPVj8wBye//+7bZ4s+d6jNU/1U9PyG2+DfXJQ5n7Sp+Hylb+h14ErIaAQjrpp1Ew4VuF+mh9Wj8m/5QLz72NHTp3Hfwv0qa6g81F/wO/ttUl/Xy3IpRPFbIZ5ZL3kXgBX65HfRCdHgaU5XNefnpg0V5CnQDqHVSJkpzHS2Udyes3rdy1t5/2ZSj4pLLrkh+6lctvgGKMAFIAo24oARHyALJPFuiMtVNy0KjNPvC1dd3WPqRef8WNTPR5bJ/oQCUr49nvR4YrLSUCrp2JvmsVqv24l555usMxY50CnimQ0Rm60nzXNmnwp+lWdrgnB65UN7m8rG4IAWw2chl1oTvSnMeDigeWvL6t3AqgJrU2oa5624GlwNOlZ9VtJrrtgyuiEj/GgE+J3mXyuEmdwBtjEyCkACN2QAeFPnlkFand+BJfIEI++PrS1E7wlmxhsjMGqMh4SAhbU1L950eqQwz0STzYSttK8nT2xa9umZZEcr15vvC6t55vcu/z8qTzXnQ2IDQu+nijHa9VGfBUB2ikTaTNb1ub2trqzC1tgEVfyKV5dWTUAUTlUto6CNh9vPTSn/Op429e31ZuBFATXN9N2aQQeNoObGrbpDoTWT7Rtflv9Tkk4G161qHeCTzXcKwv2wcfOJDYAR2kjOSRVaT2MeOLX+ItTan0hC2gMrZT2ba8SQWokWnjGVpv67ZNRjzYYpOP7LfxRr3DXGIa5ba05CRzm2ytX2wETNglFswxfthvi3HXrl2NInQhW6LeY3YBqfFltYonf6dJR5MBoHPrFR+5sqmtrw4IksfXpl9bTnhLt29DVqzIhb2oVxf5ptRH+ods39LRCKClExIFQSa2nQCe+mMik5bQTlh9pv10DaeAaKpr7rwx1nQwzQ2jrcQe8AboAVTAChBJEbDRBpiAWonOEh42SvTh4SP79PKFXymp0+Ywl7SP3nv1ey7r46nti4tA18SdT/JdXvjbmukqtE027AFS4Gh1mROAtVq16gz+LtuAG4APBbPQuXVwVdhkJ61L8+T0byigkUO2mfu2vPEhdqQOGQ3ZviXTCKBDJiRK0E4Bkpic9KmPAI1Y9fFtWvs6gqjfOzaBZ8T2qiuvujnyJWkAFbACRFLkZzPaSnQM4WFjCD/e7YMrer7wKyV12vD0kQeLnThG+/q9U9tvuugtrzDhoxxw8j5rR3l9lPM2OqMtTa3MfEkJgKf1Q/Jjx2DJ14Ca/Og6jZvzp3Eo8jNR0Aig2rsmK+05dW1P5bzrWgaeJqdS/wBNKe+m8embw2Dr4LcHFb937PLF9jOw6OKZo22sDX2Yw/5QHUPv46H6K/9yI2CCB6KLsJoCSYAp8LQy8zdVp9pMt3FLdPFn7IpXnMiX2MGjn2NWu60ASumQQyWABwCR20Tiuz6U+u6vLJTybiqfw2B+jjQWNObot7+qA8xLdC0aLMSixI8mHn3wQLLMAz1i1+RLrdvsCAAHIArkbK0uojfAh/5vXPupL88BnnzcOriNK10WAUR9KLHnIWHo9i29nQA69KkeAAEiijeJ+Mz3Up8BytCTaPfr3qycmxUweZha5uRvy5Y9X2IZErEpINdlh16x6OLpa/NAgmcZq1HgOTR2fKu03AgAqjEWjcWPvfDnjvnTa39vH5BAY/R0yTgwNGXbNtfN59L+6o8Va65jSHkoIPJviH68nQCKweQpLSVABJBK+VfNx1c+D/FjaEyG6F5XXg9TfDP5e4CQXwTRDaz6tmzbbLsJAC89bTxD6umhj94hcl28VqN0imUX35g2/opfBc8x0VuMDDBYjOZduwAcoANM7KAptkLez2bGbp922QeKYaOLT3+m2nfP0tNlRxt/+CU/lHoBlEJPs9JSCkByVLpUZtl8fNv+7iGNIbZNTkP4dxqvyd8DhO1Ik/Uc/QswEVu6Dfypeumxas59LNVLjjw9pTJD+cQy+s7eUPmUn3z4O0f8Ut1z5913c+g08bXpWdTWZpu9vnrv2PiLUt45/AQ0tllzIM1tpXbTfPDZ8rQ1TNeixtDWwW1cK2f9ZjcnfmmTzkH6pD905bairI1f0qFUBKCeZoc+LW8fBCdH8R2/H+rUovn5xLehdkxQixpYQ31ZNb/tSOACADxgGR8mcdTnGx5EBmjiByZzx9aqmY/8syXMJlttpJ1P+MmRz3md9sWn34jeIOXbbv3iH+YyfWV9Z08s2KcfdcmxhQc/OfJN/nbpiDY6og9NqT4H7xwpe/xvsqWu5MMYxgrAsHJIyc8XTJi2NtXP4e9UHXd+8JobPvGsc46UPsjnyz/0iaFbjW3+BJACQXb87KSNN+oBDH4xs5oV12hbREq/35/e8vb3fYiPYhLEX/7ccTAmVsBz2Bdbnzg0FnJ7YVc9v8bYKwJQit3kBr78EHL83japFd8QuUXw8oEvfBqqX9/HTlBDbW0avwcs48MkjkyOQSZ3FGUpHkRm7MAdEiP+2RJmk33+pKQOaecT/jb9xgC+aKc3SJ0HC+kYEgv26Ud8Qqmv8urox4OfnPJYoiP60JTq81jdD5S7r8SeXJMtddGOp4sARk5xNgEYaOuSX1Zb+CTlU0rqpl6/vB/0sSEGgLGL8ODPdSyyzLcg/Q/iC1Keyyd66Guypx5pG9vfYgBlwMD21Cs/hGzpWvFZ+QGxIbJz8LIJOPnAl6E6PRXr+1C5yr9rlwGM1ikW/ElpnXxr8iX1Vb6Jp9bVCNQILD8CgwCUe556x4AoWSs/IOZrL0BN3SIpbLA5Bjj5Bjw9FctXqhGoEagR2NQIVL/nj8BgAOUCELWlKT+GfO0FqFkVzr0qBZp00s2Gd7FjfCSjjxU8RaJSjUCNQI1AjUAegVEASoktTQAjP5asCmNVGjqAHxCMcl+KlwzAxAs06aRbeSzpmz6Ola9yNQI1AjUCNQI7OwLlANoQBwDj5wwNTYOrrBQR8AOC8ogi4JiSOm0ILxmAqaxtKumTvk3VU+VrBGoEagRqBHZuBCYBqLA4dZieDFQ3JwFF4JiSujlthC7vdvVFn6KupjUCNQI1AjUCNQJNEZgMoJTGyUAHbpQ3kWzZercbfVmzPlR3agRqBGoEagTWLAKzAGj0yYEbP0K3kou6dU/5atVZt2zX/UpV/2oEagRqBNYrArMCqK75EbqVnBWd8joTH/laV53rfJXWwLfqQo1AjUCNQEMEZgfQsGFF54spQCrq1iXlE9/4uC4+VT9qBGoEagRqBDYrAgsD0AgDkAJWQMt2adQvO2WbD3zh07LtV3s1AjUCoyJQhWoE1jYCCwfQ6DnQsl267HekgNM7Trb5EP7UtEagRqBGoEagRmBKBJYGoOFkvCO1EgRsVoVALtqnpnTRSTcbgLO+45wa1SpfI1Aj8JCMQO10ZwSWDqCpN4DNqhDIATugd8rZz/84AASEQdpSinopXkQWD1100p3aqvkagRqBGoEagRqBOSPwNwAAAP//tXnDRwAAAAZJREFUAwBQ7cmFW788lwAAAABJRU5ErkJggg==";
   const DEFAULT_ALERT_THRESHOLD = 150000;
   const APP_VERSION = CF_VERSION;
   let _lastStorageErrorToastAt = 0;
@@ -84,104 +84,87 @@
   // 2.84, 3.11 and 4.09) because they're used for small text on white and on
   // the pale tints. If you brighten them back, re-run the contrast audit.
   const LIGHT = {
-    navy: "#1C2B3A",
-    navyMid: "#243447",
-    navyLt: "#2D4057",
-    bg: "#F7F4EF",
+    // Deep pine carries the chrome and every interactive fill. It replaces the
+    // brand navy: the palette's whole job here is that colour means state, so
+    // the one non-state colour has to be unmistakably "the app", not "a number".
+    navy: "#14413A",
+    navyMid: "#1A5049",
+    navyLt: "#226059",
+    // A cool ledger green-grey rather than the old warm cream — it is the
+    // paper the ink sits on, and it keeps the state colours honest.
+    bg: "#F5F7F4",
     bgCard: "#FFFFFF",
-    green: "#2ECC8A",
-    greenDk: "#1B7950",
-    greenLt: "#EAFBF3",
-    red: "#B34739",
-    redLt: "#FFF0EE",
-    amber: "#F5A623",
-    // Amber is legible as a fill or border but not as text: #F5A623 on white
-    // measures 2.02:1. Fills and borders keep the gold; text uses this darker
-    // ink so "over budget" / "today" markers are actually readable.
-    amberInk: "#8E6014",
-    amberLt: "#FFF8EC",
-    text: "#1C2B3A",
-    textMid: "#586878",
-    textLt: "#5B6C7D",
-    border: "#E8E4DD",
-    stripe: "#F7F4EF",
-    // Rows for dates already past. This used to be conveyed with opacity:0.7
-    // on the whole row, which dragged every colour in it below WCAG AA — the
-    // day column measured 2.97:1 and the green amounts 2.75:1. Fading the
-    // *surface* instead of the content keeps the "already happened" cue while
-    // the text stays at full strength.
-    pastBg: "#EFEBE4",
-    headerBg: "#1C2B3A",
-    headerText: "#ffffff",
-    inputBg: "#F7F4EF",
-    doneBg: "#EAFBF3",
-    shadowSm: "0 1px 3px rgba(28,43,58,0.06), 0 1px 2px rgba(28,43,58,0.04)",
-    shadowMd: "0 4px 12px rgba(28,43,58,0.08), 0 2px 4px rgba(28,43,58,0.04)",
-    shadowLg: "0 12px 32px rgba(28,43,58,0.12), 0 4px 8px rgba(28,43,58,0.06)",
-    shadowXl: "0 24px 60px rgba(28,43,58,0.18)",
-    accent: "#2F6FED",
-    accentLt: "#EAF1FE",
-    // Chip text = category hue mixed toward white by (100% - chipKeep).
-    // Light surfaces keep the full hue; dark surfaces lighten it so deep
-    // hues (indigo, dark red) stay readable on dark cards.
+    green: "#2C7657",
+    greenDk: "#1F6B4C",
+    greenLt: "#E7F3EC",
+    red: "#B3372B",
+    redLt: "#FBEBE8",
+    amber: "#C98A2E",
+    amberInk: "#8A5714",
+    amberLt: "#FBF1E1",
+    text: "#131A17",
+    textMid: "#4E5B54",
+    textLt: "#5C6862",
+    border: "#DDE3DE",
+    // `stripe` used to be byte-identical to `bg`, which made inactive sub-tab
+    // pills invisible in light mode (mobile audit §4.2). It is its own tone now.
+    stripe: "#EDF1EC",
+    pastBg: "#EDF0EB",
+    headerBg: "#14413A",
+    headerText: "#F2F6F2",
+    inputBg: "#F5F7F4",
+    doneBg: "#E7F3EC",
+    // A ledger is ruled, not stacked — the elevation comes from hairlines, so
+    // the shadows are barely there and exist only to lift genuine overlays.
+    shadowSm: "0 1px 2px rgba(10,20,16,0.04)",
+    shadowMd: "0 2px 6px rgba(10,20,16,0.06)",
+    shadowLg: "0 6px 24px rgba(10,20,16,0.10)",
+    shadowXl: "0 18px 48px rgba(10,20,16,0.16)",
+    // Transfers are the only thing this blue marks. It is a state, like the
+    // others, not a general-purpose accent.
+    accent: "#31607F",
+    accentLt: "#E9EFF5",
     chipKeep: "100%",
-    // Interactive fills (active pills, primary buttons, FAB). Same as the brand
-    // navy in light mode; dark mode needs its own value because there the navy
-    // doubles as a surface color and active states would vanish into it.
-    primary: "#1C2B3A",
-    // Navy on light surfaces is already ~12:1 as text; the token exists so
-    // .link-primary can use one name across both themes.
-    primaryInk: "#1C2B3A",
-    // Negative amounts rendered ON navy surfaces (totals rows) — --red is too
-    // dark against navy, so those cells use this lighter coral.
-    coral: "#FF8A7A"
+    primary: "#14413A",
+    primaryInk: "#14413A",
+    coral: "#FF9B8C"
   };
   const DARK = {
-    navy: "#0F1923",
-    navyMid: "#162230",
-    navyLt: "#1E3045",
-    bg: "#111921",
-    bgCard: "#1A2535",
-    green: "#2ECC8A",
-    greenDk: "#27AE73",
-    greenLt: "#16291F",
-    red: "#E8705F",
-    redLt: "#2A1515",
-    amber: "#F5A623",
-    // On dark surfaces the gold already clears AA (7.6:1 on the card), so the
-    // ink token is the same colour — it exists to keep the call sites uniform.
-    amberInk: "#F5A623",
-    amberLt: "#2A2010",
-    text: "#E8EDF2",
-    textMid: "#8FA3B8",
-    textLt: "#7F97AF",
-    border: "#243447",
-    stripe: "#1E2D3E",
-    pastBg: "#151E2A",
-    headerBg: "#0F1923",
-    headerText: "#ffffff",
-    inputBg: "#162230",
-    doneBg: "#16291F",
-    shadowSm: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
-    shadowMd: "0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.25)",
-    shadowLg: "0 12px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)",
-    shadowXl: "0 24px 60px rgba(0,0,0,0.6)",
-    accent: "#5B8DEF",
-    accentLt: "#1A2942",
-    primary: "#4E729C",
-    // `primary` doubles as an interactive fill here, so it can't just be
-    // lightened — that would wash out active pills and buttons. Links rendered
-    // *in* that colour need their own value (#4E729C on a card is 3.09:1, and
-    // 3.55:1 on the page bg — under AA on every dark surface).
-    //
-    // So the split is: --primary paints things (fills, borders, accent-color,
-    // icons — all non-text, which only need 3:1 under 1.4.11), --primaryInk
-    // colours text. Any new `color:var(--primary)` on a text node is a dark-mode
-    // AA violation waiting to happen; use --primaryInk. In light mode the two
-    // are the same navy, so the swap is invisible there.
-    primaryInk: "#7C97B6",
+    navy: "#0A1210",
+    navyMid: "#121A17",
+    navyLt: "#1E2B27",
+    bg: "#0E1412",
+    bgCard: "#161E1B",
+    green: "#4FB183",
+    greenDk: "#4FB183",
+    greenLt: "#12271E",
+    red: "#E07767",
+    redLt: "#2B1512",
+    amber: "#D2963F",
+    amberInk: "#D2963F",
+    amberLt: "#2A1F0F",
+    text: "#E4EBE6",
+    textMid: "#9AA9A1",
+    textLt: "#8A968F",
+    border: "#26312D",
+    stripe: "#1D2622",
+    pastBg: "#131A17",
+    headerBg: "#0A1210",
+    headerText: "#F2F6F2",
+    inputBg: "#121A17",
+    doneBg: "#12271E",
+    shadowSm: "0 1px 2px rgba(0,0,0,0.35)",
+    shadowMd: "0 2px 6px rgba(0,0,0,0.45)",
+    shadowLg: "0 6px 24px rgba(0,0,0,0.5)",
+    shadowXl: "0 18px 48px rgba(0,0,0,0.6)",
+    accent: "#7FA8CB",
+    accentLt: "#17232B",
     chipKeep: "60%",
-    coral: "#FF8A7A"
+    // --primary paints (fills, borders, icons — 3:1 under 1.4.11);
+    // --primaryInk colours text, which needs the full 4.5:1.
+    primary: "#3E8C7C",
+    primaryInk: "#78B7A6",
+    coral: "#FF9B8C"
   };
   // Contrast utilities (WCAG 2.1 relative luminance / ratio). Used to keep
   // category chips readable: a chip's text is its category hue drawn on a 13%
@@ -208,10 +191,6 @@
     const [hi, lo] = [relLuminance(a), relLuminance(b)].sort((x, y) => y - x);
     return (hi + 0.05) / (lo + 0.05);
   }
-  function blendOver(fg, bg, alpha) {
-    const f = hexToRgb(fg), b = hexToRgb(bg);
-    return rgbToHex(f[0] * alpha + b[0] * (1 - alpha), f[1] * alpha + b[1] * (1 - alpha), f[2] * alpha + b[2] * (1 - alpha));
-  }
   // Nudge `hue` toward black or white (whichever direction the surface calls
   // for) until it clears `target` against `bg`. Returns the hue unchanged when
   // it already passes, so brand colours that are fine stay exactly as chosen.
@@ -228,24 +207,24 @@
     }
     return towardWhite ? "#FFFFFF" : "#000000";
   }
-  // Chip ink, cached per (hue, surface). The surface is passed in rather than
-  // read from module state: a module variable can't trigger a React re-render,
-  // so chips rendered before a theme switch kept their old ink and dark mode
-  // ended up *worse* than before this was computed at all (~2.5:1). It comes
-  // through CategoriesContext so a theme change re-renders every chip.
+  // Category identity is a dot beside the name, not text on a tint, so what
+  // has to be legible is a solid fill rather than a hue on its own 13% wash.
+  // 3:1 is the non-text threshold (WCAG 1.4.11); the name beside it carries
+  // the meaning at full text contrast, so the dot only has to be *visible* —
+  // a pale olive or yellow at 1.4:1 on white was a dot you couldn't find.
   //
-  // Chip background is `hue + "22"` — the hue at 13.3% over the surface. The
-  // 5.2 target (rather than 4.5) is headroom: chips also sit on stripes,
-  // selected rows and past-row tints, which are a little different from the
-  // card colour this is computed against.
-  const _chipInkCache = /* @__PURE__ */ new Map();
-  function chipInk(hue, surface) {
+  // Cached per (hue, surface), and the surface is passed in rather than read
+  // from module state: a module variable can't trigger a React re-render, so
+  // dots drawn before a theme switch would keep ink computed for the old one.
+  // It arrives through CategoriesContext, which re-renders every one of them.
+  const _chipDotCache = /* @__PURE__ */ new Map();
+  function chipDot(hue, surface) {
     const surf = surface || "#FFFFFF";
     const key = hue + "|" + surf;
-    let v = _chipInkCache.get(key);
+    let v = _chipDotCache.get(key);
     if (v === void 0) {
-      v = readableInk(hue, blendOver(hue, surf, 0x22 / 255), 5.6);
-      _chipInkCache.set(key, v);
+      v = readableInk(hue, surf, 3);
+      _chipDotCache.set(key, v);
     }
     return v;
   }
@@ -359,12 +338,38 @@
     notes: "Notes",
     actions: ""
   };
-  const ROUTE_TABS = ["dashboard", "budget", "plan", "ai", "settings", "alerts", "help"];
+  // ── Destinations ────────────────────────────────────────────────────────
+  // Four places you go, one action you take, and everything about *you* behind
+  // the avatar. The five Budget sub-views became four lenses over one timeline
+  // (see ROUTE_FLOW_SUBS): they are lenses rather than tabs because the month,
+  // the account, the filters and the search all survive a switch between them,
+  // which four separate tabs could never do.
+  const ROUTE_TABS = ["today", "flow", "envelopes", "plan", "you", "alerts", "help"];
   // "daily" is still accepted so an old bookmark or a remembered sub-tab
   // resolves rather than silently falling back to Monthly; BudgetView forwards
   // it to calendar, the view that replaced it.
-  const ROUTE_BUDGET_SUBS = ["monthly", "calendar", "daily", "bva", "forecast", "entries"];
-  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt"];
+  const ROUTE_FLOW_SUBS = ["list", "calendar", "curve", "entries"];
+  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt", "insights"];
+  // Every route the app has ever published, pointed at where it lives now.
+  // Bookmarks, shared links and home-screen shortcuts outlive an information
+  // architecture, and a link that silently lands on the home screen is worse
+  // than one that errors — you cannot tell it went wrong.
+  const LEGACY_ROUTES = {
+    "dashboard": "today",
+    "budget": "flow/list",
+    "budget/monthly": "flow/list",
+    "budget/daily": "flow/list",
+    "budget/calendar": "flow/calendar",
+    "budget/forecast": "flow/curve",
+    "budget/entries": "flow/entries",
+    "budget/bva": "envelopes",
+    "ai": "plan/insights",
+    "settings": "you"
+  };
+  // The per-device sub-tab memory predates the lenses, so a device that last
+  // sat on "monthly" has to be told where that went — otherwise it falls back
+  // to the default and quietly loses the view the user left open.
+  const LEGACY_FLOW_SUBS = { monthly: "list", daily: "list", forecast: "curve", bva: "list", calendar: "calendar", entries: "entries" };
   // The name of a view, in one place. Two things read it: the visually-hidden
   // <h1> at the top of <main>, so a screen-reader user navigating by heading
   // can tell which of the twelve destinations they landed on; and
@@ -375,26 +380,26 @@
   // a heading that renamed the view it names would be worse than none.
   const APP_NAME = "CashFlow Budget";
   const VIEW_NAMES = {
-    dashboard: "Dashboard",
-    ai: "AI Insights",
-    settings: "Settings",
+    today: "Today",
+    envelopes: "Envelopes",
+    you: "You",
     alerts: "Alerts",
     help: "Help",
-    "budget/monthly": "Budget \u00b7 Monthly",
-    "budget/calendar": "Budget \u00b7 Calendar",
-    "budget/bva": "Budget \u00b7 Budget vs Actual",
-    "budget/forecast": "Budget \u00b7 Forecast",
-    "budget/entries": "Budget \u00b7 Entries",
-    "plan/debt": "Plan \u00b7 Debt Payoff",
-    "plan/strategy": "Plan \u00b7 Payoff Strategy",
-    "plan/goals": "Plan \u00b7 Savings Goals"
+    "flow/list": "Flow \u00b7 List",
+    "flow/calendar": "Flow \u00b7 Calendar",
+    "flow/curve": "Flow \u00b7 Curve",
+    "flow/entries": "Flow \u00b7 Entries",
+    "plan/debt": "Plan \u00b7 Debts",
+    "plan/strategy": "Plan \u00b7 Payoff",
+    "plan/goals": "Plan \u00b7 Goals",
+    "plan/insights": "Plan \u00b7 Insights"
   };
-  function viewName(tab, budgetSub, planSub) {
-    const sub = tab === "budget" ? budgetSub : tab === "plan" ? planSub : null;
-    return VIEW_NAMES[sub ? `${tab}/${sub}` : tab] || VIEW_NAMES.dashboard;
+  function viewName(tab, flowSub, planSub) {
+    const sub = tab === "flow" ? flowSub : tab === "plan" ? planSub : null;
+    return VIEW_NAMES[sub ? `${tab}/${sub}` : tab] || VIEW_NAMES.today;
   }
-  function viewDocTitle(tab, budgetSub, planSub) {
-    return `${viewName(tab, budgetSub, planSub)} \u2014 ${APP_NAME}`;
+  function viewDocTitle(tab, flowSub, planSub) {
+    return `${viewName(tab, flowSub, planSub)} \u2014 ${APP_NAME}`;
   }
   // How each kind of logged change is labelled in the Activity list. The kind
   // is stored rather than the label so the wording can be changed without
@@ -472,11 +477,20 @@
       // A malformed or inaccessible hash just means no deep link; the
       // default view is correct.
     }
+    // Retired routes are rewritten before anything is read out of them, so a
+    // three-year-old bookmark lands where the view actually is.
+    const mapped = LEGACY_ROUTES[raw] || LEGACY_ROUTES[raw.split("/")[0]];
+    // `redirected` matters to the caller: a hash that already names its view
+    // must not be re-pushed (that is what the hash-sync guard is for), but one
+    // the table rewrote *has* to be, or the address bar keeps showing a route
+    // the app no longer has.
+    if (mapped) raw = mapped;
     const [t, s] = raw.split("/");
     return {
       tab: ROUTE_TABS.includes(t) ? t : null,
-      budgetSub: ROUTE_BUDGET_SUBS.includes(s) ? s : null,
-      planSub: ROUTE_PLAN_SUBS.includes(s) ? s : null
+      flowSub: ROUTE_FLOW_SUBS.includes(s) ? s : null,
+      planSub: ROUTE_PLAN_SUBS.includes(s) ? s : null,
+      redirected: !!mapped
     };
   }
   function haptic() {

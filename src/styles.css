@@ -1,10 +1,7 @@
-@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/inter-var.woff2') format('woff2');}
-        @font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/inter-var.woff2') format('woff2');}
-        @font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-var.woff2') format('woff2');}
-        @font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/inter-var.woff2') format('woff2');}
-        @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/plexmono-400.woff2') format('woff2');}
-        @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/plexmono-600.woff2') format('woff2');}
-        @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/plexmono-700.woff2') format('woff2');}
+@font-face{font-family:'Schibsted Grotesk';font-style:normal;font-weight:400 800;font-display:swap;src:url('fonts/schibsted-var.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+        @font-face{font-family:'Schibsted Grotesk';font-style:normal;font-weight:400 800;font-display:swap;src:url('fonts/schibsted-var-ext.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+        @font-face{font-family:'Spline Sans Mono';font-style:normal;font-weight:400 600;font-display:swap;src:url('fonts/splinemono-var.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+        @font-face{font-family:'Spline Sans Mono';font-style:normal;font-weight:400 600;font-display:swap;src:url('fonts/splinemono-var-ext.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
         *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
         /* ── Container widths ────────────────────────────────────────────
            One measure for the whole app, declared once. Before this there
@@ -22,21 +19,23 @@
            dead gutter either side. The mobile column is fluid instead and
            fills what it's given, with the token left as the reference the
            card layouts are tuned against. */
-        :root{--container-w:1200px;--container-w-mobile:430px;--container-gutter:24px;}
+        :root{--font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+              --font-mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+              --container-w:1200px;--container-w-mobile:430px;--container-gutter:24px;}
         @media(min-width:1400px){:root{--container-gutter:40px;}}
         @media(max-width:768px){:root{--container-gutter:12px;}}
         @media(max-width:480px){:root{--container-gutter:10px;}}
         /* ── Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) ── */
-        .field-label{font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--textMid);
+        .field-label{font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--textMid);
           display:block;margin-bottom:6px;}
-        .field-input{font-family:Inter,sans-serif;font-size:13px;padding:9px 12px;
+        .field-input{font-family:var(--font-ui);font-size:13px;padding:9px 12px;
           border:1.5px solid var(--border);border-radius:8px;
           background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
         .field-input:focus{border-color:var(--navy);}
         .field-input.field-error{border-color:var(--red);background:rgba(232,93,74,0.08);}
-        .field-input--mono{font-family:'IBM Plex Mono',monospace;}
-        .field-error-text{font-family:Inter,sans-serif;font-size:11px;color:var(--red);margin-top:4px;}
-        .field-hint-text{font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);margin-top:4px;}
+        .field-input--mono{font-family:var(--font-mono);}
+        .field-error-text{font-family:var(--font-ui);font-size:11px;color:var(--red);margin-top:4px;}
+        .field-hint-text{font-family:var(--font-ui);font-size:10px;color:var(--textLt);margin-top:4px;}
         /* ── Field-level help (HelpTip) ──
            The "?" sits inline in a label, so it must not disturb the line it
            is in: no extra height, no baseline shift. The bubble hangs off the
@@ -54,7 +53,7 @@
            same line as it. */
         .checkbox-help-row{display:flex;align-items:center;}
         /* ── Settings → Statutory Holidays ── */
-        .holiday-year-pill{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+        .holiday-year-pill{font-family:var(--font-mono);font-size:12px;font-weight:600;
           padding:5px 12px;min-height:32px;border-radius:8px;cursor:pointer;
           border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);}
         .holiday-year-pill[data-active="true"]{background:var(--navy);border-color:var(--navy);color:#fff;}
@@ -64,15 +63,15 @@
         .holiday-row:last-child{border-bottom:none;}
         .holiday-row:nth-child(even){background:var(--stripe);}
         .holiday-date{color:var(--textMid);white-space:nowrap;}
-        .holiday-weekday{margin-left:6px;font-family:Inter,sans-serif;font-size:10px;color:var(--textLt);}
+        .holiday-weekday{margin-left:6px;font-family:var(--font-ui);font-size:10px;color:var(--textLt);}
         .holiday-name{flex:1;min-width:140px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-        .holiday-chip{font-family:Inter,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.04em;
+        .holiday-chip{font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:0.04em;
           text-transform:uppercase;padding:2px 6px;border-radius:20px;white-space:nowrap;
           background:var(--stripe);color:var(--textMid);border:1px solid var(--border);}
         .holiday-chip--manual{background:var(--accentLt);color:var(--accent);border-color:transparent;}
         .holiday-chip--published{background:var(--greenLt);color:var(--greenDk);border-color:transparent;}
         .holiday-chip--optional{background:var(--amberLt);color:var(--amberInk);border-color:transparent;}
-        .holiday-remove-btn{font-family:Inter,sans-serif;font-size:11px;font-weight:600;
+        .holiday-remove-btn{font-family:var(--font-ui);font-size:11px;font-weight:600;
           padding:4px 10px;min-height:30px;border-radius:6px;cursor:pointer;
           border:1px solid transparent;background:transparent;color:var(--red);}
         .holiday-remove-btn:hover{background:var(--redLt);}
@@ -87,7 +86,7 @@
         .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
           width:15px;height:15px;padding:0;border:none;border-radius:50%;cursor:help;
           background:var(--stripe);color:var(--textMid);
-          font-family:Inter,sans-serif;font-size:10px;font-weight:700;line-height:1;
+          font-family:var(--font-ui);font-size:10px;font-weight:700;line-height:1;
           transition:background 0.12s ease,color 0.12s ease;}
         .helptip-btn:hover,.helptip-btn[aria-expanded="true"]{background:var(--navyLt);color:#fff;}
         /* The weekend/holiday deposit marker. Same control as the "?" — it
@@ -104,7 +103,7 @@
              enough to the card behind it to lose its edge. */
           background:var(--navyMid);color:#fff;box-shadow:var(--shadowXl);
           border:1px solid rgba(255,255,255,0.16);
-          font-family:Inter,sans-serif;font-size:11px;font-weight:400;line-height:1.45;
+          font-family:var(--font-ui);font-size:11px;font-weight:400;line-height:1.45;
           letter-spacing:normal;text-transform:none;white-space:normal;text-align:left;
           opacity:0;visibility:hidden;transform:translateY(-2px);
           transition:opacity 0.12s ease,transform 0.12s ease,visibility 0.12s;}
@@ -120,14 +119,14 @@
         @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
-        .cf-card{background:var(--bgCard);border-radius:14px;border:1px solid var(--border);
-          box-shadow:var(--shadowSm);padding:20px 24px;transition:box-shadow 0.2s ease, transform 0.2s ease;}
+        .cf-card{background:var(--bgCard);border-radius:10px;border:1px solid var(--border);
+          padding:20px 24px;transition:border-color 0.15s ease;}
         .cf-card--flush{padding:0;overflow:hidden;}
         .modal-overlay{position:fixed;inset:0;background:rgba(90,90,97,0.4);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:16px;}
         .skip-link{position:absolute;left:-9999px;top:0;z-index:3000;
           background:var(--primary);color:#fff;padding:10px 18px;border-radius:0 0 8px 0;
-          font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-decoration:none;}
+          font-family:var(--font-ui);font-size:13px;font-weight:600;text-decoration:none;}
         .skip-link:focus{left:0;}
         /* Present to assistive technology, absent from the layout. Used for the
            per-view <h1>: the view already names itself in the nav and the
@@ -139,15 +138,15 @@
         .cf-visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
           overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;}
         /* Typography */
-        .cf-text-ui{font-family:Inter,sans-serif;}
-        .cf-text-mono{font-family:'IBM Plex Mono',monospace;}
-        .cf-text-mono-13{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+        .cf-text-ui{font-family:var(--font-ui);}
+        .cf-text-mono{font-family:var(--font-mono);}
+        .cf-text-mono-13{font-family:var(--font-mono);font-size:13px;}
         .cf-section-title-text{margin:0;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .cf-text-label{font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:var(--textMid);
+        .cf-text-label{font-family:var(--font-ui);font-size:11px;font-weight:700;color:var(--textMid);
           letter-spacing:0.06em;text-transform:uppercase;}
         /* Buttons */
-        .cf-btn{font-family:Inter,sans-serif;font-size:13px;font-weight:600;padding:9px 18px;
-          border-radius:8px;border:none;cursor:pointer;transition:filter 0.15s;}
+        .cf-btn{font-family:var(--font-ui);font-size:13px;font-weight:600;padding:9px 18px;
+          border-radius:7px;border:none;cursor:pointer;transition:filter 0.15s;}
         .cf-btn--primary{background:var(--primary);color:#fff;}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
@@ -228,8 +227,8 @@
         .table-collapse{width:100%;border-collapse:collapse;}
         /* Compound type styles that recur as a unit (extends the existing
            .tx/.txm/.txl/.lbl/.hint scale from round 3) */
-        .tx-sb{font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--text);}
-        .txm-11{font-family:Inter,sans-serif;font-size:11px;color:var(--textMid);}
+        .tx-sb{font-family:var(--font-ui);font-size:13px;font-weight:600;color:var(--text);}
+        .txm-11{font-family:var(--font-ui);font-size:11px;color:var(--textMid);}
         .text-9{font-size:9px;}
         /* Table header row (dark navy bg, used under .th cells) */
         .thead-row{background:var(--navy);}
@@ -246,8 +245,9 @@
         .relative{position:relative;}
         .inline-block{display:inline-block;}
         /* ── primitives.js ── */
-        .cat-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
-          padding:2px 7px;border-radius:10px;white-space:nowrap;}
+        .cat-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;
+          padding:0;border-radius:0;white-space:nowrap;color:var(--textMid);background:none;border:0;}
+        .cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block;}
         .sparkline-svg{display:block;overflow:visible;}
         .template-picker-btn{font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:5px;}
         .template-item{display:block;font-size:12px;}
@@ -427,7 +427,7 @@
           cursor:pointer;background:transparent;color:var(--amberInk);margin-right:auto;}
         .oem-save-btn{font-weight:700;padding:9px 24px;}
         .household-onboard-wrap{min-height:100vh;background:var(--headerBg);display:flex;
-          flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:Inter,sans-serif;}
+          flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:var(--font-ui);}
         .household-onboard-inner{width:100%;max-width:420px;}
         .household-onboard-header{text-align:center;margin-bottom:28px;}
         .household-onboard-logo{height:48px;margin-bottom:10px;}
@@ -440,7 +440,7 @@
         .household-mode-btn{font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;
           border:none;cursor:pointer;}
         .household-onboard-error{margin-top:8px;margin-bottom:8px;}
-        .household-submit-btn{width:100%;font-family:Inter,sans-serif;font-size:15px;font-weight:700;
+        .household-submit-btn{width:100%;font-family:var(--font-ui);font-size:15px;font-weight:700;
           padding:12px;border-radius:8px;border:none;background:var(--primary);color:#fff;
           transition:opacity 0.15s;margin-top:8px;}
         .household-signout-wrap{text-align:center;margin-top:20px;}
@@ -510,27 +510,27 @@
           font-size:13px;white-space:nowrap;animation:slideUpCentered 0.25s ease-out;}
         .undo-btn{font-size:12px;font-weight:700;padding:5px 14px;border-radius:8px;
           border:2px solid rgba(255,255,255,0.4);cursor:pointer;background:transparent;color:#fff;}
-        .undo-countdown{font-family:IBM Plex Mono,monospace;font-size:11px;color:rgba(255,255,255,0.5);min-width:12px;}
+        .undo-countdown{font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.5);min-width:12px;}
         .login-notconfigured-logo{height:48px;margin-bottom:20px;}
         .login-notconfigured-title{color:#fff;font-size:15px;font-weight:600;margin-bottom:8px;}
         .login-notconfigured-desc{color:rgba(255,255,255,0.55);font-size:13px;max-width:360px;line-height:1.6;}
         .login-header{text-align:center;margin-bottom:36px;}
         .auth-field-label{display:block;font-size:12px;font-weight:600;color:var(--textMid);
           text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
-        .auth-input{width:100%;font-family:Inter,sans-serif;font-size:15px;padding:10px 14px;
+        .auth-input{width:100%;font-family:var(--font-ui);font-size:15px;padding:10px 14px;
           border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);
           outline:none;box-sizing:border-box;}
         .auth-input--pw{padding:10px 44px 10px 14px;}
         .auth-pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);
           background:transparent;border:none;cursor:pointer;color:var(--textLt);padding:4px;display:inline-flex;}
         .remember-checkbox{width:15px;height:15px;cursor:pointer;accent-color:var(--primary);}
-        .remember-label{font-family:Inter,sans-serif;font-size:13px;color:var(--textMid);cursor:pointer;}
-        .auth-submit-btn{width:100%;font-family:Inter,sans-serif;font-size:15px;font-weight:700;
+        .remember-label{font-family:var(--font-ui);font-size:13px;color:var(--textMid);cursor:pointer;}
+        .auth-submit-btn{width:100%;font-family:var(--font-ui);font-size:15px;font-weight:700;
           padding:12px;border-radius:8px;border:none;background:var(--primary);color:#fff;
           transition:opacity 0.15s;}
         .login-footer-note{text-align:center;margin-top:20px;font-size:11px;color:rgba(255,255,255,0.3);}
         .lockscreen-wrap{position:fixed;inset:0;z-index:5000;background:var(--headerBg);display:flex;
-          flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:Inter,sans-serif;}
+          flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:var(--font-ui);}
         .lockscreen-inner{width:100%;max-width:380px;}
         .lockscreen-logo{height:44px;margin-bottom:16px;}
         .lockscreen-welcome{font-size:16px;font-weight:700;color:#fff;}
@@ -566,7 +566,7 @@
         /* ── forms.js ── */
         .required-mark{color:var(--red);margin-left:2px;}
         .entry-form-row2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
-        .recur-summary-chip{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--navyLt);background:var(--stripe);border-radius:6px;padding:3px 8px;border:1px solid var(--border);}
+        .recur-summary-chip{font-family:var(--font-mono);font-size:11px;color:var(--navyLt);background:var(--stripe);border-radius:6px;padding:3px 8px;border:1px solid var(--border);}
         .entry-form-date-row{display:flex;gap:16px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap;}
         .min-w-160{min-width:160px;}
         .repeats-toggle-row{display:flex;align-items:center;gap:12px;padding-bottom:2px;}
@@ -694,7 +694,7 @@
         .budget-bulkbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:1450;background:var(--navy);border-radius:26px;padding:8px 10px 8px 18px;box-shadow:var(--shadowXl);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);}
         .budget-bulkbar--accent{background:var(--primary);}
         .budget-bulkbar-count{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;}
-        .budget-bulkbar-total{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff;opacity:0.9;white-space:nowrap;}
+        .budget-bulkbar-total{font-family:var(--font-mono);font-size:13px;font-weight:700;color:#fff;opacity:0.9;white-space:nowrap;}
         .budget-bulk-markpaid-btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:18px;border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:#fff;}
         .budget-bulk-clear-btn{font-size:12px;font-weight:600;padding:8px 12px;border-radius:18px;border:1px solid rgba(255,255,255,0.35);cursor:pointer;background:transparent;color:#fff;}
         /* ── forecast-plan.js ── */
@@ -708,7 +708,7 @@
         .search-filter-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);margin-top:8px;}
         .forecast-danger-banner{background:var(--amberLt);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:16px;}
         .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
-        .forecast-lowest-value{font-family:'IBM Plex Mono',monospace;}
+        .forecast-lowest-value{font-family:var(--font-mono);}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         /* ExportBar's own box. It used to carry inline display/gap, which
            meant the toolbar could not be adjusted per breakpoint. */
@@ -750,7 +750,7 @@
         .wizard-step-subtitle--lh{line-height:1.5;}
         .wizard-amount-row{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:20px;}
         .wizard-dollar-lg{font-size:18px;color:var(--textMid);}
-        .wizard-openbal-input{font-family:'IBM Plex Mono',monospace;font-size:16px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;width:180px;}
+        .wizard-openbal-input{font-family:var(--font-mono);font-size:16px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;width:180px;}
         .wizard-btn-row{display:flex;justify-content:center;gap:10px;}
         .wizard-next-btn{font-size:13px;font-weight:700;padding:10px 28px;}
         .wizard-field-stack{display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto 20px;}
@@ -764,7 +764,7 @@
         .alert-banner-icon{color:var(--red);flex-shrink:0;}
         .alert-banner-title{font-size:13px;font-weight:700;color:var(--red);}
         .alert-banner-sub{font-size:13px;color:var(--textMid);margin-top:2px;}
-        .alert-banner-strong{font-family:'IBM Plex Mono',monospace;color:var(--red);}
+        .alert-banner-strong{font-family:var(--font-mono);color:var(--red);}
         .ai-header-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
         .ai-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
         .ai-subtitle{font-size:13px;color:var(--textMid);line-height:1.5;}
@@ -781,7 +781,7 @@
         .ai-skeleton-title{height:18px;background:var(--border);border-radius:6px;width:40%;margin-bottom:16px;}
         .ai-skeleton-line{height:12px;background:var(--stripe);border-radius:4px;margin-bottom:10px;animation:pulse 1.5s ease-in-out infinite;}
         .ai-score-badge{display:flex;align-items:center;gap:16px;padding:16px 20px;margin-bottom:16px;background:var(--bgCard);border-radius:12px;}
-        .ai-score-number{font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:700;line-height:1;}
+        .ai-score-number{font-family:var(--font-mono);font-size:32px;font-weight:700;line-height:1;}
         .ai-score-outof{font-size:16px;color:var(--textLt);}
         .ai-score-label{font-size:13px;font-weight:700;color:var(--text);}
         .ai-section-card{margin-bottom:0;}
@@ -809,7 +809,7 @@
         .vizrow-toprow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:3px;}
         .vizrow-label{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
         .vizrow-value{font-size:12px;white-space:nowrap;}
-        .vizrow-sub{color:var(--textLt);font-family:Inter,sans-serif;font-size:11px;}
+        .vizrow-sub{color:var(--textLt);font-family:var(--font-ui);font-size:11px;}
         .vizrow-track{height:8px;border-radius:4px;background:var(--border);overflow:hidden;}
         .vizrow-fill{height:100%;border-radius:4px;}
         .cashflow-chart-label{font-size:11px;color:var(--textLt);margin-bottom:6px;}
@@ -825,7 +825,7 @@
         .mt-14{margin-top:14px;}
         .mt-16{margin-top:16px;}
         .alert-row-icon{flex-shrink:0;}
-        .alert-row-balance{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;}
+        .alert-row-balance{font-family:var(--font-mono);font-size:14px;font-weight:700;}
         .caption-10{font-size:10px;color:var(--textLt);margin-top:2px;}
         .alert-row-cta{font-size:12px;color:var(--textLt);}
         .settings-header-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
@@ -839,7 +839,7 @@
         /* Sat as bare mono text against the page, which read as debug output
            left in by accident rather than a deliberate build stamp. Same
            chip treatment the rest of the app uses for small metadata. */
-        .build-version-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--textLt);
+        .build-version-tag{font-family:var(--font-mono);font-size:11px;color:var(--textLt);
           background:var(--stripe);border:1px solid var(--border);border-radius:12px;
           padding:2px 10px;align-self:center;white-space:nowrap;}
         .quicklink-pill{font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);text-decoration:none;white-space:nowrap;flex-shrink:0;}
@@ -856,7 +856,7 @@
         .settings-label{font-size:11px;font-weight:700;color:var(--textMid);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:8px;}
         .w-120{width:120px;}
         .year-row{display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:wrap;row-gap:8px;border-radius:8px;margin-bottom:6px;}
-        .year-number{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--text);min-width:52px;}
+        .year-number{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);min-width:52px;}
         .openbal-label{font-size:11px;color:var(--textMid);white-space:nowrap;}
         .openbal-input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;max-width:100%;min-width:0;flex:0 1 120px;}
         .year-active-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;}
@@ -888,7 +888,7 @@
         .flex-1-minw160{flex:1;min-width:160px;}
         .member-edit-input{max-width:260px;}
         .you-tag{color:var(--textLt);font-weight:400;}
-        .invite-code-display{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;letter-spacing:0.1em;text-align:center;padding:14px;border-radius:8px;background:var(--stripe);border:1px solid var(--border);color:var(--text);}
+        .invite-code-display{margin-top:14px;font-family:var(--font-mono);font-size:20px;font-weight:700;letter-spacing:0.1em;text-align:center;padding:14px;border-radius:8px;background:var(--stripe);border:1px solid var(--border);color:var(--text);}
         .italic-hint{font-size:13px;color:var(--textLt);font-style:italic;}
         .template-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
         .audit-entry{padding:10px 0;border-bottom:1px solid var(--border);}
@@ -929,7 +929,7 @@
         .amounts-row-baseline{display:flex;gap:10px;align-items:baseline;}
         .card-signed-amt{font-weight:600;}
         .card-balance-amt{font-weight:700;min-width:74px;text-align:right;}
-        .openbal-card-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--amberLt);border-bottom:1px solid var(--border);}
+        .openbal-card-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--stripe);border-bottom:1px solid var(--border);}
         .mno-700{font-weight:700;}
         .mno-700-green{font-weight:700;color:var(--green);}
         .mno-700-coral{font-weight:700;color:var(--coral);}
@@ -948,7 +948,7 @@
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
         .budget-th-actions{width:40px;padding:8px;text-align:center;background:var(--navy);}
         td.budget-th-actions{background:none;}
-        .openbal-row{background:var(--amberLt);}
+        .openbal-row{background:var(--stripe);}
         .budget-day-spacer-td{width:40px;padding:0;}
         .budget-label-cell{font-size:12px;font-weight:700;padding:8px 14px;color:var(--textMid);letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
         .budget-totals-label{font-size:12px;font-weight:700;padding:10px 14px;color:#fff;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
@@ -1040,7 +1040,7 @@
            it is the same kind of control as the account pickers in Settings,
            and next to the pill strips above and below it a bare white native
            select read as something the page had borrowed from the browser. */
-        .account-filter-select{font-family:Inter,sans-serif;font-size:13px;padding:8px 12px;
+        .account-filter-select{font-family:var(--font-ui);font-size:13px;padding:8px 12px;
           border:1.5px solid var(--border);border-radius:8px;
           background:var(--inputBg);color:var(--text);outline:none;min-height:38px;}
         .account-filter-select:focus{border-color:var(--navy);}
@@ -1104,7 +1104,7 @@
         .goal-title-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
         .goal-target-date{font-size:11px;font-weight:400;color:var(--textLt);margin-left:8px;}
         .goal-amounts-row{display:flex;align-items:center;gap:4px;}
-        .goal-amounts-text{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--textMid);}
+        .goal-amounts-text{font-family:var(--font-mono);font-size:12px;color:var(--textMid);}
         .goal-pct{font-weight:700;margin-left:8px;}
         .goal-row-cursor{cursor:context-menu;}
         .progress-track{height:6px;border-radius:3px;background:var(--border);}
@@ -1128,7 +1128,7 @@
         .modal-card-360{padding:24px;width:min(360px,calc(100vw - 32px));}
         .fundform-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
         .fundform-subtitle{font-size:12px;color:var(--textLt);margin-bottom:16px;}
-        .moneyinput-lg{font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
+        .moneyinput-lg{font-family:var(--font-mono);font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .label-amt-row{display:flex;justify-content:space-between;margin-bottom:3px;}
         .amt-mid-600{font-weight:600;color:var(--textMid);}
         .strat-card{flex:1 1 220px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
@@ -1136,8 +1136,8 @@
         .strat-card-sub{font-size:10px;color:var(--textLt);margin-bottom:10px;}
         .strat-card-row{display:flex;justify-content:space-between;margin-bottom:4px;}
         .strat-card-row-tight{display:flex;justify-content:space-between;margin-bottom:8px;}
-        .strat-value{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--greenDk);}
-        .strat-value-neutral{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--text);}
+        .strat-value{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--greenDk);}
+        .strat-value-neutral{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);}
         .strat-order{font-size:10px;color:var(--textLt);line-height:1.7;}
         .strat-extra-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--textMid);}
         .strat-extra-input{padding:5px 10px;width:90px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
@@ -1181,7 +1181,7 @@
            scroll. A six-figure balance did exactly that. */
         .glance-tile{background:var(--bgCard);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0;}
         .glance-tile-title{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--textLt);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .glance-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;font-size:16px;font-weight:700;overflow-wrap:anywhere;}
+        .glance-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:16px;font-weight:700;overflow-wrap:anywhere;}
         .glance-value-sub{font-size:10px;font-weight:400;color:var(--textLt);margin-left:6px;display:inline-block;white-space:nowrap;}
         .ending-soon-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
         .ending-soon-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;border-radius:20px;padding:7px 14px;}
@@ -1208,7 +1208,7 @@
         /* overflow-wrap for the same reason .kpi-card .kpi-value has it — the
            annual tiles are the other place a long amount can outgrow its card,
            and they were the pair that never got the treatment. */
-        .kpi-spark-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;overflow-wrap:anywhere;}
+        .kpi-spark-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;overflow-wrap:anywhere;}
         .kpi-warn-note{font-size:11px;color:var(--red);margin-top:4px;}
         .kpi-sub-note{font-size:11px;color:var(--textLt);margin-top:4px;}
         .dash-cat-bar-wrap{height:220px;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:8px;margin-top:4px;}
@@ -1239,7 +1239,7 @@
         .dash-td-14{padding:9px 14px;}
         .dash-amt-td-14{padding:9px 14px;text-align:right;}
         .dash-year-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-        .dash-year-label{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--text);}
+        .dash-year-label{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);}
         .yoy-empty-wrap{background:var(--stripe);border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;}
         .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
         .heat-inc-td{font-weight:600;color:var(--greenDk);}
@@ -1311,7 +1311,7 @@
           border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:1px;transition:color 0.15s;}
         .cf-footer-link:hover{color:rgba(255,255,255,0.7);}
         /* KPI stat card */
-        .kpi-card{background:var(--bgCard);border:1px solid var(--border);border-radius:12px;
+        .kpi-card{background:var(--bgCard);border:1px solid var(--border);border-radius:10px;
           padding:16px 20px;min-width:0;}
         .kpi-card .kpi-label{font-size:11px;color:var(--textMid);text-transform:uppercase;
           letter-spacing:0.1em;margin-bottom:6px;}
@@ -1321,7 +1321,7 @@
            border instead of wrapping. The font step-down at ≤360px below is
            what actually keeps realistic amounts on one line; this only stops
            an absurd one from escaping the card. */
-        .kpi-card .kpi-value{font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;
+        .kpi-card .kpi-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;
           font-size:20px;font-weight:700;color:var(--text);line-height:1;overflow-wrap:anywhere;}
         .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
         /* Value + sparkline row inside the annual KPI tiles: wrap instead of
@@ -1495,7 +1495,8 @@
           .holiday-remove-btn,.holiday-year-pill,.account-filter-select{min-height:44px;}
           .glance-action,.bva-set-target{position:relative;}
           .glance-action::after,.bva-set-target::after{
-            content:'';position:absolute;top:-15px;bottom:-15px;left:0;right:0;}
+            content:'';position:absolute;top:50%;transform:translateY(-50%);
+            height:44px;left:0;right:0;}
           /* The ✕ on a dialog header: an 18px glyph, and on a bottom sheet
              the first thing a thumb reaches for. Halo rather than growth so
              the header row keeps its height. */
@@ -1546,6 +1547,12 @@
            phone cards with the desktop tab bar. Now a narrow window is a
            narrow window whatever is pointing at it, and a wide tablet gets
            the wide layout. */
+        /* The compose button. It reads as the one action in a row of
+           destinations, so it gets a filled mark rather than a line icon —
+           and it sits in the middle, where a thumb naturally rests. */
+        .bottomnav-compose{padding-top:2px;}
+        .bottomnav-compose-mark{display:grid;place-items:center;width:42px;height:42px;
+          border-radius:13px;background:var(--primary);color:#fff;box-shadow:var(--shadowMd);}
         .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
           background:var(--bgCard);border-top:1px solid var(--border);
           padding-bottom:env(safe-area-inset-bottom);
@@ -1578,30 +1585,30 @@
         .modal-card{overscroll-behavior:contain;}
         tr{transition:background 0.12s ease;}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}}
-        input,select,button,textarea{font-family:Inter,sans-serif;}
+        input,select,button,textarea{font-family:var(--font-ui);}
 
         /* ── Typography tokens — apply to all data content ──────────── */
         /* Primary data text (descriptions, labels, names) */
-        .tx  {font-family:Inter,sans-serif;font-size:13px;color:var(--text);}
+        .tx  {font-family:var(--font-ui);font-size:13px;color:var(--text);}
         /* Secondary / metadata (categories, dates, schedule) */
-        .txm {font-family:Inter,sans-serif;font-size:13px;color:var(--textMid);}
+        .txm {font-family:var(--font-ui);font-size:13px;color:var(--textMid);}
         /* Muted (notes, hints, historical, inactive) */
-        .txl {font-family:Inter,sans-serif;font-size:13px;color:var(--textLt);}
+        .txl {font-family:var(--font-ui);font-size:13px;color:var(--textLt);}
         /* Monospace numbers (amounts, balances) */
-        .mno {font-family:'IBM Plex Mono',monospace;font-size:13px;}
+        .mno {font-family:var(--font-mono);font-size:13px;}
         /* Small caps section label (uppercase, letter-spaced) — intentionally 11px */
-        .lbl {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
+        .lbl {font-family:var(--font-ui);font-size:11px;font-weight:700;
               text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);margin:0;}
         /* Hint / help text below fields — intentionally 11px */
-        .hint{font-family:Inter,sans-serif;font-size:11px;color:var(--textLt);}
+        .hint{font-family:var(--font-ui);font-size:11px;color:var(--textLt);}
 
         /* Table header cells — standardized */
-        .th  {font-family:Inter,sans-serif;font-size:11px;font-weight:700;
+        .th  {font-family:var(--font-ui);font-size:11px;font-weight:700;
               text-transform:uppercase;letter-spacing:0.08em;color:#fff;padding:10px 14px;}
         /* Standard data table body cell */
-        .td  {font-family:Inter,sans-serif;font-size:13px;color:var(--text);padding:9px 14px;}
+        .td  {font-family:var(--font-ui);font-size:13px;color:var(--text);padding:9px 14px;}
         /* Mono table body cell (amounts) */
-        .tdm {font-family:'IBM Plex Mono',monospace;font-size:13px;padding:9px 14px;text-align:right;}
+        .tdm {font-family:var(--font-mono);font-size:13px;padding:9px 14px;text-align:right;}
         /* ── Budget Monthly grid columns ──────────────────────────────────
            Desktop: fixed layout + explicit widths so columns never shift
            between months. Mobile overrides live in the ≤480px block below. */
@@ -1821,7 +1828,7 @@
              place and "vs Actual" in another is two names for one view. */
           .budget-subtab-pill>svg{display:none!important;}
           .budget-subtabs-row{gap:6px!important;}
-          .budget-subtab-pill{min-height:44px!important;
+          .budget-subtab-pill{min-height:44px!important;min-width:44px!important;
             padding:4px 12px!important;display:inline-flex!important;align-items:center!important;
             justify-content:center!important;gap:0!important;font-size:11px!important;}
           .budget-subtabs{margin-left:-4px!important;margin-right:-4px!important;padding-left:4px!important;padding-right:4px!important;}

@@ -247,13 +247,16 @@
         // notifyStorageWriteFailure.
       }
     }, [tab]);
-    const [budgetSub, setBudgetSub] = useLS("cf_budget_subtab", "monthly");
-    const [planSub, setPlanSub] = useLS("cf_plan_subtab", "debt");
+    const [flowSubRaw, setFlowSub] = useLS("cf_budget_subtab", "list");
+    // The key keeps its old name on purpose: renaming a storage key silently
+    // resets every existing device on upgrade. Only the value vocabulary moved.
+    const flowSub = ROUTE_FLOW_SUBS.includes(flowSubRaw) ? flowSubRaw : (LEGACY_FLOW_SUBS[flowSubRaw] || "list");
+    const [planSub, setPlanSub] = useLS("cf_plan_subtab", "goals");
     const hashSyncGuard = useRef(false);
     const hashInitialized = useRef(false);
     useEffect(() => {
       const fromHash = parseTabHash();
-      if (fromHash.budgetSub) setBudgetSub(fromHash.budgetSub);
+      if (fromHash.flowSub) setFlowSub(fromHash.flowSub);
       if (fromHash.planSub) setPlanSub(fromHash.planSub);
     }, []);
     useEffect(() => {
@@ -263,7 +266,7 @@
       }
       let newHash;
       try {
-        newHash = "#/" + tab + (tab === "budget" && budgetSub ? "/" + budgetSub : "") + (tab === "plan" && planSub ? "/" + planSub : "");
+        newHash = "#/" + tab + (tab === "flow" && flowSub ? "/" + flowSub : "") + (tab === "plan" && planSub ? "/" + planSub : "");
         if (location.hash !== newHash) {
           // First sync on a hashless load replaces the entry instead of
           // pushing — otherwise the first Back press appears to do nothing.
@@ -275,7 +278,7 @@
         // A malformed or inaccessible hash just means no deep link; the
         // default view is correct.
       }
-    }, [tab, budgetSub, planSub]);
+    }, [tab, flowSub, planSub]);
     // Name the view in the one place the browser reads: the tab strip, the
     // history entry and the bookmark. Every one of them used to say
     // "CashFlow Budget", which made a back button through six views
@@ -283,7 +286,7 @@
     //
     // printView() swaps the title and puts it back, so this deliberately
     // does not reset it on unmount — it would race the restore.
-    const docTitle = viewDocTitle(tab, budgetSub, planSub);
+    const docTitle = viewDocTitle(tab, flowSub, planSub);
     useEffect(() => {
       try {
         document.title = docTitle;
@@ -301,6 +304,23 @@
         // hash write, which left the URL stuck on "#main-content" — a stale
         // deep link and a Back button pointing at the wrong view.
         if (!parsed.tab) return;
+        // A retired route is rewritten here rather than left to the sync
+        // effect below, because that effect only runs when one of the setters
+        // actually changes something — and "#/budget/monthly" while you are
+        // already on the List lens changes nothing, so the address bar would
+        // keep showing a route the app no longer has. replaceState, not push:
+        // Back should return to wherever you came from, not to the dead link.
+        if (parsed.redirected) {
+          try {
+            const canonical = "#/" + parsed.tab
+              + (parsed.tab === "flow" && parsed.flowSub ? "/" + parsed.flowSub : "")
+              + (parsed.tab === "plan" && parsed.planSub ? "/" + parsed.planSub : "");
+            if (location.hash !== canonical) history.replaceState(null, "", canonical);
+          } catch (e) {
+            // An inaccessible history just means the old hash stays in the
+            // address bar; the view underneath it is still the right one.
+          }
+        }
         hashSyncGuard.current = true;
         // The guard is normally consumed by the sync effect below — but that
         // effect only re-runs when one of these setters actually changes
@@ -312,7 +332,7 @@
           hashSyncGuard.current = false;
         }, 0);
         setTab(parsed.tab);
-        if (parsed.tab === "budget" && parsed.budgetSub) setBudgetSub(parsed.budgetSub);
+        if (parsed.tab === "flow" && parsed.flowSub) setFlowSub(parsed.flowSub);
         if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
       };
       window.addEventListener("popstate", onPopState);
@@ -327,13 +347,12 @@
       };
     }, []);
     useEffect(() => {
-      if (budgetSub === "grid") setBudgetSub("monthly");
       if (tab === "register") {
-        setTab("budget");
-        setBudgetSub("entries");
+        setTab("flow");
+        setFlowSub("entries");
       } else if (tab === "forecast") {
-        setTab("budget");
-        setBudgetSub("forecast");
+        setTab("flow");
+        setFlowSub("curve");
       }
     }, []);
     // Switching views keeps the old scroll offset (the app root is one shared
@@ -352,7 +371,7 @@
         // Scroll/focus restoration is cosmetic; failing it must not break
         // navigation.
       }
-    }, [tab, budgetSub, planSub]);
+    }, [tab, flowSub, planSub]);
     // Dialogs already move focus in (autoFocus / the trap below) and Escape
     // already closes every one of them, but on close focus fell to <body> —
     // so a keyboard user was returned to the very top of the tab order, ~32
@@ -527,18 +546,18 @@
       // Plan and Entries filter their own lists in place — don't yank the
       // user off the thing they are already searching the moment they type.
       if (tab === "plan") return;
-      if (tab === "budget" && budgetSub === "entries") return;
+      if (tab === "flow" && flowSub === "entries") return;
       // Starting a search shows results in the Budget monthly view (which
       // jumps to the most recent matching month), not the Entries list.
-      setTab("budget");
-      setBudgetSub("monthly");
-    }, [globalSearch, tab, budgetSub]);
+      setTab("flow");
+      setFlowSub("list");
+    }, [globalSearch, tab, flowSub]);
     // What the header search will actually search, from where the user is.
     const searchScopeLabel = useMemo(() => {
       if (tab === "plan") return "Search goals and debts";
-      if (tab === "budget" && budgetSub === "entries") return `Search ${activeYear} entries`;
+      if (tab === "flow" && flowSub === "entries") return `Search ${activeYear} entries`;
       return `Search ${activeYear}`;
-    }, [tab, budgetSub, activeYear]);
+    }, [tab, flowSub, activeYear]);
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
     useEffect(() => {
@@ -935,8 +954,8 @@
     useEffect(() => {
       const h = () => {
         // Jump to Entries and open its own "Add Entry" form.
-        setTab("budget");
-        setBudgetSub("entries");
+        setTab("flow");
+        setFlowSub("entries");
         setTimeout(() => window.dispatchEvent(new CustomEvent("cf:entries-open-new")), 50);
       };
       window.addEventListener("cf:quickadd", h);
@@ -990,21 +1009,21 @@
         switch (e.key) {
           case "d":
           case "D":
-            setTab("dashboard");
+            setTab("today");
             break;
           case "f":
           case "F":
-            setTab("budget");
-            setBudgetSub("forecast");
+            setTab("flow");
+            setFlowSub("curve");
             break;
           case "b":
           case "B":
-            setTab("budget");
+            setTab("flow");
             break;
           case "r":
           case "R":
-            setTab("budget");
-            setBudgetSub("entries");
+            setTab("flow");
+            setFlowSub("entries");
             break;
           case "p":
           case "P":
@@ -1012,11 +1031,12 @@
             break;
           case "a":
           case "A":
-            setTab("ai");
+            setTab("plan");
+            setPlanSub("insights");
             break;
           case "s":
           case "S":
-            setTab("settings");
+            setTab("you");
             break;
           case "n":
           case "N":
@@ -1033,10 +1053,10 @@
             }, 150);
             break;
           case "ArrowLeft":
-            if (tab === "budget") setBudgetMonth((v) => Math.max(0, v - 1));
+            if (tab === "flow" || tab === "envelopes") setBudgetMonth((v) => Math.max(0, v - 1));
             break;
           case "ArrowRight":
-            if (tab === "budget") setBudgetMonth((v) => Math.min(11, v + 1));
+            if (tab === "flow" || tab === "envelopes") setBudgetMonth((v) => Math.min(11, v + 1));
             break;
           default:
             break;
@@ -1258,11 +1278,10 @@
       toast(parts.length ? `Year ${y} added — ${parts.join(", ")}.` : `Year ${y} added — recurring entries carry forward automatically.`);
     };
     const tabs = [
-      { id: "dashboard", label: "Dashboard" },
-      { id: "budget", label: "Budget" },
-      { id: "plan", label: "Plan" },
-      { id: "ai", label: "\u2726 AI Insights" },
-      { id: "settings", label: "Settings" }
+      { id: "today", label: "Today" },
+      { id: "flow", label: "Flow" },
+      { id: "envelopes", label: "Envelopes" },
+      { id: "plan", label: "Plan" }
     ];
     if (authLoading) {
       return null;
@@ -1289,7 +1308,7 @@
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "budget" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "flow" || tab === "envelopes" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",
@@ -1363,6 +1382,10 @@
           className: "user-menu-backdrop"
         }
       ), /* @__PURE__ */ React.createElement("div", { className: "user-menu-panel" }, /* @__PURE__ */ React.createElement("div", { className: "user-menu-header" }, /* @__PURE__ */ React.createElement("div", { className: "user-menu-name" }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { className: "user-menu-email" }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
+        { label: "Settings", icon: "settings", action: () => {
+          setMenuOpen(false);
+          setTab("you");
+        } },
         { label: "Edit Profile", icon: "user", action: () => {
           setPf({ fullName: (sessionUser == null ? void 0 : sessionUser.fullName) || "", email: (sessionUser == null ? void 0 : sessionUser.email) || "" });
           setPfErr("");
@@ -1377,7 +1400,7 @@
         } },
         ...isCoarsePointer && bioAvailable && !(sessionUser && getBiometricCredId(sessionUser.id)) ? [{ label: "Set Up Fingerprint / Face Unlock", icon: "lock", action: () => {
           setMenuOpen(false);
-          setTab("settings");
+          setTab("you");
           setTimeout(() => {
             const el = document.getElementById("sec-security");
             if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
@@ -1496,7 +1519,7 @@
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, budgetSub, planSub)), showBackupNudge && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page backup-nudge", "data-noprint": true }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "backup-nudge-msg" }, /* @__PURE__ */ React.createElement("strong", null, "Time for a backup."), " It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement(
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), showBackupNudge && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page backup-nudge", "data-noprint": true }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "backup-nudge-msg" }, /* @__PURE__ */ React.createElement("strong", null, "Time for a backup."), " It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => dismissBackup(false),
@@ -1514,7 +1537,7 @@
       background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
       border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
       borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
-    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "low-balance-icon" }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "dashboard" &&/* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "low-balance-icon" }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
@@ -1543,7 +1566,7 @@
         apiKey: aiApiKey,
         isOffline
       }
-    ), tab === "budget" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: budgetSub, onChange: setBudgetSub }), /* @__PURE__ */ React.createElement(AccountFilter, { accounts, value: activeAccount, onChange: setAccountFilter }), (budgetSub === "monthly" || budgetSub === "calendar" || budgetSub === "daily" || budgetSub === "bva") && /* @__PURE__ */ React.createElement(
+    ), (tab === "flow" || tab === "envelopes") && /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "flow" && /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: flowSub, onChange: setFlowSub }), /* @__PURE__ */ React.createElement(AccountFilter, { accounts, value: activeAccount, onChange: setAccountFilter }), (tab === "envelopes" || flowSub === "list" || flowSub === "calendar") && /* @__PURE__ */ React.createElement(
       BudgetView,
       {
         flow: activeFlow,
@@ -1561,8 +1584,9 @@
         pushUndo,
         apiKey: aiApiKey,
         isOffline,
-        budgetSub,
-        setBudgetSub,
+        flowSub,
+        setFlowSub,
+        showEnvelopes: tab === "envelopes",
         monthIdx: budgetMonth,
         setMonthIdx: setBudgetMonth,
         alertThreshold: alertThresh,
@@ -1581,7 +1605,7 @@
         onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
         skippedOccurrences
       }
-    ), budgetSub === "forecast" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete, entries, scenarioOn, setScenarioOn, scenarioAdj, setScenarioAdj, scenarioFlows }), budgetSub === "entries" && /* @__PURE__ */ React.createElement(
+    ), tab === "flow" && flowSub === "curve" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete, entries, scenarioOn, setScenarioOn, scenarioAdj, setScenarioAdj, scenarioFlows }), tab === "flow" && flowSub === "entries" && /* @__PURE__ */ React.createElement(
       EntriesView,
       {
         entries,
@@ -1615,8 +1639,8 @@
         setFilterStatus: setEntriesFilterStatus
       }
     )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
-      setTab("budget");
-      setBudgetSub("forecast");
+      setTab("flow");
+      setFlowSub("curve");
     } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
       PlanView,
       {
@@ -1638,7 +1662,7 @@
         planSub,
         setPlanSub
       }
-    )), tab === "ai" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "settings" && /* @__PURE__ */ React.createElement(
+    )), tab === "plan" && planSub === "insights" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "you" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
         categories,
