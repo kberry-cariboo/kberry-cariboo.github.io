@@ -232,6 +232,15 @@
   // Forecast offers as its longest, and far enough out to catch the annual
   // bills that are exactly what a monthly view hides.
   const RUNWAY_DAYS = 90;
+  // "This row was planned at X and actually cost Y." A pure reading of one
+  // event, so it belongs with the other event helpers rather than inside the
+  // budget view — the shared ledger row needs it too, and a const declared
+  // inside a component is invisible to anything outside it.
+  function varianceTitle(ev) {
+    return ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount
+      ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded`
+      : void 0;
+  }
   // ── The balance rail ────────────────────────────────────────────────────
   // One rule for "how is the money doing here", declared once and used by
   // every surface that draws a running balance: the rail down the ledger, the

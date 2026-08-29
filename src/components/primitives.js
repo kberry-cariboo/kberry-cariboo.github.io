@@ -18,6 +18,91 @@
       /* @__PURE__ */ React.createElement("i", { className: "cat-dot", style: { background: chipDot(color, ctxCats.chipSurface) }, "aria-hidden": "true" }),
       category);
   };
+  // ── One ledger row ──────────────────────────────────────────────────────
+  // A dated occurrence looks and behaves the same wherever you meet it: the
+  // month ledger, a calendar day, the forecast, and this week on Today. Those
+  // four grew their own near-identical copies, and the copies drifted — the
+  // forecast's still painted its left stripe green for "paid" long after that
+  // stripe became the balance rail everywhere else, so the same row said two
+  // different things depending on which screen you were on.
+  //
+  // The tick does double duty where the caller asks it to: on the budget grid
+  // an unpaid row selects for bulk actions and a paid one un-pays, which is
+  // what onToggleSelect expresses. Without it the tick just marks paid.
+  const LedgerRow = ({
+    ev, alertThreshold = DEFAULT_ALERT_THRESHOLD, paid = false, selected = false, past = false,
+    dateLabel = null, onTogglePaid, onToggleSelect = null, onOpen = null, onMenu = null,
+    showBalance = true, categories, categoryColors
+  }) => {
+    const signed = signedAmount(ev);
+    const dim = paid ? "var(--textLt)" : null;
+    return /* @__PURE__ */ React.createElement("div", {
+      className: "budget-card-row",
+      onClick: onOpen ? () => onOpen(ev) : void 0,
+      onContextMenu: onMenu ? (e) => { e.preventDefault(); onMenu(e, ev); } : void 0,
+      style: {
+        background: selected ? "var(--stripe)" : paid ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
+        boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold),
+        cursor: onOpen ? "pointer" : "default"
+      }
+    },
+      /* @__PURE__ */ React.createElement("button", {
+        onClick: (e) => {
+          e.stopPropagation();
+          haptic();
+          if (onToggleSelect && !paid) onToggleSelect(ev.id);
+          else onTogglePaid(ev.id);
+        },
+        role: "checkbox",
+        "aria-checked": paid || selected,
+        "aria-label": (paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + ev.desc,
+        title: paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid",
+        className: "cf-checkbtn budget-card-checkbtn",
+        style: {
+          border: paid || selected ? "none" : "1.5px solid var(--border)",
+          background: paid ? "var(--greenDk)" : selected ? "var(--primary)" : "transparent"
+        }
+      }, paid || selected ? "\u2713" : ""),
+      /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" },
+        /* @__PURE__ */ React.createElement("div", { className: "card-top-row" },
+          /* @__PURE__ */ React.createElement("span", {
+            className: "tx card-desc-span", title: ev.desc,
+            style: { color: dim || "var(--text)", textDecoration: paid ? "line-through" : "none" }
+          }, ev.desc,
+            ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" },
+              /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 }))),
+          ev.category && /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { flexShrink: 0 } })),
+        /* @__PURE__ */ React.createElement("div", {
+          className: "card-bottom-row",
+          style: { justifyContent: dateLabel ? "space-between" : "flex-end" }
+        },
+          dateLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateLabel,
+            // Direct deposit does not arrive on a weekend or a statutory
+            // holiday. The marker travelled with the budget grid's own row and
+            // so was missing from the forecast and from this week on Today —
+            // the same payday, marked on one screen and not the next.
+            ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, {
+              icon: "\u21A4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev)
+            })),
+          /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" },
+            /* @__PURE__ */ React.createElement("span", {
+              className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)")
+              }
+            }, fmt(signed, true)),
+            showBalance && /* @__PURE__ */ React.createElement("span", {
+              className: "mno card-balance-amt", style: {
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)")
+              }
+            }, fmt(ev.balance))))),
+      onMenu && /* @__PURE__ */ React.createElement("button", {
+        onClick: (e) => { e.stopPropagation(); onMenu(e, ev); },
+        "aria-label": ev.desc + " actions", title: ev.desc + " actions",
+        className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
+      }, "\u22EE"));
+  };
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
   // for rising expenses), so it's gone — pass `color` explicitly if needed.

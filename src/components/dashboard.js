@@ -517,9 +517,18 @@
             isPaid ? "\u2713" : ""
           );
           if (isMobile) {
-            return /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "upcoming-item-mobile", style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-top" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-desc", style: {
-              textDecoration: isPaid ? "line-through" : "none"
-            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+            // The same row this week's occurrences get everywhere else, rail
+            // and all — this list used to draw its own, without one.
+            return /* @__PURE__ */ React.createElement(LedgerRow, {
+              key: ev.id,
+              ev,
+              alertThreshold,
+              paid: isPaid,
+              dateLabel: label,
+              onTogglePaid: toggleComplete,
+              categories,
+              categoryColors
+            });
           }
           return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
             textDecoration: isPaid ? "line-through" : "none"

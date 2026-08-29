@@ -310,7 +310,6 @@
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
-    const varianceTitle = (ev) => ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded` : void 0;
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -430,76 +429,21 @@
       } }), /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "period-hdr-td" }, label))
     );
     const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, className: "period-hdr-td" }, label);
-    const renderEventCard = (ev, opts = {}) => {
-      const hideDayLabel = !!opts.hideDayLabel;
-      const past = isPast(ev.day);
-      const isDone = !!completed[ev.id];
-      const isSel = selIds.has(ev.id);
-      const signed = signedAmount(ev);
-      return /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          key: ev.id,
-          className: "budget-card-row",
-          onClick: () => openOccurrenceEdit(ev),
-          onContextMenu: (e) => {
-            e.preventDefault();
-            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          style: {
-            background: isSel ? "var(--stripe)" : isDone ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
-            boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold)
-          }
-        },
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (e) => {
-              e.stopPropagation();
-              haptic();
-              if (isDone) toggleComplete(ev.id);
-              else toggleSel(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": isDone || isSel,
-            "aria-label": isDone ? "Mark unpaid" : isSel ? "Deselect row" : "Select row",
-            title: isDone ? "Paid — click to mark unpaid" : "Select to mark paid",
-            className: "cf-checkbtn budget-card-checkbtn",
-            style: {
-              border: isDone || isSel ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : isSel ? "var(--primary)" : "transparent"
-            }
-          },
-          isDone || isSel ? "✓" : ""
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "card-top-row" }, /* @__PURE__ */ React.createElement("span", {
-          className: "tx card-desc-span",
-          title: ev.desc,
-          style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎"), acctTag(ev)), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
-        } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
-        } }, fmt(ev.balance))))), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (e) => {
-              e.stopPropagation();
-              setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-            },
-            "aria-label": ev.desc + " actions",
-            title: ev.desc + " actions",
-            className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
-          },
-          "⋮"
-        )
-      );
-    };
+    const renderEventCard = (ev, opts = {}) => /* @__PURE__ */ React.createElement(LedgerRow, {
+      key: ev.id,
+      ev,
+      alertThreshold,
+      paid: !!completed[ev.id],
+      selected: selIds.has(ev.id),
+      past: isPast(ev.day),
+      dateLabel: opts.hideDayLabel ? null : "Day " + ev.day,
+      onTogglePaid: toggleComplete,
+      onToggleSelect: toggleSel,
+      onOpen: openOccurrenceEdit,
+      onMenu: (e, row) => setBudgetCtx({ x: e.clientX, y: e.clientY, ev: row }),
+      categories,
+      categoryColors
+    });
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
