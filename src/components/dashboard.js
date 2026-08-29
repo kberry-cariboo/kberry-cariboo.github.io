@@ -308,7 +308,44 @@
         return null;
       }
     }, [flow, openBal, activeYear, completed]);
+    // ── The runway ──────────────────────────────────────────────────────
+    // The tiles answer "where am I now" and "how bad does it get"; between
+    // them sat the question neither could show — *when*. A low point 40 days
+    // out reads the same as one tomorrow, and a single dip reads the same as
+    // three lean weeks. This is the projection drawn as one continuous strip,
+    // a day per segment, tinted by the same railTone rule the ledger uses, so
+    // "am I all right?" is answered by shape before any figure is read.
+    const runway = useMemo(() => {
+      try {
+        const now = /* @__PURE__ */ new Date();
+        const isCurrentYear = now.getFullYear() === activeYear;
+        const todayM = isCurrentYear ? now.getMonth() : 0, todayD = isCurrentYear ? now.getDate() : 1;
+        const start = new Date(activeYear, todayM, todayD);
+        // The last event on a day sets that day's closing balance; a quiet day
+        // carries the one before it, which is what makes the strip continuous
+        // rather than a scatter of the days something happened.
+        const closeByOffset = /* @__PURE__ */ new Map();
+        flow.forEach((ev) => {
+          const off = Math.round((new Date(activeYear, ev.month, ev.day) - start) / 864e5);
+          if (off >= 0 && off <= RUNWAY_DAYS) closeByOffset.set(off, ev.balance);
+        });
+        let bal = getCurrentBalance(flow, openBal, activeYear);
+        const days = [];
+        for (let i = 0; i <= RUNWAY_DAYS; i++) {
+          if (closeByOffset.has(i)) bal = closeByOffset.get(i);
+          days.push({ balance: bal, date: new Date(start.getTime() + i * 864e5) });
+        }
+        const under = days.filter((d) => d.balance < alertThreshold).length;
+        const negative = days.filter((d) => d.balance < 0).length;
+        const low = days.reduce((lo, d) => d.balance < lo.balance ? d : lo, days[0]);
+        return { days, under, negative, low, start, end: days[days.length - 1].date };
+      } catch (err) {
+        console.error("dashboard runway computation failed, hiding the strip", err);
+        return null;
+      }
+    }, [flow, openBal, activeYear, alertThreshold]);
     const DASH_WIDGET_DEFS = [
+      { id: "runway", label: "Runway \u2014 next 90 days", size: "full" },
       { id: "balanceToday", label: "Balance today", size: "third" },
       { id: "nextLow", label: "Next low point", size: "third" },
       { id: "dueMonth", label: "Due rest of month", size: "third" },
@@ -383,6 +420,36 @@
     // readouts already did this; the three that painted a healthy balance
     // green made the genuinely alarming ones harder to pick out.
     const WIDGET_RENDER = {
+      runway: () => runway && /* @__PURE__ */ React.createElement(Card, { className: "runway-card" },
+        /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Next 90 days"),
+        /* @__PURE__ */ React.createElement("div", {
+          className: "runway-bar",
+          role: "img",
+          // The strip is a picture of a number, so it says the number: a
+          // reader who cannot see the colour still gets the low point, the
+          // date it falls on and how much of the horizon is under water.
+          "aria-label": "Projected balance for the next 90 days. Low point " + fmt(runway.low.balance)
+            + " on " + MONTHS[runway.low.date.getMonth()] + " " + runway.low.date.getDate() + ". "
+            + (runway.negative > 0
+              ? runway.negative + (runway.negative === 1 ? " day" : " days") + " projected overdrawn."
+              : runway.under > 0
+                ? runway.under + (runway.under === 1 ? " day" : " days") + " below your " + fmt(alertThreshold) + " alert threshold."
+                : "Every day stays above your " + fmt(alertThreshold) + " alert threshold.")
+        }, runway.days.map((d, i) => /* @__PURE__ */ React.createElement("i", {
+          key: i,
+          className: "runway-seg",
+          style: { background: railTone(d.balance, alertThreshold) }
+        }))),
+        /* @__PURE__ */ React.createElement("div", { className: "runway-scale" },
+          /* @__PURE__ */ React.createElement("span", null, "Today"),
+          /* @__PURE__ */ React.createElement("span", null, MONTHS[runway.days[45].date.getMonth()], " ", runway.days[45].date.getDate()),
+          /* @__PURE__ */ React.createElement("span", null, MONTHS[runway.end.getMonth()], " ", runway.end.getDate())),
+        /* @__PURE__ */ React.createElement("div", { className: "runway-note" },
+          runway.negative > 0
+            ? /* @__PURE__ */ React.createElement("span", { className: "runway-note-bad" }, "Projected overdrawn on ", runway.negative, runway.negative === 1 ? " day" : " days")
+            : runway.under > 0
+              ? /* @__PURE__ */ React.createElement("span", { className: "runway-note-warn" }, runway.under, runway.under === 1 ? " day" : " days", " below your ", fmt(alertThreshold), " threshold")
+              : /* @__PURE__ */ React.createElement("span", null, "Above your ", fmt(alertThreshold), " threshold the whole way"))),
       balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
         color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amberInk)" : "var(--text)"
       } }, glance ? fmt(glance.balanceNow) : "\u2014"), glance && addEntry && /* @__PURE__ */ React.createElement(

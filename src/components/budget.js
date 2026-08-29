@@ -448,7 +448,7 @@
           },
           style: {
             background: isSel ? "var(--stripe)" : isDone ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
-            boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent"
+            boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold)
           }
         },
         /* @__PURE__ */ React.createElement(
