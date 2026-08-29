@@ -1108,6 +1108,31 @@ await test('mobile: the Calendar lens renders on a phone, unlike the Daily view 
   await ctx.close();
 });
 
+// A keyboard shortcut renders nothing, so a rename can retire the route it
+// points at and leave no visible trace: the digit map still said "budget" and
+// "settings" long after those tabs became Flow and You, and pressing 2 wrote a
+// dead hash and dropped you on Today. Every shortcut is asserted to land on a
+// route the router actually has.
+await test('keyboard: every tab shortcut lands on a real destination', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(900);
+  const moves = [
+    ['1', '#/today'], ['2', '#/flow/list'], ['3', '#/envelopes'], ['4', '#/plan/'],
+    ['d', '#/today'], ['b', '#/flow/'], ['p', '#/plan/'], ['a', '#/plan/insights'],
+    ['s', '#/you'], ['f', '#/flow/curve'], ['r', '#/flow/entries']
+  ];
+  const wrong = [];
+  for (const [key, prefix] of moves) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(350);
+    const hash = await page.evaluate(() => location.hash);
+    if (!hash.startsWith(prefix)) wrong.push(`${key} -> ${hash}, expected ${prefix}*`);
+  }
+  await ctx.close();
+  if (wrong.length) throw new Error(wrong.join('; '));
+});
+
 // Bookmarks, shared links and home-screen shortcuts outlive an information
 // architecture. Every route the app has ever published is in LEGACY_ROUTES,
 // and a link that quietly lands on the home screen is worse than one that

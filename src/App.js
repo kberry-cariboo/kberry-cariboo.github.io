@@ -965,7 +965,7 @@
     // share one guard set: never while typing, never under an open modal or
     // panel (the letter shortcuts used to fire behind confirm dialogs).
     useEffect(() => {
-      const TAB_KEYS = { "1": "dashboard", "2": "budget", "3": "plan", "4": "ai", "5": "settings" };
+      const TAB_KEYS = { "1": "today", "2": "flow", "3": "envelopes", "4": "plan" };
       const handler = (e) => {
         var _a2, _b;
         const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
