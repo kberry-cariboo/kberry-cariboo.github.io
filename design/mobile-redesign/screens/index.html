@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CashFlow Runway — screens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--paper:#F5F7F4;--card:#FFF;--ink:#131A17;--ink-2:#59665F;--rule:#DDE3DE;--brand:#14413A;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#0E1412;--card:#161E1B;--ink:#E4EBE6;--ink-2:#9AA9A1;--rule:#26312D;--brand:#3E8C7C;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 "Schibsted Grotesk",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{max-width:1180px;margin:0 auto;padding:44px 24px 8px}
+h1{margin:0 0 8px;font-size:30px;font-weight:800;letter-spacing:-.03em}
+p.lede{margin:0;max-width:62ch;color:var(--ink-2);font-size:15.5px}
+.controls{max-width:1180px;margin:22px auto 0;padding:0 24px;display:flex;gap:8px}
+.controls button{min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--rule);
+  background:var(--card);color:var(--ink-2);font:600 13.5px/1 inherit;cursor:pointer}
+.controls button[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--paper)}
+main{max-width:1180px;margin:0 auto;padding:26px 24px 70px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:30px 24px}
+figure{margin:0}
+figure img{width:100%;display:block;border:1px solid var(--rule);border-radius:14px;background:var(--card)}
+figcaption{margin-top:9px;font-size:13px;font-weight:600}
+figcaption span{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:1px}
+.sec{grid-column:1/-1;margin:14px 0 -8px;font:700 11px/1 inherit;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>CashFlow Runway</h1>
+  <p class="lede">Every screen of the mobile-first concept, captured from the running prototype at
+     390&nbsp;×&nbsp;844 on a touch device. Nothing here is a mockup — the figures are computed in
+     integer cents from one seeded household, so they agree from screen to screen.</p>
+</header>
+<div class="controls">
+  <button id="bL" aria-pressed="true">Light</button>
+  <button id="bD" aria-pressed="false">Dark</button>
+</div>
+<main id="grid"></main>
+<script>
+const SCREENS=[
+ ['sec','The four destinations'],
+ ['01-today','Today','The runway, then what needs a decision'],
+ ['02-flow-list','Flow · List','One timeline, with the balance rail down the left'],
+ ['03-flow-cal','Flow · Calendar','The same month, laid out as a month'],
+ ['04-flow-curve','Flow · Curve','30/60/90 days, and the what-if beside it'],
+ ['05-flow-defs','Flow · Entries','The definitions behind everything above'],
+ ['06-envelopes','Envelopes','Target always on screen, rollover included'],
+ ['07-plan-goals','Plan · Goals','Projected date and the on-track verdict'],
+ ['08-plan-debts','Plan · Debts','Detected from your entries, or added by hand'],
+ ['09-plan-payoff','Plan · Payoff','Avalanche against snowball, with extra payment'],
+ ['10-plan-ai','Plan · Insights','The year assessed, with a health score'],
+ ['sec','Getting things in and out'],
+ ['11-compose','Compose','The five ways an entry gets in'],
+ ['12-entry-form','New entry','Amount first, then what and when'],
+ ['13-recurrence','Recurrence','Plain English chips, not a form of selects'],
+ ['14-occurrence','One occurrence','Override this date without touching the plan'],
+ ['15-filters','Filters','Date range as two labelled fields, stacked'],
+ ['16-search','Search','Full screen, reachable from anywhere'],
+ ['17-alerts','Alerts','Runs of days below the floor, not a list of dates'],
+ ['sec','Everything else'],
+ ['18-you','You','Settings, household, templates and activity'],
+ ['19-notes','Design notes','Where each of today’s features went'],
+ ['20-signin','Sign in','Create a household, or join one'],
+ ['sec','The design doing its job'],
+ ['s1-swipe-to-pay','Swipe to pay','Right marks paid, left skips the date'],
+ ['s2-rail-below-floor','The rail below the floor','Amber through November, red on the 12th'],
+ ['s3-envelope-over','Over target','Colour is reserved for state'],
+ ['s4-deposit-shift','A payday on a closed day','The occurrence stays put; the deposit date moves'],
+];
+let theme='light';
+function draw(){
+  document.getElementById('grid').innerHTML = SCREENS.map(s=>{
+    if(s[0]==='sec') return '<p class="sec">'+s[1]+'</p>';
+    const [id,title,sub]=s;
+    return '<figure><img loading="lazy" src="'+id+'-'+theme+'.png" alt="'+title+' — '+sub+'">'+
+           '<figcaption>'+title+'<span>'+sub+'</span></figcaption></figure>';
+  }).join('');
+  bL.setAttribute('aria-pressed', theme==='light');
+  bD.setAttribute('aria-pressed', theme==='dark');
+}
+bL.onclick=()=>{theme='light';draw()};
+bD.onclick=()=>{theme='dark';draw()};
+try{ if(matchMedia('(prefers-color-scheme:dark)').matches) theme='dark'; }catch(e){}
+draw();
+</script>
+</body>
+</html>
