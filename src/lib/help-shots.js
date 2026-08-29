@@ -4,7 +4,7 @@
   const HELP_SHOTS = {
     "settings-years": {
       "w": 917,
-      "h": 154
+      "h": 151
     },
     "entry-form": {
       "w": 680,
@@ -12,7 +12,7 @@
     },
     "budget-toolbar": {
       "w": 521,
-      "h": 29
+      "h": 31
     },
     "budget-grid": {
       "w": 915,
@@ -20,7 +20,7 @@
     },
     "row-menu": {
       "w": 180,
-      "h": 248
+      "h": 235
     },
     "bva": {
       "w": 917,
@@ -28,18 +28,18 @@
     },
     "dashboard-kpis": {
       "w": 917,
-      "h": 86
+      "h": 84
     },
     "dashboard-upcoming": {
       "w": 917,
-      "h": 260
+      "h": 228
     },
     "plan-goals": {
       "w": 917,
-      "h": 193
+      "h": 191
     },
     "settings-backup": {
       "w": 917,
-      "h": 104
+      "h": 102
     }
   };

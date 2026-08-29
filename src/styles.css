@@ -948,7 +948,7 @@
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
         .budget-th-actions{width:40px;padding:8px;text-align:center;background:var(--navy);}
         td.budget-th-actions{background:none;}
-        .openbal-row{background:var(--amberLt);}
+        .openbal-row{background:var(--stripe);}
         .budget-day-spacer-td{width:40px;padding:0;}
         .budget-label-cell{font-size:12px;font-weight:700;padding:8px 14px;color:var(--textMid);letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
         .budget-totals-label{font-size:12px;font-weight:700;padding:10px 14px;color:#fff;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
@@ -1208,7 +1208,7 @@
         /* overflow-wrap for the same reason .kpi-card .kpi-value has it — the
            annual tiles are the other place a long amount can outgrow its card,
            and they were the pair that never got the treatment. */
-        .kpi-spark-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;overflow-wrap:anywhere;}
+        .kpi-spark-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;overflow-wrap:anywhere;}
         .kpi-warn-note{font-size:11px;color:var(--red);margin-top:4px;}
         .kpi-sub-note{font-size:11px;color:var(--textLt);margin-top:4px;}
         .dash-cat-bar-wrap{height:220px;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:8px;margin-top:4px;}
