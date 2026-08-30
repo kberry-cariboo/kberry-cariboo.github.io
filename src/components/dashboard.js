@@ -124,7 +124,6 @@
   }, debtData = {} }) {
     var _a;
     const isMobile = useIsMobile();
-    const isPhone = useIsPhone();
     const [showCustomize, setShowCustomize] = useState(false);
     // Device-local, not synced: whether you want the analysis open is a
     // property of the screen you are reading on, not of the household.

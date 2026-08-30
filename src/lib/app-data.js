@@ -75,7 +75,10 @@
     return matches;
   }
   const useIsMobile = () => useMediaQuery("(max-width: 768px)");
-  const useIsPhone = () => useMediaQuery("(max-width: 480px)");
+  // No useIsPhone: its last caller was the hand-rolled mobile "upcoming"
+  // markup on Today, which now renders a LedgerRow like everywhere else. A
+  // width hook with no callers is a suggestion to branch on width again —
+  // useMediaQuery is one line away if a real need turns up.
   const useIsCoarsePointer = () => useMediaQuery("(pointer: coarse)");
   // Text colours here are pinned to WCAG AA (4.5:1) against the surfaces they
   // actually render on — an audit found 295 failing nodes concentrated in a
