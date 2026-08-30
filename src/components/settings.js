@@ -573,6 +573,26 @@
       [arr[i], arr[j]] = [arr[j], arr[i]];
       setCategories(arr);
     };
+    // One list, read by the index strip and by the sticky section bar.
+    const GENERAL_SECTIONS = [
+      // Order matches the sections as they appear down the page, which is
+      // alphabetical by heading — so the strip is also the index you would
+      // scan for a setting whose name you know.
+      ["sec-accounts", "Accounts"],
+      ["sec-ai-key", "AI Key"],
+      ["sec-alert", "Alert Threshold"],
+      ["sec-appearance", "Appearance"],
+      ["sec-years", "Budget Years"],
+      ["sec-money", "Currency & Format"],
+      ["sec-backup", "Data Backup"],
+      ["sec-categories", "Manage Categories"],
+      ["sec-notifications", "Notifications"],
+      ["sec-security", "Security"],
+      ["sec-holidays", "Statutory Holidays"],
+      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
+      ["sec-reset", "Target Reset"],
+      ["sec-danger", "Danger Zone"]
+    ];
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
       className: "settings-page-pills"
     }, [
@@ -594,25 +614,7 @@
       },
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
-      // Order matches the sections as they appear down the page, which is
-      // alphabetical by heading — so the strip is also the index you would
-      // scan for a setting whose name you know.
-      ["sec-accounts", "Accounts"],
-      ["sec-ai-key", "AI Key"],
-      ["sec-alert", "Alert Threshold"],
-      ["sec-appearance", "Appearance"],
-      ["sec-years", "Budget Years"],
-      ["sec-money", "Currency & Format"],
-      ["sec-backup", "Data Backup"],
-      ["sec-categories", "Manage Categories"],
-      ["sec-notifications", "Notifications"],
-      ["sec-security", "Security"],
-      ["sec-holidays", "Statutory Holidays"],
-      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
-      ["sec-reset", "Target Reset"],
-      ["sec-danger", "Danger Zone"]
-    ].map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: GENERAL_SECTIONS.map(([id, title]) => ({ id, title })), label: "Settings" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, GENERAL_SECTIONS.map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
       "a",
       {
         key: anchorId,

@@ -746,6 +746,17 @@
            meant the toolbar could not be adjusted per breakpoint. */
         .export-bar{display:flex;align-items:center;gap:6px;}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
+        /* display:contents so the desktop layout is exactly what it was —
+           the wrapper exists only to give the phone rule something to order
+           against. */
+        .budget-list-lens{display:contents;}
+        @media(max-width:768px){
+          /* Export is something you do having read the month, not before it,
+             and its "+ Add" is the bottom nav's compose button a second time.
+             The bar moves under the ledger; nothing is removed. */
+          .budget-list-lens{display:flex;flex-direction:column;}
+          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:12px;margin-bottom:0;}
+        }
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .budget-toolbar-row--end{justify-content:flex-end;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
@@ -935,6 +946,31 @@
         .errorboundary-retry-btn{margin-top:16px;font-size:13px;font-weight:600;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;background:#1C2B3A;color:#fff;}
         .alert-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;margin-bottom:6px;cursor:pointer;width:100%;font:inherit;text-align:left;}
         .settings-page-pills{display:flex;gap:4px;padding:4px;background:var(--border);border-radius:12px;width:fit-content;max-width:100%;overflow-x:auto;}
+        /* Sticky to the top of .app-scroll, which is the scroller on a phone
+           — the app header scrolls away above it, so no offset is needed. */
+        .section-nav{display:none;position:sticky;top:0;z-index:900;
+          margin:0 0 14px;padding:8px 0;background:var(--bg);}
+        .section-nav-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;
+          padding:9px 14px;border:1px solid var(--border);border-radius:10px;
+          background:var(--bgCard);color:var(--text);font:inherit;font-size:13px;
+          font-weight:600;cursor:pointer;text-align:left;box-shadow:var(--shadowSm);}
+        .section-nav-here{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .section-nav-count{flex-shrink:0;font-size:11px;font-weight:400;color:var(--textLt);}
+        .section-nav-chev{flex-shrink:0;font-size:15px;line-height:1;color:var(--textMid);}
+        .section-nav-list{display:flex;flex-direction:column;}
+        .section-nav-item{display:flex;align-items:center;min-height:44px;padding:11px 2px;
+          border:none;border-top:1px solid var(--stripe);background:none;color:var(--text);
+          font:inherit;font-size:14px;text-align:left;cursor:pointer;width:100%;}
+        .section-nav-item:first-child{border-top:none;}
+        .section-nav-item[aria-current]{font-weight:700;color:var(--primaryInk);}
+        @media(max-width:768px){
+          .section-nav{display:block;}
+          /* The strip and the sticky bar are the same index twice. The strip is
+             a two-column grid of up to fourteen pills — about 200px, and only
+             reachable at the top of the page — so on a phone the sticky one
+             replaces it. */
+          .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
+        }
         .settings-quicklinks{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;margin-bottom:6px;}
         .year-openbal{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
         /* ── budget.js ── */

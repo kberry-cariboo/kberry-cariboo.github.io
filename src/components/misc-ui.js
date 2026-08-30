@@ -198,6 +198,78 @@
         return null;
     }
   }
+  // Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
+  // Both offered a link index at the top and nothing after it, so fifteen
+  // screens down the way back was a long scroll. This is that index, made
+  // permanent: a sticky bar naming the section you are actually in, which
+  // opens the full list.
+  //
+  // On a phone it replaces the index strip rather than joining it — the strip
+  // is a two-column grid of fourteen pills, about 200px, and it is only useful
+  // at the top of the page. Desktop keeps the strip and never renders this.
+  function SectionNav({ sections = [], label = "Section" }) {
+    const [open, setOpen] = useState(false);
+    const [current, setCurrent] = useState(null);
+    // Scroll position, not intersection. "First section currently on screen"
+    // reads wrong at the foot of the page, where several short sections are
+    // visible at once and the earliest one wins — jump to the last section and
+    // the bar names one several above it. The last section whose heading has
+    // passed the top of the viewport is what you are actually reading.
+    useEffect(() => {
+      if (!sections.length) return void 0;
+      const scroller = document.querySelector(".app-scroll") || window;
+      let frame = 0;
+      const measure = () => {
+        frame = 0;
+        let found = null;
+        for (const s of sections) {
+          const el = document.getElementById(s.id);
+          if (!el) continue;
+          if (el.getBoundingClientRect().top <= 96) found = s.id;
+        }
+        setCurrent(found || (sections[0] && sections[0].id));
+      };
+      const onScroll = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(measure);
+      };
+      measure();
+      scroller.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+      return () => {
+        if (frame) cancelAnimationFrame(frame);
+        scroller.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+      };
+    }, [sections]);
+    if (sections.length < 3) return null;
+    const here = sections.find((s) => s.id === current) || sections[0];
+    const go = (id) => {
+      setOpen(false);
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "section-nav", "data-noprint": true },
+      /* @__PURE__ */ React.createElement("button", {
+        className: "section-nav-btn", onClick: () => { haptic(); setOpen(true); },
+        "aria-haspopup": "dialog", "aria-label": label + ": " + here.title + ". Jump to a section"
+      },
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" },
+          sections.length, " sections"),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev", "aria-hidden": "true" }, "\u2304")),
+      open && /* @__PURE__ */ React.createElement("div", {
+        className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section"
+      },
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setOpen(false) }),
+          /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Jump to a section"),
+          /* @__PURE__ */ React.createElement("div", { className: "section-nav-list" },
+            sections.map((s) => /* @__PURE__ */ React.createElement("button", {
+              key: s.id, className: "section-nav-item", onClick: () => go(s.id),
+              "aria-current": s.id === here.id ? "true" : void 0
+            }, s.title))))));
+  }
   // Every transient notice in the app, in one place, on one scale.
   //
   // They used to be scattered: a low-balance banner and a backup nudge at app

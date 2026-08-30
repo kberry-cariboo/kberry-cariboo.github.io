@@ -1168,6 +1168,96 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
+// Both had a link index at the top and nothing after it, so fifteen screens
+// down the way back was a long scroll.
+await test('help and settings: the section index follows you down the page', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  for (const [hash, expect] of [['#/help', 10], ['#/you', 14]]) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(1500);
+    const top = await page.evaluate(() => {
+      const n = document.querySelector('.section-nav');
+      return { present: !!n, h: n ? Math.round(n.getBoundingClientRect().height) : 0,
+        label: n ? n.innerText.replace(/\s+/g, ' ') : null,
+        // The strip and the bar are the same index twice; on a phone only one
+        // of them should be paying for space.
+        strips: [...document.querySelectorAll('.settings-quicklinks')]
+          .filter((e) => getComputedStyle(e).display !== 'none').length };
+    });
+    if (!top.present) throw new Error(hash + ': no sticky section bar');
+    if (top.h > 80) throw new Error(hash + ': the bar is ' + top.h + 'px');
+    if (top.strips) throw new Error(hash + ': the index strip is still shown alongside the bar');
+    if (!new RegExp(expect + ' sections').test(top.label)) {
+      throw new Error(hash + ': bar says "' + top.label + '", expected ' + expect + ' sections');
+    }
+    // It stays put, and it renames itself as you go.
+    await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
+      sc.scrollTop = sc.scrollHeight * 0.6; });
+    await page.waitForTimeout(700);
+    const deep = await page.evaluate(() => {
+      const n = document.querySelector('.section-nav');
+      return { top: Math.round(n.getBoundingClientRect().top),
+               label: n.innerText.replace(/\s+/g, ' ') };
+    });
+    if (deep.top > 2) throw new Error(hash + ': the bar scrolled away (top ' + deep.top + ')');
+    if (deep.label === top.label) throw new Error(hash + ': the bar still says "' + deep.label + '" 60% down');
+  }
+
+  // And it gets you anywhere in two taps.
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  await page.locator('.section-nav-btn').tap({ force: true });
+  await page.waitForTimeout(600);
+  const sheet = await page.evaluate(() => ({
+    items: document.querySelectorAll('.section-nav-item').length,
+    marked: document.querySelectorAll('.section-nav-item[aria-current]').length,
+    minH: Math.min(...[...document.querySelectorAll('.section-nav-item')]
+      .map((e) => Math.round(e.getBoundingClientRect().height))) }));
+  if (sheet.items !== 14) throw new Error('the jump sheet lists ' + sheet.items + ' sections');
+  if (sheet.marked !== 1) throw new Error(sheet.marked + ' sections marked as current');
+  if (sheet.minH < 44) throw new Error('jump rows are ' + sheet.minH + 'px');
+  const before = await page.evaluate(() => document.querySelector('.app-scroll').scrollTop);
+  await page.evaluate(() => { const i = document.querySelectorAll('.section-nav-item');
+    i[i.length - 1].click(); });
+  await page.waitForTimeout(1100);
+  const after = await page.evaluate(() => ({
+    scrolled: document.querySelector('.app-scroll').scrollTop,
+    closed: !document.querySelector('.modal-card') }));
+  if (!after.closed) throw new Error('the jump sheet stayed open after choosing');
+  if (after.scrolled <= before) throw new Error('choosing a section did not move the page');
+  await ctx.close();
+});
+
+// Export is something you do having read the month, not before it — and its
+// "+ Add" is the bottom nav's compose button a second time.
+await test('flow: the export bar sits under the ledger on a phone, over it on a desktop', async () => {
+  const order = async (page) => page.evaluate(() => {
+    const bar = document.querySelector('.budget-toolbar-row');
+    const row = document.querySelector('main .budget-card-row, main .forecast-table tbody tr, main tbody tr');
+    if (!bar || !row) return null;
+    return { barAbove: bar.getBoundingClientRect().top < row.getBoundingClientRect().top,
+      lens: getComputedStyle(document.querySelector('.budget-list-lens')).display };
+  });
+  const phone = await ctxPage({ touch: true });
+  await phone.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await phone.page.waitForTimeout(1300);
+  const p = await order(phone.page);
+  if (!p) throw new Error('no toolbar or no ledger row on the phone');
+  if (p.barAbove) throw new Error('the export bar is still above the ledger on a phone');
+  await phone.ctx.close();
+
+  const desk = await ctxPage();
+  await desk.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await desk.page.waitForTimeout(1300);
+  const d = await order(desk.page);
+  if (!d) throw new Error('no toolbar or no ledger row on the desktop');
+  // display:contents on desktop — the wrapper exists only for the phone rule.
+  if (d.lens !== 'contents') throw new Error('the lens wrapper is ' + d.lens + ' on a desktop');
+  if (!d.barAbove) throw new Error('the export bar moved on the desktop too');
+  await desk.ctx.close();
+});
+
 // Contrast is a thing this app has already had to fix once at scale (295
 // failing nodes), and it regressed twice since: the monthly-totals band kept
 // the on-white green against its navy ground (2.08:1), and the dark theme's

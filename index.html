@@ -774,6 +774,17 @@
            meant the toolbar could not be adjusted per breakpoint. */
         .export-bar{display:flex;align-items:center;gap:6px;}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
+        /* display:contents so the desktop layout is exactly what it was —
+           the wrapper exists only to give the phone rule something to order
+           against. */
+        .budget-list-lens{display:contents;}
+        @media(max-width:768px){
+          /* Export is something you do having read the month, not before it,
+             and its "+ Add" is the bottom nav's compose button a second time.
+             The bar moves under the ledger; nothing is removed. */
+          .budget-list-lens{display:flex;flex-direction:column;}
+          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:12px;margin-bottom:0;}
+        }
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .budget-toolbar-row--end{justify-content:flex-end;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
@@ -963,6 +974,31 @@
         .errorboundary-retry-btn{margin-top:16px;font-size:13px;font-weight:600;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;background:#1C2B3A;color:#fff;}
         .alert-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;margin-bottom:6px;cursor:pointer;width:100%;font:inherit;text-align:left;}
         .settings-page-pills{display:flex;gap:4px;padding:4px;background:var(--border);border-radius:12px;width:fit-content;max-width:100%;overflow-x:auto;}
+        /* Sticky to the top of .app-scroll, which is the scroller on a phone
+           — the app header scrolls away above it, so no offset is needed. */
+        .section-nav{display:none;position:sticky;top:0;z-index:900;
+          margin:0 0 14px;padding:8px 0;background:var(--bg);}
+        .section-nav-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;
+          padding:9px 14px;border:1px solid var(--border);border-radius:10px;
+          background:var(--bgCard);color:var(--text);font:inherit;font-size:13px;
+          font-weight:600;cursor:pointer;text-align:left;box-shadow:var(--shadowSm);}
+        .section-nav-here{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .section-nav-count{flex-shrink:0;font-size:11px;font-weight:400;color:var(--textLt);}
+        .section-nav-chev{flex-shrink:0;font-size:15px;line-height:1;color:var(--textMid);}
+        .section-nav-list{display:flex;flex-direction:column;}
+        .section-nav-item{display:flex;align-items:center;min-height:44px;padding:11px 2px;
+          border:none;border-top:1px solid var(--stripe);background:none;color:var(--text);
+          font:inherit;font-size:14px;text-align:left;cursor:pointer;width:100%;}
+        .section-nav-item:first-child{border-top:none;}
+        .section-nav-item[aria-current]{font-weight:700;color:var(--primaryInk);}
+        @media(max-width:768px){
+          .section-nav{display:block;}
+          /* The strip and the sticky bar are the same index twice. The strip is
+             a two-column grid of up to fourteen pills — about 200px, and only
+             reachable at the top of the page — so on a phone the sticky one
+             replaces it. */
+          .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
+        }
         .settings-quicklinks{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;margin-bottom:6px;}
         .year-openbal{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
         /* ── budget.js ── */
@@ -10024,6 +10060,78 @@ const RUNWAY_DAYS = 90;
         return null;
     }
   }
+  // Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
+  // Both offered a link index at the top and nothing after it, so fifteen
+  // screens down the way back was a long scroll. This is that index, made
+  // permanent: a sticky bar naming the section you are actually in, which
+  // opens the full list.
+  //
+  // On a phone it replaces the index strip rather than joining it — the strip
+  // is a two-column grid of fourteen pills, about 200px, and it is only useful
+  // at the top of the page. Desktop keeps the strip and never renders this.
+  function SectionNav({ sections = [], label = "Section" }) {
+    const [open, setOpen] = useState(false);
+    const [current, setCurrent] = useState(null);
+    // Scroll position, not intersection. "First section currently on screen"
+    // reads wrong at the foot of the page, where several short sections are
+    // visible at once and the earliest one wins — jump to the last section and
+    // the bar names one several above it. The last section whose heading has
+    // passed the top of the viewport is what you are actually reading.
+    useEffect(() => {
+      if (!sections.length) return void 0;
+      const scroller = document.querySelector(".app-scroll") || window;
+      let frame = 0;
+      const measure = () => {
+        frame = 0;
+        let found = null;
+        for (const s of sections) {
+          const el = document.getElementById(s.id);
+          if (!el) continue;
+          if (el.getBoundingClientRect().top <= 96) found = s.id;
+        }
+        setCurrent(found || (sections[0] && sections[0].id));
+      };
+      const onScroll = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(measure);
+      };
+      measure();
+      scroller.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+      return () => {
+        if (frame) cancelAnimationFrame(frame);
+        scroller.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+      };
+    }, [sections]);
+    if (sections.length < 3) return null;
+    const here = sections.find((s) => s.id === current) || sections[0];
+    const go = (id) => {
+      setOpen(false);
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "section-nav", "data-noprint": true },
+      /* @__PURE__ */ React.createElement("button", {
+        className: "section-nav-btn", onClick: () => { haptic(); setOpen(true); },
+        "aria-haspopup": "dialog", "aria-label": label + ": " + here.title + ". Jump to a section"
+      },
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" },
+          sections.length, " sections"),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev", "aria-hidden": "true" }, "\u2304")),
+      open && /* @__PURE__ */ React.createElement("div", {
+        className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section"
+      },
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setOpen(false) }),
+          /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Jump to a section"),
+          /* @__PURE__ */ React.createElement("div", { className: "section-nav-list" },
+            sections.map((s) => /* @__PURE__ */ React.createElement("button", {
+              key: s.id, className: "section-nav-item", onClick: () => go(s.id),
+              "aria-current": s.id === here.id ? "true" : void 0
+            }, s.title))))));
+  }
   // Every transient notice in the app, in one place, on one scale.
   //
   // They used to be scattered: a low-balance banner and a backup nudge at app
@@ -11336,7 +11444,7 @@ const RUNWAY_DAYS = 90;
           /* @__PURE__ */ React.createElement("span", { className: "month-summary-chev", "aria-hidden": "true" },
             monthSummaryOpen ? "\u2303" : "\u2304")),
         monthSummaryOpen && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }))),
-      lens === "list" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
+      lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-list-lens" }, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => {
@@ -15024,7 +15132,7 @@ Fill every field of the response schema. Rules:
       }
       return null;
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: HELP_SECTIONS.map((s) => ({ id: s.id, title: s.title })), label: "Help" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
       "a",
       {
         key: s.id,
@@ -15614,6 +15722,26 @@ Fill every field of the response schema. Rules:
       [arr[i], arr[j]] = [arr[j], arr[i]];
       setCategories(arr);
     };
+    // One list, read by the index strip and by the sticky section bar.
+    const GENERAL_SECTIONS = [
+      // Order matches the sections as they appear down the page, which is
+      // alphabetical by heading — so the strip is also the index you would
+      // scan for a setting whose name you know.
+      ["sec-accounts", "Accounts"],
+      ["sec-ai-key", "AI Key"],
+      ["sec-alert", "Alert Threshold"],
+      ["sec-appearance", "Appearance"],
+      ["sec-years", "Budget Years"],
+      ["sec-money", "Currency & Format"],
+      ["sec-backup", "Data Backup"],
+      ["sec-categories", "Manage Categories"],
+      ["sec-notifications", "Notifications"],
+      ["sec-security", "Security"],
+      ["sec-holidays", "Statutory Holidays"],
+      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
+      ["sec-reset", "Target Reset"],
+      ["sec-danger", "Danger Zone"]
+    ];
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
       className: "settings-page-pills"
     }, [
@@ -15635,25 +15763,7 @@ Fill every field of the response schema. Rules:
       },
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
-      // Order matches the sections as they appear down the page, which is
-      // alphabetical by heading — so the strip is also the index you would
-      // scan for a setting whose name you know.
-      ["sec-accounts", "Accounts"],
-      ["sec-ai-key", "AI Key"],
-      ["sec-alert", "Alert Threshold"],
-      ["sec-appearance", "Appearance"],
-      ["sec-years", "Budget Years"],
-      ["sec-money", "Currency & Format"],
-      ["sec-backup", "Data Backup"],
-      ["sec-categories", "Manage Categories"],
-      ["sec-notifications", "Notifications"],
-      ["sec-security", "Security"],
-      ["sec-holidays", "Statutory Holidays"],
-      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
-      ["sec-reset", "Target Reset"],
-      ["sec-danger", "Danger Zone"]
-    ].map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: GENERAL_SECTIONS.map(([id, title]) => ({ id, title })), label: "Settings" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, GENERAL_SECTIONS.map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
       "a",
       {
         key: anchorId,
