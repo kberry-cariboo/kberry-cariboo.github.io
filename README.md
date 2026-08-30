@@ -80,8 +80,18 @@ bytes, and that a simulated deploy reaches a client that already has one cached.
 
 ```bash
 # edit files under src/, then:
-node build.js        # rebuilds index.html + sw.js
+node build.js                 # rebuilds index.html + sw.js
+node scripts/lint-bundle.js   # restitches .eslint-bundle.js from src/
+npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
+  build.js .eslint-bundle.js  # what CI runs
+node tests/regression.mjs     # the browser suite
 ```
+
+Both lint arguments matter. `no-unused-vars` and `no-undef` are off for the
+per-file pass — every `src/` file references things defined in its siblings,
+which only resolve once `build.js` concatenates them — so those two rules run
+against the stitched `.eslint-bundle.js` instead. A plain `npx eslint .` passes
+without checking them, and will happily miss a dead declaration that fails CI.
 
 Serve the repo root with any static file server to check your change before
 committing. (Opening `index.html` from the filesystem still works for most of
