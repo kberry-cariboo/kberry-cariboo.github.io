@@ -125,9 +125,6 @@
     var _a;
     const isMobile = useIsMobile();
     const [showCustomize, setShowCustomize] = useState(false);
-    // Device-local, not synced: whether you want the analysis open is a
-    // property of the screen you are reading on, not of the household.
-    const [dashMore, setDashMore] = useLS("cf_dash_more", false);
     // Every other dismissible dialog in the app closes on Escape — the
     // confirm dialogs, the occurrence editor, the context menus, the receipt
     // lightbox. Customize was the exception, and it has nothing to lose by
@@ -346,10 +343,10 @@
         return null;
       }
     }, [flow, openBal, activeYear, alertThreshold]);
-    // Order is the default reading order of Today, and the first
-    // DASH_STACK_SIZE of them are what it opens on: what is happening to my
-    // money, what do I owe, what changed. Everything from "insight" down is
-    // analysis — true, useful, and not what you unlock your phone for.
+    // Order is the reading order of Today: what is happening to my money,
+    // what do I owe, what changed, then the analysis. Customize reorders it
+    // and hides what you do not want — hiding is the only thing that takes a
+    // panel off the page, and it is the reader's choice rather than a rule.
     const DASH_WIDGET_DEFS = [
       { id: "runway", label: "Runway \u2014 next 90 days", size: "full" },
       { id: "balanceToday", label: "Balance today", size: "third" },
@@ -371,10 +368,6 @@
       { id: "yoy", label: "Year-over-Year comparison", size: "full" }
     ];
     const DASH_ORDER_DEFAULT = DASH_WIDGET_DEFS.map((w) => w.id);
-    // Eight panels: the runway, the three at-a-glance figures on one row, this
-    // week, ending soon, what changed, the year. On a 390px phone that is
-    // roughly two screens — long enough to be a briefing, short enough to end.
-    const DASH_STACK_SIZE = 8;
     const dashOrderEff = useMemo(() => {
       const stored = Array.isArray(dashOrder) ? dashOrder.filter((id) => DASH_ORDER_DEFAULT.includes(id)) : [];
       const merged = [...stored];
@@ -864,15 +857,10 @@
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowCustomize(false) }),
         /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-note" }, "Today opens on everything above the line. The rest is one tap below it \u2014 move a panel across to change what you land on."),
+        /* @__PURE__ */ React.createElement("div", { className: "customize-note" }, "Everything ticked here is on Today, in this order. Untick a panel to take it off the page \u2014 nothing is hidden behind a tap."),
         /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;
-          // The fold falls after the DASH_STACK_SIZE-th *shown* panel, so
-          // hiding one pulls the next one up across the line — which is what
-          // the reader sees happen on Today.
-          const shownBefore = dashOrderEff.slice(0, idx + 1).filter((x) => !dashHidden[x]).length;
-          const foldAfter = !dashHidden[id] && shownBefore === DASH_STACK_SIZE;
           const move = (dir) => {
             haptic();
             const next = [...dashOrderEff];
@@ -892,10 +880,7 @@
               className: "customize-checkbox"
             }
           ), /* @__PURE__ */ React.createElement("span", { className: "customize-label", style: { opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: { opacity: idx === 0 ? 0.3 : 1 }, disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }, disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
-          if (!foldAfter) return item;
-          return /* @__PURE__ */ React.createElement(React.Fragment, { key: id + "_fold" }, item,
-            /* @__PURE__ */ React.createElement("div", { className: "customize-fold" },
-              /* @__PURE__ */ React.createElement("span", null, "below the fold")));
+          return item;
         })),
         /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" }, /* @__PURE__ */ React.createElement(
           "button",
@@ -919,9 +904,10 @@
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
-      // Rows, not widgets: thirds pack three across and halves two, so laying
-      // out first and cutting afterwards is the only way to split the page
-      // without slicing a row down the middle.
+      // Rows, not widgets: thirds pack three across and halves two, so the
+      // pairing has to be decided over the visible list rather than per
+      // widget — a hidden half would otherwise leave its partner alone in a
+      // two-column grid.
       const rows = [];
       let i = 0;
       while (i < visible.length) {
@@ -929,52 +915,35 @@
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          rows.push({ n: run.length, el: /* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))) });
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
           const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
-          rows.push({ n: 2, el: /* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()) });
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
           i += 2;
         } else if (sz !== "full") {
-          rows.push({ n: 1, el: /* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()) });
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()));
           i += 1;
         } else {
-          rows.push({ n: 1, el: /* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()) });
+          rows.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
           i += 1;
         }
       }
-      // Today used to open as all eighteen panels at once: eight screens of
-      // charts you have to scroll past to reach the ones that tell you what to
-      // do. It leads with a stack now — runway, the three at-a-glance figures,
-      // this week, ending soon, what changed, the year — and the analysis sits
-      // one tap below it.
+      // Today is one page. It used to lead with eight panels and keep the
+      // rest behind a "More on 2026" disclosure, which made a short page —
+      // 1.6 screens — cost a tap to finish reading, and made the panels you
+      // had chosen in Customize into panels the page had chosen for you.
+      // Scrolling is cheaper than that tap, and Customize is already the
+      // honest control: untick a panel and it is gone, everywhere, for good.
       //
-      // The rule is positional on purpose, so it stays the user's: Today shows
-      // your first DASH_STACK_SIZE panels, whichever those are. Reordering in
-      // Customize is what moves a panel above or below the line, and the sheet
-      // draws the line so you can see where it falls.
-      let cut = 0, taken = 0;
-      while (cut < rows.length && taken < DASH_STACK_SIZE) { taken += rows[cut].n; cut++; }
-      const lead = rows.slice(0, cut).map((r) => r.el);
-      const tail = rows.slice(cut);
-      const n = tail.reduce((a, r) => a + r.n, 0);
-      const more = !tail.length ? null : /* @__PURE__ */ React.createElement("div", { className: "dash-more" },
-        /* @__PURE__ */ React.createElement("button", {
-          className: "dash-more-btn",
-          onClick: () => { haptic(); setDashMore(!dashMore); },
-          "aria-expanded": dashMore ? "true" : "false"
-        }, /* @__PURE__ */ React.createElement("span", { className: "dash-more-chev", "aria-hidden": "true" }, dashMore ? "\u2303" : "\u2304"),
-           dashMore ? "Hide the rest" : `More on ${activeYear} \u2014 ${n} more panel${n === 1 ? "" : "s"}`));
-      // The foot of Today: what else there is, and the way to change what is
-      // on it. Both are things you reach for having read the page, not before.
+      // The foot of Today is the way to change what is on it — something you
+      // reach for having read the page, not before.
       const foot = /* @__PURE__ */ React.createElement("div", { key: "dash-foot", className: "dash-foot dash-customize-row", "data-noprint": true },
-        more,
         entries.length > 0 && /* @__PURE__ */ React.createElement("button", {
           className: "dash-foot-customize",
           onClick: () => setShowCustomize(true)
         }, "\u2699 Customize"));
-      return [...lead, foot,
-        dashMore && tail.length ? /* @__PURE__ */ React.createElement("div", { key: "dash-more-body", className: "dash-more-body" }, tail.map((r) => r.el)) : null];
+      return [...rows, foot];
     })());
   }

@@ -1486,35 +1486,16 @@
         .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
         .customize-list{display:flex;flex-direction:column;gap:4px;}
         .customize-note{font-size:12px;line-height:1.45;color:var(--textMid);margin:-8px 0 14px;}
-        /* Where Today stops. A rule with the reason written on it, rather than
-           a gap the reader has to infer a meaning for. */
-        .customize-fold{display:flex;align-items:center;gap:8px;margin:8px 2px;
-          font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--textLt);}
-        .customize-fold::before,.customize-fold::after{content:"";flex:1;height:1px;background:var(--border);}
-        /* The disclosure that holds the analysis. It is a full-width control
-           on purpose: it is the end of Today, and it has to read as a floor
-           rather than as one more card. */
         /* Customize used to be the first thing on Today, above the runway:
            a control for changing the page, given the position that should
            belong to the page. It sits at the foot now, where you arrive
            having read the thing you might want to change. */
-        .dash-foot{display:flex;align-items:stretch;gap:10px;margin:4px 0 8px;}
-        .dash-foot .dash-more{flex:1;min-width:0;margin:0;}
+        .dash-foot{display:flex;align-items:stretch;justify-content:flex-end;gap:10px;margin:4px 0 8px;}
         .dash-foot-customize{flex:0 0 auto;min-height:44px;padding:11px 16px;
           border:1px solid var(--border);border-radius:10px;background:transparent;
           color:var(--textMid);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
           white-space:nowrap;}
         .dash-foot-customize:hover{color:var(--text);border-color:var(--textLt);}
-        .dash-more{margin:4px 0 8px;}
-        /* Inline, not flex: on a narrow screen the label wraps, and a flex
-           chevron gets left behind at the far edge of a two-line button. */
-        .dash-more-btn{display:block;width:100%;height:100%;text-align:center;line-height:1.35;
-          min-height:44px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;
-          background:var(--bgCard);color:var(--textMid);font:inherit;font-size:13px;font-weight:600;
-          cursor:pointer;}
-        .dash-more-btn:hover{color:var(--text);border-color:var(--textLt);}
-        .dash-more-chev{margin-right:7px;font-size:15px;}
-        .dash-more-body{margin-top:14px;display:flex;flex-direction:column;gap:0;}
         .customize-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--text);}
         .customize-checkbox{width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;}
         .customize-label{flex:1;min-width:0;}
@@ -2079,6 +2060,50 @@
           .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px!important;}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden!important;max-width:100%!important;}
+          /* Today's panels were inset cards: a 10px page gutter, then a 1px
+             border, then 24px of card padding on each side — 18% of a 390px
+             phone spent on chrome before a figure is drawn, and the reason a
+             chart inside one reads as a widget inside a widget. Every other
+             list went full-bleed during the redesign (ledger rows, debts,
+             goals, envelopes) and Today was the last screen still boxed, so
+             its full-width panels join them: bands separated by a hairline,
+             on one padding scale instead of the three (24 / 16 / 14) they
+             carried between them. Content width goes 320px → 362px.
+
+             The tile grids stay inset. A tile with no side border, sitting
+             beside another tile, stops reading as a tile — so the three
+             glance figures and the four KPIs keep their card shape and the
+             page keeps its gutter around them.
+
+             16px, not the 10px gutter: it is what .debt-item and the goal
+             rows already use at this width, and a band whose text starts
+             where every other full-bleed row's text starts is the point of
+             moving Today onto the same pattern. */
+          .dash-page>.cf-card,.dash-page>.chart-grid{
+            margin-left:calc(-1 * var(--container-gutter))!important;
+            margin-right:calc(-1 * var(--container-gutter))!important;
+            max-width:none!important;}
+          .dash-page>.cf-card,.dash-page>.chart-grid>.cf-card{
+            border-radius:0!important;border-left:0!important;border-right:0!important;
+            padding:16px!important;}
+          /* The tile grids — the three at-a-glance figures, the four annual
+             KPIs — become one band apiece rather than a raft of little cards
+             floating in the gutter between two full-width ones, which is what
+             they looked like once everything around them went edge to edge.
+
+             The dividers are the grid's own 1px gaps with the grid painted
+             --border and each cell painting --bgCard back over it. A cell
+             border would have to know how many columns it is in — three
+             across at 768px, two at 480, and a lone last tile spanning both —
+             and the gap does not. */
+          .dash-page>.glance-grid,.dash-page>.kpi-grid-4{
+            margin-left:calc(-1 * var(--container-gutter))!important;
+            margin-right:calc(-1 * var(--container-gutter))!important;
+            max-width:none!important;gap:1px!important;background:var(--border);
+            border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+          .dash-page>.glance-grid>*,.dash-page>.kpi-grid-4>*{
+            border:0!important;border-radius:0!important;box-shadow:none!important;
+            padding:14px 16px!important;background:var(--bgCard)!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
           .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
             -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
@@ -13947,9 +13972,6 @@ Fill every field of the response schema. Rules:
     var _a;
     const isMobile = useIsMobile();
     const [showCustomize, setShowCustomize] = useState(false);
-    // Device-local, not synced: whether you want the analysis open is a
-    // property of the screen you are reading on, not of the household.
-    const [dashMore, setDashMore] = useLS("cf_dash_more", false);
     // Every other dismissible dialog in the app closes on Escape — the
     // confirm dialogs, the occurrence editor, the context menus, the receipt
     // lightbox. Customize was the exception, and it has nothing to lose by
@@ -14168,10 +14190,10 @@ Fill every field of the response schema. Rules:
         return null;
       }
     }, [flow, openBal, activeYear, alertThreshold]);
-    // Order is the default reading order of Today, and the first
-    // DASH_STACK_SIZE of them are what it opens on: what is happening to my
-    // money, what do I owe, what changed. Everything from "insight" down is
-    // analysis — true, useful, and not what you unlock your phone for.
+    // Order is the reading order of Today: what is happening to my money,
+    // what do I owe, what changed, then the analysis. Customize reorders it
+    // and hides what you do not want — hiding is the only thing that takes a
+    // panel off the page, and it is the reader's choice rather than a rule.
     const DASH_WIDGET_DEFS = [
       { id: "runway", label: "Runway \u2014 next 90 days", size: "full" },
       { id: "balanceToday", label: "Balance today", size: "third" },
@@ -14193,10 +14215,6 @@ Fill every field of the response schema. Rules:
       { id: "yoy", label: "Year-over-Year comparison", size: "full" }
     ];
     const DASH_ORDER_DEFAULT = DASH_WIDGET_DEFS.map((w) => w.id);
-    // Eight panels: the runway, the three at-a-glance figures on one row, this
-    // week, ending soon, what changed, the year. On a 390px phone that is
-    // roughly two screens — long enough to be a briefing, short enough to end.
-    const DASH_STACK_SIZE = 8;
     const dashOrderEff = useMemo(() => {
       const stored = Array.isArray(dashOrder) ? dashOrder.filter((id) => DASH_ORDER_DEFAULT.includes(id)) : [];
       const merged = [...stored];
@@ -14686,15 +14704,10 @@ Fill every field of the response schema. Rules:
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowCustomize(false) }),
         /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-note" }, "Today opens on everything above the line. The rest is one tap below it \u2014 move a panel across to change what you land on."),
+        /* @__PURE__ */ React.createElement("div", { className: "customize-note" }, "Everything ticked here is on Today, in this order. Untick a panel to take it off the page \u2014 nothing is hidden behind a tap."),
         /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;
-          // The fold falls after the DASH_STACK_SIZE-th *shown* panel, so
-          // hiding one pulls the next one up across the line — which is what
-          // the reader sees happen on Today.
-          const shownBefore = dashOrderEff.slice(0, idx + 1).filter((x) => !dashHidden[x]).length;
-          const foldAfter = !dashHidden[id] && shownBefore === DASH_STACK_SIZE;
           const move = (dir) => {
             haptic();
             const next = [...dashOrderEff];
@@ -14714,10 +14727,7 @@ Fill every field of the response schema. Rules:
               className: "customize-checkbox"
             }
           ), /* @__PURE__ */ React.createElement("span", { className: "customize-label", style: { opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: { opacity: idx === 0 ? 0.3 : 1 }, disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }, disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
-          if (!foldAfter) return item;
-          return /* @__PURE__ */ React.createElement(React.Fragment, { key: id + "_fold" }, item,
-            /* @__PURE__ */ React.createElement("div", { className: "customize-fold" },
-              /* @__PURE__ */ React.createElement("span", null, "below the fold")));
+          return item;
         })),
         /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" }, /* @__PURE__ */ React.createElement(
           "button",
@@ -14741,9 +14751,10 @@ Fill every field of the response schema. Rules:
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
-      // Rows, not widgets: thirds pack three across and halves two, so laying
-      // out first and cutting afterwards is the only way to split the page
-      // without slicing a row down the middle.
+      // Rows, not widgets: thirds pack three across and halves two, so the
+      // pairing has to be decided over the visible list rather than per
+      // widget — a hidden half would otherwise leave its partner alone in a
+      // two-column grid.
       const rows = [];
       let i = 0;
       while (i < visible.length) {
@@ -14751,53 +14762,36 @@ Fill every field of the response schema. Rules:
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          rows.push({ n: run.length, el: /* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))) });
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
           const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
-          rows.push({ n: 2, el: /* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()) });
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
           i += 2;
         } else if (sz !== "full") {
-          rows.push({ n: 1, el: /* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()) });
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()));
           i += 1;
         } else {
-          rows.push({ n: 1, el: /* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()) });
+          rows.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
           i += 1;
         }
       }
-      // Today used to open as all eighteen panels at once: eight screens of
-      // charts you have to scroll past to reach the ones that tell you what to
-      // do. It leads with a stack now — runway, the three at-a-glance figures,
-      // this week, ending soon, what changed, the year — and the analysis sits
-      // one tap below it.
+      // Today is one page. It used to lead with eight panels and keep the
+      // rest behind a "More on 2026" disclosure, which made a short page —
+      // 1.6 screens — cost a tap to finish reading, and made the panels you
+      // had chosen in Customize into panels the page had chosen for you.
+      // Scrolling is cheaper than that tap, and Customize is already the
+      // honest control: untick a panel and it is gone, everywhere, for good.
       //
-      // The rule is positional on purpose, so it stays the user's: Today shows
-      // your first DASH_STACK_SIZE panels, whichever those are. Reordering in
-      // Customize is what moves a panel above or below the line, and the sheet
-      // draws the line so you can see where it falls.
-      let cut = 0, taken = 0;
-      while (cut < rows.length && taken < DASH_STACK_SIZE) { taken += rows[cut].n; cut++; }
-      const lead = rows.slice(0, cut).map((r) => r.el);
-      const tail = rows.slice(cut);
-      const n = tail.reduce((a, r) => a + r.n, 0);
-      const more = !tail.length ? null : /* @__PURE__ */ React.createElement("div", { className: "dash-more" },
-        /* @__PURE__ */ React.createElement("button", {
-          className: "dash-more-btn",
-          onClick: () => { haptic(); setDashMore(!dashMore); },
-          "aria-expanded": dashMore ? "true" : "false"
-        }, /* @__PURE__ */ React.createElement("span", { className: "dash-more-chev", "aria-hidden": "true" }, dashMore ? "\u2303" : "\u2304"),
-           dashMore ? "Hide the rest" : `More on ${activeYear} \u2014 ${n} more panel${n === 1 ? "" : "s"}`));
-      // The foot of Today: what else there is, and the way to change what is
-      // on it. Both are things you reach for having read the page, not before.
+      // The foot of Today is the way to change what is on it — something you
+      // reach for having read the page, not before.
       const foot = /* @__PURE__ */ React.createElement("div", { key: "dash-foot", className: "dash-foot dash-customize-row", "data-noprint": true },
-        more,
         entries.length > 0 && /* @__PURE__ */ React.createElement("button", {
           className: "dash-foot-customize",
           onClick: () => setShowCustomize(true)
         }, "\u2699 Customize"));
-      return [...lead, foot,
-        dashMore && tail.length ? /* @__PURE__ */ React.createElement("div", { key: "dash-more-body", className: "dash-more-body" }, tail.map((r) => r.el)) : null];
+      return [...rows, foot];
     })());
   }
   // The app's user documentation. It replaces the explanatory paragraphs that
