@@ -1,4 +1,4 @@
-  function AlertsPanel({ flow, alertThreshold, setTab, gotoForecast = () => {
+  function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
   } }) {
     const today = /* @__PURE__ */ new Date();
     const next90 = new Date(today);
@@ -28,15 +28,30 @@
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => setTab("dashboard"),
+        onClick: () => setTab("today"),
         className: "cf-btn cf-btn--secondary cf-btn--md"
       },
       "← Back"
-    )), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
+    )), alerts.length === 0 && findings.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
       color: "var(--red)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev) => renderAlertRow(ev))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
       color: "var(--amberInk)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))));
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))),
+    // Everything else the app has worked out and would otherwise only say on
+    // the one screen that computes it. "Centralised" has to mean you can come
+    // here and see the lot, not just the balance warnings.
+    findings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
+      /* @__PURE__ */ React.createElement("div", { className: "alert-section-label" },
+        /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 13 }), "Worth knowing"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
+        /* @__PURE__ */ React.createElement("button", {
+          key: f.id, type: "button", className: "notice notice--sm alerts-finding",
+          "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
+        },
+          /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+            /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
+          /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
+          /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192"))))));
   }
   // Delivery hour choices for background push. Labelled in 12-hour form
   // because that's how the alert time reads on the phone that receives it.

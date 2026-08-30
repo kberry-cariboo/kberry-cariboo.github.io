@@ -938,7 +938,7 @@
       renderCheck("ForecastView (empty)", React.createElement(ForecastView, { yearFlows: {}, yearConfigs: [], openBalByYear: {} }));
       renderCheck("DashboardView (empty)", React.createElement(DashboardView, { flow: [], openBal: 0, yearFlows: {}, yearConfigs: [], alertThreshold: 500, activeYear: 2026 }));
       renderCheck("PlanView (empty)", React.createElement(PlanView, { flow: [], openBal: 0, entries: [], goals: [], categories: ["A"], alertThreshold: 500, activeYear: 2026 }));
-      renderCheck("BottomNav", React.createElement(BottomNav, { tab: "dashboard", setTab: noop }));
+      renderCheck("BottomNav", React.createElement(BottomNav, { tab: "today", setTab: noop }));
       t("goal progress math (pct, projection)", () => {
         const g = { target: 3600, saved: 900, monthly: 300 };
         const pct = Math.min(100, Math.round(g.saved / g.target * 100));

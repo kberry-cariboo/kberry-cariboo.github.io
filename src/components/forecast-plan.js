@@ -412,7 +412,7 @@
           });
         }
         setDone(true);
-        setTab("budget");
+        setTab("flow");
       }, className: "wizard-finish-btn" }, expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish")))
     ];
     return /* @__PURE__ */ React.createElement(Card, { className: "wizard-card" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-dots-row" }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "wizard-dot", style: {

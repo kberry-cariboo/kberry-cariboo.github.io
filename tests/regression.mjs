@@ -1168,6 +1168,114 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// Plan used to nest a card per debt inside a card inside the page gutter:
+// 96px of a 390px screen spent on chrome before a figure, which is why a name
+// like "CC-Scotia Line of Credit" wrapped to three lines and the balance was
+// printed twice. And the strategy screen stacked Avalanche and Snowball as two
+// cards, so the comparison it exists for never fit on screen at once.
+const DEBT_FIXTURE = (() => {
+  const names = [['Mortgage', 56189484, 5.34, 418332], ['Tractor Payment', 5216725, 0.03, 73475],
+    ['CC-Scotia Infinite Visa', 3093431, 20.99, 60000], ['CC-Scotia Line of Credit', 2900097, 11.05, 30000],
+    ['Truck Payment', 2744635, 4.08, 138004], ['CC-Amex', 4796691, 19.99, 90000],
+    ['CC-Triangle MC', 812344, 19.99, 25000], ['Car Payment', 1899000, 6.49, 38500],
+    ['Trailer Payment (Term 2)', 2210000, 7.99, 41000]];
+  const d = {};
+  names.forEach(([label, balance, rate, payment], i) => { d['manual_' + (i + 1)] = { label, balance, rate, payment }; });
+  return (t) => t.replace('goals: [],', 'goals: [], debtData: ' + JSON.stringify(d) + ',');
+})();
+
+await test('plan: debts are flat rows, and the strategies are one comparison', async () => {
+  const { ctx, page } = await ctxPage({ touch: true, stub: DEBT_FIXTURE });
+  await page.goto(BASE + '#/plan/debt', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const debt = await page.evaluate(() => {
+    const items = [...document.querySelectorAll('.debt-item')];
+    const sc = document.querySelector('.app-scroll');
+    return { n: items.length, slop: sc.scrollWidth - sc.clientWidth,
+      // The name must fit its line: the old layout wrapped long ones to three.
+      clipped: items.filter((e) => { const n = e.querySelector('.debt-item-name');
+        return n && n.scrollWidth > n.clientWidth + 1; }).length,
+      tallest: Math.max(...items.map((e) => Math.round(e.getBoundingClientRect().height))),
+      // Nothing may re-nest a bordered box inside the row.
+      nested: items.filter((e) => e.querySelector('.cf-card')).length,
+      // The balance is stated once per debt, not once beside the sparkline and
+      // again in a stats grid below it.
+      dupBal: items.filter((e) => (e.innerText.match(/\$561,894\.84/g) || []).length > 1).length };
+  });
+  if (debt.n < 9) throw new Error('only ' + debt.n + ' debt rows rendered — the fixture did not land');
+  if (debt.slop > 1) throw new Error('the debt list scrolls sideways by ' + debt.slop + 'px');
+  if (debt.clipped) throw new Error(debt.clipped + ' debt name(s) do not fit their line');
+  if (debt.nested) throw new Error('a debt row still nests a card inside itself');
+  if (debt.dupBal) throw new Error('a debt still prints its balance twice');
+  if (debt.tallest > 130) throw new Error('tallest debt row is ' + debt.tallest + 'px');
+
+  await page.goto(BASE + '#/plan/strategy', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const strat = await page.evaluate(() => {
+    const t = document.querySelector('.strat-table');
+    const inc = document.querySelector('.strat-include-row');
+    return { table: !!t,
+      cols: t ? [...t.querySelectorAll('thead th')].map((e) => e.textContent.trim()) : [],
+      // Both answers to each question on one row is the whole point.
+      rows: t ? [...t.querySelectorAll('tbody tr')].map((r) =>
+        [...r.querySelectorAll('td')].length) : [],
+      order: document.querySelectorAll('.strat-order-list li').length,
+      incH: inc ? Math.round(inc.getBoundingClientRect().height) : null,
+      incText: inc ? inc.innerText.replace(/\s+/g, ' ') : null,
+      chips: document.querySelectorAll('.strat-debt-toggle').length,
+      // "-1 months saved" is not a sentence; a negative saving reads as a cost.
+      negSaved: (document.body.innerText.match(/-\d+ months? (less|saved)/g) || []).length };
+  });
+  if (!strat.table) throw new Error('no comparison table');
+  if (!/Avalanche/.test(strat.cols.join(' ')) || !/Snowball/.test(strat.cols.join(' '))) {
+    throw new Error('the table does not name both strategies: ' + strat.cols.join(' | '));
+  }
+  if (!strat.rows.every((n) => n === 2)) throw new Error('a table row does not carry both answers');
+  if (strat.order < 9) throw new Error('payoff order lists ' + strat.order + ' of 9 debts');
+  if (strat.negSaved) throw new Error('a negative saving is still phrased as a saving');
+  // Nine checkbox chips cost ~500px to say "all of them".
+  if (strat.chips) throw new Error(strat.chips + ' debt chips are back');
+  if (strat.incH > 80) throw new Error('the include row is ' + strat.incH + 'px tall');
+  if (!/All 9 debts included/.test(strat.incText || '')) throw new Error('include row says: ' + strat.incText);
+
+  await page.locator('.strat-include-row button').tap({ force: true });
+  await page.waitForTimeout(600);
+  const picker = await page.evaluate(() => ({
+    items: document.querySelectorAll('.strat-picker-item').length,
+    // The sheet is where the full name finally fits.
+    clipped: [...document.querySelectorAll('.strat-picker-name')]
+      .filter((e) => e.scrollWidth > e.clientWidth + 1).length,
+    minRow: Math.min(...[...document.querySelectorAll('.strat-picker-item')]
+      .map((e) => Math.round(e.getBoundingClientRect().height))) }));
+  if (picker.items !== 9) throw new Error('picker lists ' + picker.items + ' debts');
+  if (picker.clipped) throw new Error(picker.clipped + ' name(s) truncated in the picker');
+  if (picker.minRow < 44) throw new Error('picker rows are ' + picker.minRow + 'px');
+  await ctx.close();
+});
+
+// "Centralised" has to mean the Alerts centre lists everything the app worked
+// out, not only the balance warnings.
+await test('alerts: the centre carries the findings, not just the balance warnings', async () => {
+  const { ctx, page } = await ctxPage({ stub: (t) => DEBT_FIXTURE(t)
+    .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000') });
+  await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const found = await page.evaluate(() => [...document.querySelectorAll('.alerts-finding')]
+    .map((e) => (e.innerText || '').replace(/\s+/g, ' ')));
+  if (!found.some((f) => /Avalanche saves you/.test(f))) {
+    throw new Error('the payoff finding is not in the centre: ' + found.join(' | '));
+  }
+  if (!found.some((f) => /spending/i.test(f))) {
+    throw new Error('the spending insight is not in the centre: ' + found.join(' | '));
+  }
+  // And it is a way in, not just a restatement.
+  await page.locator('.alerts-finding', { hasText: 'Avalanche' }).first().click();
+  await page.waitForTimeout(600);
+  const at = await page.evaluate(() => location.hash);
+  if (at !== '#/plan/strategy') throw new Error('the finding led to ' + at);
+  await ctx.close();
+});
+
 // Ten shapes. Before this, every page-level bar in the app had its own
 // geometry — radii of 6, 8 and 10px, and paddings of 6/10, 8/12, 9/14, 10/14,
 // 12/14 and 12/16 — so bars sitting one above the other read as a family and

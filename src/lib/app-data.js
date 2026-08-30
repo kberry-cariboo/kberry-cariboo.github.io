@@ -234,7 +234,93 @@
   // The horizon the runway strip covers. 90 days is the same window the
   // Forecast offers as its longest, and far enough out to catch the annual
   // bills that are exactly what a monthly view hides.
-  const RUNWAY_DAYS = 90;
+    // Findings: the things the app has worked out that you would want told, as
+  // opposed to the conditions it warns about. They are computed here rather than
+  // inside the screen that draws them, so the Alerts centre can list every one
+  // without re-deriving it from a different set of inputs and quietly disagreeing
+  // with the screen it came from.
+  //
+  // Each returns null when there is nothing to say, which is the only correct
+  // answer most of the time.
+  function debtStrategyFinding(simDebts, extraCents) {
+    if (!simDebts || simDebts.length < 2) return null;
+    const av = simulateDebtStrategy(simDebts, extraCents, "avalanche");
+    const sn = simulateDebtStrategy(simDebts, extraCents, "snowball");
+    if (!av || !sn) return null;
+    const interestDelta = sn.totalInterest - av.totalInterest;
+    const monthsDelta = sn.months - av.months;
+    if (interestDelta <= 0 && monthsDelta === 0) return null;
+    const parts = [];
+    if (interestDelta > 0) parts.push(fmt(interestDelta));
+    if (monthsDelta > 0) parts.push(monthsDelta + (monthsDelta === 1 ? " month" : " months"));
+    return {
+      id: "debt-strategy", tone: "good", icon: "sparkle", route: "plan/strategy",
+      text: "Avalanche saves you " + parts.join(" and ") + " over Snowball on this debt load."
+    };
+  }
+  // The month-against-average comparison behind the spending insight. It
+  // lives here, not in the widget that draws it, so the Alerts centre can
+  // report the same finding without a second copy of the arithmetic.
+  function computeSpendingInsight(flow, activeYear) {
+    try {
+      const now = /* @__PURE__ */ new Date();
+      if (now.getFullYear() !== activeYear) return null;
+      const cm = now.getMonth();
+      if (cm === 0) return null;
+      const lookback = [];
+      for (let i = Math.max(0, cm - 6); i < cm; i++) lookback.push(i);
+      const monthExp = (mi) => flow.filter((ev) => ev.month === mi && ev.type === "expense").reduce((s, ev) => s + ev.amount, 0);
+      const avg = lookback.reduce((s, mi) => s + monthExp(mi), 0) / lookback.length;
+      if (!avg) return null;
+      const curr = monthExp(cm);
+      const pct = Math.round((curr - avg) / avg * 100);
+      const catMonth = (mi) => {
+        const o = {};
+        flow.forEach((ev) => {
+          if (ev.month === mi && ev.type === "expense") o[ev.category] = (o[ev.category] || 0) + ev.amount;
+        });
+        return o;
+      };
+      const currCats = catMonth(cm);
+      const avgCats = {};
+      lookback.forEach((mi) => {
+        const o = catMonth(mi);
+        Object.keys(o).forEach((c) => avgCats[c] = (avgCats[c] || 0) + o[c]);
+      });
+      Object.keys(avgCats).forEach((c) => avgCats[c] /= lookback.length);
+      let driver = null, driverDelta = 0;
+      (/* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
+        const d = (currCats[c] || 0) - (avgCats[c] || 0);
+        if (Math.abs(d) > Math.abs(driverDelta)) {
+          driver = c;
+          driverDelta = d;
+        }
+      });
+      return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
+    } catch (e) {
+      console.error("spending-insight computation failed; the insight is hidden rather than wrong", e);
+      return null;
+    }
+  }
+  function spendingInsightFinding(insight) {
+    if (!insight) return null;
+    const inline = Math.abs(insight.pct) < 2;
+    const above = insight.pct > 0;
+    const showDriver = !inline && insight.driver &&
+      (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
+    const body = inline
+      ? ` is in line with your ${insight.n}-month average.`
+      : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average` +
+        (showDriver
+          ? ` \u2014 ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).`
+          : ".");
+    return {
+      id: "spending-insight", tone: inline ? "info" : above ? "warn" : "good",
+      icon: "trending-up", route: "today", month: insight.month,
+      text: insight.month + " spending" + body
+    };
+  }
+const RUNWAY_DAYS = 90;
   // ── The schedule, in words ──────────────────────────────────────────────
   // recurLabel abbreviates for a table column — "Monthly (weekday)" never says
   // *which* weekday, and "Semi-monthly" never says which two days. That is

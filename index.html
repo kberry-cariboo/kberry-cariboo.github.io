@@ -1193,45 +1193,99 @@
         .moneyinput-lg{font-family:var(--font-mono);font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .label-amt-row{display:flex;justify-content:space-between;margin-bottom:3px;}
         .amt-mid-600{font-weight:600;color:var(--textMid);}
-        .strat-card{flex:1 1 220px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
-        .strat-card-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
-        .strat-card-sub{font-size:10px;color:var(--textLt);margin-bottom:10px;}
-        .strat-card-row{display:flex;justify-content:space-between;margin-bottom:4px;}
-        .strat-card-row-tight{display:flex;justify-content:space-between;margin-bottom:8px;}
-        .strat-value{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--greenDk);}
-        .strat-value-neutral{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);}
-        .strat-order{font-size:10px;color:var(--textLt);line-height:1.7;}
         .strat-extra-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--textMid);}
         .strat-extra-input{padding:5px 10px;width:90px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
-        .strat-cards-row{display:flex;gap:12px;flex-wrap:wrap;}
         /* Held a footnote on the left and the export buttons on the right;
            the footnote is documentation now, so the exports keep the right
            edge on their own. */
         .strat-footnote-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;}
         .strat-error{font-size:12px;color:var(--red);margin-top:14px;}
         .strat-extra-slider{width:120px;accent-color:var(--primary);}
-        .strat-debt-toggles{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
-        .strat-debt-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);background:var(--stripe);border-radius:14px;padding:6px 12px 6px 9px;cursor:pointer;}
+        /* The comparison the screen is for, as a table: rows are the
+           questions, columns are the answers. Two stacked cards meant you
+           could never see both answers to the same question at once, which on
+           a phone is the whole difficulty. */
+        /* A finding in the centre is a link to the screen that owns it. */
+        .alerts-finding{cursor:pointer;font:inherit;font-size:12px;text-align:left;width:100%;}
+        .alerts-finding:hover{filter:brightness(0.98);}
+        /* One line saying what is in the simulation, and a way to change it.
+           Nine chips spent about 500px of a phone screen restating "all of
+           them" — and truncated the long names, which are the ones you would
+           actually be scanning for. */
+        .strat-include-row{display:flex;align-items:center;justify-content:space-between;
+          gap:10px;flex-wrap:wrap;margin:12px 0 4px;}
+        .strat-include-text{font-size:12px;color:var(--textMid);}
+        .strat-picker-actions{display:flex;gap:8px;margin-bottom:10px;}
+        .strat-picker-list{display:flex;flex-direction:column;}
+        .strat-picker-item{display:flex;align-items:center;gap:10px;padding:10px 2px;
+          border-top:1px solid var(--stripe);font-size:13px;color:var(--text);cursor:pointer;
+          min-height:44px;}
+        .strat-picker-item:first-child{border-top:none;}
+        .strat-picker-item input{margin:0;width:16px;height:16px;flex-shrink:0;accent-color:var(--primary);}
+        /* The sheet is where the full name finally fits, so it must not
+           truncate here of all places. */
+        .strat-picker-name{flex:1;min-width:0;}
+        .strat-picker-bal{color:var(--textLt);flex-shrink:0;}
+        .strat-table{width:100%;border-collapse:collapse;margin:14px 0 4px;font-size:12px;}
+        .strat-table th,.strat-table td{padding:8px 6px;text-align:right;}
+        .strat-table thead th{font-size:11px;font-weight:700;color:var(--textMid);
+          border-bottom:1px solid var(--border);white-space:nowrap;}
+        .strat-table tbody th{text-align:left;font-weight:400;color:var(--textMid);
+          font-size:11px;padding-left:0;}
+        .strat-table tbody td{font-family:var(--font-mono);color:var(--text);}
+        .strat-table tbody tr+tr th,.strat-table tbody tr+tr td{border-top:1px solid var(--stripe);}
+        /* The better answer in each row, marked once. Weight and colour, not a
+           badge: the eye is comparing two numbers, and a third element between
+           them is what it has to read past. */
+        .strat-table td[data-win]{color:var(--greenDk);font-weight:700;}
+        .strat-order-head{display:flex;align-items:center;justify-content:space-between;
+          gap:10px;flex-wrap:wrap;margin:18px 0 8px;}
+        /* A numbered list, not a sentence of arrows wrapping to four lines. */
+        .strat-order-list{list-style:none;margin:0;padding:0;counter-reset:none;}
+        .strat-order-list li{display:flex;align-items:center;gap:10px;padding:7px 0;
+          border-top:1px solid var(--stripe);font-size:12px;color:var(--text);}
+        .strat-order-list li:first-child{border-top:none;}
+        .strat-order-n{flex-shrink:0;width:20px;height:20px;border-radius:50%;
+          background:var(--stripe);color:var(--textMid);font-size:10px;font-weight:700;
+          display:flex;align-items:center;justify-content:center;}
+        .strat-order-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        /* A fixed two-column grid, not a ragged wrap: with names of wildly
+           different lengths, flex-wrap left a different amount of dead space
+           on every line and no two rows lined up. */
         /* The one checkbox in the app that was left at browser defaults: a
            13px system-blue box in a palette that has an accent of its own,
            and the only thing distinguishing an included debt from an excluded
            one. accent-color matches the sliders and the filter checkboxes. */
-        .strat-debt-toggle input{margin:0;width:14px;height:14px;accent-color:var(--primary);cursor:pointer;}
         .strat-suggest-btn{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--primaryInk);cursor:pointer;text-decoration:underline;}
         .strat-chart-wrap{margin-top:16px;}
         .strat-chart-label{font-size:11px;color:var(--textLt);margin-bottom:4px;}
         .debt-restore-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--amber);cursor:pointer;background:transparent;color:var(--amberInk);white-space:nowrap;}
         .debt-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:20px 0;}
-        .debt-row{padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);cursor:context-menu;}
-        .debt-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
-        .debt-row-name-col{flex:1;min-width:140px;}
-        .debt-row-meta{font-size:11px;color:var(--textLt);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-        .debt-row-bal-wrap{text-align:right;}
-        .debt-row-bal-amt{font-weight:700;color:var(--red);}
-        .debt-row-paid{color:var(--greenDk);font-weight:600;font-size:11px;}
-        .debt-row-interest{font-size:11px;color:var(--textLt);}
-        .debt-stats-row{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;}
-        .debt-stat-label{font-size:10px;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;}
+        /* The list runs the full width of the card it sits in. A card inside
+           a card inside the page gutter spent 96px of a 390px screen on
+           chrome before a single figure — the negative margin gives that back
+           and leaves one visible box instead of three. */
+        .debt-list{margin:0 -24px;display:flex;flex-direction:column;}
+        .debt-item{padding:12px 24px;border-top:1px solid var(--border);cursor:context-menu;}
+        .debt-item:first-child{border-top:none;}
+        .debt-item-head{display:flex;align-items:baseline;gap:10px;}
+        /* The name gets whatever the balance does not, and truncates rather
+           than wrapping to three lines: the balance is the figure you scan
+           down the column, so it is the one that must never move. */
+        .debt-item-name{flex:1;min-width:0;font-weight:600;color:var(--text);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .debt-item-bal{font-weight:700;color:var(--red);flex-shrink:0;}
+        .debt-item-menu{flex-shrink:0;align-self:center;}
+        .debt-item-meta{font-size:11px;color:var(--textLt);margin-top:3px;line-height:1.5;}
+        .debt-item-paid{color:var(--greenDk);font-weight:600;}
+        /* A bare diagonal stroke across a full-width row reads as a divider.
+           The area under it gives it a mass that is visibly draining. */
+        .debt-item-trend{margin-top:8px;height:22px;opacity:.85;}
+        .sparkline-svg--wide{width:100%;display:block;}
+        @media(max-width:480px){
+          .debt-list{margin:0 -16px;}
+          .debt-item{padding:12px 16px;}
+        }
         .debtform-optional{font-weight:400;text-transform:none;letter-spacing:0;color:var(--textLt);}
         .debtform-hint{font-size:11px;color:var(--textLt);margin-top:5px;}
         /* min-width:0 is load-bearing, not tidy-up: the row is a
@@ -1419,8 +1473,13 @@
            border instead of wrapping. The font step-down at ≤360px below is
            what actually keeps realistic amounts on one line; this only stops
            an absurd one from escaping the card. */
+        /* overflow-wrap:anywhere is a last resort, not the plan: it breaks
+           "$798,624.07" into "$798,624" and ".07" on two lines, which reads as
+           two numbers. The font is stepped down instead so a six-figure amount
+           fits one line in the two-up phone grid, and the break stays
+           available only below 360px where nothing fits either way. */
         .kpi-card .kpi-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;
-          font-size:20px;font-weight:700;color:var(--text);line-height:1;overflow-wrap:anywhere;}
+          font-size:20px;font-weight:700;color:var(--text);line-height:1.15;overflow-wrap:normal;}
         .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
         /* Value + sparkline row inside the annual KPI tiles: wrap instead of
            squeezing the sparkline against the card edge on narrow phones */
@@ -1821,7 +1880,7 @@
           .content-area{padding:0!important;}
           .cf-page{max-width:none!important;}
           .cf-card{box-shadow:none!important;border:1px solid #E8E4DD!important;}
-          .cf-card,tr,.debt-row,.goal-row-cursor{break-inside:avoid;}
+          .cf-card,tr,.debt-item,.goal-row-cursor{break-inside:avoid;}
         }
 
         /* ── Mobile layout ─────────────────────────────────────────── */
@@ -1893,6 +1952,7 @@
           .tab-bar-outer{overflow:hidden!important;}
           /* KPI grids: 2-column on tablet/mobile */
           .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+          .kpi-card .kpi-value{font-size:16px;}
           .kpi-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
           /* Dashboard: charts stack, no overflow. minmax(0,…) rather than a
              bare 1fr — 1fr floors at min-content, and at 320px the widest
@@ -2037,7 +2097,6 @@
              thumb goes looking for it. In the debt and goal rows it is a
              sibling of the row's title, so at this width, where those rows
              wrap to full width, it trailed the text and landed mid-line. */
-          .debt-row-name-col>.cf-row>.row-menu-btn{margin-left:auto;}
           .goal-title-row>.goal-amounts-row{flex:1 0 100%;}
           .goal-amounts-row>.row-menu-btn{margin-left:auto;}
           /* Three stacked toolbar rows put ~250px between the top of the tab
@@ -2068,7 +2127,7 @@
            spare. Only the value shrinks — labels stay put. */
         @media(max-width:360px){
           .kpi-card{padding:14px 14px!important;}
-          .kpi-card .kpi-value{font-size:15px!important;}
+          .kpi-card .kpi-value{font-size:15px!important;overflow-wrap:anywhere;}
           /* Same step-down for the annual tiles' value, which shares the
              two-up grid and therefore the same ~109px of content width. */
           .kpi-spark-value{font-size:15px!important;}
@@ -6336,7 +6395,93 @@ document.addEventListener('DOMContentLoaded',function(){
   // The horizon the runway strip covers. 90 days is the same window the
   // Forecast offers as its longest, and far enough out to catch the annual
   // bills that are exactly what a monthly view hides.
-  const RUNWAY_DAYS = 90;
+    // Findings: the things the app has worked out that you would want told, as
+  // opposed to the conditions it warns about. They are computed here rather than
+  // inside the screen that draws them, so the Alerts centre can list every one
+  // without re-deriving it from a different set of inputs and quietly disagreeing
+  // with the screen it came from.
+  //
+  // Each returns null when there is nothing to say, which is the only correct
+  // answer most of the time.
+  function debtStrategyFinding(simDebts, extraCents) {
+    if (!simDebts || simDebts.length < 2) return null;
+    const av = simulateDebtStrategy(simDebts, extraCents, "avalanche");
+    const sn = simulateDebtStrategy(simDebts, extraCents, "snowball");
+    if (!av || !sn) return null;
+    const interestDelta = sn.totalInterest - av.totalInterest;
+    const monthsDelta = sn.months - av.months;
+    if (interestDelta <= 0 && monthsDelta === 0) return null;
+    const parts = [];
+    if (interestDelta > 0) parts.push(fmt(interestDelta));
+    if (monthsDelta > 0) parts.push(monthsDelta + (monthsDelta === 1 ? " month" : " months"));
+    return {
+      id: "debt-strategy", tone: "good", icon: "sparkle", route: "plan/strategy",
+      text: "Avalanche saves you " + parts.join(" and ") + " over Snowball on this debt load."
+    };
+  }
+  // The month-against-average comparison behind the spending insight. It
+  // lives here, not in the widget that draws it, so the Alerts centre can
+  // report the same finding without a second copy of the arithmetic.
+  function computeSpendingInsight(flow, activeYear) {
+    try {
+      const now = /* @__PURE__ */ new Date();
+      if (now.getFullYear() !== activeYear) return null;
+      const cm = now.getMonth();
+      if (cm === 0) return null;
+      const lookback = [];
+      for (let i = Math.max(0, cm - 6); i < cm; i++) lookback.push(i);
+      const monthExp = (mi) => flow.filter((ev) => ev.month === mi && ev.type === "expense").reduce((s, ev) => s + ev.amount, 0);
+      const avg = lookback.reduce((s, mi) => s + monthExp(mi), 0) / lookback.length;
+      if (!avg) return null;
+      const curr = monthExp(cm);
+      const pct = Math.round((curr - avg) / avg * 100);
+      const catMonth = (mi) => {
+        const o = {};
+        flow.forEach((ev) => {
+          if (ev.month === mi && ev.type === "expense") o[ev.category] = (o[ev.category] || 0) + ev.amount;
+        });
+        return o;
+      };
+      const currCats = catMonth(cm);
+      const avgCats = {};
+      lookback.forEach((mi) => {
+        const o = catMonth(mi);
+        Object.keys(o).forEach((c) => avgCats[c] = (avgCats[c] || 0) + o[c]);
+      });
+      Object.keys(avgCats).forEach((c) => avgCats[c] /= lookback.length);
+      let driver = null, driverDelta = 0;
+      (/* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
+        const d = (currCats[c] || 0) - (avgCats[c] || 0);
+        if (Math.abs(d) > Math.abs(driverDelta)) {
+          driver = c;
+          driverDelta = d;
+        }
+      });
+      return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
+    } catch (e) {
+      console.error("spending-insight computation failed; the insight is hidden rather than wrong", e);
+      return null;
+    }
+  }
+  function spendingInsightFinding(insight) {
+    if (!insight) return null;
+    const inline = Math.abs(insight.pct) < 2;
+    const above = insight.pct > 0;
+    const showDriver = !inline && insight.driver &&
+      (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
+    const body = inline
+      ? ` is in line with your ${insight.n}-month average.`
+      : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average` +
+        (showDriver
+          ? ` \u2014 ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).`
+          : ".");
+    return {
+      id: "spending-insight", tone: inline ? "info" : above ? "warn" : "good",
+      icon: "trending-up", route: "today", month: insight.month,
+      text: insight.month + " spending" + body
+    };
+  }
+const RUNWAY_DAYS = 90;
   // ── The schedule, in words ──────────────────────────────────────────────
   // recurLabel abbreviates for a table column — "Monthly (weekday)" never says
   // *which* weekday, and "Semi-monthly" never says which two days. That is
@@ -7261,7 +7406,12 @@ document.addEventListener('DOMContentLoaded',function(){
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
   // for rising expenses), so it's gone — pass `color` explicitly if needed.
-  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80 }) => {
+  // `responsive` draws the same line into whatever width its container gives
+  // it, for the places where a sparkline is a full-width strip rather than a
+  // thumbnail beside a figure. The end dot is dropped there — a circle in a
+  // box scaled on one axis is an ellipse — and the stroke is pinned so the
+  // line keeps its weight however far it stretches.
+  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }) => {
     if (!data || data.length < 2) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -7274,7 +7424,12 @@ document.addEventListener('DOMContentLoaded',function(){
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
     const lastPt = pts[pts.length - 1];
-    return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg", role: "presentation", "aria-hidden": "true", focusable: "false" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
+    const svgProps = responsive
+      ? { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none", height,
+          className: "sparkline-svg sparkline-svg--wide" }
+      : { width, height, className: "sparkline-svg" };
+    const areaPath = area ? path + ` L${pts[pts.length - 1][0].toFixed(1)},${height} L${pts[0][0].toFixed(1)},${height} Z` : null;
+    return /* @__PURE__ */ React.createElement("svg", __spreadProps(__spreadValues({}, svgProps), { role: "presentation", "aria-hidden": "true", focusable: "false" }), areaPath && /* @__PURE__ */ React.createElement("path", { d: areaPath, fill: color, opacity: 0.14, stroke: "none" }), /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5, vectorEffect: responsive ? "non-scaling-stroke" : void 0 }), !responsive && /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
   // Shared row-pagination for grids that used to be internally-scrolling
   // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
@@ -11863,7 +12018,7 @@ document.addEventListener('DOMContentLoaded',function(){
           });
         }
         setDone(true);
-        setTab("budget");
+        setTab("flow");
       }, className: "wizard-finish-btn" }, expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish")))
     ];
     return /* @__PURE__ */ React.createElement(Card, { className: "wizard-card" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-dots-row" }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "wizard-dot", style: {
@@ -12389,7 +12544,71 @@ Fill every field of the response schema. Rules:
   };
   // Hoisted out of PlanView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
-  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
+  // The screen exists to compare two strategies, and it used to stack them as
+  // two cards — so on a phone you could never see both at once, which is the
+  // one thing it is for. One table instead: the rows are the questions, the
+  // columns are the answers, and the better answer in each row is marked.
+  //
+  // The payoff order was a 10px sentence of arrows wrapping to four lines. It
+  // is a numbered list now, for the chosen strategy only, because that is the
+  // form an ordered list of nine things has always wanted.
+  const StratCompare = ({ av, sn, base, pick, onPick }) => {
+    const better = (a, b, lowerWins = true) => a === b ? null : (lowerWins ? a < b : a > b);
+    const rows = [
+      { label: "Debt-free", a: av.debtFreeDate, b: sn.debtFreeDate, win: better(av.months, sn.months) },
+      { label: "Total interest", a: fmt(av.totalInterest), b: fmt(sn.totalInterest),
+        win: better(av.totalInterest, sn.totalInterest) },
+      { label: "Months to clear", a: av.months, b: sn.months, win: better(av.months, sn.months) }
+    ];
+    // What each strategy is worth against paying the minimums. A strategy can
+    // be *worse* than the baseline — snowball often is — so these read as a
+    // signed comparison rather than as "saved": "-1 months" saved is not a
+    // sentence, and a negative saving is a cost the reader should see said
+    // plainly.
+    const lessMore = (d, unit) => {
+      if (d === 0) return "same";
+      const n = Math.abs(d);
+      const word = unit === "months" ? (n === 1 ? "month" : "months") : "";
+      return n + (word ? " " + word : "") + (d > 0 ? " less" : " more");
+    };
+    if (base && base.totalInterest !== av.totalInterest) {
+      rows.push({ label: "Interest vs minimums",
+        a: fmt(Math.abs(base.totalInterest - av.totalInterest)) + (base.totalInterest > av.totalInterest ? " less" : " more"),
+        b: fmt(Math.abs(base.totalInterest - sn.totalInterest)) + (base.totalInterest > sn.totalInterest ? " less" : " more"),
+        win: better(av.totalInterest, sn.totalInterest) });
+    }
+    if (base && (base.months !== av.months || base.months !== sn.months)) {
+      rows.push({ label: "Time vs minimums", a: lessMore(base.months - av.months, "months"),
+        b: lessMore(base.months - sn.months, "months"), win: better(av.months, sn.months) });
+    }
+    const chosen = pick === "snowball" ? sn : av;
+    return /* @__PURE__ */ React.createElement(React.Fragment, null,
+      /* @__PURE__ */ React.createElement("table", { className: "strat-table" },
+        /* @__PURE__ */ React.createElement("caption", { className: "cf-visually-hidden" },
+          "Avalanche compared with Snowball"),
+        /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null,
+          /* @__PURE__ */ React.createElement("td", null),
+          /* @__PURE__ */ React.createElement("th", { scope: "col" },
+            /* @__PURE__ */ React.createElement(Icon, { name: "mountain", size: 13 }), " Avalanche"),
+          /* @__PURE__ */ React.createElement("th", { scope: "col" },
+            /* @__PURE__ */ React.createElement(Icon, { name: "snowflake", size: 13 }), " Snowball"))),
+        /* @__PURE__ */ React.createElement("tbody", null, rows.map((r) =>
+          /* @__PURE__ */ React.createElement("tr", { key: r.label },
+            /* @__PURE__ */ React.createElement("th", { scope: "row" }, r.label),
+            /* @__PURE__ */ React.createElement("td", { "data-win": r.win === true ? "true" : void 0 }, r.a),
+            /* @__PURE__ */ React.createElement("td", { "data-win": r.win === false ? "true" : void 0 }, r.b))))),
+      /* @__PURE__ */ React.createElement("div", { className: "strat-order-head" },
+        /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff order"),
+        /* @__PURE__ */ React.createElement(PillToggle, {
+          size: "sm", value: pick, onChange: onPick,
+          options: [{ id: "avalanche", label: "Avalanche" }, { id: "snowball", label: "Snowball" }]
+        })),
+      /* @__PURE__ */ React.createElement("ol", { className: "strat-order-list" },
+        chosen.payoffOrder.map((n, k) => /* @__PURE__ */ React.createElement("li", { key: n + k },
+          /* @__PURE__ */ React.createElement("span", { className: "strat-order-n" }, k + 1),
+          /* @__PURE__ */ React.createElement("span", { className: "strat-order-name" }, n)))));
+  };
+
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
@@ -12403,6 +12622,10 @@ Fill every field of the response schema. Rules:
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const { logActivity } = useContext(HouseholdContext);
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
+    // Which payoff order is on screen. Device-local: it is a reading
+    // preference, not a decision the household has made.
+    const [stratPick, setStratPick] = useLS("cf_debt_strategy", "avalanche");
+    const [showDebtPicker, setShowDebtPicker] = useState(false);
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
@@ -13009,20 +13232,52 @@ Fill every field of the response schema. Rules:
         const toggleSimDebt = (key) => {
           setDebtSimExcluded((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
         };
+        // Nine checkboxes as chips cost about 500px of a phone screen to say
+        // "all of them", which is the answer almost every time — and the names
+        // that matter most ("CC-Scotia Infinite Visa") were the ones the chips
+        // truncated. One line states the answer; changing it is a sheet, where
+        // the full names fit and All / None are one tap.
+        const includedCount = simDebtsAll.length - simDebtsAll.filter((d) => debtSimExcluded.includes(d.key)).length;
         const checklist = simDebtsAll.length > 1 && /* @__PURE__ */ React.createElement(
-          "div",
-          { className: "strat-debt-toggles" },
-          simDebtsAll.map((d) => /* @__PURE__ */ React.createElement(
-            "label",
-            { key: d.key, className: "strat-debt-toggle" },
-            /* @__PURE__ */ React.createElement("input", {
-              type: "checkbox",
-              checked: !debtSimExcluded.includes(d.key),
-              onChange: () => toggleSimDebt(d.key)
-            }),
-            d.label
-          ))
-        );
+          "div", { className: "strat-include-row" },
+          /* @__PURE__ */ React.createElement("span", { className: "strat-include-text" },
+            includedCount === simDebtsAll.length
+              ? `All ${simDebtsAll.length} debts included`
+              : `${includedCount} of ${simDebtsAll.length} debts included`),
+          /* @__PURE__ */ React.createElement("button", {
+            type: "button", className: "cf-btn cf-btn--secondary cf-btn--xs",
+            onClick: () => setShowDebtPicker(true),
+            "aria-haspopup": "dialog"
+          }, "Change"));
+        const debtPicker = showDebtPicker && /* @__PURE__ */ React.createElement(
+          "div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Debts in the simulation" },
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" },
+            /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowDebtPicker(false) }),
+            /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Debts in the simulation"),
+            /* @__PURE__ */ React.createElement("div", { className: "strat-picker-actions" },
+              /* @__PURE__ */ React.createElement("button", {
+                className: "cf-btn cf-btn--secondary cf-btn--xs",
+                onClick: () => setDebtSimExcluded([])
+              }, "All"),
+              /* @__PURE__ */ React.createElement("button", {
+                className: "cf-btn cf-btn--secondary cf-btn--xs",
+                onClick: () => setDebtSimExcluded(simDebtsAll.map((d) => d.key))
+              }, "None")),
+            /* @__PURE__ */ React.createElement("div", { className: "strat-picker-list" },
+              simDebtsAll.map((d) => /* @__PURE__ */ React.createElement(
+                "label", { key: d.key, className: "strat-picker-item" },
+                /* @__PURE__ */ React.createElement("input", {
+                  type: "checkbox",
+                  checked: !debtSimExcluded.includes(d.key),
+                  onChange: () => toggleSimDebt(d.key)
+                }),
+                /* @__PURE__ */ React.createElement("span", { className: "strat-picker-name" }, d.label),
+                /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 strat-picker-bal" }, fmt(d.bal))))),
+            /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" },
+              /* @__PURE__ */ React.createElement("button", {
+                onClick: () => setShowDebtPicker(false),
+                className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
+              }, "Done"))));
         // debtExtra is entered/displayed in dollars; simDebts' bal/pmt are
         // cents, so this needs the same conversion before it's mixed in.
         const extraDollars = Math.max(0, parseFloat(debtExtra) || 0);
@@ -13070,19 +13325,16 @@ Fill every field of the response schema. Rules:
           Avalanche: i < av.timeline.length ? av.timeline[i] : 0,
           Snowball: i < sn.timeline.length ? sn.timeline[i] : 0
         }));
-        const interestDelta = sn.totalInterest - av.totalInterest;
-        const monthsDelta = sn.months - av.months;
-        const deltaCallout = simDebts.length > 1 && (interestDelta > 0 || monthsDelta !== 0) && /* @__PURE__ */ React.createElement(
+        // The same helper the Alerts centre reads, so the sentence here and
+        // the one there cannot drift apart.
+        const strategyFinding = debtStrategyFinding(simDebts, extra);
+        const deltaCallout = strategyFinding && /* @__PURE__ */ React.createElement(
           "div",
-          { className: "notice notice--sm", "data-tone": "good", role: "status" },
-          /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 14 }),
-          " Avalanche saves you",
-          interestDelta > 0 && ` ${fmt(interestDelta)}`,
-          interestDelta > 0 && monthsDelta > 0 && " and",
-          monthsDelta > 0 && ` ${monthsDelta} ${monthsDelta === 1 ? "month" : "months"}`,
-          " over Snowball on this debt load."
+          { className: "notice notice--sm", "data-tone": strategyFinding.tone, role: "status" },
+          /* @__PURE__ */ React.createElement(Icon, { name: strategyFinding.icon, size: 14 }),
+          /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, strategyFinding.text)
         );
-        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, ariaLabel: `Line chart of the total debt balance falling to zero over ${chartData.length} months, one line per strategy: Avalanche clears it in ${av.months} months paying ${fmt(av.totalInterest)} of interest, Snowball in ${sn.months} months paying ${fmt(sn.totalInterest)}. The two cards above give the same figures.`, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, debtPicker, deltaCallout, /* @__PURE__ */ React.createElement(StratCompare, { av, sn, base, pick: stratPick, onPick: setStratPick }), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, ariaLabel: `Line chart of the total debt balance falling to zero over ${chartData.length} months, one line per strategy: Avalanche clears it in ${av.months} months paying ${fmt(av.totalInterest)} of interest, Snowball in ${sn.months} months paying ${fmt(sn.totalInterest)}. The two cards above give the same figures.`, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
           onCSV: () => downloadCSV(
             "CashFlow_PayoffStrategy.csv",
             [
@@ -13256,13 +13508,26 @@ Fill every field of the response schema. Rules:
         message: "No debt entries detected \u2014 debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-10", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-10", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "debt-list" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
         const pmt = isAuto ? monthlyPmt : parseFloat((_c = debtData[key]) == null ? void 0 : _c.payment) || 0;
         const { monthsLeft, totalInterest, payoffDate } = calcPayoff(bal, rate, pmt);
         const payoffTrend = monthsLeft > 1 ? projectPayoffBalances(bal, rate, pmt, monthsLeft) : null;
+        // One flat row, not a card in a card in a page. The balance used to
+        // be printed twice — once beside the sparkline, once again in a
+        // three-column stat grid below it — and the three nested boxes cost
+        // 96px of a 390px screen, which is why a name like "CC-Scotia Line of
+        // Credit" wrapped to three lines. Everything that was in the grid is
+        // one meta line now, and the burn-down gets the width it was always
+        // trying to show.
+        const facts = [
+          rate > 0 ? rate + "%" : null,
+          pmt > 0 ? fmt(pmt) + "/mo" : null,
+          isAuto && recurDesc && timesPerYear > 12 ? fmt(perOccurrence) + " " + recurDesc : null,
+          totalInterest != null && totalInterest > 0 ? "+" + fmt(totalInterest) + " interest" : null
+        ].filter(Boolean);
         return /* @__PURE__ */ React.createElement(
           "div",
           {
@@ -13271,22 +13536,29 @@ Fill every field of the response schema. Rules:
               e.preventDefault();
               setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
             },
-            className: "debt-row"
+            className: "debt-item"
           },
-          /* @__PURE__ */ React.createElement("div", { className: "debt-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "debt-row-name-col" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb" }, label), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-row-paid" }, "\u2713 Paid off ", payoffDate), /* @__PURE__ */ React.createElement(
-            "button",
-            {
+          /* @__PURE__ */ React.createElement("div", { className: "debt-item-head" },
+            /* @__PURE__ */ React.createElement("span", { className: "debt-item-name" }, label),
+            bal > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-item-bal" }, fmt(bal)),
+            /* @__PURE__ */ React.createElement("button", {
               onClick: (e) => {
                 e.stopPropagation();
                 setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
               },
-              className: "cf-checkbtn row-menu-btn",
+              className: "cf-checkbtn row-menu-btn debt-item-menu",
               "aria-label": label + " actions",
               title: label + " actions"
-            },
-            "\u22ee"
-          )), /* @__PURE__ */ React.createElement("div", { className: "debt-row-meta" }, isAuto && recurDesc ? timesPerYear > 12 && /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"))), bal > 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-row-bal-wrap" }, payoffTrend && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 2 }, title: "Projected balance decline to payoff" }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 22, width: 56 })), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { className: "debt-row-interest" }, "+", fmt(totalInterest), " interest"))),
-          (bal > 0 || rate > 0 || isAuto && recurDesc) && /* @__PURE__ */ React.createElement("div", { className: "debt-stats-row" }, isAuto && recurDesc && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Monthly"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(pmt))), bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
+            }, "\u22EE")),
+          (facts.length > 0 || payoffDate) && /* @__PURE__ */ React.createElement("div", { className: "debt-item-meta" },
+            facts.join(" \u00B7 "),
+            payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-item-paid" },
+              facts.length ? " \u00B7 " : "", "\u2713 paid off ", payoffDate)),
+          payoffTrend && /* @__PURE__ */ React.createElement("div", {
+            className: "debt-item-trend", title: "Projected balance decline to payoff"
+          }, /* @__PURE__ */ React.createElement(Sparkline, {
+            data: payoffTrend, color: "var(--red)", height: 22, width: 240, responsive: true, area: true
+          }))
         );
       })))));
     })());
@@ -13676,47 +13948,7 @@ Fill every field of the response schema. Rules:
       });
       return merged;
     }, [dashOrder]);
-    const insight = useMemo(() => {
-      try {
-        const now = /* @__PURE__ */ new Date();
-        if (now.getFullYear() !== activeYear) return null;
-        const cm = now.getMonth();
-        if (cm === 0) return null;
-        const lookback = [];
-        for (let i = Math.max(0, cm - 6); i < cm; i++) lookback.push(i);
-        const monthExp = (mi) => flow.filter((ev) => ev.month === mi && ev.type === "expense").reduce((s, ev) => s + ev.amount, 0);
-        const avg = lookback.reduce((s, mi) => s + monthExp(mi), 0) / lookback.length;
-        if (!avg) return null;
-        const curr = monthExp(cm);
-        const pct = Math.round((curr - avg) / avg * 100);
-        const catMonth = (mi) => {
-          const o = {};
-          flow.forEach((ev) => {
-            if (ev.month === mi && ev.type === "expense") o[ev.category] = (o[ev.category] || 0) + ev.amount;
-          });
-          return o;
-        };
-        const currCats = catMonth(cm);
-        const avgCats = {};
-        lookback.forEach((mi) => {
-          const o = catMonth(mi);
-          Object.keys(o).forEach((c) => avgCats[c] = (avgCats[c] || 0) + o[c]);
-        });
-        Object.keys(avgCats).forEach((c) => avgCats[c] /= lookback.length);
-        let driver = null, driverDelta = 0;
-        (/* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
-          const d = (currCats[c] || 0) - (avgCats[c] || 0);
-          if (Math.abs(d) > Math.abs(driverDelta)) {
-            driver = c;
-            driverDelta = d;
-          }
-        });
-        return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
-      } catch (e) {
-        console.error("dashboard spending-insight computation failed, hiding the Spending Insight card", e);
-        return null;
-      }
-    }, [flow, activeYear]);
+    const insight = useMemo(() => computeSpendingInsight(flow, activeYear), [flow, activeYear]);
     // Colour is reserved for state. A balance that is simply fine is ordinary
     // text — it only takes a colour when it has something to say (amber under
     // the alert threshold, red overdrawn). Eleven of the fourteen balance
@@ -13844,19 +14076,17 @@ Fill every field of the response schema. Rules:
       })()),
       monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
       insight: () => {
-        if (!insight) return null;
-        const above = insight.pct > 0;
-        const inline = Math.abs(insight.pct) < 2;
-        const showDriver = !inline && insight.driver && (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
-        // The same shape as every other notice in the app: this is a finding
-        // about the month, and it used to be a tenth distinct bar — 8px
-        // radius, 9/14 padding, a 3px accent — sitting between two 10px
-        // cards. Its tone reports the finding: over the average is a warning,
-        // under it is good news, and in line with it is neither.
+        // Written once, in app-data.js, so this bar and the Alerts centre's
+        // copy of it cannot drift apart. Its tone reports the finding: over
+        // the average is a warning, under it is good news, in line with it is
+        // neither.
+        const f = spendingInsightFinding(insight);
+        if (!f) return null;
         return /* @__PURE__ */ React.createElement("div", {
-          "data-widget": "insight", className: "notice notice--sm", role: "status",
-          "data-tone": inline ? "info" : above ? "warn" : "good"
-        }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, insight.month, " spending"), inline ? ` is in line with your ${insight.n}-month average.` : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average`, !inline && showDriver ? ` — ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).` : inline ? "" : "."));
+          "data-widget": "insight", className: "notice notice--sm", role: "status", "data-tone": f.tone
+        }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" },
+          /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, f.month, " spending"),
+          f.text.slice((f.month + " spending").length)));
       },
       kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
       balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
@@ -14056,7 +14286,7 @@ Fill every field of the response schema. Rules:
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
         const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-header-row" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, configuredDebts.map(([key, v]) => {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-header-row" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-item-bal" }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, configuredDebts.map(([key, v]) => {
           const bal = parseFloat(v.balance) || 0;
           const rate = parseFloat(v.rate) || 0;
           const isManual = key.startsWith("manual_");
@@ -14072,7 +14302,7 @@ Fill every field of the response schema. Rules:
           })() : null;
           const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
           const payoffTrend = monthsLeft > 1 ? projectPayoffBalances(bal, rate, pmt, monthsLeft) : null;
-          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-apr-badge" }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { className: "debtsnap-amounts" }, payoffTrend && /* @__PURE__ */ React.createElement("span", { title: "Projected balance decline to payoff", style: { display: "inline-flex", verticalAlign: "middle", marginRight: 2 } }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 18, width: 44 })), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-payoff" }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { className: "text-10 c-textLt" }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { className: "progress-track--clip" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-progress-fill", style: {
+          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-apr-badge" }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { className: "debtsnap-amounts" }, payoffTrend && /* @__PURE__ */ React.createElement("span", { title: "Projected balance decline to payoff", style: { display: "inline-flex", verticalAlign: "middle", marginRight: 2 } }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 18, width: 44 })), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-item-bal" }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-payoff" }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { className: "text-10 c-textLt" }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { className: "progress-track--clip" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-progress-fill", style: {
             width: `${pct}%`,
             background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amberInk)" : "var(--greenDk)"
           } })), pmt > 0 && (() => {
@@ -14660,7 +14890,7 @@ Fill every field of the response schema. Rules:
       s.title
     ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))), /* @__PURE__ */ React.createElement("div", { className: "help-footer txl" }, "Build ", APP_VERSION));
   }
-  function AlertsPanel({ flow, alertThreshold, setTab, gotoForecast = () => {
+  function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
   } }) {
     const today = /* @__PURE__ */ new Date();
     const next90 = new Date(today);
@@ -14690,15 +14920,30 @@ Fill every field of the response schema. Rules:
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => setTab("dashboard"),
+        onClick: () => setTab("today"),
         className: "cf-btn cf-btn--secondary cf-btn--md"
       },
       "← Back"
-    )), alerts.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
+    )), alerts.length === 0 && findings.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
       color: "var(--red)"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev) => renderAlertRow(ev))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
       color: "var(--amberInk)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))));
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))),
+    // Everything else the app has worked out and would otherwise only say on
+    // the one screen that computes it. "Centralised" has to mean you can come
+    // here and see the lot, not just the balance warnings.
+    findings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
+      /* @__PURE__ */ React.createElement("div", { className: "alert-section-label" },
+        /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 13 }), "Worth knowing"),
+      /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
+        /* @__PURE__ */ React.createElement("button", {
+          key: f.id, type: "button", className: "notice notice--sm alerts-finding",
+          "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
+        },
+          /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+            /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
+          /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
+          /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192"))))));
   }
   // Delivery hour choices for background push. Labelled in 12-hour form
   // because that's how the alert time reads on the phone that receives it.
@@ -16901,7 +17146,7 @@ Fill every field of the response schema. Rules:
       renderCheck("ForecastView (empty)", React.createElement(ForecastView, { yearFlows: {}, yearConfigs: [], openBalByYear: {} }));
       renderCheck("DashboardView (empty)", React.createElement(DashboardView, { flow: [], openBal: 0, yearFlows: {}, yearConfigs: [], alertThreshold: 500, activeYear: 2026 }));
       renderCheck("PlanView (empty)", React.createElement(PlanView, { flow: [], openBal: 0, entries: [], goals: [], categories: ["A"], alertThreshold: 500, activeYear: 2026 }));
-      renderCheck("BottomNav", React.createElement(BottomNav, { tab: "dashboard", setTab: noop }));
+      renderCheck("BottomNav", React.createElement(BottomNav, { tab: "today", setTab: noop }));
       t("goal progress math (pct, projection)", () => {
         const g = { target: 3600, saved: 900, monthly: 300 };
         const pct = Math.min(100, Math.round(g.saved / g.target * 100));
@@ -17346,6 +17591,9 @@ Fill every field of the response schema. Rules:
       }
     }, [tab]);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
+    // The Plan screen owns this; the Alerts centre only reads it, so its
+    // finding is computed against the same extra payment you set there.
+    const [debtExtraForFindings] = useLS("cf_debt_extra", "100");
     const [flowSubRaw, setFlowSub] = useLS("cf_budget_subtab", "list");
     // The key keeps its old name on purpose: renaming a storage key silently
     // resets every existing device on upgrade. Only the value vocabulary moved.
@@ -18201,6 +18449,25 @@ Fill every field of the response schema. Rules:
     // share a shape, a scale and a collapse rule. Order here is irrelevant —
     // NoticeStack sorts by severity — but each entry carries a `plain` string
     // because that is what the collapsed summary shows.
+    // Findings, as opposed to warnings: the things the app has worked out that
+    // you would want told. The Alerts centre lists every one, so it is the
+    // place you can go to see everything the app has to say — the screens that
+    // compute them still show them in context, from these same helpers.
+    const appFindings = useMemo(() => {
+      const simDebts = Object.entries(debtData || {})
+        .map(([key, v]) => ({
+          key,
+          bal: parseFloat(v && v.balance) || 0,
+          rate: parseFloat(v && v.rate) || 0,
+          pmt: parseFloat(v && v.payment) || 0
+        }))
+        .filter((d) => d.bal > 0 && d.pmt > 0 && !(debtData[d.key] || {}).hidden);
+      const extra = Math.round((parseFloat(debtExtraForFindings) || 0) * 100);
+      return [
+        spendingInsightFinding(computeSpendingInsight(activeFlow, activeYear)),
+        debtStrategyFinding(simDebts, extra)
+      ].filter(Boolean);
+    }, [activeFlow, activeYear, debtData, debtExtraForFindings]);
     const appNotices = useMemo(() => {
       const out = [];
       if (showLowBanner) {
@@ -18775,7 +19042,7 @@ Fill every field of the response schema. Rules:
         filterStatus: entriesFilterStatus,
         setFilterStatus: setEntriesFilterStatus
       }
-    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
+    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, findings: appFindings, gotoForecast: () => {
       setTab("flow");
       setFlowSub("curve");
     } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(

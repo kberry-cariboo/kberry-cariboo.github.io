@@ -383,47 +383,7 @@
       });
       return merged;
     }, [dashOrder]);
-    const insight = useMemo(() => {
-      try {
-        const now = /* @__PURE__ */ new Date();
-        if (now.getFullYear() !== activeYear) return null;
-        const cm = now.getMonth();
-        if (cm === 0) return null;
-        const lookback = [];
-        for (let i = Math.max(0, cm - 6); i < cm; i++) lookback.push(i);
-        const monthExp = (mi) => flow.filter((ev) => ev.month === mi && ev.type === "expense").reduce((s, ev) => s + ev.amount, 0);
-        const avg = lookback.reduce((s, mi) => s + monthExp(mi), 0) / lookback.length;
-        if (!avg) return null;
-        const curr = monthExp(cm);
-        const pct = Math.round((curr - avg) / avg * 100);
-        const catMonth = (mi) => {
-          const o = {};
-          flow.forEach((ev) => {
-            if (ev.month === mi && ev.type === "expense") o[ev.category] = (o[ev.category] || 0) + ev.amount;
-          });
-          return o;
-        };
-        const currCats = catMonth(cm);
-        const avgCats = {};
-        lookback.forEach((mi) => {
-          const o = catMonth(mi);
-          Object.keys(o).forEach((c) => avgCats[c] = (avgCats[c] || 0) + o[c]);
-        });
-        Object.keys(avgCats).forEach((c) => avgCats[c] /= lookback.length);
-        let driver = null, driverDelta = 0;
-        (/* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
-          const d = (currCats[c] || 0) - (avgCats[c] || 0);
-          if (Math.abs(d) > Math.abs(driverDelta)) {
-            driver = c;
-            driverDelta = d;
-          }
-        });
-        return { month: MONTHS[cm], pct, driver, driverDelta, n: lookback.length };
-      } catch (e) {
-        console.error("dashboard spending-insight computation failed, hiding the Spending Insight card", e);
-        return null;
-      }
-    }, [flow, activeYear]);
+    const insight = useMemo(() => computeSpendingInsight(flow, activeYear), [flow, activeYear]);
     // Colour is reserved for state. A balance that is simply fine is ordinary
     // text — it only takes a colour when it has something to say (amber under
     // the alert threshold, red overdrawn). Eleven of the fourteen balance
@@ -551,19 +511,17 @@
       })()),
       monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
       insight: () => {
-        if (!insight) return null;
-        const above = insight.pct > 0;
-        const inline = Math.abs(insight.pct) < 2;
-        const showDriver = !inline && insight.driver && (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
-        // The same shape as every other notice in the app: this is a finding
-        // about the month, and it used to be a tenth distinct bar — 8px
-        // radius, 9/14 padding, a 3px accent — sitting between two 10px
-        // cards. Its tone reports the finding: over the average is a warning,
-        // under it is good news, and in line with it is neither.
+        // Written once, in app-data.js, so this bar and the Alerts centre's
+        // copy of it cannot drift apart. Its tone reports the finding: over
+        // the average is a warning, under it is good news, in line with it is
+        // neither.
+        const f = spendingInsightFinding(insight);
+        if (!f) return null;
         return /* @__PURE__ */ React.createElement("div", {
-          "data-widget": "insight", className: "notice notice--sm", role: "status",
-          "data-tone": inline ? "info" : above ? "warn" : "good"
-        }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, insight.month, " spending"), inline ? ` is in line with your ${insight.n}-month average.` : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average`, !inline && showDriver ? ` — ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).` : inline ? "" : "."));
+          "data-widget": "insight", className: "notice notice--sm", role: "status", "data-tone": f.tone
+        }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" },
+          /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, f.month, " spending"),
+          f.text.slice((f.month + " spending").length)));
       },
       kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
       balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
@@ -763,7 +721,7 @@
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
         const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-header-row" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, configuredDebts.map(([key, v]) => {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-header-row" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-item-bal" }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, configuredDebts.map(([key, v]) => {
           const bal = parseFloat(v.balance) || 0;
           const rate = parseFloat(v.rate) || 0;
           const isManual = key.startsWith("manual_");
@@ -779,7 +737,7 @@
           })() : null;
           const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
           const payoffTrend = monthsLeft > 1 ? projectPayoffBalances(bal, rate, pmt, monthsLeft) : null;
-          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-apr-badge" }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { className: "debtsnap-amounts" }, payoffTrend && /* @__PURE__ */ React.createElement("span", { title: "Projected balance decline to payoff", style: { display: "inline-flex", verticalAlign: "middle", marginRight: 2 } }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 18, width: 44 })), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-payoff" }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { className: "text-10 c-textLt" }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { className: "progress-track--clip" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-progress-fill", style: {
+          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-apr-badge" }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { className: "debtsnap-amounts" }, payoffTrend && /* @__PURE__ */ React.createElement("span", { title: "Projected balance decline to payoff", style: { display: "inline-flex", verticalAlign: "middle", marginRight: 2 } }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 18, width: 44 })), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-item-bal" }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-payoff" }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { className: "text-10 c-textLt" }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { className: "progress-track--clip" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-progress-fill", style: {
             width: `${pct}%`,
             background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amberInk)" : "var(--greenDk)"
           } })), pmt > 0 && (() => {
