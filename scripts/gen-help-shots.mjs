@@ -81,7 +81,17 @@ const SHOTS = [
       await page.waitForTimeout(300);
     } },
   { name: 'bva', hash: '#/envelopes', at: '.cf-card', maxHeight: 300 },
-  { name: 'dashboard-kpis', hash: '#/today', at: '.kpi-grid-4' },
+  // The KPI tiles are the last panel in Today's opening stack on a desktop
+  // width; on a narrow one they can fall past the fold, so open it first.
+  { name: 'dashboard-kpis', hash: '#/today', at: '.kpi-grid-4',
+    prepare: async (page) => {
+      const more = page.locator('.dash-more-btn');
+      if (await more.count() && await more.getAttribute('aria-expanded') === 'false'
+          && await page.locator('.kpi-grid-4').count() === 0) {
+        await more.click();
+        await page.waitForTimeout(500);
+      }
+    } },
   { name: 'dashboard-upcoming', hash: '#/today', at: '.cf-card',
     prepare: async (page) => { await page.getByText('UPCOMING', { exact: false }).first().scrollIntoViewIfNeeded(); },
     pick: (page) => page.locator('.cf-card', { hasText: 'UPCOMING' }).first(), maxHeight: 260 },
