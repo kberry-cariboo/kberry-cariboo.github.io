@@ -1168,6 +1168,97 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// MOBILE-UI-AUDIT called this out and it had got worse, not better: Flow spent
+// 553px of an 844px phone screen before the first ledger row, and Forecast 751.
+// The single biggest item was four KPI tiles in a 2x2 grid above the rows they
+// summarise, and on Forecast two cards that each wrapped one control.
+await test('flow: you can see the ledger without scrolling past a screen of chrome', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const topOfFirstRow = async () => page.evaluate(() => {
+    const r = document.querySelector('main .budget-card-row, main .cal-cell, main .forecast-table tbody tr');
+    return r ? Math.round(r.getBoundingClientRect().top) : null;
+  });
+  // Budgets: the numbers here are ceilings with room in them, not targets. They
+  // exist so a band added above the rows later fails here rather than quietly
+  // pushing them off the screen again.
+  for (const [hash, budget] of [['#/flow/list', 470], ['#/flow/calendar', 360], ['#/flow/curve', 660]]) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    const top = await topOfFirstRow();
+    if (top == null) throw new Error('no content row found on ' + hash);
+    if (top > budget) throw new Error(hash + ': ' + top + 'px of chrome before the first row (budget ' + budget + ')');
+  }
+
+  // The month's four totals are one line until asked for, and the line states
+  // the answer rather than just labelling the control.
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const shut = await page.evaluate(() => {
+    const l = document.querySelector('.month-summary-line');
+    return { text: l ? l.innerText.replace(/\s+/g, ' ') : null,
+             expanded: l ? l.getAttribute('aria-expanded') : null,
+             tiles: document.querySelectorAll('.month-summary .kpi-card').length,
+             h: l ? Math.round(l.getBoundingClientRect().height) : null };
+  });
+  if (!shut.text) throw new Error('no month summary line');
+  if (shut.tiles) throw new Error('the four tiles are open before anyone asked');
+  if (!/surplus|shortfall/.test(shut.text)) throw new Error('the line does not say the answer: ' + shut.text);
+  if (!/closes/.test(shut.text)) throw new Error('the line does not carry the closing balance: ' + shut.text);
+  if (shut.h < 44) throw new Error('the summary line is ' + shut.h + 'px, under the touch floor');
+  await page.locator('.month-summary-line').tap({ force: true });
+  await page.waitForTimeout(500);
+  const open = await page.evaluate(() => ({
+    tiles: document.querySelectorAll('.month-summary .kpi-card').length,
+    expanded: document.querySelector('.month-summary-line').getAttribute('aria-expanded'),
+    // All four figures, not a subset: the collapse must not have quietly
+    // dropped one. (The year-over-year sub-lines only exist when a previous
+    // year is configured, which this fixture has not, so they are not the
+    // thing to assert on here.)
+    labels: [...document.querySelectorAll('.month-summary .kpi-card .kpi-label')]
+      .map((e) => e.textContent.trim()) }));
+  if (open.tiles !== 4 || open.expanded !== 'true') throw new Error('expanding gave ' + open.tiles + ' tiles');
+  for (const want of ['Total Income', 'Total Expenses', 'Surplus/Shortfall', 'Closing Balance']) {
+    if (!open.labels.includes(want)) throw new Error('the collapse dropped "' + want + '"');
+  }
+
+  // Forecast's two controls are plain rows on a phone, not two card shells.
+  await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const boxed = await page.evaluate(() => [...document.querySelectorAll('.forecast-setup')]
+    .filter((e) => { const c = getComputedStyle(e);
+      return c.borderTopWidth !== '0px' || parseFloat(c.paddingTop) > 0; }).length);
+  if (boxed) throw new Error(boxed + ' forecast control block(s) still carry card chrome on a phone');
+  await ctx.close();
+});
+
+// Envelopes gave its rows 320px of a 390px screen, because the list sat inside
+// the card's side padding — and a category name plus two amounts on one line is
+// exactly the row that cannot afford it.
+await test('envelopes: the rows use the width the screen has', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await page.waitForTimeout(1300);
+  const r = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    const rows = [...document.querySelectorAll('.bva-row')].filter((e) => e.getClientRects().length);
+    return { n: rows.length, vw: sc.clientWidth,
+      slop: sc.scrollWidth - sc.clientWidth,
+      widest: rows.length ? Math.round(Math.max(...rows.map((e) => e.getBoundingClientRect().width))) : 0,
+      // Not scrollWidth on the row: the kebab's 44px touch halo is an
+      // absolutely-positioned pseudo-element that overshoots its own 24px box
+      // by design, and every row would report 11px of "overflow" that is not
+      // there. What matters is whether anything is actually pushed off screen.
+      clipped: rows.flatMap((e) => [...e.querySelectorAll('*')])
+        .filter((e) => { const b = e.getBoundingClientRect();
+          return b.width > 0 && (b.right > sc.clientWidth + 1 || b.left < -1); }).length };
+  });
+  if (!r.n) throw new Error('no envelope rows rendered');
+  if (r.slop > 1) throw new Error('envelopes scroll sideways by ' + r.slop + 'px');
+  if (r.clipped) throw new Error(r.clipped + ' element(s) in the envelope rows are pushed off screen');
+  if (r.widest < r.vw - 60) throw new Error('rows are ' + r.widest + 'px in a ' + r.vw + 'px viewport');
+  await ctx.close();
+});
+
 // The AI report only exists once one has been generated, so nothing in this
 // suite had ever rendered one — and it was scrolling sideways by 66px on a
 // 390px phone, because .ai-report-grid used a bare 1fr. `1fr` is
