@@ -122,6 +122,16 @@ let pageErrors = [];
 // tests that need data the shared fixture doesn't carry (a mid-horizon expense
 // big enough to dip the forecast, a few savings goals). Everything else takes
 // the fixture as it is.
+// Today keeps the charts and tables one tap below the fold now. A test that
+// reads one of them is testing the panel, not the disclosure, so it opens it
+// first — the panels themselves are unchanged.
+async function showDashAnalysis(page) {
+  const b = page.locator('.dash-more-btn');
+  if (await b.count() === 0) return;
+  if (await b.getAttribute('aria-expanded') === 'true') return;
+  await b.click({ force: true });
+  await page.waitForTimeout(600);
+}
 async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x) => x } = {}) {
   const ctx = await browser.newContext({
     viewport: touch ? { width: 393, height: 852 } : { width: 1440, height: 900 },
@@ -172,6 +182,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
+  await showDashAnalysis(page);
 
   await test('dashboard: KPI tiles and charts render', async () => {
     for (const t of ['Balance today', 'Annual Income', 'Running Balance', 'Income vs Expenses', 'Top Expense Categories', 'Budget vs Actual']) {
@@ -528,22 +539,30 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     await page.locator('#set-locale').selectOption('de-DE');
     await page.waitForTimeout(500);
 
-    await page.goto(BASE + '#/today', { waitUntil: 'load' });
-    await page.waitForTimeout(900);
-    const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
-    // German grouping puts points where en-CA puts commas, and the symbol
-    // changes with the currency.
-    if (!kpi.includes('€')) throw new Error('currency symbol did not change: ' + kpi);
-    if (!/\d\.\d{3},\d{2}/.test(kpi)) throw new Error('number format did not change: ' + kpi);
-    // Chart axes format money too, through the same module state.
-    const ticks = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((t) => t.textContent).join(' '));
-    if (!ticks.includes('€')) throw new Error('chart axis still using the old symbol: ' + ticks.slice(0, 120));
-
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
-    await page.waitForTimeout(700);
-    await page.locator('#set-currency').selectOption('CAD');
-    await page.locator('#set-locale').selectOption('en-CA');
-    await page.waitForTimeout(500);
+    // Currency is session-wide state on a page every later test shares, so the
+    // restore has to happen even when the assertions don't. It didn't, once,
+    // and a single failure here reported itself as four unrelated ones further
+    // down, all of them looking for "1,700.00" in a household now writing
+    // "1.700,00".
+    try {
+      await page.goto(BASE + '#/today', { waitUntil: 'load' });
+      await page.waitForTimeout(900);
+      await showDashAnalysis(page);
+      const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+      // German grouping puts points where en-CA puts commas, and the symbol
+      // changes with the currency.
+      if (!kpi.includes('€')) throw new Error('currency symbol did not change: ' + kpi);
+      if (!/\d\.\d{3},\d{2}/.test(kpi)) throw new Error('number format did not change: ' + kpi);
+      // Chart axes format money too, through the same module state.
+      const ticks = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((t) => t.textContent).join(' '));
+      if (!ticks.includes('€')) throw new Error('chart axis still using the old symbol: ' + ticks.slice(0, 120));
+    } finally {
+      await page.goto(BASE + '#/you', { waitUntil: 'load' });
+      await page.waitForTimeout(700);
+      await page.locator('#set-currency').selectOption('CAD');
+      await page.locator('#set-locale').selectOption('en-CA');
+      await page.waitForTimeout(500);
+    }
   });
 
   // The statutory holidays that decide when a payday lands were British
@@ -574,6 +593,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   await test('dashboard: reconciling to the bank adjusts today without touching income or expenses', async () => {
     await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
+    await showDashAnalysis(page);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
 
@@ -695,6 +715,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   await test('dashboard: every monthly summary row reconciles with the balance beside it', async () => {
     await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
+    await showDashAnalysis(page);
     const grid = await page.evaluate(() => {
       const money = (t) => {
         const m = (t || '').replace(/[^0-9.+-]/g, '');
@@ -1038,6 +1059,72 @@ await test('dark mode: charts render with theme colours', async () => {
     }
   });
 
+  // Marking paid and skipping are the two things people actually do to a row,
+  // and both used to live behind a kebab. They are gestures now: right pays,
+  // left skips. The grid's own change-month swipe excludes .ledger-row-wrap,
+  // so a drag that starts on a row belongs to the row — that exclusion is what
+  // this checks as much as the gesture itself.
+  await test('mobile: swiping a ledger row right marks it paid', async () => {
+    await page.locator('.cf-bottomnav').getByRole('button', { name: 'Flow' }).tap({ force: true });
+    await page.waitForTimeout(800);
+    await page.locator('.ledger-row-wrap .budget-card-row').first().waitFor(V);
+    // Dispatched rather than driven through page.mouse: the handler ignores
+    // pointerType 'mouse' on purpose, because a swipe is a touch gesture and
+    // a mouse has the kebab. Playwright's mouse API cannot express the other.
+    const r = await page.evaluate(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const wrap = [...document.querySelectorAll('.ledger-row-wrap')]
+        .find((x) => x.querySelector('.budget-card-row [role=checkbox]').getAttribute('aria-checked') === 'false');
+      if (!wrap) return { err: 'no unpaid row on screen' };
+      const row = wrap.querySelector('.budget-card-row');
+      const b = row.getBoundingClientRect();
+      const y = b.y + b.height / 2, x0 = b.x + b.width / 2;
+      const fire = (t, x) => row.dispatchEvent(new PointerEvent(t, { pointerId: 9, pointerType: 'touch',
+        isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y }));
+      // The panes live behind the row and are revealed by it moving. Without a
+      // stacking context of its own the static row loses to its absolutely
+      // positioned sibling, and every row wears a green "Paid" tab at rest.
+      const buried = [...document.querySelectorAll('.ledger-row-wrap')].map((w) => {
+        const q = w.getBoundingClientRect();
+        const hit = document.elementFromPoint(q.x + 30, q.y + q.height / 2);
+        return hit && hit.closest('.ledger-row-actions') ? (w.innerText || '').split('\n')[0] : null;
+      }).filter(Boolean).join(', ');
+      fire('pointerdown', x0);
+      const moved = [];
+      for (const dx of [14, 40, 80, 110]) { fire('pointermove', x0 + dx); await sleep(40);
+        moved.push(getComputedStyle(row).transform); }
+      fire('pointerup', x0 + 110);
+      await sleep(600);
+      return { moved, buried, checked: row.querySelector('[role=checkbox]').getAttribute('aria-checked'),
+               sheet: !!document.querySelector('.modal-card') };
+    });
+    if (r.err) throw new Error(r.err);
+    if (r.buried) throw new Error('the action panes are showing at rest: ' + r.buried);
+    if (!r.moved.some((t) => t !== 'none')) throw new Error('the row never followed the finger');
+    if (r.checked !== 'true') throw new Error('row not marked paid (aria-checked=' + r.checked + ')');
+    // A finished swipe still fires a click. If that click reaches the row the
+    // gesture also opens the edit sheet, on top of its own toast.
+    if (r.sheet) throw new Error('the swipe also opened the edit sheet');
+  });
+
+  // Adding an entry is the app's most common act and it should not cost you
+  // your place. It used to jump to Flow -> Entries, so composing from Today
+  // meant navigating back to whatever you had been reading.
+  await test('mobile: composing an entry does not leave the screen you are on', async () => {
+    for (const [hash, label] of [['#/today', 'Today'], ['#/plan/goals', 'Plan']]) {
+      await page.evaluate((h) => { location.hash = h; }, hash);
+      await page.waitForTimeout(700);
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('cf:quickadd')));
+      await page.waitForTimeout(500);
+      await page.getByPlaceholder('e.g. Mortgage payment').waitFor(V);
+      const at = await page.evaluate(() => location.hash);
+      if (at !== hash) throw new Error(label + ': compose navigated to ' + at);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(400);
+      if (await page.locator('.modal-overlay').count() > 0) throw new Error(label + ': Escape did not close the form');
+    }
+  });
+
   // A help bubble is up to 272px wide and hangs off a 15px control, so on a
   // 393px screen neither edge alignment fits — it has to slide until both ends
   // are on screen. It used to run off the right edge, taking the last line of
@@ -1080,6 +1167,84 @@ await test('dark mode: charts render with theme colours', async () => {
 
   await ctx.close();
 }
+
+// Today used to open as all eighteen panels: roughly five phone screens of
+// charts to scroll past before reaching anything that tells you what to do. It
+// leads with a stack now and keeps the analysis one tap below. The rule is
+// positional, not a fixed list of ids, so reordering in Customize is what moves
+// a panel across the line — which is why this checks the count and the fold
+// rather than which widgets happen to be above it.
+await test('today opens on a stack, with the analysis one tap below it', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const shut = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    const b = document.querySelector('.dash-more-btn');
+    return { h: sc.scrollHeight, vh: sc.clientHeight, label: b && b.textContent.trim(),
+             expanded: b && b.getAttribute('aria-expanded'), body: !!document.querySelector('.dash-more-body') };
+  });
+  if (!shut.label) throw new Error('no disclosure at the foot of Today');
+  if (shut.body || shut.expanded !== 'false') throw new Error('the analysis is open before anyone asked');
+  if (!/More on \d{4} — \d+ more panels?/.test(shut.label)) throw new Error('unhelpful label: ' + shut.label);
+  // Two-and-a-bit screens is a briefing; five is a wall. The number is a
+  // ceiling, not a target — it exists so a panel added to the stack later
+  // fails here instead of quietly restoring the wall.
+  const screens = shut.h / shut.vh;
+  if (screens > 2.6) throw new Error('Today is ' + screens.toFixed(1) + ' screens tall with the analysis closed');
+
+  await page.locator('.dash-more-btn').tap({ force: true });
+  await page.waitForTimeout(700);
+  const open = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    return { h: sc.scrollHeight, slop: sc.scrollWidth - sc.clientWidth,
+             expanded: document.querySelector('.dash-more-btn').getAttribute('aria-expanded'),
+             body: !!document.querySelector('.dash-more-body') };
+  });
+  if (!open.body || open.expanded !== 'true') throw new Error('the disclosure did not open');
+  if (open.h <= shut.h) throw new Error('opening it revealed nothing');
+  if (open.slop > 1) throw new Error('the revealed panels overflow sideways by ' + open.slop + 'px');
+
+  // Customize draws the line, so the rule is visible rather than folklore.
+  await page.locator('.dash-foot-customize').tap({ force: true });
+  await page.waitForTimeout(600);
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.customize-list > *')]
+    .map((n) => (n.className || '').includes('fold') ? '@fold' : 'w'));
+  const at = rows.indexOf('@fold');
+  if (at < 0) throw new Error('Customize does not show where Today stops');
+  if (at !== 8) throw new Error('the fold falls after ' + at + ' panels, expected 8');
+  await ctx.close();
+});
+
+// The month strip used to tell you only which month you were in. Finding the
+// month your balance dips below your buffer meant opening all twelve. Now each
+// pill carries its closing balance, and the ones that close under the
+// threshold are underscored in the rail's own colour.
+//
+// The shipped fixture is a comfortable year, so the marking never fires
+// against its $500 threshold. Raising the threshold rather than authoring a
+// second fixture keeps the money identical: same household, fatter buffer.
+await test('the month strip marks the months that close below the alert threshold', async () => {
+  const { ctx, page } = await ctxPage({ stub: (x) => x.replace(/alertThreshold: 50000/g, 'alertThreshold: 3000000') });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const pills = await page.evaluate(() => [...document.querySelectorAll('.month-pill')]
+    .filter((b) => /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/.test(b.textContent.trim()))
+    .map((b) => ({ m: b.textContent.trim(), title: b.getAttribute('title'),
+                   marked: getComputedStyle(b).boxShadow !== 'none', active: b.dataset.active === 'true' })));
+  if (pills.length !== 12) throw new Error(pills.length + ' month pills, expected 12');
+  const untitled = pills.filter((p) => !p.title || !/Closing balance/.test(p.title));
+  if (untitled.length) throw new Error('no closing balance on ' + untitled.map((p) => p.m).join(','));
+  const cents = (p) => Math.round(parseFloat(p.title.replace(/[^0-9.-]/g, '')) * 100);
+  // Marked exactly when it closes under the buffer. The active pill is drawn
+  // by its own fill, so it is the one legitimate exception.
+  for (const p of pills) {
+    const low = cents(p) < 3000000;
+    if (!p.active && low !== p.marked) throw new Error(p.m + ' closes ' + p.title + ' but marked=' + p.marked);
+  }
+  if (!pills.some((p) => p.marked)) throw new Error('no month marked at a $30,000 threshold');
+  await ctx.close();
+});
 
 await test('mobile dark mode: the active nav item is highlighted, not dimmed', async () => {
   const { ctx, page } = await ctxPage({ touch: true, dark: true });
@@ -2176,6 +2341,7 @@ await test('a11y: every chart is either described or hidden, never bare', async 
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
+  await showDashAnalysis(page);
   const bare = await page.$$eval('svg', (els) => els
     .filter((e) => e.getAttribute('aria-hidden') !== 'true' && e.getAttribute('role') !== 'img')
     .map((e) => e.parentElement && e.parentElement.className));
@@ -2229,6 +2395,7 @@ await test('wide screens: cards size to their content, and card lists use the wi
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
+  await showDashAnalysis(page);
   const align = await page.locator('.chart-grid').first().evaluate((el) => getComputedStyle(el).alignItems);
   if (align !== 'start') throw new Error(`paired dashboard cards are ${align}, so the shorter one stretches`);
 
@@ -2293,6 +2460,7 @@ await test('invariant: every printed surplus agrees with the balances printed be
   // ── The Dashboard's Monthly Summary ───────────────────────────────────────
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1800);
+  await showDashAnalysis(page);
   const table = await page.evaluate(() => {
     const tb = [...document.querySelectorAll('table')].find((t) =>
       [...t.querySelectorAll('thead th')].some((h) => /Surplus/.test(h.textContent)));

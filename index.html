@@ -951,6 +951,27 @@
         .today-line-wrap{display:flex;align-items:center;gap:8px;padding:4px 8px;}
         .today-label{font-size:10px;font-weight:700;color:var(--amberInk);white-space:nowrap;letter-spacing:0.1em;}
         .today-line-card-wrap{display:flex;align-items:center;gap:8px;padding:6px 14px;}
+        /* ── Swipe actions behind the ledger row ──
+           The row is opaque and slides over these; they are revealed by the
+           gesture rather than tapped, so they carry aria-hidden and the tick
+           and row menu stay the accessible path to the same two actions. */
+        .ledger-row-wrap{position:relative;overflow:hidden;}
+        /* The panes are behind the row, not beside it: without a stacking
+           context of its own the static row loses to its absolutely
+           positioned sibling and every row wears a green "Paid" tab at
+           rest. The row's background is opaque, which is what hides them. */
+        .ledger-row-wrap > .budget-card-row{position:relative;z-index:1;}
+        .ledger-row-actions{position:absolute;inset:0;display:flex;
+          justify-content:space-between;align-items:stretch;}
+        .ledger-row-action{display:flex;align-items:center;padding:0 18px;
+          font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.01em;white-space:nowrap;}
+        .ledger-row-action--pay{background:var(--greenDk);}
+        .ledger-row-action--skip{background:var(--amberInk);margin-left:auto;}
+        .budget-card-row.is-dragging{transition:none;}
+        .budget-card-row.is-settling{transition:transform .22s cubic-bezier(.2,.9,.3,1);}
+        @media (prefers-reduced-motion:reduce){
+          .budget-card-row.is-settling{transition:none;}
+        }
         .card-top-row{display:flex;align-items:center;gap:8px;justify-content:space-between;}
         .card-desc-span{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
         .card-bottom-row{display:flex;align-items:baseline;margin-top:4px;}
@@ -1305,6 +1326,36 @@
         .customize-modal-card{padding:24px;width:min(400px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;}
         .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
         .customize-list{display:flex;flex-direction:column;gap:4px;}
+        .customize-note{font-size:12px;line-height:1.45;color:var(--textMid);margin:-8px 0 14px;}
+        /* Where Today stops. A rule with the reason written on it, rather than
+           a gap the reader has to infer a meaning for. */
+        .customize-fold{display:flex;align-items:center;gap:8px;margin:8px 2px;
+          font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--textLt);}
+        .customize-fold::before,.customize-fold::after{content:"";flex:1;height:1px;background:var(--border);}
+        /* The disclosure that holds the analysis. It is a full-width control
+           on purpose: it is the end of Today, and it has to read as a floor
+           rather than as one more card. */
+        /* Customize used to be the first thing on Today, above the runway:
+           a control for changing the page, given the position that should
+           belong to the page. It sits at the foot now, where you arrive
+           having read the thing you might want to change. */
+        .dash-foot{display:flex;align-items:stretch;gap:10px;margin:4px 0 8px;}
+        .dash-foot .dash-more{flex:1;min-width:0;margin:0;}
+        .dash-foot-customize{flex:0 0 auto;min-height:44px;padding:11px 16px;
+          border:1px solid var(--border);border-radius:10px;background:transparent;
+          color:var(--textMid);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+          white-space:nowrap;}
+        .dash-foot-customize:hover{color:var(--text);border-color:var(--textLt);}
+        .dash-more{margin:4px 0 8px;}
+        /* Inline, not flex: on a narrow screen the label wraps, and a flex
+           chevron gets left behind at the far edge of a two-line button. */
+        .dash-more-btn{display:block;width:100%;height:100%;text-align:center;line-height:1.35;
+          min-height:44px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;
+          background:var(--bgCard);color:var(--textMid);font:inherit;font-size:13px;font-weight:600;
+          cursor:pointer;}
+        .dash-more-btn:hover{color:var(--text);border-color:var(--textLt);}
+        .dash-more-chev{margin-right:7px;font-size:15px;}
+        .dash-more-body{margin-top:14px;display:flex;flex-direction:column;gap:0;}
         .customize-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--text);}
         .customize-checkbox{width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;}
         .customize-label{flex:1;min-width:0;}
@@ -6274,6 +6325,64 @@ document.addEventListener('DOMContentLoaded',function(){
   // Forecast offers as its longest, and far enough out to catch the annual
   // bills that are exactly what a monthly view hides.
   const RUNWAY_DAYS = 90;
+  // ── The schedule, in words ──────────────────────────────────────────────
+  // recurLabel abbreviates for a table column — "Monthly (weekday)" never says
+  // *which* weekday, and "Semi-monthly" never says which two days. That is
+  // fine in a 90px cell and useless when you are setting the rule up, where
+  // the question is "have I described the right thing?". This says it the way
+  // a person would, and the entry form prints it live under the controls.
+  const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const NTH_WORDS = { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", "-1": "last" };
+  function ordinalDay(n) {
+    const v = n % 100, suffix = ["th", "st", "nd", "rd"][(v - 20) % 10] || ["th", "st", "nd", "rd"][v] || "th";
+    return n + suffix;
+  }
+  function listWords(items) {
+    if (items.length <= 1) return items[0] || "";
+    if (items.length === 2) return items[0] + " and " + items[1];
+    return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+  }
+  function scheduleSentence(e) {
+    if (!e) return "";
+    const start = e.startDate ? new Date(e.startDate + "T00:00:00") : null;
+    if (!e.repeats) return start ? "Once, on " + start.toLocaleDateString(void 0, { day: "numeric", month: "long", year: "numeric" }) : "Once";
+    const n = e.recurEvery || 1;
+    const everyNth = n === 1 ? "Every " : n === 2 ? "Every second " : n === 3 ? "Every third " : "Every " + ordinalDay(n) + " ";
+    const dayOfMonth = start ? ordinalDay(start.getDate()) : "the start date";
+    let core;
+    switch (e.recurUnit || "month") {
+      case "day": core = n === 1 ? "Every day" : "Every " + n + " days"; break;
+      case "week": {
+        const days = (e.recurDays && e.recurDays.length ? e.recurDays : start ? [start.getDay()] : [])
+          .slice().sort((a, b) => a - b).map((d) => WEEKDAYS_FULL[d]);
+        core = days.length ? everyNth + listWords(days) : everyNth + "week";
+        break;
+      }
+      case "semimonth": core = "On the 1st and the 15th of every month"; break;
+      case "monthend": core = "On the last day of every month"; break;
+      case "monthweekday": {
+        const wd = e.recurDays && e.recurDays.length ? WEEKDAYS_FULL[e.recurDays[0]] : start ? WEEKDAYS_FULL[start.getDay()] : "day";
+        core = "The " + (NTH_WORDS[String(e.recurNth)] || "first") + " " + wd + " of every month";
+        break;
+      }
+      case "year": core = (n === 1 ? "Every year" : "Every " + n + " years") + (start ? " on " + start.toLocaleDateString(void 0, { day: "numeric", month: "long" }) : ""); break;
+      default: core = (n === 1 ? "Every month" : "Every " + n + " months") + " on the " + dayOfMonth;
+    }
+    if (e.recurEnd) {
+      const end = new Date(e.recurEnd + "T00:00:00");
+      core += ", until " + end.toLocaleDateString(void 0, { day: "numeric", month: "long", year: "numeric" });
+    }
+    return core;
+  }
+  // "This row was planned at X and actually cost Y." A pure reading of one
+  // event, so it belongs with the other event helpers rather than inside the
+  // budget view — the shared ledger row needs it too, and a const declared
+  // inside a component is invisible to anything outside it.
+  function varianceTitle(ev) {
+    return ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount
+      ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded`
+      : void 0;
+  }
   // ── The balance rail ────────────────────────────────────────────────────
   // One rule for "how is the money doing here", declared once and used by
   // every surface that draws a running balance: the rail down the ledger, the
@@ -6980,6 +7089,163 @@ document.addEventListener('DOMContentLoaded',function(){
       /* @__PURE__ */ React.createElement("i", { className: "cat-dot", style: { background: chipDot(color, ctxCats.chipSurface) }, "aria-hidden": "true" }),
       category);
   };
+  // ── One ledger row ──────────────────────────────────────────────────────
+  // A dated occurrence looks and behaves the same wherever you meet it: the
+  // month ledger, a calendar day, the forecast, and this week on Today. Those
+  // four grew their own near-identical copies, and the copies drifted — the
+  // forecast's still painted its left stripe green for "paid" long after that
+  // stripe became the balance rail everywhere else, so the same row said two
+  // different things depending on which screen you were on.
+  //
+  // The tick does double duty where the caller asks it to: on the budget grid
+  // an unpaid row selects for bulk actions and a paid one un-pays, which is
+  // what onToggleSelect expresses. Without it the tick just marks paid.
+  const LedgerRow = ({
+    ev, alertThreshold = DEFAULT_ALERT_THRESHOLD, paid = false, selected = false, past = false,
+    dateLabel = null, onTogglePaid, onToggleSelect = null, onOpen = null, onMenu = null, onSwipeLeft = null,
+    showBalance = true, categories, categoryColors
+  }) => {
+    const signed = signedAmount(ev);
+    const dim = paid ? "var(--textLt)" : null;
+    const coarse = useIsCoarsePointer();
+    const rowRef = useRef(null);
+    const drag = useRef(null);
+    // A finished swipe still produces a click. Without this the gesture that
+    // marks a row paid also opens its edit sheet on top of the toast.
+    const swallowClick = useRef(false);
+    // Marking a bill paid and skipping a date are the two things people
+    // actually do to a ledger row, and both were buried behind a kebab. On
+    // touch they are the gesture: right pays, left skips. The month-change
+    // swipe on the surrounding grid excludes .ledger-row-wrap, so a gesture
+    // that starts on a row is the row's and never the grid's.
+    const swipeable = coarse && !!onTogglePaid;
+    const setX = (px) => { if (rowRef.current) rowRef.current.style.transform = px ? "translateX(" + px + "px)" : ""; };
+    const onDown = (e) => {
+      if (!swipeable || e.pointerType === "mouse") return;
+      if (e.target.closest("button,a,input,select,textarea")) return;
+      drag.current = { x0: e.clientX, y0: e.clientY, dx: 0, active: false, id: e.pointerId };
+    };
+    const onMove = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+      if (!d.active) {
+        if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(dy)) return;
+        d.active = true;
+        if (rowRef.current) {
+          rowRef.current.classList.add("is-dragging");
+          // Capture, or a drag that runs off the row's own box stops sending
+          // move and up and the row is left mid-swipe.
+          // Not every browser allows capture on a synthetic pointer; the
+          // gesture still works without it, it is just less forgiving.
+          try { rowRef.current.setPointerCapture(d.id); } catch (_) { d.uncaptured = true; }
+        }
+      }
+      // Left only where there is something to skip to.
+      d.dx = Math.max(onSwipeLeft ? -120 : 0, Math.min(120, dx));
+      setX(d.dx);
+    };
+    const onUp = () => {
+      const d = drag.current;
+      drag.current = null;
+      if (!d || !d.active) return;
+      swallowClick.current = true;
+      const el = rowRef.current;
+      if (el) {
+        if (!d.uncaptured) { try { el.releasePointerCapture(d.id); } catch (_) { d.uncaptured = true; } }
+        el.classList.remove("is-dragging");
+        el.classList.add("is-settling");
+        setTimeout(() => el && el.classList.remove("is-settling"), 240);
+      }
+      setX(0);
+      if (d.dx > 64) { haptic(); onTogglePaid(ev.id); }
+      else if (d.dx < -64 && onSwipeLeft) { haptic(); onSwipeLeft(ev); }
+    };
+    const row = /* @__PURE__ */ React.createElement("div", {
+      className: "budget-card-row",
+      ref: rowRef,
+      onClick: onOpen ? () => {
+        if (swallowClick.current) { swallowClick.current = false; return; }
+        if (!drag.current) onOpen(ev);
+      } : void 0,
+      onContextMenu: onMenu ? (e) => { e.preventDefault(); onMenu(e, ev); } : void 0,
+      onPointerDown: swipeable ? onDown : void 0,
+      onPointerMove: swipeable ? onMove : void 0,
+      onPointerUp: swipeable ? onUp : void 0,
+      onPointerCancel: swipeable ? onUp : void 0,
+      style: {
+        background: selected ? "var(--stripe)" : paid ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
+        boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold),
+        cursor: onOpen ? "pointer" : "default",
+        touchAction: swipeable ? "pan-y" : void 0
+      }
+    },
+      /* @__PURE__ */ React.createElement("button", {
+        onClick: (e) => {
+          e.stopPropagation();
+          haptic();
+          if (onToggleSelect && !paid) onToggleSelect(ev.id);
+          else onTogglePaid(ev.id);
+        },
+        role: "checkbox",
+        "aria-checked": paid || selected,
+        "aria-label": (paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + ev.desc,
+        title: paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid",
+        className: "cf-checkbtn budget-card-checkbtn",
+        style: {
+          border: paid || selected ? "none" : "1.5px solid var(--border)",
+          background: paid ? "var(--greenDk)" : selected ? "var(--primary)" : "transparent"
+        }
+      }, paid || selected ? "\u2713" : ""),
+      /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" },
+        /* @__PURE__ */ React.createElement("div", { className: "card-top-row" },
+          /* @__PURE__ */ React.createElement("span", {
+            className: "tx card-desc-span", title: ev.desc,
+            style: { color: dim || "var(--text)", textDecoration: paid ? "line-through" : "none" }
+          }, ev.desc,
+            ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" },
+              /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 }))),
+          ev.category && /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { flexShrink: 0 } })),
+        /* @__PURE__ */ React.createElement("div", {
+          className: "card-bottom-row",
+          style: { justifyContent: dateLabel ? "space-between" : "flex-end" }
+        },
+          dateLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateLabel,
+            // Direct deposit does not arrive on a weekend or a statutory
+            // holiday. The marker travelled with the budget grid's own row and
+            // so was missing from the forecast and from this week on Today —
+            // the same payday, marked on one screen and not the next.
+            ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, {
+              icon: "\u21A4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev)
+            })),
+          /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" },
+            /* @__PURE__ */ React.createElement("span", {
+              className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)")
+              }
+            }, fmt(signed, true)),
+            showBalance && /* @__PURE__ */ React.createElement("span", {
+              className: "mno card-balance-amt", style: {
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)")
+              }
+            }, fmt(ev.balance))))),
+      onMenu && /* @__PURE__ */ React.createElement("button", {
+        onClick: (e) => { e.stopPropagation(); onMenu(e, ev); },
+        "aria-label": ev.desc + " actions", title: ev.desc + " actions",
+        className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
+      }, "\u22EE"));
+    if (!swipeable) return row;
+    // The panes sit behind the row and are revealed by it moving, so they are
+    // decoration for a gesture rather than controls of their own — the tick
+    // and the row menu remain the accessible path to both actions.
+    return /* @__PURE__ */ React.createElement("div", { className: "ledger-row-wrap" },
+      /* @__PURE__ */ React.createElement("div", { className: "ledger-row-actions", "aria-hidden": "true" },
+        /* @__PURE__ */ React.createElement("span", { className: "ledger-row-action ledger-row-action--pay" }, paid ? "Unpay" : "Paid"),
+        onSwipeLeft && /* @__PURE__ */ React.createElement("span", { className: "ledger-row-action ledger-row-action--skip" }, "Skip")),
+      row);
+  };
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
   // for rising expenses), so it's gone — pass `color` explicitly if needed.
@@ -7234,7 +7500,7 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     ));
   };
-  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
+  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }) => {
     const stripRef = useRef(null);
     const roving = useRovingTabs(".month-pill");
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -7267,6 +7533,8 @@ document.addEventListener('DOMContentLoaded',function(){
         window.removeEventListener("resize", updateFade);
       };
     }, [value, matchingMonths]);
+    const closeOf = (i) => monthCloses && monthCloses.length === 12 ? monthCloses[i] : null;
+    const needsEye = (i) => { const c = closeOf(i); return c != null && c < alertThreshold; };
     return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", onKeyDown: roving.onKeyDown },/* @__PURE__ */ React.createElement(
       "button",
       {
@@ -7312,7 +7580,9 @@ document.addEventListener('DOMContentLoaded',function(){
           "aria-pressed": isActive,
           tabIndex: isActive ? 0 : -1,
           "data-active": isActive ? "true" : "false",
-          "data-match": hasMatch ? "true" : "false"
+          "data-match": hasMatch ? "true" : "false",
+          title: closeOf(i) == null ? void 0 : "Closing balance " + fmt(closeOf(i)),
+          style: needsEye(i) && !isActive ? { boxShadow: "inset 0 -3px 0 0 " + railTone(closeOf(i), alertThreshold) } : void 0
         },
         m,
         hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { className: "month-pill-dot" })
@@ -7701,24 +7971,17 @@ document.addEventListener('DOMContentLoaded',function(){
       const next = f.recurDays.includes(wd) ? f.recurDays.filter((d) => d !== wd) : [...f.recurDays, wd].sort((a, b) => a - b);
       set({ recurDays: next });
     };
+    // One description of a schedule, shared with the Entries list rather than
+    // written twice — the two used to disagree, this one saying "Fri" where
+    // the list said "Monthly (weekday)" and neither saying which Friday.
     const recurSummary = () => {
       if (!f.repeats) return null;
-      const e = f.recurEvery, u = f.recurUnit, until = f.recurEnd ? ` until ${f.recurEnd}` : " (ongoing)";
-      if (u === "semimonth") return `Semi-monthly (1st & 15th pattern)${until}`;
-      if (u === "monthend") return `The last day of every month${until}`;
-      if (u === "monthweekday") {
-        const ord = { "1": "first", "2": "second", "3": "third", "4": "fourth", "5": "fifth", "-1": "last" }[String(f.recurNth)] || "first";
-        const wd = WEEKDAYS[f.recurDays[0] != null ? f.recurDays[0] : startWD || 0];
-        return `The ${ord} ${wd} of every month${until}`;
-      }
-      if (u === "day") return `Every ${e} day${e > 1 ? "s" : ""}${until}`;
-      if (u === "month") return `Every ${e} month${e > 1 ? "s" : ""}${until}`;
-      if (u === "year") return `Every ${e} year${e > 1 ? "s" : ""}${until}`;
-      if (u === "week") {
-        const days = (f.recurDays.length ? f.recurDays : [startWD]).filter(Boolean).map((d) => WEEKDAYS[d]).join(", ");
-        return `Every ${e} week${e > 1 ? "s" : ""} on ${days}${until}`;
-      }
-      return "";
+      const sentence = scheduleSentence({
+        repeats: true, recurUnit: f.recurUnit, recurEvery: f.recurEvery,
+        recurDays: f.recurDays && f.recurDays.length ? f.recurDays : (startWD !== null ? [startWD] : []),
+        recurNth: f.recurNth, recurEnd: f.recurEnd, startDate: f.startDate
+      });
+      return f.recurEnd ? sentence : sentence + " (ongoing)";
     };
     const validate = () => {
       const errs = {};
@@ -7980,6 +8243,18 @@ document.addEventListener('DOMContentLoaded',function(){
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
   // open a blank entry form.
   function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
+    // Escape closes, the backdrop doesn't — the same bargain every other
+    // overlay here strikes. It matters more now: this modal is mounted at app
+    // level and opens over whatever you were reading, so the way out has to be
+    // the one your fingers already know.
+    useEffect(() => {
+      if (!show) return void 0;
+      const h = (e) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [show, onClose]);
     if (!show) return null;
     return /* @__PURE__ */ React.createElement(
       "div",
@@ -8922,7 +9197,7 @@ document.addEventListener('DOMContentLoaded',function(){
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate ? fmtDate(e.startDate, null) : "\u2014");
         case "schedule":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta }, recurLabel(e));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta, title: scheduleSentence(e) }, recurLabel(e));
         case "until":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), fmtDate(e.recurEnd, null)) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
         case "category":
@@ -10341,7 +10616,6 @@ document.addEventListener('DOMContentLoaded',function(){
     const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
-    const varianceTitle = (ev) => ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded` : void 0;
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
       const isDone = !!completed[ev.id];
@@ -10461,76 +10735,22 @@ document.addEventListener('DOMContentLoaded',function(){
       } }), /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "period-hdr-td" }, label))
     );
     const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, className: "period-hdr-td" }, label);
-    const renderEventCard = (ev, opts = {}) => {
-      const hideDayLabel = !!opts.hideDayLabel;
-      const past = isPast(ev.day);
-      const isDone = !!completed[ev.id];
-      const isSel = selIds.has(ev.id);
-      const signed = signedAmount(ev);
-      return /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          key: ev.id,
-          className: "budget-card-row",
-          onClick: () => openOccurrenceEdit(ev),
-          onContextMenu: (e) => {
-            e.preventDefault();
-            setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          style: {
-            background: isSel ? "var(--stripe)" : isDone ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
-            boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold)
-          }
-        },
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (e) => {
-              e.stopPropagation();
-              haptic();
-              if (isDone) toggleComplete(ev.id);
-              else toggleSel(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": isDone || isSel,
-            "aria-label": isDone ? "Mark unpaid" : isSel ? "Deselect row" : "Select row",
-            title: isDone ? "Paid — click to mark unpaid" : "Select to mark paid",
-            className: "cf-checkbtn budget-card-checkbtn",
-            style: {
-              border: isDone || isSel ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : isSel ? "var(--primary)" : "transparent"
-            }
-          },
-          isDone || isSel ? "✓" : ""
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "card-top-row" }, /* @__PURE__ */ React.createElement("span", {
-          className: "tx card-desc-span",
-          title: ev.desc,
-          style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          }
-        }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "✎"), acctTag(ev)), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: hideDayLabel ? "flex-end" : "space-between" } }, !hideDayLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Day ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", title: varianceTitle(ev), style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
-        } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
-        } }, fmt(ev.balance))))), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (e) => {
-              e.stopPropagation();
-              setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-            },
-            "aria-label": ev.desc + " actions",
-            title: ev.desc + " actions",
-            className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
-          },
-          "⋮"
-        )
-      );
-    };
+    const renderEventCard = (ev, opts = {}) => /* @__PURE__ */ React.createElement(LedgerRow, {
+      key: ev.id,
+      ev,
+      alertThreshold,
+      paid: !!completed[ev.id],
+      selected: selIds.has(ev.id),
+      past: isPast(ev.day),
+      dateLabel: opts.hideDayLabel ? null : "Day " + ev.day,
+      onTogglePaid: toggleComplete,
+      onToggleSelect: toggleSel,
+      onOpen: openOccurrenceEdit,
+      onMenu: (e, row) => setBudgetCtx({ x: e.clientX, y: e.clientY, ev: row }),
+      onSwipeLeft: (row) => skipOccurrence(row),
+      categories,
+      categoryColors
+    });
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
     } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
@@ -10648,7 +10868,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const t = e.target;
       // .hscroll panes scroll horizontally themselves — a fast table fling
       // must never double as a change-month swipe.
-      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable],.hscroll")) {
+      if (t.closest && t.closest("input,button,select,textarea,a,.modal-overlay,.modal-card,[draggable],.hscroll,.ledger-row-wrap")) {
         touchStart.current = null;
         return;
       }
@@ -10707,6 +10927,10 @@ document.addEventListener('DOMContentLoaded',function(){
             setMonthIdx(v);
           },
           noMargin: false,
+          // Which months close below the alert threshold, so the strip marks
+          // them rather than making you open each one to find out.
+          monthCloses: summaries.map((m) => m.close),
+          alertThreshold,
           matchingMonths: true && gq ? matchingMonths : null,
           onAddNextYear,
           nextYear: onAddNextYear ? activeYear + 1 : null
@@ -11356,55 +11580,16 @@ document.addEventListener('DOMContentLoaded',function(){
     // slack. Editing still isn't offered here — Forecast projects across year
     // boundaries and the override machinery is year-scoped — so a row opens
     // nothing; the checkbox is the whole interaction.
-    const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => {
-      const dateStr = fmtDate(ev.date, today.getFullYear());
-      const isDone = !!completed[ev.id];
-      const signed = signedAmount(ev);
-      return /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          key: ev.id,
-          className: "budget-card-row",
-          style: {
-            background: isDone ? "var(--doneBg)" : "var(--bgCard)",
-            boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent"
-          }
-        },
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
-              haptic();
-              toggleComplete(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": isDone,
-            "aria-label": (isDone ? "Mark unpaid: " : "Mark paid: ") + ev.desc,
-            title: isDone ? "Paid — tap to mark unpaid" : "Mark paid",
-            className: "cf-checkbtn budget-card-checkbtn",
-            style: {
-              border: isDone ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : "transparent"
-            }
-          },
-          isDone ? "✓" : ""
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "card-top-row" }, /* @__PURE__ */ React.createElement("span", {
-          className: "tx card-desc-span",
-          title: ev.desc,
-          style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          }
-        }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
-        } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
-        } }, fmt(ev.balance)))))
-      );
-    }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
+    const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => /* @__PURE__ */ React.createElement(LedgerRow, {
+      key: ev.id,
+      ev,
+      alertThreshold,
+      paid: !!completed[ev.id],
+      dateLabel: fmtDate(ev.date, today.getFullYear()),
+      onTogglePaid: toggleComplete,
+      categories,
+      categoryColors
+    })), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
       const adj = (scenarioAdj || {})[e.id];
       const dropped = !!(adj && adj.drop);
@@ -13179,6 +13364,9 @@ Fill every field of the response schema. Rules:
     const isMobile = useIsMobile();
     const isPhone = useIsPhone();
     const [showCustomize, setShowCustomize] = useState(false);
+    // Device-local, not synced: whether you want the analysis open is a
+    // property of the screen you are reading on, not of the household.
+    const [dashMore, setDashMore] = useLS("cf_dash_more", false);
     // Every other dismissible dialog in the app closes on Escape — the
     // confirm dialogs, the occurrence editor, the context menus, the receipt
     // lightbox. Customize was the exception, and it has nothing to lose by
@@ -13397,16 +13585,20 @@ Fill every field of the response schema. Rules:
         return null;
       }
     }, [flow, openBal, activeYear, alertThreshold]);
+    // Order is the default reading order of Today, and the first
+    // DASH_STACK_SIZE of them are what it opens on: what is happening to my
+    // money, what do I owe, what changed. Everything from "insight" down is
+    // analysis — true, useful, and not what you unlock your phone for.
     const DASH_WIDGET_DEFS = [
       { id: "runway", label: "Runway \u2014 next 90 days", size: "full" },
       { id: "balanceToday", label: "Balance today", size: "third" },
       { id: "nextLow", label: "Next low point", size: "third" },
       { id: "dueMonth", label: "Due rest of month", size: "third" },
-      { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "upcoming", label: "Upcoming this week", size: "full" },
+      { id: "endingSoon", label: "Ending-soon chips", size: "full" },
+      { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
       { id: "insight", label: "Spending insight", size: "full" },
-      { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "balanceChart", label: "Balance chart", size: "half" },
       { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
@@ -13418,6 +13610,10 @@ Fill every field of the response schema. Rules:
       { id: "yoy", label: "Year-over-Year comparison", size: "full" }
     ];
     const DASH_ORDER_DEFAULT = DASH_WIDGET_DEFS.map((w) => w.id);
+    // Eight panels: the runway, the three at-a-glance figures on one row, this
+    // week, ending soon, what changed, the year. On a 390px phone that is
+    // roughly two screens — long enough to be a briefing, short enough to end.
+    const DASH_STACK_SIZE = 8;
     const dashOrderEff = useMemo(() => {
       const stored = Array.isArray(dashOrder) ? dashOrder.filter((id) => DASH_ORDER_DEFAULT.includes(id)) : [];
       const merged = [...stored];
@@ -13570,9 +13766,18 @@ Fill every field of the response schema. Rules:
             isPaid ? "\u2713" : ""
           );
           if (isMobile) {
-            return /* @__PURE__ */ React.createElement("div", { key: ev.id, className: "upcoming-item-mobile", style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-top" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-desc", style: {
-              textDecoration: isPaid ? "line-through" : "none"
-            } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-mobile-bottom" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-mobile-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: amtColor } }, isInc ? "+" : "-", fmt(ev.amount)), !isPhone && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: { color: balColor } }, fmt(ev.balance)))), barDiv);
+            // The same row this week's occurrences get everywhere else, rail
+            // and all — this list used to draw its own, without one.
+            return /* @__PURE__ */ React.createElement(LedgerRow, {
+              key: ev.id,
+              ev,
+              alertThreshold,
+              paid: isPaid,
+              dateLabel: label,
+              onTogglePaid: toggleComplete,
+              categories,
+              categoryColors
+            });
           }
           return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
             textDecoration: isPaid ? "line-through" : "none"
@@ -13918,15 +14123,10 @@ Fill every field of the response schema. Rules:
       onCancel: () => setShowReconcile(false),
       onConfirm: recordReconcile
     }), firstRunPanel, sampleBanner,
-    // Customize and the shared-view toggle sit on one line — see .dash-toolbar.
-    /* @__PURE__ */ React.createElement("div", { className: "dash-toolbar", "data-noprint": true }, entries.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowCustomize(true),
-        className: "cf-btn cf-btn--secondary cf-btn--xs"
-      },
-      "\u2699 Customize"
-    )), showCustomize && /* @__PURE__ */ React.createElement(
+    // The shared-view toggle stays here: it changes *what* you are reading, so
+    // it belongs above the reading. Customize changes the page itself and now
+    // sits at its foot — see .dash-foot.
+    /* @__PURE__ */ React.createElement("div", { className: "dash-toolbar", "data-noprint": true }, showCustomize && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -13942,9 +14142,15 @@ Fill every field of the response schema. Rules:
         },
         /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowCustomize(false) }),
         /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
+        /* @__PURE__ */ React.createElement("div", { className: "customize-note" }, "Today opens on everything above the line. The rest is one tap below it \u2014 move a panel across to change what you land on."),
         /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;
+          // The fold falls after the DASH_STACK_SIZE-th *shown* panel, so
+          // hiding one pulls the next one up across the line — which is what
+          // the reader sees happen on Today.
+          const shownBefore = dashOrderEff.slice(0, idx + 1).filter((x) => !dashHidden[x]).length;
+          const foldAfter = !dashHidden[id] && shownBefore === DASH_STACK_SIZE;
           const move = (dir) => {
             haptic();
             const next = [...dashOrderEff];
@@ -13953,7 +14159,7 @@ Fill every field of the response schema. Rules:
             [next[idx], next[j]] = [next[j], next[idx]];
             setDashOrder(next);
           };
-          return /* @__PURE__ */ React.createElement("div", { key: id, className: "customize-item", style: {
+          const item = /* @__PURE__ */ React.createElement("div", { key: id, className: "customize-item", style: {
             background: dashHidden[id] ? "transparent" : "var(--stripe)"
           } }, /* @__PURE__ */ React.createElement(
             "input",
@@ -13964,6 +14170,10 @@ Fill every field of the response schema. Rules:
               className: "customize-checkbox"
             }
           ), /* @__PURE__ */ React.createElement("span", { className: "customize-label", style: { opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: { opacity: idx === 0 ? 0.3 : 1 }, disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }, disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
+          if (!foldAfter) return item;
+          return /* @__PURE__ */ React.createElement(React.Fragment, { key: id + "_fold" }, item,
+            /* @__PURE__ */ React.createElement("div", { className: "customize-fold" },
+              /* @__PURE__ */ React.createElement("span", null, "below the fold")));
         })),
         /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" }, /* @__PURE__ */ React.createElement(
           "button",
@@ -13986,30 +14196,64 @@ Fill every field of the response schema. Rules:
     ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" }))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
-      const out = [];
-      let i = 0;
       const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
+      // Rows, not widgets: thirds pack three across and halves two, so laying
+      // out first and cutting afterwards is the only way to split the page
+      // without slicing a row down the middle.
+      const rows = [];
+      let i = 0;
       while (i < visible.length) {
         const id = visible[i], sz = sizeOf(id);
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          out.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
+          rows.push({ n: run.length, el: /* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))) });
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
           const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
-          out.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
+          rows.push({ n: 2, el: /* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()) });
           i += 2;
         } else if (sz !== "full") {
-          out.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()));
+          rows.push({ n: 1, el: /* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()) });
           i += 1;
         } else {
-          out.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
+          rows.push({ n: 1, el: /* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()) });
           i += 1;
         }
       }
-      return out;
+      // Today used to open as all eighteen panels at once: eight screens of
+      // charts you have to scroll past to reach the ones that tell you what to
+      // do. It leads with a stack now — runway, the three at-a-glance figures,
+      // this week, ending soon, what changed, the year — and the analysis sits
+      // one tap below it.
+      //
+      // The rule is positional on purpose, so it stays the user's: Today shows
+      // your first DASH_STACK_SIZE panels, whichever those are. Reordering in
+      // Customize is what moves a panel above or below the line, and the sheet
+      // draws the line so you can see where it falls.
+      let cut = 0, taken = 0;
+      while (cut < rows.length && taken < DASH_STACK_SIZE) { taken += rows[cut].n; cut++; }
+      const lead = rows.slice(0, cut).map((r) => r.el);
+      const tail = rows.slice(cut);
+      const n = tail.reduce((a, r) => a + r.n, 0);
+      const more = !tail.length ? null : /* @__PURE__ */ React.createElement("div", { className: "dash-more" },
+        /* @__PURE__ */ React.createElement("button", {
+          className: "dash-more-btn",
+          onClick: () => { haptic(); setDashMore(!dashMore); },
+          "aria-expanded": dashMore ? "true" : "false"
+        }, /* @__PURE__ */ React.createElement("span", { className: "dash-more-chev", "aria-hidden": "true" }, dashMore ? "\u2303" : "\u2304"),
+           dashMore ? "Hide the rest" : `More on ${activeYear} \u2014 ${n} more panel${n === 1 ? "" : "s"}`));
+      // The foot of Today: what else there is, and the way to change what is
+      // on it. Both are things you reach for having read the page, not before.
+      const foot = /* @__PURE__ */ React.createElement("div", { key: "dash-foot", className: "dash-foot dash-customize-row", "data-noprint": true },
+        more,
+        entries.length > 0 && /* @__PURE__ */ React.createElement("button", {
+          className: "dash-foot-customize",
+          onClick: () => setShowCustomize(true)
+        }, "\u2699 Customize"));
+      return [...lead, foot,
+        dashMore && tail.length ? /* @__PURE__ */ React.createElement("div", { key: "dash-more-body", className: "dash-more-body" }, tail.map((r) => r.el)) : null];
     })());
   }
   // The app's user documentation. It replaces the explanatory paragraphs that
@@ -17044,6 +17288,7 @@ Fill every field of the response schema. Rules:
         // notifyStorageWriteFailure.
       }
     }, [tab]);
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [flowSubRaw, setFlowSub] = useLS("cf_budget_subtab", "list");
     // The key keeps its old name on purpose: renaming a storage key silently
     // resets every existing device on upgrade. Only the value vocabulary moved.
@@ -17749,12 +17994,12 @@ Fill every field of the response schema. Rules:
       return () => mq.removeEventListener("change", handler);
     }, []);
     useEffect(() => {
-      const h = () => {
-        // Jump to Entries and open its own "Add Entry" form.
-        setTab("flow");
-        setFlowSub("entries");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("cf:entries-open-new")), 50);
-      };
+      // Adding an entry is the app's most common act and it should not cost
+      // you your place. This used to jump to Flow → Entries and open the form
+      // there, so composing from Today or a Plan sheet meant losing the view
+      // you were reading and having to navigate back. The form is a modal
+      // already — it opens over whatever you are on.
+      const h = () => setShowQuickAdd(true);
       window.addEventListener("cf:quickadd", h);
       return () => window.removeEventListener("cf:quickadd", h);
     }, []);
@@ -18105,7 +18350,16 @@ Fill every field of the response schema. Rules:
         setLocked(false);
       }, onSignOut: logout }));
     }
-    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "flow" || tab === "envelopes" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser ? C : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement(AddEntryModal, {
+      show: showQuickAdd,
+      onClose: () => setShowQuickAdd(false),
+      onSave: addEntry,
+      categories,
+      apiKey: aiApiKey,
+      isOffline,
+      templates,
+      setTemplates
+    }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("div", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "flow" || tab === "envelopes" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
     } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
       "input",

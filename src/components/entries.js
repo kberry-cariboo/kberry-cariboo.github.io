@@ -232,7 +232,7 @@
         case "startDate":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-date", style: arcMeta }, e.startDate ? fmtDate(e.startDate, null) : "\u2014");
         case "schedule":
-          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta }, recurLabel(e));
+          return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-sched", style: arcMeta, title: scheduleSentence(e) }, recurLabel(e));
         case "until":
           return /* @__PURE__ */ React.createElement("td", { key: col, className: "entries-col-until", style: arcMeta }, e.repeats ? e.recurEnd ? /* @__PURE__ */ React.createElement("span", __spreadValues({}, arcMeta), fmtDate(e.recurEnd, null)) : /* @__PURE__ */ React.createElement("span", { style: { color: archived ? "var(--textLt)" : "var(--greenDk)", textDecoration: archived ? "line-through" : "none" } }, "ongoing") : "\u2014");
         case "category":

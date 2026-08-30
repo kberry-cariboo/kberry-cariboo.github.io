@@ -923,6 +923,27 @@
         .today-line-wrap{display:flex;align-items:center;gap:8px;padding:4px 8px;}
         .today-label{font-size:10px;font-weight:700;color:var(--amberInk);white-space:nowrap;letter-spacing:0.1em;}
         .today-line-card-wrap{display:flex;align-items:center;gap:8px;padding:6px 14px;}
+        /* ── Swipe actions behind the ledger row ──
+           The row is opaque and slides over these; they are revealed by the
+           gesture rather than tapped, so they carry aria-hidden and the tick
+           and row menu stay the accessible path to the same two actions. */
+        .ledger-row-wrap{position:relative;overflow:hidden;}
+        /* The panes are behind the row, not beside it: without a stacking
+           context of its own the static row loses to its absolutely
+           positioned sibling and every row wears a green "Paid" tab at
+           rest. The row's background is opaque, which is what hides them. */
+        .ledger-row-wrap > .budget-card-row{position:relative;z-index:1;}
+        .ledger-row-actions{position:absolute;inset:0;display:flex;
+          justify-content:space-between;align-items:stretch;}
+        .ledger-row-action{display:flex;align-items:center;padding:0 18px;
+          font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.01em;white-space:nowrap;}
+        .ledger-row-action--pay{background:var(--greenDk);}
+        .ledger-row-action--skip{background:var(--amberInk);margin-left:auto;}
+        .budget-card-row.is-dragging{transition:none;}
+        .budget-card-row.is-settling{transition:transform .22s cubic-bezier(.2,.9,.3,1);}
+        @media (prefers-reduced-motion:reduce){
+          .budget-card-row.is-settling{transition:none;}
+        }
         .card-top-row{display:flex;align-items:center;gap:8px;justify-content:space-between;}
         .card-desc-span{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
         .card-bottom-row{display:flex;align-items:baseline;margin-top:4px;}
@@ -1277,6 +1298,36 @@
         .customize-modal-card{padding:24px;width:min(400px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;}
         .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
         .customize-list{display:flex;flex-direction:column;gap:4px;}
+        .customize-note{font-size:12px;line-height:1.45;color:var(--textMid);margin:-8px 0 14px;}
+        /* Where Today stops. A rule with the reason written on it, rather than
+           a gap the reader has to infer a meaning for. */
+        .customize-fold{display:flex;align-items:center;gap:8px;margin:8px 2px;
+          font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--textLt);}
+        .customize-fold::before,.customize-fold::after{content:"";flex:1;height:1px;background:var(--border);}
+        /* The disclosure that holds the analysis. It is a full-width control
+           on purpose: it is the end of Today, and it has to read as a floor
+           rather than as one more card. */
+        /* Customize used to be the first thing on Today, above the runway:
+           a control for changing the page, given the position that should
+           belong to the page. It sits at the foot now, where you arrive
+           having read the thing you might want to change. */
+        .dash-foot{display:flex;align-items:stretch;gap:10px;margin:4px 0 8px;}
+        .dash-foot .dash-more{flex:1;min-width:0;margin:0;}
+        .dash-foot-customize{flex:0 0 auto;min-height:44px;padding:11px 16px;
+          border:1px solid var(--border);border-radius:10px;background:transparent;
+          color:var(--textMid);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+          white-space:nowrap;}
+        .dash-foot-customize:hover{color:var(--text);border-color:var(--textLt);}
+        .dash-more{margin:4px 0 8px;}
+        /* Inline, not flex: on a narrow screen the label wraps, and a flex
+           chevron gets left behind at the far edge of a two-line button. */
+        .dash-more-btn{display:block;width:100%;height:100%;text-align:center;line-height:1.35;
+          min-height:44px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;
+          background:var(--bgCard);color:var(--textMid);font:inherit;font-size:13px;font-weight:600;
+          cursor:pointer;}
+        .dash-more-btn:hover{color:var(--text);border-color:var(--textLt);}
+        .dash-more-chev{margin-right:7px;font-size:15px;}
+        .dash-more-body{margin-top:14px;display:flex;flex-direction:column;gap:0;}
         .customize-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--text);}
         .customize-checkbox{width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;}
         .customize-label{flex:1;min-width:0;}

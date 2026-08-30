@@ -193,55 +193,16 @@
     // slack. Editing still isn't offered here — Forecast projects across year
     // boundaries and the override machinery is year-scoped — so a row opens
     // nothing; the checkbox is the whole interaction.
-    const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => {
-      const dateStr = fmtDate(ev.date, today.getFullYear());
-      const isDone = !!completed[ev.id];
-      const signed = signedAmount(ev);
-      return /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          key: ev.id,
-          className: "budget-card-row",
-          style: {
-            background: isDone ? "var(--doneBg)" : "var(--bgCard)",
-            boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent"
-          }
-        },
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
-              haptic();
-              toggleComplete(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": isDone,
-            "aria-label": (isDone ? "Mark unpaid: " : "Mark paid: ") + ev.desc,
-            title: isDone ? "Paid — tap to mark unpaid" : "Mark paid",
-            className: "cf-checkbtn budget-card-checkbtn",
-            style: {
-              border: isDone ? "none" : "1.5px solid var(--border)",
-              background: isDone ? "var(--greenDk)" : "transparent"
-            }
-          },
-          isDone ? "✓" : ""
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "card-top-row" }, /* @__PURE__ */ React.createElement("span", {
-          className: "tx card-desc-span",
-          title: ev.desc,
-          style: {
-            color: isDone ? "var(--textLt)" : "var(--text)",
-            textDecoration: isDone ? "line-through" : "none"
-          }
-        }, ev.desc), /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } })), /* @__PURE__ */ React.createElement("div", { className: "card-bottom-row", style: { justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" }, /* @__PURE__ */ React.createElement("span", { className: "mno card-signed-amt", style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)"
-        } }, fmt(signed, true)), /* @__PURE__ */ React.createElement("span", { className: "mno card-balance-amt", style: {
-          textDecoration: isDone ? "line-through" : "none",
-          color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
-        } }, fmt(ev.balance)))))
-      );
-    }), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
+    const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => /* @__PURE__ */ React.createElement(LedgerRow, {
+      key: ev.id,
+      ev,
+      alertThreshold,
+      paid: !!completed[ev.id],
+      dateLabel: fmtDate(ev.date, today.getFullYear()),
+      onTogglePaid: toggleComplete,
+      categories,
+      categoryColors
+    })), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
       const adj = (scenarioAdj || {})[e.id];
       const dropped = !!(adj && adj.drop);

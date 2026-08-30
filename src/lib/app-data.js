@@ -232,6 +232,64 @@
   // Forecast offers as its longest, and far enough out to catch the annual
   // bills that are exactly what a monthly view hides.
   const RUNWAY_DAYS = 90;
+  // ── The schedule, in words ──────────────────────────────────────────────
+  // recurLabel abbreviates for a table column — "Monthly (weekday)" never says
+  // *which* weekday, and "Semi-monthly" never says which two days. That is
+  // fine in a 90px cell and useless when you are setting the rule up, where
+  // the question is "have I described the right thing?". This says it the way
+  // a person would, and the entry form prints it live under the controls.
+  const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const NTH_WORDS = { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", "-1": "last" };
+  function ordinalDay(n) {
+    const v = n % 100, suffix = ["th", "st", "nd", "rd"][(v - 20) % 10] || ["th", "st", "nd", "rd"][v] || "th";
+    return n + suffix;
+  }
+  function listWords(items) {
+    if (items.length <= 1) return items[0] || "";
+    if (items.length === 2) return items[0] + " and " + items[1];
+    return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+  }
+  function scheduleSentence(e) {
+    if (!e) return "";
+    const start = e.startDate ? new Date(e.startDate + "T00:00:00") : null;
+    if (!e.repeats) return start ? "Once, on " + start.toLocaleDateString(void 0, { day: "numeric", month: "long", year: "numeric" }) : "Once";
+    const n = e.recurEvery || 1;
+    const everyNth = n === 1 ? "Every " : n === 2 ? "Every second " : n === 3 ? "Every third " : "Every " + ordinalDay(n) + " ";
+    const dayOfMonth = start ? ordinalDay(start.getDate()) : "the start date";
+    let core;
+    switch (e.recurUnit || "month") {
+      case "day": core = n === 1 ? "Every day" : "Every " + n + " days"; break;
+      case "week": {
+        const days = (e.recurDays && e.recurDays.length ? e.recurDays : start ? [start.getDay()] : [])
+          .slice().sort((a, b) => a - b).map((d) => WEEKDAYS_FULL[d]);
+        core = days.length ? everyNth + listWords(days) : everyNth + "week";
+        break;
+      }
+      case "semimonth": core = "On the 1st and the 15th of every month"; break;
+      case "monthend": core = "On the last day of every month"; break;
+      case "monthweekday": {
+        const wd = e.recurDays && e.recurDays.length ? WEEKDAYS_FULL[e.recurDays[0]] : start ? WEEKDAYS_FULL[start.getDay()] : "day";
+        core = "The " + (NTH_WORDS[String(e.recurNth)] || "first") + " " + wd + " of every month";
+        break;
+      }
+      case "year": core = (n === 1 ? "Every year" : "Every " + n + " years") + (start ? " on " + start.toLocaleDateString(void 0, { day: "numeric", month: "long" }) : ""); break;
+      default: core = (n === 1 ? "Every month" : "Every " + n + " months") + " on the " + dayOfMonth;
+    }
+    if (e.recurEnd) {
+      const end = new Date(e.recurEnd + "T00:00:00");
+      core += ", until " + end.toLocaleDateString(void 0, { day: "numeric", month: "long", year: "numeric" });
+    }
+    return core;
+  }
+  // "This row was planned at X and actually cost Y." A pure reading of one
+  // event, so it belongs with the other event helpers rather than inside the
+  // budget view — the shared ledger row needs it too, and a const declared
+  // inside a component is invisible to anything outside it.
+  function varianceTitle(ev) {
+    return ev.plannedAmount !== void 0 && ev.plannedAmount !== ev.amount
+      ? `Planned: ${fmt(ev.plannedAmount)} — actual amount recorded`
+      : void 0;
+  }
   // ── The balance rail ────────────────────────────────────────────────────
   // One rule for "how is the money doing here", declared once and used by
   // every surface that draws a running balance: the rail down the ledger, the

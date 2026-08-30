@@ -18,6 +18,163 @@
       /* @__PURE__ */ React.createElement("i", { className: "cat-dot", style: { background: chipDot(color, ctxCats.chipSurface) }, "aria-hidden": "true" }),
       category);
   };
+  // ── One ledger row ──────────────────────────────────────────────────────
+  // A dated occurrence looks and behaves the same wherever you meet it: the
+  // month ledger, a calendar day, the forecast, and this week on Today. Those
+  // four grew their own near-identical copies, and the copies drifted — the
+  // forecast's still painted its left stripe green for "paid" long after that
+  // stripe became the balance rail everywhere else, so the same row said two
+  // different things depending on which screen you were on.
+  //
+  // The tick does double duty where the caller asks it to: on the budget grid
+  // an unpaid row selects for bulk actions and a paid one un-pays, which is
+  // what onToggleSelect expresses. Without it the tick just marks paid.
+  const LedgerRow = ({
+    ev, alertThreshold = DEFAULT_ALERT_THRESHOLD, paid = false, selected = false, past = false,
+    dateLabel = null, onTogglePaid, onToggleSelect = null, onOpen = null, onMenu = null, onSwipeLeft = null,
+    showBalance = true, categories, categoryColors
+  }) => {
+    const signed = signedAmount(ev);
+    const dim = paid ? "var(--textLt)" : null;
+    const coarse = useIsCoarsePointer();
+    const rowRef = useRef(null);
+    const drag = useRef(null);
+    // A finished swipe still produces a click. Without this the gesture that
+    // marks a row paid also opens its edit sheet on top of the toast.
+    const swallowClick = useRef(false);
+    // Marking a bill paid and skipping a date are the two things people
+    // actually do to a ledger row, and both were buried behind a kebab. On
+    // touch they are the gesture: right pays, left skips. The month-change
+    // swipe on the surrounding grid excludes .ledger-row-wrap, so a gesture
+    // that starts on a row is the row's and never the grid's.
+    const swipeable = coarse && !!onTogglePaid;
+    const setX = (px) => { if (rowRef.current) rowRef.current.style.transform = px ? "translateX(" + px + "px)" : ""; };
+    const onDown = (e) => {
+      if (!swipeable || e.pointerType === "mouse") return;
+      if (e.target.closest("button,a,input,select,textarea")) return;
+      drag.current = { x0: e.clientX, y0: e.clientY, dx: 0, active: false, id: e.pointerId };
+    };
+    const onMove = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+      if (!d.active) {
+        if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(dy)) return;
+        d.active = true;
+        if (rowRef.current) {
+          rowRef.current.classList.add("is-dragging");
+          // Capture, or a drag that runs off the row's own box stops sending
+          // move and up and the row is left mid-swipe.
+          // Not every browser allows capture on a synthetic pointer; the
+          // gesture still works without it, it is just less forgiving.
+          try { rowRef.current.setPointerCapture(d.id); } catch (_) { d.uncaptured = true; }
+        }
+      }
+      // Left only where there is something to skip to.
+      d.dx = Math.max(onSwipeLeft ? -120 : 0, Math.min(120, dx));
+      setX(d.dx);
+    };
+    const onUp = () => {
+      const d = drag.current;
+      drag.current = null;
+      if (!d || !d.active) return;
+      swallowClick.current = true;
+      const el = rowRef.current;
+      if (el) {
+        if (!d.uncaptured) { try { el.releasePointerCapture(d.id); } catch (_) { d.uncaptured = true; } }
+        el.classList.remove("is-dragging");
+        el.classList.add("is-settling");
+        setTimeout(() => el && el.classList.remove("is-settling"), 240);
+      }
+      setX(0);
+      if (d.dx > 64) { haptic(); onTogglePaid(ev.id); }
+      else if (d.dx < -64 && onSwipeLeft) { haptic(); onSwipeLeft(ev); }
+    };
+    const row = /* @__PURE__ */ React.createElement("div", {
+      className: "budget-card-row",
+      ref: rowRef,
+      onClick: onOpen ? () => {
+        if (swallowClick.current) { swallowClick.current = false; return; }
+        if (!drag.current) onOpen(ev);
+      } : void 0,
+      onContextMenu: onMenu ? (e) => { e.preventDefault(); onMenu(e, ev); } : void 0,
+      onPointerDown: swipeable ? onDown : void 0,
+      onPointerMove: swipeable ? onMove : void 0,
+      onPointerUp: swipeable ? onUp : void 0,
+      onPointerCancel: swipeable ? onUp : void 0,
+      style: {
+        background: selected ? "var(--stripe)" : paid ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
+        boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold),
+        cursor: onOpen ? "pointer" : "default",
+        touchAction: swipeable ? "pan-y" : void 0
+      }
+    },
+      /* @__PURE__ */ React.createElement("button", {
+        onClick: (e) => {
+          e.stopPropagation();
+          haptic();
+          if (onToggleSelect && !paid) onToggleSelect(ev.id);
+          else onTogglePaid(ev.id);
+        },
+        role: "checkbox",
+        "aria-checked": paid || selected,
+        "aria-label": (paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + ev.desc,
+        title: paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid",
+        className: "cf-checkbtn budget-card-checkbtn",
+        style: {
+          border: paid || selected ? "none" : "1.5px solid var(--border)",
+          background: paid ? "var(--greenDk)" : selected ? "var(--primary)" : "transparent"
+        }
+      }, paid || selected ? "\u2713" : ""),
+      /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" },
+        /* @__PURE__ */ React.createElement("div", { className: "card-top-row" },
+          /* @__PURE__ */ React.createElement("span", {
+            className: "tx card-desc-span", title: ev.desc,
+            style: { color: dim || "var(--text)", textDecoration: paid ? "line-through" : "none" }
+          }, ev.desc,
+            ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" },
+              /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 }))),
+          ev.category && /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { flexShrink: 0 } })),
+        /* @__PURE__ */ React.createElement("div", {
+          className: "card-bottom-row",
+          style: { justifyContent: dateLabel ? "space-between" : "flex-end" }
+        },
+          dateLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateLabel,
+            // Direct deposit does not arrive on a weekend or a statutory
+            // holiday. The marker travelled with the budget grid's own row and
+            // so was missing from the forecast and from this week on Today —
+            // the same payday, marked on one screen and not the next.
+            ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, {
+              icon: "\u21A4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev)
+            })),
+          /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" },
+            /* @__PURE__ */ React.createElement("span", {
+              className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)")
+              }
+            }, fmt(signed, true)),
+            showBalance && /* @__PURE__ */ React.createElement("span", {
+              className: "mno card-balance-amt", style: {
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)")
+              }
+            }, fmt(ev.balance))))),
+      onMenu && /* @__PURE__ */ React.createElement("button", {
+        onClick: (e) => { e.stopPropagation(); onMenu(e, ev); },
+        "aria-label": ev.desc + " actions", title: ev.desc + " actions",
+        className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
+      }, "\u22EE"));
+    if (!swipeable) return row;
+    // The panes sit behind the row and are revealed by it moving, so they are
+    // decoration for a gesture rather than controls of their own — the tick
+    // and the row menu remain the accessible path to both actions.
+    return /* @__PURE__ */ React.createElement("div", { className: "ledger-row-wrap" },
+      /* @__PURE__ */ React.createElement("div", { className: "ledger-row-actions", "aria-hidden": "true" },
+        /* @__PURE__ */ React.createElement("span", { className: "ledger-row-action ledger-row-action--pay" }, paid ? "Unpay" : "Paid"),
+        onSwipeLeft && /* @__PURE__ */ React.createElement("span", { className: "ledger-row-action ledger-row-action--skip" }, "Skip")),
+      row);
+  };
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
   // for rising expenses), so it's gone — pass `color` explicitly if needed.
@@ -272,7 +429,7 @@
       }
     ));
   };
-  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null }) => {
+  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }) => {
     const stripRef = useRef(null);
     const roving = useRovingTabs(".month-pill");
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -305,6 +462,8 @@
         window.removeEventListener("resize", updateFade);
       };
     }, [value, matchingMonths]);
+    const closeOf = (i) => monthCloses && monthCloses.length === 12 ? monthCloses[i] : null;
+    const needsEye = (i) => { const c = closeOf(i); return c != null && c < alertThreshold; };
     return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", onKeyDown: roving.onKeyDown },/* @__PURE__ */ React.createElement(
       "button",
       {
@@ -350,7 +509,9 @@
           "aria-pressed": isActive,
           tabIndex: isActive ? 0 : -1,
           "data-active": isActive ? "true" : "false",
-          "data-match": hasMatch ? "true" : "false"
+          "data-match": hasMatch ? "true" : "false",
+          title: closeOf(i) == null ? void 0 : "Closing balance " + fmt(closeOf(i)),
+          style: needsEye(i) && !isActive ? { boxShadow: "inset 0 -3px 0 0 " + railTone(closeOf(i), alertThreshold) } : void 0
         },
         m,
         hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { className: "month-pill-dot" })
