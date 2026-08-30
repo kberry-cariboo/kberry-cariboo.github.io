@@ -1180,6 +1180,12 @@ await test('dark mode: charts render with theme colours', async () => {
 await test('accessibility tree: landmarks, one h1, and every control named', async () => {
   const { ctx, page } = await ctxPage({ touch: true });
   const problems = [];
+  // Read the tree over CDP rather than through page.accessibility, which was
+  // removed upstream: CI installs the current Playwright while a local global
+  // may be older, so the convenience API passing here proves nothing about
+  // there. The session outlives each navigation.
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send('Accessibility.enable');
   for (const hash of ['#/today', '#/flow/list', '#/envelopes', '#/plan/debt', '#/you']) {
     await page.goto(BASE + hash, { waitUntil: 'load' });
     await page.waitForTimeout(1100);
@@ -1204,11 +1210,13 @@ await test('accessibility tree: landmarks, one h1, and every control named', asy
     if (!dom.live) problems.push(hash + ': no live region');
 
     // The AT tree itself: no button, link or field reaches it unnamed.
-    const snap = await page.accessibility.snapshot({ interestingOnly: true });
-    const flat = [];
-    (function walk(n) { if (!n) return; flat.push(n); (n.children || []).forEach(walk); })(snap);
-    const unnamed = flat.filter((n) =>
-      ['button', 'link', 'checkbox', 'textbox', 'combobox', 'tab', 'menuitem'].includes(n.role) && !n.name);
+    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
+    const unnamed = nodes.filter((n) => {
+      if (n.ignored) return false;
+      const role = n.role && n.role.value;
+      const name = ((n.name && n.name.value) || '').trim();
+      return ['button', 'link', 'checkbox', 'textbox', 'combobox', 'tab', 'menuitem'].includes(role) && !name;
+    }).map((n) => ({ role: n.role.value }));
     if (unnamed.length) {
       problems.push(hash + ': ' + unnamed.length + ' unnamed ' + unnamed[0].role + '(s) in the a11y tree');
     }
