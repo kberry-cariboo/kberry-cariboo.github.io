@@ -248,6 +248,9 @@
       }
     }, [tab]);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
+    // The Plan screen owns this; the Alerts centre only reads it, so its
+    // finding is computed against the same extra payment you set there.
+    const [debtExtraForFindings] = useLS("cf_debt_extra", "100");
     const [flowSubRaw, setFlowSub] = useLS("cf_budget_subtab", "list");
     // The key keeps its old name on purpose: renaming a storage key silently
     // resets every existing device on upgrade. Only the value vocabulary moved.
@@ -1103,6 +1106,25 @@
     // share a shape, a scale and a collapse rule. Order here is irrelevant —
     // NoticeStack sorts by severity — but each entry carries a `plain` string
     // because that is what the collapsed summary shows.
+    // Findings, as opposed to warnings: the things the app has worked out that
+    // you would want told. The Alerts centre lists every one, so it is the
+    // place you can go to see everything the app has to say — the screens that
+    // compute them still show them in context, from these same helpers.
+    const appFindings = useMemo(() => {
+      const simDebts = Object.entries(debtData || {})
+        .map(([key, v]) => ({
+          key,
+          bal: parseFloat(v && v.balance) || 0,
+          rate: parseFloat(v && v.rate) || 0,
+          pmt: parseFloat(v && v.payment) || 0
+        }))
+        .filter((d) => d.bal > 0 && d.pmt > 0 && !(debtData[d.key] || {}).hidden);
+      const extra = Math.round((parseFloat(debtExtraForFindings) || 0) * 100);
+      return [
+        spendingInsightFinding(computeSpendingInsight(activeFlow, activeYear)),
+        debtStrategyFinding(simDebts, extra)
+      ].filter(Boolean);
+    }, [activeFlow, activeYear, debtData, debtExtraForFindings]);
     const appNotices = useMemo(() => {
       const out = [];
       if (showLowBanner) {
@@ -1677,7 +1699,7 @@
         filterStatus: entriesFilterStatus,
         setFilterStatus: setEntriesFilterStatus
       }
-    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, gotoForecast: () => {
+    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, findings: appFindings, gotoForecast: () => {
       setTab("flow");
       setFlowSub("curve");
     } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(

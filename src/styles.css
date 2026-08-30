@@ -364,6 +364,16 @@
         .notice[data-tone="critical"] .notice-icon{color:var(--red);}
         .notice[data-tone="warn"] .notice-icon{color:var(--amberInk);}
         .notice[data-tone="info"] .notice-icon{color:var(--textLt);}
+        .notice[data-tone="good"]{background:var(--greenLt);border:1px solid var(--green);
+          border-left:5px solid var(--green);}
+        .notice[data-tone="good"] .notice-icon{color:var(--greenDk);}
+        /* The compact size, for a notice that belongs beside the thing it is
+           about rather than at the top of the app — a search filter, an AI
+           error, the payoff simulator's verdict. Same tones, same severity
+           bar, one step down in weight so it does not outshout the panel it
+           annotates. It carries no shadow for the same reason. */
+        .notice--sm{padding:8px 12px;font-size:12px;border-radius:8px;box-shadow:none;gap:8px;}
+        .notice--sm .notice-msg{min-width:0;}
         .ptr-indicator{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:3000;
           background:var(--primary);color:#fff;border-radius:20px;padding:6px 16px 6px 12px;
           font-size:12px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s;
@@ -683,7 +693,6 @@
         .entries-search-wrap:focus-within{border-color:var(--primary);}
         .entries-search-icon{color:var(--textLt);flex-shrink:0;}
         .entries-search-input{font-size:13px;padding:6px 0;border:none;border-radius:0;background:transparent;color:var(--text);outline:none;width:200px;max-width:100%;min-width:0;}
-        .entries-headersearch-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);width:100%;margin-top:6px;}
         .entries-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         /* Stretch, not flex-start: the pills' option lists render in flow here
            (FilterPill `inline`) and need the full sheet width. */
@@ -718,8 +727,6 @@
         .kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
         .forecast-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px;}
         .forecast-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .search-filter-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);margin-top:8px;}
-        .forecast-danger-banner{background:var(--amberLt);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:16px;}
         .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
         .forecast-lowest-value{font-family:var(--font-mono);}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
@@ -778,14 +785,12 @@
         .ai-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
         .ai-subtitle{font-size:13px;color:var(--textMid);line-height:1.5;}
         .ai-lastrun{font-size:11px;color:var(--textLt);white-space:nowrap;margin-top:4px;}
-        .ai-noapikey-banner{margin-top:16px;padding:12px 16px;background:rgba(232,93,74,0.07);border-radius:10px;border:1px solid rgba(232,93,74,0.2);display:flex;align-items:center;gap:12px;}
         .ai-settings-link{font-size:13px;font-weight:700;color:var(--primaryInk);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;}
         .ai-disclaimer-row{font-size:11px;color:var(--textLt);margin-top:12px;display:flex;align-items:flex-start;gap:6px;}
         .ai-disclaimer-icon{flex-shrink:0;margin-top:1px;}
         .ai-actionrow{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
         .ai-generate-btn{font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;border:none;transition:all 0.15s;display:flex;align-items:center;gap:10px;}
         .ai-spinner{display:inline-block;animation:spin 1s linear infinite;font-style:normal;}
-        .ai-error-banner{font-size:13px;color:var(--red);margin-top:10px;padding:10px 14px;background:rgba(232,93,74,0.08);border-radius:8px;border:1px solid rgba(232,93,74,0.25);}
         .ai-skeleton-wrap{display:flex;flex-direction:column;gap:12px;}
         .ai-skeleton-title{height:18px;background:var(--border);border-radius:6px;width:40%;margin-bottom:16px;}
         .ai-skeleton-line{height:12px;background:var(--stripe);border-radius:4px;margin-bottom:10px;animation:pulse 1.5s ease-in-out infinite;}
@@ -806,14 +811,22 @@
         .ai-bullet-dot{border-radius:50%;flex-shrink:0;}
         .ai-plain-text{font-size:13px;color:var(--textMid);line-height:1.6;margin-bottom:6px;}
         .ai-footer-disclaimer{font-size:11px;color:var(--textLt);text-align:center;padding:12px 0 4px;line-height:1.5;}
-        .ai-empty-wrap{text-align:center;padding:40px 20px;}
-        .ai-empty-icon{display:flex;justify-content:center;margin-bottom:16px;color:var(--primary);}
+        /* 40px of padding inside a 24px card inside the page gutter put the
+           feature labels in a 280px column on a 390px phone. It is an empty
+           state — a list of what you would get — not a hero. */
+        .ai-empty-wrap{text-align:center;padding:20px 0;}
+        .ai-empty-icon{display:flex;justify-content:center;margin-bottom:10px;color:var(--primary);}
         .ai-empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;}
         .ai-empty-desc{font-size:13px;color:var(--textMid);line-height:1.6;max-width:480px;margin:0 auto;margin-bottom:24px;}
-        .ai-empty-feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:600px;margin:0 auto;}
-        .ai-feature-card{padding:14px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border);text-align:center;}
-        .ai-feature-icon{display:flex;justify-content:center;margin-bottom:6px;color:var(--textMid);}
-        .ai-feature-label{font-size:11px;font-weight:600;color:var(--textMid);}
+        /* Six named sections is a list, not six boxes. Each box drew its own
+           border inside two others and pushed the label into a column too
+           narrow for "Executive Summary" to sit on one line. */
+        .ai-empty-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:2px 16px;max-width:600px;margin:14px auto 0;text-align:left;}
+        .ai-feature-card{display:flex;align-items:center;gap:8px;padding:7px 0;}
+        .ai-feature-icon{display:flex;flex-shrink:0;color:var(--textLt);}
+        .ai-feature-label{font-size:11.5px;font-weight:600;color:var(--textMid);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .vizrow-wrap{margin-bottom:9px;}
         .vizrow-toprow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:3px;}
         .vizrow-label{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
@@ -972,7 +985,6 @@
         .totals-amounts-row{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;justify-content:flex-end;min-width:0;}
         .swipe-coach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;}
         .gotit-btn{font-size:12px;font-weight:700;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--primaryInk);white-space:nowrap;flex-shrink:0;}
-        .budget-search-banner{font-size:12px;color:var(--amberInk);margin-bottom:8px;padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -1132,7 +1144,24 @@
         .goal-header-row{display:flex;justify-content:space-between;align-items:center;}
         .goal-empty-wrap{text-align:center;padding:18px 10px;font-size:13px;color:var(--textLt);}
         .goal-title-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
-        .goal-target-date{font-size:11px;font-weight:400;color:var(--textLt);margin-left:8px;}
+        .goal-target-date{font-weight:400;color:var(--textLt);}
+        /* Same treatment as the debt list: the rows run the full width of the
+           card, separated by a rule rather than each sitting in its own box. */
+        .goal-list{margin:0 -24px;display:grid;grid-template-columns:minmax(0,1fr);align-items:start;}
+        .goal-list>.goal-row-cursor{padding:12px 24px;border-top:1px solid var(--border);min-width:0;}
+        .goal-list>.goal-row-cursor:first-child{border-top:none;}
+        /* Two goals abreast once there is room for them, the same width
+           .cf-cardgrid uses everywhere else. The full-bleed margin and the
+           hairlines are a single-column idea, so both are dropped here — side
+           by side, a rule between columns would read as a table. */
+        @media(min-width:1200px){
+          .goal-list{margin:0;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));column-gap:36px;}
+          .goal-list>.goal-row-cursor{padding:12px 0;border-top:none;}
+          .goal-list>.goal-row-cursor+.goal-row-cursor{border-top:none;}
+        }
+        /* Truncate rather than wrap: the percentage and the menu on the right
+           are fixed points the eye runs down, so the name is what gives way. */
+        .goal-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .goal-amounts-row{display:flex;align-items:center;gap:4px;}
         .goal-amounts-text{font-family:var(--font-mono);font-size:12px;color:var(--textMid);}
         .goal-pct{font-weight:700;margin-left:8px;}
@@ -1148,7 +1177,7 @@
         .debtsnap-payoff{font-size:11px;color:var(--greenDk);}
         .debtsnap-progress-fill{height:100%;border-radius:3px;transition:width 0.4s;}
         .debtsnap-freq-note{font-size:10px;color:var(--textLt);margin-top:2px;}
-        .goal-footer-row{display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--textLt);}
+        .goal-footer-row{display:flex;justify-content:space-between;gap:10px;margin-top:5px;font-size:11px;color:var(--textLt);flex-wrap:wrap;}
         .entry-form-row2-12{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
         .grid-2-12{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
         .checkbox-16{width:16px;height:16px;accent-color:var(--primary);}
@@ -1161,46 +1190,99 @@
         .moneyinput-lg{font-family:var(--font-mono);font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .label-amt-row{display:flex;justify-content:space-between;margin-bottom:3px;}
         .amt-mid-600{font-weight:600;color:var(--textMid);}
-        .strat-card{flex:1 1 220px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
-        .strat-card-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
-        .strat-card-sub{font-size:10px;color:var(--textLt);margin-bottom:10px;}
-        .strat-card-row{display:flex;justify-content:space-between;margin-bottom:4px;}
-        .strat-card-row-tight{display:flex;justify-content:space-between;margin-bottom:8px;}
-        .strat-value{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--greenDk);}
-        .strat-value-neutral{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);}
-        .strat-order{font-size:10px;color:var(--textLt);line-height:1.7;}
         .strat-extra-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--textMid);}
         .strat-extra-input{padding:5px 10px;width:90px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
-        .strat-cards-row{display:flex;gap:12px;flex-wrap:wrap;}
         /* Held a footnote on the left and the export buttons on the right;
            the footnote is documentation now, so the exports keep the right
            edge on their own. */
         .strat-footnote-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;}
         .strat-error{font-size:12px;color:var(--red);margin-top:14px;}
         .strat-extra-slider{width:120px;accent-color:var(--primary);}
-        .strat-debt-toggles{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
-        .strat-debt-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--textMid);background:var(--stripe);border-radius:14px;padding:6px 12px 6px 9px;cursor:pointer;}
+        /* The comparison the screen is for, as a table: rows are the
+           questions, columns are the answers. Two stacked cards meant you
+           could never see both answers to the same question at once, which on
+           a phone is the whole difficulty. */
+        /* A finding in the centre is a link to the screen that owns it. */
+        .alerts-finding{cursor:pointer;font:inherit;font-size:12px;text-align:left;width:100%;}
+        .alerts-finding:hover{filter:brightness(0.98);}
+        /* One line saying what is in the simulation, and a way to change it.
+           Nine chips spent about 500px of a phone screen restating "all of
+           them" — and truncated the long names, which are the ones you would
+           actually be scanning for. */
+        .strat-include-row{display:flex;align-items:center;justify-content:space-between;
+          gap:10px;flex-wrap:wrap;margin:12px 0 4px;}
+        .strat-include-text{font-size:12px;color:var(--textMid);}
+        .strat-picker-actions{display:flex;gap:8px;margin-bottom:10px;}
+        .strat-picker-list{display:flex;flex-direction:column;}
+        .strat-picker-item{display:flex;align-items:center;gap:10px;padding:10px 2px;
+          border-top:1px solid var(--stripe);font-size:13px;color:var(--text);cursor:pointer;
+          min-height:44px;}
+        .strat-picker-item:first-child{border-top:none;}
+        .strat-picker-item input{margin:0;width:16px;height:16px;flex-shrink:0;accent-color:var(--primary);}
+        /* The sheet is where the full name finally fits, so it must not
+           truncate here of all places. */
+        .strat-picker-name{flex:1;min-width:0;}
+        .strat-picker-bal{color:var(--textLt);flex-shrink:0;}
+        .strat-table{width:100%;border-collapse:collapse;margin:14px 0 4px;font-size:12px;}
+        .strat-table th,.strat-table td{padding:8px 6px;text-align:right;}
+        .strat-table thead th{font-size:11px;font-weight:700;color:var(--textMid);
+          border-bottom:1px solid var(--border);white-space:nowrap;}
+        .strat-table tbody th{text-align:left;font-weight:400;color:var(--textMid);
+          font-size:11px;padding-left:0;}
+        .strat-table tbody td{font-family:var(--font-mono);color:var(--text);}
+        .strat-table tbody tr+tr th,.strat-table tbody tr+tr td{border-top:1px solid var(--stripe);}
+        /* The better answer in each row, marked once. Weight and colour, not a
+           badge: the eye is comparing two numbers, and a third element between
+           them is what it has to read past. */
+        .strat-table td[data-win]{color:var(--greenDk);font-weight:700;}
+        .strat-order-head{display:flex;align-items:center;justify-content:space-between;
+          gap:10px;flex-wrap:wrap;margin:18px 0 8px;}
+        /* A numbered list, not a sentence of arrows wrapping to four lines. */
+        .strat-order-list{list-style:none;margin:0;padding:0;counter-reset:none;}
+        .strat-order-list li{display:flex;align-items:center;gap:10px;padding:7px 0;
+          border-top:1px solid var(--stripe);font-size:12px;color:var(--text);}
+        .strat-order-list li:first-child{border-top:none;}
+        .strat-order-n{flex-shrink:0;width:20px;height:20px;border-radius:50%;
+          background:var(--stripe);color:var(--textMid);font-size:10px;font-weight:700;
+          display:flex;align-items:center;justify-content:center;}
+        .strat-order-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        /* A fixed two-column grid, not a ragged wrap: with names of wildly
+           different lengths, flex-wrap left a different amount of dead space
+           on every line and no two rows lined up. */
         /* The one checkbox in the app that was left at browser defaults: a
            13px system-blue box in a palette that has an accent of its own,
            and the only thing distinguishing an included debt from an excluded
            one. accent-color matches the sliders and the filter checkboxes. */
-        .strat-debt-toggle input{margin:0;width:14px;height:14px;accent-color:var(--primary);cursor:pointer;}
-        .strat-delta-banner{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--greenDk);background:rgba(16,185,129,0.1);border-radius:8px;padding:8px 12px;margin:12px 0 0;}
         .strat-suggest-btn{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--primaryInk);cursor:pointer;text-decoration:underline;}
         .strat-chart-wrap{margin-top:16px;}
         .strat-chart-label{font-size:11px;color:var(--textLt);margin-bottom:4px;}
         .debt-restore-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--amber);cursor:pointer;background:transparent;color:var(--amberInk);white-space:nowrap;}
         .debt-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:20px 0;}
-        .debt-row{padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);cursor:context-menu;}
-        .debt-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
-        .debt-row-name-col{flex:1;min-width:140px;}
-        .debt-row-meta{font-size:11px;color:var(--textLt);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-        .debt-row-bal-wrap{text-align:right;}
-        .debt-row-bal-amt{font-weight:700;color:var(--red);}
-        .debt-row-paid{color:var(--greenDk);font-weight:600;font-size:11px;}
-        .debt-row-interest{font-size:11px;color:var(--textLt);}
-        .debt-stats-row{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;}
-        .debt-stat-label{font-size:10px;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;}
+        /* The list runs the full width of the card it sits in. A card inside
+           a card inside the page gutter spent 96px of a 390px screen on
+           chrome before a single figure — the negative margin gives that back
+           and leaves one visible box instead of three. */
+        .debt-list{margin:0 -24px;display:flex;flex-direction:column;}
+        .debt-item{padding:12px 24px;border-top:1px solid var(--border);cursor:context-menu;}
+        .debt-item:first-child{border-top:none;}
+        .debt-item-head{display:flex;align-items:baseline;gap:10px;}
+        /* The name gets whatever the balance does not, and truncates rather
+           than wrapping to three lines: the balance is the figure you scan
+           down the column, so it is the one that must never move. */
+        .debt-item-name{flex:1;min-width:0;font-weight:600;color:var(--text);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .debt-item-bal{font-weight:700;color:var(--red);flex-shrink:0;}
+        .debt-item-menu{flex-shrink:0;align-self:center;}
+        .debt-item-meta{font-size:11px;color:var(--textLt);margin-top:3px;line-height:1.5;}
+        .debt-item-paid{color:var(--greenDk);font-weight:600;}
+        /* A bare diagonal stroke across a full-width row reads as a divider.
+           The area under it gives it a mass that is visibly draining. */
+        .debt-item-trend{margin-top:8px;height:22px;opacity:.85;}
+        .sparkline-svg--wide{width:100%;display:block;}
+        @media(max-width:480px){
+          .debt-list{margin:0 -16px;}
+          .debt-item{padding:12px 16px;}
+        }
         .debtform-optional{font-weight:400;text-transform:none;letter-spacing:0;color:var(--textLt);}
         .debtform-hint{font-size:11px;color:var(--textLt);margin-top:5px;}
         /* min-width:0 is load-bearing, not tidy-up: the row is a
@@ -1234,7 +1316,6 @@
         .upcoming-desktop-desc{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .upcoming-desktop-amts{display:flex;align-items:center;gap:10px;flex-shrink:0;}
         .paid-btn{width:22px;height:22px;min-width:22px;border-radius:50%;color:var(--greenDk);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;padding:0;flex-shrink:0;}
-        .insight-banner{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:20px;line-height:1.5;}
         /* overflow-wrap for the same reason .kpi-card .kpi-value has it — the
            annual tiles are the other place a long amount can outgrow its card,
            and they were the pair that never got the treatment. */
@@ -1349,10 +1430,6 @@
         .chart-grid{display:grid;gap:16px;margin-bottom:16px;max-width:100%;overflow:hidden;
           align-items:start;}
         /* Inline error/info banner (auth screens, forms) */
-        .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
-          padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
-        .cf-info-banner{background:var(--greenLt);border:1px solid var(--green);border-radius:8px;
-          padding:10px 14px;font-size:13px;color:var(--greenDk);font-weight:500;}
         /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
         .cf-menu-item{width:100%;text-align:left;padding:12px 16px;font-size:13px;color:var(--text);
           background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;}
@@ -1393,8 +1470,13 @@
            border instead of wrapping. The font step-down at ≤360px below is
            what actually keeps realistic amounts on one line; this only stops
            an absurd one from escaping the card. */
+        /* overflow-wrap:anywhere is a last resort, not the plan: it breaks
+           "$798,624.07" into "$798,624" and ".07" on two lines, which reads as
+           two numbers. The font is stepped down instead so a six-figure amount
+           fits one line in the two-up phone grid, and the break stays
+           available only below 360px where nothing fits either way. */
         .kpi-card .kpi-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;
-          font-size:20px;font-weight:700;color:var(--text);line-height:1;overflow-wrap:anywhere;}
+          font-size:20px;font-weight:700;color:var(--text);line-height:1.15;overflow-wrap:normal;}
         .kpi-card .kpi-sub{font-size:11px;color:var(--textLt);margin-top:4px;}
         /* Value + sparkline row inside the annual KPI tiles: wrap instead of
            squeezing the sparkline against the card edge on narrow phones */
@@ -1534,7 +1616,7 @@
              wrapping label's padding instead. */
           input:not([type=checkbox]):not([type=radio]):not([type=color]),
           select,textarea{min-height:44px;}
-          .reset-targets-btn,.ai-generate-btn,.ai-settings-link,
+          .reset-targets-btn,.ai-generate-btn,
           .settings-pill-btn,.quicklink-pill,.oem-remove-btn,.oem-reset-btn,
           .clear-key-btn,.copy-year-btn,.year-active-btn,.gotit-btn,
           .household-mode-btn,.debt-restore-btn,.revert-btn{min-height:44px;}
@@ -1543,7 +1625,12 @@
              native size, same arrangement as the filter dropdown rows. */
           .strat-debt-toggle{min-height:44px;}
           .ctx-menu-item--touch{min-height:48px;}
-          .ai-settings-link,.strat-suggest-btn{display:inline-block;padding:12px 0;}
+          /* WCAG 2.5.5 exempts a link inside a sentence, and the exemption is
+             load-bearing here rather than a technicality: a 44px inline-block
+             sitting in a paragraph inflates every line box it touches, so the
+             prose around it was being set at nearly double leading. These read
+             as inline links, like .link-primary. */
+          .ai-settings-link,.strat-suggest-btn{display:inline;padding:0;min-height:0;}
           .link-btn-sm{min-width:44px;min-height:44px;}
           .cf-footer-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;}
           .settings-page-pills button{min-height:44px;}
@@ -1795,7 +1882,7 @@
           .content-area{padding:0!important;}
           .cf-page{max-width:none!important;}
           .cf-card{box-shadow:none!important;border:1px solid #E8E4DD!important;}
-          .cf-card,tr,.debt-row,.goal-row-cursor{break-inside:avoid;}
+          .cf-card,tr,.debt-item,.goal-row-cursor{break-inside:avoid;}
         }
 
         /* ── Mobile layout ─────────────────────────────────────────── */
@@ -1867,6 +1954,7 @@
           .tab-bar-outer{overflow:hidden!important;}
           /* KPI grids: 2-column on tablet/mobile */
           .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+          .kpi-card .kpi-value{font-size:16px;}
           .kpi-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
           /* Dashboard: charts stack, no overflow. minmax(0,…) rather than a
              bare 1fr — 1fr floors at min-content, and at 320px the widest
@@ -2006,12 +2094,19 @@
             overflow-x:visible;}
           .settings-quicklinks .quicklink-pill{width:100%;box-sizing:border-box;
             justify-content:center;text-align:center;white-space:normal;}
+          /* Settings' index is the page — two even columns earn their room
+             there. The report's eight sit directly above the sections they
+             jump to, so the same grid spends 208px of a phone screen on a
+             table of contents for content you are already scrolling into.
+             One scrolling row keeps the jump and costs 44px. */
+          .ai-quicklinks{display:flex!important;flex-wrap:nowrap;overflow-x:auto!important;
+            -webkit-overflow-scrolling:touch;}
+          .ai-quicklinks .quicklink-pill{width:auto;white-space:nowrap;flex-shrink:0;}
           /* The row-actions kebab belongs on the right edge of its row — that
              is where it is in the budget grid and in Entries, and where a
              thumb goes looking for it. In the debt and goal rows it is a
              sibling of the row's title, so at this width, where those rows
              wrap to full width, it trailed the text and landed mid-line. */
-          .debt-row-name-col>.cf-row>.row-menu-btn{margin-left:auto;}
           .goal-title-row>.goal-amounts-row{flex:1 0 100%;}
           .goal-amounts-row>.row-menu-btn{margin-left:auto;}
           /* Three stacked toolbar rows put ~250px between the top of the tab
@@ -2042,7 +2137,7 @@
            spare. Only the value shrinks — labels stay put. */
         @media(max-width:360px){
           .kpi-card{padding:14px 14px!important;}
-          .kpi-card .kpi-value{font-size:15px!important;}
+          .kpi-card .kpi-value{font-size:15px!important;overflow-wrap:anywhere;}
           /* Same step-down for the annual tiles' value, which shares the
              two-up grid and therefore the same ~109px of content width. */
           .kpi-spark-value{font-size:15px!important;}
@@ -2247,8 +2342,15 @@
         .grid-pagination-nav:disabled{cursor:default;color:var(--border);}
 
         /* AI report: two-column card grid on wide screens */
-        .ai-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-        @media(max-width:900px){.ai-report-grid{grid-template-columns:1fr;}}
+        /* minmax(0,…), not a bare 1fr — the fourth time this exact bug has
+           landed here. `1fr` is `minmax(auto,1fr)`, so a track floors at its
+           min-content width, and a report section holds long unbreakable
+           tokens (a currency string, a **bolded** phrase). At 390px the single
+           column measured 446px and the whole page scrolled sideways. */
+        .ai-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px;}
+        .ai-report-grid>.ai-section-card{min-width:0;}
+        .ai-item-text,.ai-numbered-row,.ai-bullet-row{min-width:0;overflow-wrap:anywhere;}
+        @media(max-width:900px){.ai-report-grid{grid-template-columns:minmax(0,1fr);}}
 
         /* Keyboard shortcut hint in search placeholder */
         #global-search::placeholder{color:var(--textLt);}

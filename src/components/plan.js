@@ -1,6 +1,70 @@
   // Hoisted out of PlanView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
-  const StratCard = ({ title, icon, sub, r, base }) => /* @__PURE__ */ React.createElement("div", { className: "strat-card" }, /* @__PURE__ */ React.createElement("div", { className: "strat-card-title" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }), title), /* @__PURE__ */ React.createElement("div", { className: "strat-card-sub" }, sub), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Debt-free"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, r.debtFreeDate)), /* @__PURE__ */ React.createElement("div", { className: "strat-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Total interest"), /* @__PURE__ */ React.createElement("span", { className: "strat-value-neutral" }, fmt(r.totalInterest))), base && base.totalInterest > r.totalInterest && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Interest saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, fmt(base.totalInterest - r.totalInterest))), base && base.months > r.months && /* @__PURE__ */ React.createElement("div", { className: "strat-card-row-tight" }, /* @__PURE__ */ React.createElement("span", { className: "txm-11" }, "Time saved"), /* @__PURE__ */ React.createElement("span", { className: "strat-value" }, base.months - r.months, " ", base.months - r.months === 1 ? "month" : "months")), /* @__PURE__ */ React.createElement("div", { className: "strat-order" }, "Order: ", r.payoffOrder.map((n, i) => i + 1 + ". " + n).join("  →  ")));
+  // The screen exists to compare two strategies, and it used to stack them as
+  // two cards — so on a phone you could never see both at once, which is the
+  // one thing it is for. One table instead: the rows are the questions, the
+  // columns are the answers, and the better answer in each row is marked.
+  //
+  // The payoff order was a 10px sentence of arrows wrapping to four lines. It
+  // is a numbered list now, for the chosen strategy only, because that is the
+  // form an ordered list of nine things has always wanted.
+  const StratCompare = ({ av, sn, base, pick, onPick }) => {
+    const better = (a, b, lowerWins = true) => a === b ? null : (lowerWins ? a < b : a > b);
+    const rows = [
+      { label: "Debt-free", a: av.debtFreeDate, b: sn.debtFreeDate, win: better(av.months, sn.months) },
+      { label: "Total interest", a: fmt(av.totalInterest), b: fmt(sn.totalInterest),
+        win: better(av.totalInterest, sn.totalInterest) },
+      { label: "Months to clear", a: av.months, b: sn.months, win: better(av.months, sn.months) }
+    ];
+    // What each strategy is worth against paying the minimums. A strategy can
+    // be *worse* than the baseline — snowball often is — so these read as a
+    // signed comparison rather than as "saved": "-1 months" saved is not a
+    // sentence, and a negative saving is a cost the reader should see said
+    // plainly.
+    const lessMore = (d, unit) => {
+      if (d === 0) return "same";
+      const n = Math.abs(d);
+      const word = unit === "months" ? (n === 1 ? "month" : "months") : "";
+      return n + (word ? " " + word : "") + (d > 0 ? " less" : " more");
+    };
+    if (base && base.totalInterest !== av.totalInterest) {
+      rows.push({ label: "Interest vs minimums",
+        a: fmt(Math.abs(base.totalInterest - av.totalInterest)) + (base.totalInterest > av.totalInterest ? " less" : " more"),
+        b: fmt(Math.abs(base.totalInterest - sn.totalInterest)) + (base.totalInterest > sn.totalInterest ? " less" : " more"),
+        win: better(av.totalInterest, sn.totalInterest) });
+    }
+    if (base && (base.months !== av.months || base.months !== sn.months)) {
+      rows.push({ label: "Time vs minimums", a: lessMore(base.months - av.months, "months"),
+        b: lessMore(base.months - sn.months, "months"), win: better(av.months, sn.months) });
+    }
+    const chosen = pick === "snowball" ? sn : av;
+    return /* @__PURE__ */ React.createElement(React.Fragment, null,
+      /* @__PURE__ */ React.createElement("table", { className: "strat-table" },
+        /* @__PURE__ */ React.createElement("caption", { className: "cf-visually-hidden" },
+          "Avalanche compared with Snowball"),
+        /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null,
+          /* @__PURE__ */ React.createElement("td", null),
+          /* @__PURE__ */ React.createElement("th", { scope: "col" },
+            /* @__PURE__ */ React.createElement(Icon, { name: "mountain", size: 13 }), " Avalanche"),
+          /* @__PURE__ */ React.createElement("th", { scope: "col" },
+            /* @__PURE__ */ React.createElement(Icon, { name: "snowflake", size: 13 }), " Snowball"))),
+        /* @__PURE__ */ React.createElement("tbody", null, rows.map((r) =>
+          /* @__PURE__ */ React.createElement("tr", { key: r.label },
+            /* @__PURE__ */ React.createElement("th", { scope: "row" }, r.label),
+            /* @__PURE__ */ React.createElement("td", { "data-win": r.win === true ? "true" : void 0 }, r.a),
+            /* @__PURE__ */ React.createElement("td", { "data-win": r.win === false ? "true" : void 0 }, r.b))))),
+      /* @__PURE__ */ React.createElement("div", { className: "strat-order-head" },
+        /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Payoff order"),
+        /* @__PURE__ */ React.createElement(PillToggle, {
+          size: "sm", value: pick, onChange: onPick,
+          options: [{ id: "avalanche", label: "Avalanche" }, { id: "snowball", label: "Snowball" }]
+        })),
+      /* @__PURE__ */ React.createElement("ol", { className: "strat-order-list" },
+        chosen.payoffOrder.map((n, k) => /* @__PURE__ */ React.createElement("li", { key: n + k },
+          /* @__PURE__ */ React.createElement("span", { className: "strat-order-n" }, k + 1),
+          /* @__PURE__ */ React.createElement("span", { className: "strat-order-name" }, n)))));
+  };
+
   function PlanView({ flow, openBal, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
@@ -14,6 +78,10 @@
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const { logActivity } = useContext(HouseholdContext);
     const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
+    // Which payoff order is on screen. Device-local: it is a reading
+    // preference, not a decision the household has made.
+    const [stratPick, setStratPick] = useLS("cf_debt_strategy", "avalanche");
+    const [showDebtPicker, setShowDebtPicker] = useState(false);
     const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
@@ -151,7 +219,7 @@
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-12" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-12", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "goal-list" }, goalsFiltered.map((g) => {
         const pct = g.target > 0 ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
         const remaining = Math.max(0, g.target - g.saved);
         let projLabel = null, onTrack = null;
@@ -186,10 +254,7 @@
             },
             className: "goal-row-cursor"
           },
-          /* @__PURE__ */ React.createElement("div", { className: "goal-title-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb" }, g.name, g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, "by ", (() => {
-            const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
-            return MONTHS[t.getMonth()] + " " + t.getFullYear();
-          })())), /* @__PURE__ */ React.createElement("div", { className: "goal-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "goal-amounts-text" }, fmt(g.saved), " ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "of"), " ", fmt(g.target), /* @__PURE__ */ React.createElement("span", { className: "goal-pct", style: { color: barColor } }, pct, "%")), /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "goal-title-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb goal-name", title: g.name }, g.name), /* @__PURE__ */ React.createElement("div", { className: "goal-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "goal-amounts-text" }, fmt(g.saved), " ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "of"), " ", fmt(g.target), /* @__PURE__ */ React.createElement("span", { className: "goal-pct", style: { color: barColor } }, pct, "%")), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: (e) => {
@@ -202,7 +267,10 @@
             "⋮"
           ))),
           /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", borderRadius: 4, background: barColor, transition: "width 0.3s ease" } })),
-          /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set"), projLabel && /* @__PURE__ */ React.createElement("span", { style: { color: remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amberInk)" : "var(--textLt)", fontWeight: onTrack === false || remaining <= 0 ? 700 : 400 } }, remaining <= 0 ? "\u2713 Funded" : onTrack === false ? neededMonthly ? `\u26A0 Need ${fmt(neededMonthly)}/mo by target` : "\u26A0 Projected " + projLabel : "On track \u2014 " + projLabel))
+          /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set", g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, " \u00B7 by ", (() => {
+            const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
+            return MONTHS[t.getMonth()] + " " + t.getFullYear();
+          })())), projLabel && /* @__PURE__ */ React.createElement("span", { style: { color: remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amberInk)" : "var(--textLt)", fontWeight: onTrack === false || remaining <= 0 ? 700 : 400 } }, remaining <= 0 ? "\u2713 Funded" : onTrack === false ? neededMonthly ? `\u26A0 Need ${fmt(neededMonthly)}/mo by target` : "\u26A0 Projected " + projLabel : "On track \u2014 " + projLabel))
         );
       }))), goalCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,
@@ -620,20 +688,52 @@
         const toggleSimDebt = (key) => {
           setDebtSimExcluded((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
         };
+        // Nine checkboxes as chips cost about 500px of a phone screen to say
+        // "all of them", which is the answer almost every time — and the names
+        // that matter most ("CC-Scotia Infinite Visa") were the ones the chips
+        // truncated. One line states the answer; changing it is a sheet, where
+        // the full names fit and All / None are one tap.
+        const includedCount = simDebtsAll.length - simDebtsAll.filter((d) => debtSimExcluded.includes(d.key)).length;
         const checklist = simDebtsAll.length > 1 && /* @__PURE__ */ React.createElement(
-          "div",
-          { className: "strat-debt-toggles" },
-          simDebtsAll.map((d) => /* @__PURE__ */ React.createElement(
-            "label",
-            { key: d.key, className: "strat-debt-toggle" },
-            /* @__PURE__ */ React.createElement("input", {
-              type: "checkbox",
-              checked: !debtSimExcluded.includes(d.key),
-              onChange: () => toggleSimDebt(d.key)
-            }),
-            d.label
-          ))
-        );
+          "div", { className: "strat-include-row" },
+          /* @__PURE__ */ React.createElement("span", { className: "strat-include-text" },
+            includedCount === simDebtsAll.length
+              ? `All ${simDebtsAll.length} debts included`
+              : `${includedCount} of ${simDebtsAll.length} debts included`),
+          /* @__PURE__ */ React.createElement("button", {
+            type: "button", className: "cf-btn cf-btn--secondary cf-btn--xs",
+            onClick: () => setShowDebtPicker(true),
+            "aria-haspopup": "dialog"
+          }, "Change"));
+        const debtPicker = showDebtPicker && /* @__PURE__ */ React.createElement(
+          "div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Debts in the simulation" },
+          /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" },
+            /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowDebtPicker(false) }),
+            /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Debts in the simulation"),
+            /* @__PURE__ */ React.createElement("div", { className: "strat-picker-actions" },
+              /* @__PURE__ */ React.createElement("button", {
+                className: "cf-btn cf-btn--secondary cf-btn--xs",
+                onClick: () => setDebtSimExcluded([])
+              }, "All"),
+              /* @__PURE__ */ React.createElement("button", {
+                className: "cf-btn cf-btn--secondary cf-btn--xs",
+                onClick: () => setDebtSimExcluded(simDebtsAll.map((d) => d.key))
+              }, "None")),
+            /* @__PURE__ */ React.createElement("div", { className: "strat-picker-list" },
+              simDebtsAll.map((d) => /* @__PURE__ */ React.createElement(
+                "label", { key: d.key, className: "strat-picker-item" },
+                /* @__PURE__ */ React.createElement("input", {
+                  type: "checkbox",
+                  checked: !debtSimExcluded.includes(d.key),
+                  onChange: () => toggleSimDebt(d.key)
+                }),
+                /* @__PURE__ */ React.createElement("span", { className: "strat-picker-name" }, d.label),
+                /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 strat-picker-bal" }, fmt(d.bal))))),
+            /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" },
+              /* @__PURE__ */ React.createElement("button", {
+                onClick: () => setShowDebtPicker(false),
+                className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
+              }, "Done"))));
         // debtExtra is entered/displayed in dollars; simDebts' bal/pmt are
         // cents, so this needs the same conversion before it's mixed in.
         const extraDollars = Math.max(0, parseFloat(debtExtra) || 0);
@@ -681,19 +781,16 @@
           Avalanche: i < av.timeline.length ? av.timeline[i] : 0,
           Snowball: i < sn.timeline.length ? sn.timeline[i] : 0
         }));
-        const interestDelta = sn.totalInterest - av.totalInterest;
-        const monthsDelta = sn.months - av.months;
-        const deltaCallout = simDebts.length > 1 && (interestDelta > 0 || monthsDelta !== 0) && /* @__PURE__ */ React.createElement(
+        // The same helper the Alerts centre reads, so the sentence here and
+        // the one there cannot drift apart.
+        const strategyFinding = debtStrategyFinding(simDebts, extra);
+        const deltaCallout = strategyFinding && /* @__PURE__ */ React.createElement(
           "div",
-          { className: "strat-delta-banner" },
-          /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 14 }),
-          " Avalanche saves you",
-          interestDelta > 0 && ` ${fmt(interestDelta)}`,
-          interestDelta > 0 && monthsDelta > 0 && " and",
-          monthsDelta > 0 && ` ${monthsDelta} ${monthsDelta === 1 ? "month" : "months"}`,
-          " over Snowball on this debt load."
+          { className: "notice notice--sm", "data-tone": strategyFinding.tone, role: "status" },
+          /* @__PURE__ */ React.createElement(Icon, { name: strategyFinding.icon, size: 14 }),
+          /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, strategyFinding.text)
         );
-        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, deltaCallout, /* @__PURE__ */ React.createElement("div", { className: "strat-cards-row" }, /* @__PURE__ */ React.createElement(StratCard, { title: "Avalanche", icon: "mountain", sub: "Highest interest rate first \u2014 mathematically optimal", r: av, base }), /* @__PURE__ */ React.createElement(StratCard, { title: "Snowball", icon: "snowflake", sub: "Smallest balance first \u2014 quick wins for motivation", r: sn, base })), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, ariaLabel: `Line chart of the total debt balance falling to zero over ${chartData.length} months, one line per strategy: Avalanche clears it in ${av.months} months paying ${fmt(av.totalInterest)} of interest, Snowball in ${sn.months} months paying ${fmt(sn.totalInterest)}. The two cards above give the same figures.`, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
+        return /* @__PURE__ */ React.createElement(Card, { className: "mt-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: extraControl, className: "goal-header-row mb-12" }, "Payoff Strategy"), checklist, debtPicker, deltaCallout, /* @__PURE__ */ React.createElement(StratCompare, { av, sn, base, pick: stratPick, onPick: setStratPick }), /* @__PURE__ */ React.createElement("div", { className: "strat-chart-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "strat-chart-label" }, "Total balance remaining over time"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 220 }, /* @__PURE__ */ React.createElement(LineChart, { data: chartData, ariaLabel: `Line chart of the total debt balance falling to zero over ${chartData.length} months, one line per strategy: Avalanche clears it in ${av.months} months paying ${fmt(av.totalInterest)} of interest, Snowball in ${sn.months} months paying ${fmt(sn.totalInterest)}. The two cards above give the same figures.`, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Avalanche", name: "Avalanche", stroke: "var(--primary)", strokeWidth: 2.5, dot: { r: 2 }, activeDot: { r: 5 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "Snowball", name: "Snowball", stroke: "var(--amberInk)", strokeWidth: 2.5, strokeDasharray: "6 4", dot: { r: 2 }, activeDot: { r: 5 } }))))), /* @__PURE__ */ React.createElement("div", { className: "strat-footnote-row" }, /* @__PURE__ */ React.createElement(ExportBar, {
           onCSV: () => downloadCSV(
             "CashFlow_PayoffStrategy.csv",
             [
@@ -867,13 +964,26 @@
         message: "No debt entries detected \u2014 debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-10", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "debt-list" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
         const pmt = isAuto ? monthlyPmt : parseFloat((_c = debtData[key]) == null ? void 0 : _c.payment) || 0;
         const { monthsLeft, totalInterest, payoffDate } = calcPayoff(bal, rate, pmt);
         const payoffTrend = monthsLeft > 1 ? projectPayoffBalances(bal, rate, pmt, monthsLeft) : null;
+        // One flat row, not a card in a card in a page. The balance used to
+        // be printed twice — once beside the sparkline, once again in a
+        // three-column stat grid below it — and the three nested boxes cost
+        // 96px of a 390px screen, which is why a name like "CC-Scotia Line of
+        // Credit" wrapped to three lines. Everything that was in the grid is
+        // one meta line now, and the burn-down gets the width it was always
+        // trying to show.
+        const facts = [
+          rate > 0 ? rate + "%" : null,
+          pmt > 0 ? fmt(pmt) + "/mo" : null,
+          isAuto && recurDesc && timesPerYear > 12 ? fmt(perOccurrence) + " " + recurDesc : null,
+          totalInterest != null && totalInterest > 0 ? "+" + fmt(totalInterest) + " interest" : null
+        ].filter(Boolean);
         return /* @__PURE__ */ React.createElement(
           "div",
           {
@@ -882,22 +992,29 @@
               e.preventDefault();
               setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
             },
-            className: "debt-row"
+            className: "debt-item"
           },
-          /* @__PURE__ */ React.createElement("div", { className: "debt-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "debt-row-name-col" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb" }, label), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-row-paid" }, "\u2713 Paid off ", payoffDate), /* @__PURE__ */ React.createElement(
-            "button",
-            {
+          /* @__PURE__ */ React.createElement("div", { className: "debt-item-head" },
+            /* @__PURE__ */ React.createElement("span", { className: "debt-item-name" }, label),
+            bal > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-item-bal" }, fmt(bal)),
+            /* @__PURE__ */ React.createElement("button", {
               onClick: (e) => {
                 e.stopPropagation();
                 setDebtCtx({ x: e.clientX, y: e.clientY, key, label, isAuto });
               },
-              className: "cf-checkbtn row-menu-btn",
+              className: "cf-checkbtn row-menu-btn debt-item-menu",
               "aria-label": label + " actions",
               title: label + " actions"
-            },
-            "\u22ee"
-          )), /* @__PURE__ */ React.createElement("div", { className: "debt-row-meta" }, isAuto && recurDesc ? timesPerYear > 12 && /* @__PURE__ */ React.createElement("span", null, fmt(perOccurrence), " ", recurDesc) : isAuto && /* @__PURE__ */ React.createElement("span", null, fmt(pmt), "/mo (from budget)"))), bal > 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-row-bal-wrap" }, payoffTrend && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 2 }, title: "Projected balance decline to payoff" }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 22, width: 56 })), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-row-bal-amt" }, fmt(bal)), totalInterest != null && /* @__PURE__ */ React.createElement("div", { className: "debt-row-interest" }, "+", fmt(totalInterest), " interest"))),
-          (bal > 0 || rate > 0 || isAuto && recurDesc) && /* @__PURE__ */ React.createElement("div", { className: "debt-stats-row" }, isAuto && recurDesc && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Monthly"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(pmt))), bal > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Balance"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(bal))), rate > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Rate"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, rate, "%")), !isAuto && ((_d = debtData[key]) == null ? void 0 : _d.payment) && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "debt-stat-label" }, "Payment"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 c-text" }, fmt(parseFloat(debtData[key].payment)), "/mo")))
+            }, "\u22EE")),
+          (facts.length > 0 || payoffDate) && /* @__PURE__ */ React.createElement("div", { className: "debt-item-meta" },
+            facts.join(" \u00B7 "),
+            payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debt-item-paid" },
+              facts.length ? " \u00B7 " : "", "\u2713 paid off ", payoffDate)),
+          payoffTrend && /* @__PURE__ */ React.createElement("div", {
+            className: "debt-item-trend", title: "Projected balance decline to payoff"
+          }, /* @__PURE__ */ React.createElement(Sparkline, {
+            data: payoffTrend, color: "var(--red)", height: 22, width: 240, responsive: true, area: true
+          }))
         );
       })))));
     })());

@@ -178,7 +178,12 @@
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
   // for rising expenses), so it's gone — pass `color` explicitly if needed.
-  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80 }) => {
+  // `responsive` draws the same line into whatever width its container gives
+  // it, for the places where a sparkline is a full-width strip rather than a
+  // thumbnail beside a figure. The end dot is dropped there — a circle in a
+  // box scaled on one axis is an ellipse — and the stroke is pinned so the
+  // line keeps its weight however far it stretches.
+  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }) => {
     if (!data || data.length < 2) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -191,7 +196,12 @@
     ]);
     const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
     const lastPt = pts[pts.length - 1];
-    return /* @__PURE__ */ React.createElement("svg", { width, height, className: "sparkline-svg", role: "presentation", "aria-hidden": "true", focusable: "false" }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5 }), /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
+    const svgProps = responsive
+      ? { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none", height,
+          className: "sparkline-svg sparkline-svg--wide" }
+      : { width, height, className: "sparkline-svg" };
+    const areaPath = area ? path + ` L${pts[pts.length - 1][0].toFixed(1)},${height} L${pts[0][0].toFixed(1)},${height} Z` : null;
+    return /* @__PURE__ */ React.createElement("svg", __spreadProps(__spreadValues({}, svgProps), { role: "presentation", "aria-hidden": "true", focusable: "false" }), areaPath && /* @__PURE__ */ React.createElement("path", { d: areaPath, fill: color, opacity: 0.14, stroke: "none" }), /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5, vectorEffect: responsive ? "non-scaling-stroke" : void 0 }), !responsive && /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
   };
   // Shared row-pagination for grids that used to be internally-scrolling
   // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
