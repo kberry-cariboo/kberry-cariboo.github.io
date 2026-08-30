@@ -1168,6 +1168,82 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// WCAG 1.4.4 asks that text scale to 200% without losing content or function,
+// and on a phone that is not a zoom control — it is the reader who has set a
+// larger system font and gets this on every page. Nothing here covered it.
+await test('text scaling: the layout holds at 200%', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const problems = [];
+  for (const hash of ['#/today', '#/flow/list', '#/envelopes', '#/plan/debt', '#/you']) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(() => {
+      const sc = document.querySelector('.app-scroll');
+      const vw = sc.clientWidth;
+      // Text outside the viewport only counts as lost if nothing between it
+      // and the page can scroll to it — the month strip is a horizontal
+      // scroller by design, and its off-window months are reachable.
+      const lost = [...document.querySelectorAll('main *')].filter((e) => {
+        if (e.children.length) return false;
+        const t = (e.textContent || '').trim();
+        if (!t) return false;
+        const b = e.getBoundingClientRect();
+        if (!b.width) return false;
+        if (b.right <= vw + 1 && b.left >= -1) return false;
+        let n = e;
+        while (n && n !== document.body) {
+          const c = getComputedStyle(n);
+          if (/auto|scroll/.test(c.overflowX) && n.scrollWidth > n.clientWidth + 1) return false;
+          n = n.parentElement;
+        }
+        return true;
+      }).map((e) => e.textContent.trim().slice(0, 18));
+      const nav = document.querySelector('.cf-bottomnav');
+      const nb = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+      return { slop: Math.max(sc.scrollWidth - sc.clientWidth,
+                 document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        lost: [...new Set(lost)].slice(0, 3),
+        // Nothing may be permanently parked under the fixed nav either.
+        buried: nb ? (() => { sc.scrollTop = sc.scrollHeight;
+          return [...document.querySelectorAll('main .cf-card, main button')]
+            .filter((e) => { const b = e.getBoundingClientRect();
+              return b.height > 0 && b.top > nb.top + 2; }).length; })() : 0 };
+    });
+    if (r.slop > 1) problems.push(hash + ' scrolls sideways ' + r.slop + 'px');
+    if (r.lost.length) problems.push(hash + ' loses "' + r.lost.join('", "') + '"');
+    if (r.buried) problems.push(hash + ' parks ' + r.buried + ' element(s) under the nav');
+  }
+  if (problems.length) throw new Error('at 200%: ' + problems.join(' | '));
+  await ctx.close();
+});
+
+// The app animates a fair amount — sheets, swipes, the settling row, chart
+// transitions — and someone who has asked their phone to stop that should get
+// nothing moving at all.
+await test('reduced motion: nothing animates when the reader has asked it not to', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 393, height: 852 },
+    hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  await page.addInitScript(mkStub(false, true));
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const r = await page.evaluate(() => {
+    const dur = (v) => Math.max(...String(v).split(',').map((x) => parseFloat(x) || 0));
+    const moving = [...document.querySelectorAll('main *, .cf-bottomnav *')]
+      .filter((e) => { const c = getComputedStyle(e);
+        return dur(c.transitionDuration) > 0.05 || dur(c.animationDuration) > 0.05; })
+      .map((e) => ((e.className || '') + '').split(' ')[0] || e.tagName);
+    return { matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      moving: [...new Set(moving)].slice(0, 5), count: moving.length };
+  });
+  if (!r.matches) throw new Error('the preference did not reach the page');
+  if (r.count) throw new Error(r.count + ' element(s) still animate: ' + r.moving.join(', '));
+  await ctx.close();
+});
+
 // Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
 // Both had a link index at the top and nothing after it, so fifteen screens
 // down the way back was a long scroll.
