@@ -18,7 +18,7 @@ against the built `index.html` with the regression suite's own fixture, at
 luminance against the composited background.
 
 Nothing in this document changes behaviour — it is the audit itself. Fixes are
-in `b3a0207`, `9a938b1` and `650b88f`.
+in `b3a0207`, `9a938b1`, `650b88f` and `8d8c7b1`.
 
 ---
 
@@ -235,7 +235,7 @@ Recorded so the next pass does not re-litigate it.
 | 2.2 | 553px before the first row | Done — 394px | `9a938b1` |
 | 2.4 | "Four row shapes" | Retracted — the finding was wrong | `650b88f` |
 | 2.3 | Swipe only on ledger rows | Left as is, deliberately | — |
-| 1.5 | Header and footer were not landmarks | Fixed — `<header>` / `<footer>` | `dd28e0a` |
+| 1.5 | Header and footer were not landmarks | Fixed — `<header>` / `<footer>` | `8d8c7b1` |
 
 Nine tests were added, because every defect above was invisible to everything
 the suite already did: contrast across four routes in both themes (compositing
