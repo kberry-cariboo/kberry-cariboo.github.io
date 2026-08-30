@@ -198,6 +198,58 @@
         return null;
     }
   }
+  // Every transient notice in the app, in one place, on one scale.
+  //
+  // They used to be scattered: a low-balance banner and a backup nudge at app
+  // level, an alert banner and a sample-data strip inside Today, each with its
+  // own shape, padding and margin. On an overdrawn household two of them fired
+  // at once and printed the same figure and the same date in two differently
+  // sized red boxes — 238px of banner before the first real content. They read
+  // as one family and then missed each other by 4px of padding and 2px of
+  // margin, which is the tell that they were never designed together.
+  //
+  // One notice renders as a row. More than one collapses behind a count, so a
+  // bad month can never rebuild the wall: the worst tone leads, and opening it
+  // is one tap. Sorting is by severity, not by which effect happened to run
+  // first, so the thing that matters is the thing you read.
+  const NOTICE_RANK = { critical: 0, warn: 1, info: 2 };
+  function NoticeStack({ notices = [] }) {
+    const [open, setOpen] = useState(false);
+    const list = useMemo(
+      () => notices.filter(Boolean).slice().sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]),
+      [notices]
+    );
+    if (!list.length) return null;
+    const row = (n) => /* @__PURE__ */ React.createElement("div", {
+      key: n.id, className: "notice", "data-tone": n.tone, role: n.tone === "critical" ? "alert" : "status"
+    },
+      /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+        /* @__PURE__ */ React.createElement(Icon, { name: n.icon || "alert-triangle", size: 16 })),
+      /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, n.msg),
+      // Every action is a labelled button, including the one that dismisses.
+      // A bare "×" on "back up your data" does not say whether it defers the
+      // prompt or turns it off, and the words already existed.
+      /* @__PURE__ */ React.createElement("span", { className: "notice-actions" },
+        (n.actions || []).map((a) => /* @__PURE__ */ React.createElement("button", {
+          key: a.label, onClick: a.onClick, "aria-label": a.ariaLabel,
+          className: "cf-btn cf-btn--tiny " + (a.primary ? "cf-btn--primary fw-700" : "cf-btn--secondary")
+        }, a.label))));
+    if (list.length === 1) {
+      return /* @__PURE__ */ React.createElement("div", { className: "cf-page notice-stack", "data-noprint": true }, row(list[0]));
+    }
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page notice-stack", "data-noprint": true },
+      /* @__PURE__ */ React.createElement("button", {
+        className: "notice notice-summary", "data-tone": list[0].tone,
+        "aria-expanded": open ? "true" : "false", onClick: () => { haptic(); setOpen(!open); }
+      },
+        /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+          /* @__PURE__ */ React.createElement(Icon, { name: list[0].icon || "alert-triangle", size: 16 })),
+        /* @__PURE__ */ React.createElement("span", { className: "notice-msg" },
+          /* @__PURE__ */ React.createElement("strong", null, list.length, " notices"),
+          " \u2014 ", list[0].plain),
+        /* @__PURE__ */ React.createElement("span", { className: "notice-chev", "aria-hidden": "true" }, open ? "\u2303" : "\u2304")),
+      open && /* @__PURE__ */ React.createElement("div", { className: "notice-stack-body" }, list.map(row)));
+  }
   // Four destinations and one action. Settings, Help and the account moved
   // behind the avatar as "You" — they are things you visit occasionally, and
   // they were taking a fifth of the thumb's reach from the money.

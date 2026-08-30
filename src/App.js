@@ -232,9 +232,9 @@
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
       try {
-        return sessionStorage.getItem("cf_tab") || "dashboard";
+        return sessionStorage.getItem("cf_tab") || "today";
       } catch (e) {
-        return "dashboard";
+        return "today";
       }
     });
     useEffect(() => {
@@ -1099,6 +1099,53 @@
     // rest of the date code already uses.
     const todayKey = todayStr();
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
+    // Every transient notice the app can raise, gathered in one list so they
+    // share a shape, a scale and a collapse rule. Order here is irrelevant —
+    // NoticeStack sorts by severity — but each entry carries a `plain` string
+    // because that is what the collapsed summary shows.
+    const appNotices = useMemo(() => {
+      const out = [];
+      if (showLowBanner) {
+        const under = navLowInfo.min < 0
+          ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
+        out.push({
+          id: "lowbal", tone: navLowInfo.min < 0 ? "critical" : "warn", icon: "alert-triangle",
+          plain: `Balance dips to ${fmt(navLowInfo.min)} on ${MONTHS[navLowInfo.month]} ${navLowInfo.day}`,
+          msg: React.createElement(React.Fragment, null,
+            "Heads-up: your balance is forecast to dip to ",
+            React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)),
+            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, under),
+          actions: [
+            { label: "View alerts", onClick: () => setTab("alerts") },
+            { label: "Dismiss", ariaLabel: "Dismiss for today", onClick: () => setLowBannerSnooze(todayKey) }
+          ]
+        });
+      }
+      if (showBackupNudge) {
+        out.push({
+          id: "backup", tone: "warn", icon: "save",
+          plain: "A backup is 30+ days overdue",
+          msg: React.createElement(React.Fragment, null,
+            React.createElement("strong", null, "Time for a backup."),
+            " It's been 30+ days since your last data export."),
+          actions: [
+            { label: "Remind me later", onClick: () => dismissBackup(false) },
+            { label: "\u2193 Export backup", onClick: () => dismissBackup(true), primary: true }
+          ]
+        });
+      }
+      if (entries.some((e) => e.sample)) {
+        out.push({
+          id: "sample", tone: "info", icon: "info",
+          plain: "You're exploring sample data",
+          msg: React.createElement(React.Fragment, null,
+            "You're exploring ", React.createElement("strong", { className: "c-text" }, "sample data"),
+            " \u2014 every entry is fictional and marked \u201C(Sample)\u201D."),
+          actions: [{ label: "Remove sample data", onClick: () => setEntries((prev) => prev.filter((e) => !e.sample)) }]
+        });
+      }
+      return out;
+    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):
@@ -1360,7 +1407,7 @@
         "button",
         {
           "aria-label": label,
-          onClick: () => setTab((prev) => prev === "alerts" ? "dashboard" : "alerts"),
+          onClick: () => setTab((prev) => prev === "alerts" ? "today" : "alerts"),
           title: label,
           className: "alert-bell-btn",
           style: {
@@ -1520,34 +1567,16 @@
     })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", "data-noprint": true }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, className: "tab-bar-btn", style: {
       borderBottom: tab === t.id ? "3px solid var(--amber)" : "3px solid transparent",
       color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)"
-    } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
+    } }, t.label, t.id === "today" && activeFlow.filter((ev) => {
       const today = /* @__PURE__ */ new Date();
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
-    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
+    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "flow" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), showBackupNudge && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page backup-nudge", "data-noprint": true }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "backup-nudge-msg" }, /* @__PURE__ */ React.createElement("strong", null, "Time for a backup."), " It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => dismissBackup(false),
-        className: "cf-btn cf-btn--secondary cf-btn--tiny"
-      },
-      "Remind me later"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => dismissBackup(true),
-        className: "cf-btn cf-btn--primary cf-btn--tiny fw-700"
-      },
-      "\u2193 Export backup"
-    ))), showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
-      background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
-      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
-      borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
-    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "low-balance-icon" }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), /* @__PURE__ */ React.createElement(NoticeStack, { notices: appNotices }), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,

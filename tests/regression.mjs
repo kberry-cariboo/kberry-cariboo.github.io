@@ -1168,6 +1168,91 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// Notices used to be scattered: a low-balance banner and a backup nudge at app
+// level, an alert banner and a sample-data strip inside Today, four shapes and
+// four spacing scales. On an overdrawn household two of them printed the same
+// figure and the same date in two differently sized red boxes, 238px of banner
+// before the first real content — and they only rarely appeared together
+// because each had its own dismiss.
+await test('every notice comes through one stack, collapsed when there is more than one', async () => {
+  // Overdrawn, a backup overdue, and sample data: all three at once.
+  const { ctx, page } = await ctxPage({ touch: true, stub: (t) => t
+    .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000')
+    .replace(/alertThreshold: 50000/g, 'alertThreshold: 150000')
+    .replace(/const payload = \{ entries,/, 'entries[0].sample = true;\n  const payload = { entries,') });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(6500); // the backup nudge fires five seconds in
+
+  // The retired banners are gone, not merely restyled.
+  for (const dead of ['.alert-banner-wrap', '.low-balance-banner', '.backup-nudge', '.sample-banner']) {
+    if (await page.locator(dead).count() > 0) throw new Error(dead + ' is still rendered');
+  }
+  const stacks = await page.locator('.notice-stack').count();
+  if (stacks !== 1) throw new Error(stacks + ' notice stacks, expected exactly 1');
+
+  // Three notices collapse behind a count led by the worst one, so a bad month
+  // cannot rebuild the wall.
+  const sum = page.locator('.notice-summary');
+  await sum.waitFor(V);
+  const label = (await sum.innerText()).replace(/\s+/g, ' ');
+  if (!/^3 notices —/.test(label)) throw new Error('summary does not lead with the count: ' + label);
+  if (!/dips to/.test(label)) throw new Error('summary does not lead with the worst notice: ' + label);
+  if (await page.locator('.notice-stack-body').count() > 0) throw new Error('the stack is open before anyone asked');
+  const shutH = await page.locator('.notice-stack').evaluate((el) => el.getBoundingClientRect().height);
+  if (shutH > 90) throw new Error('the collapsed stack is ' + Math.round(shutH) + 'px tall');
+
+  await sum.tap({ force: true });
+  await page.waitForTimeout(500);
+  const rows = await page.locator('.notice-stack-body .notice').evaluateAll(
+    (els) => els.map((e) => e.dataset.tone));
+  if (rows.join(',') !== 'critical,warn,info') throw new Error('not sorted by severity: ' + rows.join(','));
+
+  // One shape and one scale: that mismatch is what made them read as a family
+  // and then look wrong.
+  const box = await page.locator('.notice').evaluateAll((els) => els.map((e) => {
+    const c = getComputedStyle(e);
+    return c.padding + '|' + c.borderRadius + '|' + c.borderLeftWidth;
+  }));
+  if (new Set(box).size !== 1) throw new Error('notices disagree on shape: ' + [...new Set(box)].join(' vs '));
+
+  // And the dip is stated once outside the stack. The Next-low-point tile
+  // keeps it — that is a figure you read, not a notice you dismiss — but the
+  // two banners that both announced it are what this guards against.
+  const outside = await page.evaluate(() => {
+    const m = document.querySelector('main').cloneNode(true);
+    m.querySelectorAll('.notice-stack').forEach((n) => n.remove());
+    return ((m.innerText || '').match(/-\$14,155\.00/g) || []).length;
+  });
+  if (outside > 1) throw new Error('the dip figure appears ' + outside + ' times outside the notice stack');
+  await ctx.close();
+});
+
+// Four ids were still keyed to routes the IA change retired: the bell toggled
+// to "dashboard", the session fallback restored "dashboard", and the desktop
+// tab bar hung its alert and search dots on "dashboard"/"budget". None of them
+// errored — they just silently did nothing, or landed on a tab that no longer
+// exists.
+await test('no control still points at a route the IA change retired', async () => {
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000') });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const bell = page.locator('.alert-bell-btn');
+  await bell.waitFor(V);
+  await bell.click();
+  await page.waitForTimeout(500);
+  if (await page.evaluate(() => location.hash) !== '#/alerts') throw new Error('the bell did not open Alerts');
+  await bell.click();               // toggling off used to land on "dashboard"
+  await page.waitForTimeout(500);
+  const back = await page.evaluate(() => location.hash);
+  if (back !== '#/today') throw new Error('toggling the bell off landed on ' + back);
+  // The desktop tab bar's alert dot hung off the retired id, so it never drew.
+  if (await page.locator('.tab-bar .tab-alert-dot').count() === 0) {
+    throw new Error('no alert dot on the tab bar for an overdrawn household');
+  }
+  await ctx.close();
+});
+
 // Today used to open as all eighteen panels: roughly five phone screens of
 // charts to scroll past before reaching anything that tells you what to do. It
 // leads with a stack now and keeps the analysis one tap below. The rule is
@@ -2365,14 +2450,15 @@ await test('backup nudge: it sits in the page, not on top of the data', async ()
   await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
   // The nudge fires five seconds after load.
   await page.waitForTimeout(6500);
-  const nudge = page.locator('.backup-nudge');
+  const nudge = page.locator('.notice', { hasText: 'Time for a backup' });
   await nudge.waitFor(V);
   const pos = await nudge.evaluate((el) => getComputedStyle(el).position);
   if (pos === 'fixed' || pos === 'absolute') throw new Error(`the nudge is ${pos}, so it floats over the page`);
   // Nothing of the page is underneath it: sample its box and check every hit
   // is the nudge itself.
   const covered = await page.evaluate(() => {
-    const n = document.querySelector('.backup-nudge');
+    const n = [...document.querySelectorAll('.notice')]
+      .find((e) => (e.innerText || '').includes('Time for a backup'));
     const r = n.getBoundingClientRect();
     const hits = new Set();
     for (let x = r.left + 4; x < r.right - 4; x += 40) {

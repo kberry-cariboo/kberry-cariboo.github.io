@@ -419,15 +419,6 @@
       background: i <= step ? "var(--primary)" : "var(--border)"
     } }))), steps[step]);
   }
-  function AlertBanner({ flow, openBal, alertThreshold }) {
-    const today = /* @__PURE__ */ new Date();
-    const next30 = new Date(today);
-    next30.setDate(today.getDate() + 30);
-    const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
-    if (!alerts.length) return null;
-    const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", centsToDollars(alertThreshold).toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
-  }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
     return React.createElement(React.Fragment, null, ...parts.map(

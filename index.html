@@ -362,29 +362,42 @@
            overlay and the padding hack go away. Shaped like the low-balance
            banner it sits above: same flex strip, same radius, same tinted
            severity border. */
-        .backup-nudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;
-          padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--text);
-          background:var(--amberLt);border:1px solid var(--amberInk);
-          border-left:5px solid var(--amberInk);box-shadow:var(--shadowSm);}
-        .backup-nudge-msg{flex:1;min-width:200px;line-height:1.5;}
+        /* One notice, one scale. Every transient message in the app renders
+           through .notice, so the padding, radius, margin and severity bar are
+           decided once instead of drifting per banner — the two that used to
+           stack were 4px of padding and 2px of margin apart, which is exactly
+           close enough to look like a mistake. */
+        .notice-stack{margin-bottom:18px;display:flex;flex-direction:column;gap:8px;}
+        .notice{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;
+          border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;
+          color:var(--text);text-align:left;box-shadow:var(--shadowSm);}
+        .notice-icon{flex-shrink:0;display:flex;align-items:center;}
+        .notice-msg{flex:1;min-width:200px;}
+        .notice-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+        .notice-stack-body{display:flex;flex-direction:column;gap:8px;}
+        .notice-summary{cursor:pointer;font:inherit;font-size:13px;}
+        .notice-chev{font-size:15px;line-height:1;flex-shrink:0;}
+        /* The pale tint alone is invisible against the page: --redLt (#FFF0EE)
+           on --bg (#F7F4EF) measures 1.01:1, and a 33%-alpha border only
+           reached 1.61:1 — under the 3:1 a meaningful UI boundary needs. The
+           boundary is what makes this read as an alert, so the border runs at
+           full token opacity and a 5px bar anchors the left edge (4.9:1
+           against the page in light, 5.8:1 in dark). */
+        .notice[data-tone="critical"]{background:var(--redLt);border:1px solid var(--red);
+          border-left:5px solid var(--red);}
+        .notice[data-tone="warn"]{background:var(--amberLt);border:1px solid var(--amberInk);
+          border-left:5px solid var(--amberInk);}
+        .notice[data-tone="info"]{background:var(--stripe);border:1px solid var(--border);
+          border-left:5px solid var(--textLt);color:var(--textMid);}
+        .notice[data-tone="critical"] .notice-icon{color:var(--red);}
+        .notice[data-tone="warn"] .notice-icon{color:var(--amberInk);}
+        .notice[data-tone="info"] .notice-icon{color:var(--textLt);}
         .ptr-indicator{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:3000;
           background:var(--primary);color:#fff;border-radius:20px;padding:6px 16px 6px 12px;
           font-size:12px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s;
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:14px;}
         .content-area{padding:28px var(--container-gutter);margin-top:0;outline:none;}
-        /* The pale tint alone is invisible against the page: --redLt (#FFF0EE)
-           on --bg (#F7F4EF) measures 1.01:1, and the old 33%-alpha border only
-           reached 1.61:1 — under the 3:1 that a meaningful UI boundary needs.
-           The boundary is what makes this read as an alert, so the border runs
-           at full token opacity and a 5px bar anchors the left edge (4.9:1
-           against the page in light, 5.8:1 in dark). Both are set inline in
-           App.js from the same red/amber token the severity picks. */
-        .low-balance-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;
-          padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--text);
-          box-shadow:var(--shadowSm);}
-        .low-balance-icon{font-size:15px;line-height:1;flex-shrink:0;}
-        .low-balance-msg{flex:1;min-width:200px;}
         .app-footer{text-align:center;padding:18px 16px 28px;font-size:11px;
           color:rgba(255,255,255,0.25);background:var(--headerBg);margin-top:auto;}
         .footer-sep{margin:0 10px;}
@@ -788,11 +801,7 @@
         .wizard-card{max-width:480px;margin:0 auto 24px;border:2px solid var(--primary);}
         .wizard-dots-row{display:flex;justify-content:center;gap:8px;margin-bottom:20px;}
         .wizard-dot{width:10px;height:10px;border-radius:50%;transition:background 0.2s;}
-        .alert-banner-wrap{background:var(--redLt);border:1px solid var(--red);border-radius:10px;padding:12px 18px;margin-bottom:20px;display:flex;align-items:center;gap:16px;}
         .alert-banner-icon{color:var(--red);flex-shrink:0;}
-        .alert-banner-title{font-size:13px;font-weight:700;color:var(--red);}
-        .alert-banner-sub{font-size:13px;color:var(--textMid);margin-top:2px;}
-        .alert-banner-strong{font-family:var(--font-mono);color:var(--red);}
         .ai-header-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
         .ai-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
         .ai-subtitle{font-size:13px;color:var(--textMid);line-height:1.5;}
@@ -1308,8 +1317,6 @@
         .firstrun-ob-input{width:130px;padding:7px 10px;font-size:13px;}
         .firstrun-footer{border-top:1px solid var(--border);margin-top:18px;padding-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
         .firstrun-footer-text{font-size:12px;color:var(--textLt);flex:1 1 220px;}
-        .sample-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--stripe);border:1px dashed var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:var(--textMid);}
-        .sample-banner-text{flex:1;min-width:180px;}
         .dash-page{overflow-x:hidden;}
         .dash-customize-row{display:flex;justify-content:flex-end;margin-bottom:10px;}
         /* Customize and the my-entries/all-users toggle each took a full row
@@ -1957,7 +1964,11 @@
           /* On a phone the message wraps to several lines and the two buttons
              would be squeezed onto the end of the last one; give them their own
              full-width row instead. */
-          .backup-nudge-msg{min-width:100%;}
+          /* On a phone it is the actions that get their own row, not the
+             message: forcing the message to 100% strands the icon alone on
+             the line above it, which reads as a bullet with nothing after it. */
+          .notice-msg{min-width:0;}
+          .notice-actions{min-width:100%;justify-content:flex-end;}
         }
         @media(max-width:480px){
           /* Phones (S25 Ultra ~480px CSS viewport): tightest layout */
@@ -9737,6 +9748,58 @@ document.addEventListener('DOMContentLoaded',function(){
         return null;
     }
   }
+  // Every transient notice in the app, in one place, on one scale.
+  //
+  // They used to be scattered: a low-balance banner and a backup nudge at app
+  // level, an alert banner and a sample-data strip inside Today, each with its
+  // own shape, padding and margin. On an overdrawn household two of them fired
+  // at once and printed the same figure and the same date in two differently
+  // sized red boxes — 238px of banner before the first real content. They read
+  // as one family and then missed each other by 4px of padding and 2px of
+  // margin, which is the tell that they were never designed together.
+  //
+  // One notice renders as a row. More than one collapses behind a count, so a
+  // bad month can never rebuild the wall: the worst tone leads, and opening it
+  // is one tap. Sorting is by severity, not by which effect happened to run
+  // first, so the thing that matters is the thing you read.
+  const NOTICE_RANK = { critical: 0, warn: 1, info: 2 };
+  function NoticeStack({ notices = [] }) {
+    const [open, setOpen] = useState(false);
+    const list = useMemo(
+      () => notices.filter(Boolean).slice().sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]),
+      [notices]
+    );
+    if (!list.length) return null;
+    const row = (n) => /* @__PURE__ */ React.createElement("div", {
+      key: n.id, className: "notice", "data-tone": n.tone, role: n.tone === "critical" ? "alert" : "status"
+    },
+      /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+        /* @__PURE__ */ React.createElement(Icon, { name: n.icon || "alert-triangle", size: 16 })),
+      /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, n.msg),
+      // Every action is a labelled button, including the one that dismisses.
+      // A bare "×" on "back up your data" does not say whether it defers the
+      // prompt or turns it off, and the words already existed.
+      /* @__PURE__ */ React.createElement("span", { className: "notice-actions" },
+        (n.actions || []).map((a) => /* @__PURE__ */ React.createElement("button", {
+          key: a.label, onClick: a.onClick, "aria-label": a.ariaLabel,
+          className: "cf-btn cf-btn--tiny " + (a.primary ? "cf-btn--primary fw-700" : "cf-btn--secondary")
+        }, a.label))));
+    if (list.length === 1) {
+      return /* @__PURE__ */ React.createElement("div", { className: "cf-page notice-stack", "data-noprint": true }, row(list[0]));
+    }
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page notice-stack", "data-noprint": true },
+      /* @__PURE__ */ React.createElement("button", {
+        className: "notice notice-summary", "data-tone": list[0].tone,
+        "aria-expanded": open ? "true" : "false", onClick: () => { haptic(); setOpen(!open); }
+      },
+        /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+          /* @__PURE__ */ React.createElement(Icon, { name: list[0].icon || "alert-triangle", size: 16 })),
+        /* @__PURE__ */ React.createElement("span", { className: "notice-msg" },
+          /* @__PURE__ */ React.createElement("strong", null, list.length, " notices"),
+          " \u2014 ", list[0].plain),
+        /* @__PURE__ */ React.createElement("span", { className: "notice-chev", "aria-hidden": "true" }, open ? "\u2303" : "\u2304")),
+      open && /* @__PURE__ */ React.createElement("div", { className: "notice-stack-body" }, list.map(row)));
+  }
   // Four destinations and one action. Settings, Help and the account moved
   // behind the avatar as "You" — they are things you visit occasionally, and
   // they were taking a fifth of the thumb's reach from the money.
@@ -11808,15 +11871,6 @@ document.addEventListener('DOMContentLoaded',function(){
     return /* @__PURE__ */ React.createElement(Card, { className: "wizard-card" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-dots-row" }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "wizard-dot", style: {
       background: i <= step ? "var(--primary)" : "var(--border)"
     } }))), steps[step]);
-  }
-  function AlertBanner({ flow, openBal, alertThreshold }) {
-    const today = /* @__PURE__ */ new Date();
-    const next30 = new Date(today);
-    next30.setDate(today.getDate() + 30);
-    const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next30 && ev.balance < alertThreshold);
-    if (!alerts.length) return null;
-    const worst = alerts.reduce((a, b) => a.balance < b.balance ? a : b);
-    return /* @__PURE__ */ React.createElement("div", { className: "alert-banner-wrap", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "alert-banner-title" }, alerts.length, " upcoming event", alerts.length > 1 ? "s" : "", " drop below $", centsToDollars(alertThreshold).toLocaleString(), " in the next 30 days"), /* @__PURE__ */ React.createElement("div", { className: "alert-banner-sub" }, "Lowest: ", /* @__PURE__ */ React.createElement("strong", { className: "alert-banner-strong" }, fmt(worst.balance)), " ", "on ", MONTHS[worst.month], " ", worst.day, " \xB7 ", worst.desc)));
   }
   function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -14108,8 +14162,6 @@ Fill every field of the response schema. Rules:
         mk({ desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
       ]]);
     };
-    const hasSample = entries.some((e) => e.sample);
-    const removeSampleData = () => setEntries((prev) => prev.filter((e) => !e.sample));
     const stepBadge = (n, done) => /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "step-badge", style: { background: done ? "var(--greenLt)" : "var(--stripe)", border: `1.5px solid ${done ? "var(--greenDk)" : "var(--border)"}`, color: done ? "var(--greenDk)" : "var(--textMid)" } }, done ? "✓" : n);
     const quickAdd = () => window.dispatchEvent(new CustomEvent("cf:quickadd"));
     const firstRunPanel = entries.length === 0 && /* @__PURE__ */ React.createElement(Card, { className: "firstrun-card" }, /* @__PURE__ */ React.createElement("div", { className: "firstrun-title" }, "Welcome — let's map out your cash flow"), /* @__PURE__ */ React.createElement("div", { className: "firstrun-subtitle" }, "Three quick steps and this dashboard comes to life."), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(1, openBal !== 0), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Set your opening balance"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "What's in the account today?")), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", placeholder: "e.g. 2500", value: obDraft, onChange: (e) => setObDraft(e.target.value), "aria-label": "Opening balance", className: "field-input field-input--mono firstrun-ob-input", onKeyDown: (e) => {
@@ -14117,14 +14169,13 @@ Fill every field of the response schema. Rules:
         setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc));
       }
     } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
-    const sampleBanner = hasSample && /* @__PURE__ */ React.createElement("div", { role: "status", className: "sample-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "sample-banner-text" }, "You're exploring ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, "sample data"), " — every entry is fictional and marked “(Sample)”."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--xs", onClick: removeSampleData }, "Remove sample data"));
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, showReconcile && /* @__PURE__ */ React.createElement(ReconcileModal, {
       projected: glance ? glance.balanceNow : openBal,
       categories,
       lastReconciled: lastReconciledDate(entries),
       onCancel: () => setShowReconcile(false),
       onConfirm: recordReconcile
-    }), firstRunPanel, sampleBanner,
+    }), firstRunPanel,
     // The shared-view toggle stays here: it changes *what* you are reading, so
     // it belongs above the reading. Customize changes the page itself and now
     // sits at its foot — see .dash-foot.
@@ -14195,7 +14246,7 @@ Fill every field of the response schema. Rules:
         categories,
         setTab
       }
-    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" }))), /* @__PURE__ */ React.createElement(AlertBanner, { flow, openBal, alertThreshold }), (() => {
+    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" }))), (() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
@@ -17275,9 +17326,9 @@ Fill every field of the response schema. Rules:
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;
       try {
-        return sessionStorage.getItem("cf_tab") || "dashboard";
+        return sessionStorage.getItem("cf_tab") || "today";
       } catch (e) {
-        return "dashboard";
+        return "today";
       }
     });
     useEffect(() => {
@@ -18142,6 +18193,53 @@ Fill every field of the response schema. Rules:
     // rest of the date code already uses.
     const todayKey = todayStr();
     const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
+    // Every transient notice the app can raise, gathered in one list so they
+    // share a shape, a scale and a collapse rule. Order here is irrelevant —
+    // NoticeStack sorts by severity — but each entry carries a `plain` string
+    // because that is what the collapsed summary shows.
+    const appNotices = useMemo(() => {
+      const out = [];
+      if (showLowBanner) {
+        const under = navLowInfo.min < 0
+          ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
+        out.push({
+          id: "lowbal", tone: navLowInfo.min < 0 ? "critical" : "warn", icon: "alert-triangle",
+          plain: `Balance dips to ${fmt(navLowInfo.min)} on ${MONTHS[navLowInfo.month]} ${navLowInfo.day}`,
+          msg: React.createElement(React.Fragment, null,
+            "Heads-up: your balance is forecast to dip to ",
+            React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)),
+            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, under),
+          actions: [
+            { label: "View alerts", onClick: () => setTab("alerts") },
+            { label: "Dismiss", ariaLabel: "Dismiss for today", onClick: () => setLowBannerSnooze(todayKey) }
+          ]
+        });
+      }
+      if (showBackupNudge) {
+        out.push({
+          id: "backup", tone: "warn", icon: "save",
+          plain: "A backup is 30+ days overdue",
+          msg: React.createElement(React.Fragment, null,
+            React.createElement("strong", null, "Time for a backup."),
+            " It's been 30+ days since your last data export."),
+          actions: [
+            { label: "Remind me later", onClick: () => dismissBackup(false) },
+            { label: "\u2193 Export backup", onClick: () => dismissBackup(true), primary: true }
+          ]
+        });
+      }
+      if (entries.some((e) => e.sample)) {
+        out.push({
+          id: "sample", tone: "info", icon: "info",
+          plain: "You're exploring sample data",
+          msg: React.createElement(React.Fragment, null,
+            "You're exploring ", React.createElement("strong", { className: "c-text" }, "sample data"),
+            " \u2014 every entry is fictional and marked \u201C(Sample)\u201D."),
+          actions: [{ label: "Remove sample data", onClick: () => setEntries((prev) => prev.filter((e) => !e.sample)) }]
+        });
+      }
+      return out;
+    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):
@@ -18403,7 +18501,7 @@ Fill every field of the response schema. Rules:
         "button",
         {
           "aria-label": label,
-          onClick: () => setTab((prev) => prev === "alerts" ? "dashboard" : "alerts"),
+          onClick: () => setTab((prev) => prev === "alerts" ? "today" : "alerts"),
           title: label,
           className: "alert-bell-btn",
           style: {
@@ -18563,34 +18661,16 @@ Fill every field of the response schema. Rules:
     })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", "data-noprint": true }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, className: "tab-bar-btn", style: {
       borderBottom: tab === t.id ? "3px solid var(--amber)" : "3px solid transparent",
       color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)"
-    } }, t.label, t.id === "dashboard" && activeFlow.filter((ev) => {
+    } }, t.label, t.id === "today" && activeFlow.filter((ev) => {
       const today = /* @__PURE__ */ new Date();
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
-    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "budget" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
+    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: C.red } }, "!"), t.id === "flow" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: C.amber } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
     } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
       animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), showBackupNudge && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page backup-nudge", "data-noprint": true }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 15, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "backup-nudge-msg" }, /* @__PURE__ */ React.createElement("strong", null, "Time for a backup."), " It's been 30+ days since your last data export. Save a backup to protect your budget data."), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => dismissBackup(false),
-        className: "cf-btn cf-btn--secondary cf-btn--tiny"
-      },
-      "Remind me later"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => dismissBackup(true),
-        className: "cf-btn cf-btn--primary cf-btn--tiny fw-700"
-      },
-      "\u2193 Export backup"
-    ))), showLowBanner && /* @__PURE__ */ React.createElement("div", { role: "status", className: "cf-page low-balance-banner", "data-noprint": true, style: {
-      background: navLowInfo.min < 0 ? "var(--redLt)" : "var(--amberLt)",
-      border: `1px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`,
-      borderLeft: `5px solid ${navLowInfo.min < 0 ? "var(--red)" : "var(--amberInk)"}`
-    } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "low-balance-icon" }, "⚠"), /* @__PURE__ */ React.createElement("span", { className: "low-balance-msg" }, "Heads-up: your balance is forecast to dip to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)), " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, navLowInfo.min < 0 ? " — below zero." : ` — under your $${centsToDollars(alertThresh)} alert threshold.`), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8 shrink-0" }, /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setTab("alerts") }, "View alerts"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setLowBannerSnooze(todayKey), "aria-label": "Dismiss for today" }, "Dismiss"))), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
+    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), /* @__PURE__ */ React.createElement(NoticeStack, { notices: appNotices }), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,
