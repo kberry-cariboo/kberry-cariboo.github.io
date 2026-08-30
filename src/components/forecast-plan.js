@@ -772,14 +772,17 @@ Fill every field of the response schema. Rules:
         /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" },
           /* @__PURE__ */ React.createElement("div", null,
             /* @__PURE__ */ React.createElement("div", { className: "ai-title" }, "✦ AI Financial Assessment — ", activeYear),
-            /* @__PURE__ */ React.createElement("div", { className: "ai-subtitle" }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health.")
+            // Only before there is a report. Once one exists this sentence is
+            // describing something the reader is already looking at, and it
+            // costs three lines above it on a phone.
+            !report && /* @__PURE__ */ React.createElement("div", { className: "ai-subtitle" }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health.")
           ),
           lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())
         ),
         blockedReason && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" },
-          /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: isOffline ? "alert-triangle" : "key", size: 18 })),
-          /* @__PURE__ */ React.createElement("div", { className: "txm" }, blockedReason, !canRun && !isOffline && /* @__PURE__ */ React.createElement(React.Fragment, null, " Add your Anthropic API key in", " ",
-            /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("settings"), className: "ai-settings-link" }, "Settings → General"),
+          /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement(Icon, { name: isOffline ? "alert-triangle" : "key", size: 16 })),
+          /* @__PURE__ */ React.createElement("div", { className: "txm notice-msg" }, blockedReason, !canRun && !isOffline && /* @__PURE__ */ React.createElement(React.Fragment, null, " Add your Anthropic API key in", " ",
+            /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("you"), className: "ai-settings-link" }, "Settings → General"),
             ", or deploy the ai-proxy Edge Function so this household shares one server-side key."
           ))
         ),

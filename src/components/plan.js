@@ -219,7 +219,7 @@
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-12", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-12", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "goal-list" }, goalsFiltered.map((g) => {
         const pct = g.target > 0 ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
         const remaining = Math.max(0, g.target - g.saved);
         let projLabel = null, onTrack = null;
@@ -254,10 +254,7 @@
             },
             className: "goal-row-cursor"
           },
-          /* @__PURE__ */ React.createElement("div", { className: "goal-title-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb" }, g.name, g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, "by ", (() => {
-            const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
-            return MONTHS[t.getMonth()] + " " + t.getFullYear();
-          })())), /* @__PURE__ */ React.createElement("div", { className: "goal-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "goal-amounts-text" }, fmt(g.saved), " ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "of"), " ", fmt(g.target), /* @__PURE__ */ React.createElement("span", { className: "goal-pct", style: { color: barColor } }, pct, "%")), /* @__PURE__ */ React.createElement(
+          /* @__PURE__ */ React.createElement("div", { className: "goal-title-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx-sb goal-name", title: g.name }, g.name), /* @__PURE__ */ React.createElement("div", { className: "goal-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "goal-amounts-text" }, fmt(g.saved), " ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "of"), " ", fmt(g.target), /* @__PURE__ */ React.createElement("span", { className: "goal-pct", style: { color: barColor } }, pct, "%")), /* @__PURE__ */ React.createElement(
             "button",
             {
               onClick: (e) => {
@@ -270,7 +267,10 @@
             "⋮"
           ))),
           /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", borderRadius: 4, background: barColor, transition: "width 0.3s ease" } })),
-          /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set"), projLabel && /* @__PURE__ */ React.createElement("span", { style: { color: remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amberInk)" : "var(--textLt)", fontWeight: onTrack === false || remaining <= 0 ? 700 : 400 } }, remaining <= 0 ? "\u2713 Funded" : onTrack === false ? neededMonthly ? `\u26A0 Need ${fmt(neededMonthly)}/mo by target` : "\u26A0 Projected " + projLabel : "On track \u2014 " + projLabel))
+          /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set", g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, " \u00B7 by ", (() => {
+            const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
+            return MONTHS[t.getMonth()] + " " + t.getFullYear();
+          })())), projLabel && /* @__PURE__ */ React.createElement("span", { style: { color: remaining <= 0 ? "var(--greenDk)" : onTrack === false ? "var(--amberInk)" : "var(--textLt)", fontWeight: onTrack === false || remaining <= 0 ? 700 : 400 } }, remaining <= 0 ? "\u2713 Funded" : onTrack === false ? neededMonthly ? `\u26A0 Need ${fmt(neededMonthly)}/mo by target` : "\u26A0 Projected " + projLabel : "On track \u2014 " + projLabel))
         );
       }))), goalCtx && /* @__PURE__ */ React.createElement(
         ContextMenu,

@@ -811,14 +811,22 @@
         .ai-bullet-dot{border-radius:50%;flex-shrink:0;}
         .ai-plain-text{font-size:13px;color:var(--textMid);line-height:1.6;margin-bottom:6px;}
         .ai-footer-disclaimer{font-size:11px;color:var(--textLt);text-align:center;padding:12px 0 4px;line-height:1.5;}
-        .ai-empty-wrap{text-align:center;padding:40px 20px;}
-        .ai-empty-icon{display:flex;justify-content:center;margin-bottom:16px;color:var(--primary);}
+        /* 40px of padding inside a 24px card inside the page gutter put the
+           feature labels in a 280px column on a 390px phone. It is an empty
+           state — a list of what you would get — not a hero. */
+        .ai-empty-wrap{text-align:center;padding:20px 0;}
+        .ai-empty-icon{display:flex;justify-content:center;margin-bottom:10px;color:var(--primary);}
         .ai-empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;}
         .ai-empty-desc{font-size:13px;color:var(--textMid);line-height:1.6;max-width:480px;margin:0 auto;margin-bottom:24px;}
-        .ai-empty-feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:600px;margin:0 auto;}
-        .ai-feature-card{padding:14px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border);text-align:center;}
-        .ai-feature-icon{display:flex;justify-content:center;margin-bottom:6px;color:var(--textMid);}
-        .ai-feature-label{font-size:11px;font-weight:600;color:var(--textMid);}
+        /* Six named sections is a list, not six boxes. Each box drew its own
+           border inside two others and pushed the label into a column too
+           narrow for "Executive Summary" to sit on one line. */
+        .ai-empty-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:2px 16px;max-width:600px;margin:14px auto 0;text-align:left;}
+        .ai-feature-card{display:flex;align-items:center;gap:8px;padding:7px 0;}
+        .ai-feature-icon{display:flex;flex-shrink:0;color:var(--textLt);}
+        .ai-feature-label{font-size:11.5px;font-weight:600;color:var(--textMid);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .vizrow-wrap{margin-bottom:9px;}
         .vizrow-toprow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:3px;}
         .vizrow-label{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
@@ -1136,7 +1144,24 @@
         .goal-header-row{display:flex;justify-content:space-between;align-items:center;}
         .goal-empty-wrap{text-align:center;padding:18px 10px;font-size:13px;color:var(--textLt);}
         .goal-title-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
-        .goal-target-date{font-size:11px;font-weight:400;color:var(--textLt);margin-left:8px;}
+        .goal-target-date{font-weight:400;color:var(--textLt);}
+        /* Same treatment as the debt list: the rows run the full width of the
+           card, separated by a rule rather than each sitting in its own box. */
+        .goal-list{margin:0 -24px;display:grid;grid-template-columns:minmax(0,1fr);align-items:start;}
+        .goal-list>.goal-row-cursor{padding:12px 24px;border-top:1px solid var(--border);min-width:0;}
+        .goal-list>.goal-row-cursor:first-child{border-top:none;}
+        /* Two goals abreast once there is room for them, the same width
+           .cf-cardgrid uses everywhere else. The full-bleed margin and the
+           hairlines are a single-column idea, so both are dropped here — side
+           by side, a rule between columns would read as a table. */
+        @media(min-width:1200px){
+          .goal-list{margin:0;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));column-gap:36px;}
+          .goal-list>.goal-row-cursor{padding:12px 0;border-top:none;}
+          .goal-list>.goal-row-cursor+.goal-row-cursor{border-top:none;}
+        }
+        /* Truncate rather than wrap: the percentage and the menu on the right
+           are fixed points the eye runs down, so the name is what gives way. */
+        .goal-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .goal-amounts-row{display:flex;align-items:center;gap:4px;}
         .goal-amounts-text{font-family:var(--font-mono);font-size:12px;color:var(--textMid);}
         .goal-pct{font-weight:700;margin-left:8px;}
@@ -1152,7 +1177,7 @@
         .debtsnap-payoff{font-size:11px;color:var(--greenDk);}
         .debtsnap-progress-fill{height:100%;border-radius:3px;transition:width 0.4s;}
         .debtsnap-freq-note{font-size:10px;color:var(--textLt);margin-top:2px;}
-        .goal-footer-row{display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--textLt);}
+        .goal-footer-row{display:flex;justify-content:space-between;gap:10px;margin-top:5px;font-size:11px;color:var(--textLt);flex-wrap:wrap;}
         .entry-form-row2-12{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
         .grid-2-12{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
         .checkbox-16{width:16px;height:16px;accent-color:var(--primary);}
@@ -1591,7 +1616,7 @@
              wrapping label's padding instead. */
           input:not([type=checkbox]):not([type=radio]):not([type=color]),
           select,textarea{min-height:44px;}
-          .reset-targets-btn,.ai-generate-btn,.ai-settings-link,
+          .reset-targets-btn,.ai-generate-btn,
           .settings-pill-btn,.quicklink-pill,.oem-remove-btn,.oem-reset-btn,
           .clear-key-btn,.copy-year-btn,.year-active-btn,.gotit-btn,
           .household-mode-btn,.debt-restore-btn,.revert-btn{min-height:44px;}
@@ -1600,7 +1625,12 @@
              native size, same arrangement as the filter dropdown rows. */
           .strat-debt-toggle{min-height:44px;}
           .ctx-menu-item--touch{min-height:48px;}
-          .ai-settings-link,.strat-suggest-btn{display:inline-block;padding:12px 0;}
+          /* WCAG 2.5.5 exempts a link inside a sentence, and the exemption is
+             load-bearing here rather than a technicality: a 44px inline-block
+             sitting in a paragraph inflates every line box it touches, so the
+             prose around it was being set at nearly double leading. These read
+             as inline links, like .link-primary. */
+          .ai-settings-link,.strat-suggest-btn{display:inline;padding:0;min-height:0;}
           .link-btn-sm{min-width:44px;min-height:44px;}
           .cf-footer-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;}
           .settings-page-pills button{min-height:44px;}
@@ -2064,6 +2094,14 @@
             overflow-x:visible;}
           .settings-quicklinks .quicklink-pill{width:100%;box-sizing:border-box;
             justify-content:center;text-align:center;white-space:normal;}
+          /* Settings' index is the page — two even columns earn their room
+             there. The report's eight sit directly above the sections they
+             jump to, so the same grid spends 208px of a phone screen on a
+             table of contents for content you are already scrolling into.
+             One scrolling row keeps the jump and costs 44px. */
+          .ai-quicklinks{display:flex!important;flex-wrap:nowrap;overflow-x:auto!important;
+            -webkit-overflow-scrolling:touch;}
+          .ai-quicklinks .quicklink-pill{width:auto;white-space:nowrap;flex-shrink:0;}
           /* The row-actions kebab belongs on the right edge of its row — that
              is where it is in the budget grid and in Entries, and where a
              thumb goes looking for it. In the debt and goal rows it is a
@@ -2304,8 +2342,15 @@
         .grid-pagination-nav:disabled{cursor:default;color:var(--border);}
 
         /* AI report: two-column card grid on wide screens */
-        .ai-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-        @media(max-width:900px){.ai-report-grid{grid-template-columns:1fr;}}
+        /* minmax(0,…), not a bare 1fr — the fourth time this exact bug has
+           landed here. `1fr` is `minmax(auto,1fr)`, so a track floors at its
+           min-content width, and a report section holds long unbreakable
+           tokens (a currency string, a **bolded** phrase). At 390px the single
+           column measured 446px and the whole page scrolled sideways. */
+        .ai-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px;}
+        .ai-report-grid>.ai-section-card{min-width:0;}
+        .ai-item-text,.ai-numbered-row,.ai-bullet-row{min-width:0;overflow-wrap:anywhere;}
+        @media(max-width:900px){.ai-report-grid{grid-template-columns:minmax(0,1fr);}}
 
         /* Keyboard shortcut hint in search placeholder */
         #global-search::placeholder{color:var(--textLt);}

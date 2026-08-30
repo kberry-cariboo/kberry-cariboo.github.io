@@ -1168,6 +1168,91 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// The AI report only exists once one has been generated, so nothing in this
+// suite had ever rendered one — and it was scrolling sideways by 66px on a
+// 390px phone, because .ai-report-grid used a bare 1fr. `1fr` is
+// `minmax(auto,1fr)`, so the track floors at min-content, and a report section
+// is full of long unbreakable tokens. That is the fourth time this exact bug
+// has landed in this codebase; this test is here so it is the last.
+const AI_REPORT_FIXTURE = (t) => t + `
+try{localStorage.setItem('cf_ai_report_v2_2026', JSON.stringify({ ts: Date.now(), report: {
+  score: 4,
+  score_rationale: "Spending exceeds income and the balance goes negative in the autumn.",
+  executive_summary: ["Expenses of **$233,304** outrun income of **$209,464**, a shortfall of **$23,841**.",
+    "The balance falls below zero on **56 of the next 90 days**, low of **-$4,835**."],
+  priority_actions: ["Move **$1,138/month** into the emergency fund.",
+    "Redirect the **CC-Triangle MC** minimum once it clears."],
+  cash_flow_risk: ["The Sep 17 Trailer Payment is the first negative date."],
+  budget_performance: ["August spending is 10% below the six-month average."],
+  spending_analysis: ["Housing and debt service are 71% of outgoings."],
+  debt_management: ["Avalanche saves **$21,799** against Snowball."],
+  income_analysis: ["Income is stable but concentrated in one employer."],
+  savings_goals: ["Emergency fund is 39% funded."]
+}}));}catch(e){}
+`;
+
+await test('plan: a generated AI report fits the phone it is read on', async () => {
+  const { ctx, page } = await ctxPage({ touch: true, stub: AI_REPORT_FIXTURE });
+  await page.goto(BASE + '#/plan/insights', { waitUntil: 'load' });
+  await page.waitForTimeout(1800);
+  const r = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    const secs = [...document.querySelectorAll('.ai-section-card')];
+    const ql = document.querySelector('.ai-quicklinks');
+    return { slop: Math.max(sc.scrollWidth - sc.clientWidth,
+                            document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      sections: secs.length,
+      overWide: secs.filter((e) => e.getBoundingClientRect().width > sc.clientWidth + 1).length,
+      qlH: ql ? Math.round(ql.getBoundingClientRect().height) : null,
+      // The intro describes a report you do not have; once you do it is three
+      // lines above the thing it describes.
+      intro: !!document.querySelector('.ai-subtitle') };
+  });
+  if (r.sections < 8) throw new Error('only ' + r.sections + ' report sections rendered — the fixture did not land');
+  if (r.slop > 1) throw new Error('the report scrolls sideways by ' + r.slop + 'px');
+  if (r.overWide) throw new Error(r.overWide + ' section(s) wider than the viewport');
+  if (r.intro) throw new Error('the empty-state intro is still shown over a finished report');
+  // Eight jump links as a two-column grid cost 208px before the content.
+  if (r.qlH > 80) throw new Error('the report quicklinks are ' + r.qlH + 'px tall');
+  await ctx.close();
+});
+
+// Goals carried the same nesting the debts did, and the target date rode
+// inside the name on a margin, so a long name shoved it along and it read as
+// part of the title.
+await test('plan: goals are flat rows and the name does not fight the date', async () => {
+  const GOALS = (t) => t.replace('goals: [],', 'goals: ' + JSON.stringify([
+    { id: 'g1', name: 'Emergency fund — 6 months expenses', target: 3000000, saved: 1180000,
+      monthly: 50000, targetDate: '2027-12-01', createdAt: '2026-01-02T00:00:00.000Z' },
+    { id: 'g2', name: 'New roof', target: 2500000, saved: 2500000, monthly: 25000,
+      targetDate: '2026-11-01', createdAt: '2026-01-02T00:00:00.000Z' }
+  ]) + ',');
+  const { ctx, page } = await ctxPage({ touch: true, stub: GOALS });
+  await page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    const rows = [...document.querySelectorAll('.goal-list > .goal-row-cursor')];
+    return { n: rows.length, slop: sc.scrollWidth - sc.clientWidth,
+      clipped: rows.filter((e) => { const n = e.querySelector('.goal-name');
+        return n && n.scrollWidth > n.clientWidth + 1; }).length,
+      // The date belongs on the meta line, not inside the title.
+      dateInTitle: rows.filter((e) => {
+        const n = e.querySelector('.goal-name');
+        return n && n.querySelector('.goal-target-date'); }).length,
+      dateInMeta: rows.filter((e) => e.querySelector('.goal-footer-row .goal-target-date')).length,
+      // Rows are separated by a rule, not each boxed inside the card.
+      boxed: rows.filter((e) => e.querySelector('.cf-card')).length };
+  });
+  if (r.n !== 2) throw new Error(r.n + ' goal rows rendered, expected 2');
+  if (r.slop > 1) throw new Error('goals scroll sideways by ' + r.slop + 'px');
+  if (r.clipped) throw new Error(r.clipped + ' goal name(s) do not fit their line');
+  if (r.dateInTitle) throw new Error('the target date is still inside the goal title');
+  if (r.dateInMeta !== 2) throw new Error('the target date is missing from the meta line');
+  if (r.boxed) throw new Error('a goal row still nests a card inside itself');
+  await ctx.close();
+});
+
 // Plan used to nest a card per debt inside a card inside the page gutter:
 // 96px of a 390px screen spent on chrome before a figure, which is why a name
 // like "CC-Scotia Line of Credit" wrapped to three lines and the balance was
@@ -2656,7 +2741,10 @@ await test('wide screens: cards size to their content, and card lists use the wi
     { id: 'g4', name: 'New laptop', target: 300000, saved: 90000, monthly: 20000, targetDate: '2027-02-01' },
   ]);
   const withGoals = (t) => t.replace('goals: [],', `goals: ${goals},`);
-  const rowsOf = async (p) => p.locator('.cf-cardgrid').first().evaluate((el) =>
+  // The goals list is .goal-list now — a flat, full-bleed column on a phone
+  // and the same two-abreast grid it always was once there is room. The
+  // behaviour asserted below is unchanged; only the class holding it moved.
+  const rowsOf = async (p) => p.locator('.goal-list').first().evaluate((el) =>
     new Set([...el.children].map((c) => Math.round(c.getBoundingClientRect().top))).size);
 
   const wide = await ctxPage({ stub: withGoals });
@@ -3533,8 +3621,10 @@ await test('phone: every control is big enough to hit', async () => {
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden' || !el.getClientRects().length) return;
         // A link inside a sentence is exempt (WCAG 2.5.5) and a halo there
-        // would cover the field under it.
-        if (el.classList.contains('link-primary')) return;
+        // would cover the field under it — and worse, a 44px inline-block in a
+        // paragraph stretches the leading of every line it touches.
+        if (['link-primary', 'ai-settings-link', 'strat-suggest-btn']
+          .some((c) => el.classList.contains(c))) return;
         const r = el.getBoundingClientRect();
         const [hx, hy] = halo(el);
         const w = Math.round(r.width + hx), h = Math.round(r.height + hy);
