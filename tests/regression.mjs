@@ -1168,6 +1168,55 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// What a screen reader is handed, which is not the same question as whether
+// the app is comprehensible through one — that still needs a person and a real
+// device. This checks the tree: landmark structure, one h1 per view, no
+// interactive node without an accessible name, nothing focusable that is
+// hidden from assistive tech.
+//
+// Landmark navigation is one of the main ways a screen-reader user moves
+// around a page, and the header and footer were plain divs, so it offered only
+// nav and main.
+await test('accessibility tree: landmarks, one h1, and every control named', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const problems = [];
+  for (const hash of ['#/today', '#/flow/list', '#/envelopes', '#/plan/debt', '#/you']) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(1100);
+    const dom = await page.evaluate(() => ({
+      landmarks: [...document.querySelectorAll('header,nav,main,footer')]
+        .filter((e) => e.getClientRects().length).map((e) => e.tagName.toLowerCase()),
+      h1: [...document.querySelectorAll('h1')].map((e) => e.textContent.trim()),
+      // A keyboard user can land on these; a screen reader cannot describe them.
+      focusableHidden: [...document.querySelectorAll('button,a[href],input,select,textarea,[tabindex]')]
+        .filter((e) => e.getClientRects().length && e.closest('[aria-hidden="true"]'))
+        .map((e) => (e.getAttribute('aria-label') || e.textContent || e.tagName).trim().slice(0, 24)),
+      // Live regions carry the notices; losing them makes the app silent about
+      // things it is telling a sighted reader.
+      live: document.querySelectorAll('[role=status],[role=alert],[aria-live]').length }));
+    for (const want of ['header', 'nav', 'main', 'footer']) {
+      if (!dom.landmarks.includes(want)) problems.push(hash + ': no <' + want + '> landmark');
+    }
+    if (dom.h1.length !== 1) problems.push(hash + ': ' + dom.h1.length + ' h1 elements');
+    if (dom.focusableHidden.length) {
+      problems.push(hash + ': focusable but hidden from AT — ' + dom.focusableHidden.slice(0, 2).join(', '));
+    }
+    if (!dom.live) problems.push(hash + ': no live region');
+
+    // The AT tree itself: no button, link or field reaches it unnamed.
+    const snap = await page.accessibility.snapshot({ interestingOnly: true });
+    const flat = [];
+    (function walk(n) { if (!n) return; flat.push(n); (n.children || []).forEach(walk); })(snap);
+    const unnamed = flat.filter((n) =>
+      ['button', 'link', 'checkbox', 'textbox', 'combobox', 'tab', 'menuitem'].includes(n.role) && !n.name);
+    if (unnamed.length) {
+      problems.push(hash + ': ' + unnamed.length + ' unnamed ' + unnamed[0].role + '(s) in the a11y tree');
+    }
+  }
+  if (problems.length) throw new Error(problems.join(' | '));
+  await ctx.close();
+});
+
 // WCAG 1.4.4 asks that text scale to 200% without losing content or function,
 // and on a phone that is not a zoom control — it is the reader who has set a
 // larger system font and gets this on every page. Nothing here covered it.

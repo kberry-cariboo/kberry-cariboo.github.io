@@ -218,6 +218,7 @@ Recorded so the next pass does not re-litigate it.
 | Text at 200% (WCAG 1.4.4) | 5 routes at a 32px root: no sideways scroll, nothing lost, nothing under the nav |
 | `prefers-reduced-motion` | Zero elements still transition or animate |
 | Contrast, both themes | Zero text nodes below AA after the fixes |
+| Accessibility tree | Four landmarks per view, one `h1`, no unnamed interactive node, nothing focusable hidden from AT |
 
 ---
 
@@ -234,6 +235,7 @@ Recorded so the next pass does not re-litigate it.
 | 2.2 | 553px before the first row | Done — 394px | `9a938b1` |
 | 2.4 | "Four row shapes" | Retracted — the finding was wrong | `650b88f` |
 | 2.3 | Swipe only on ledger rows | Left as is, deliberately | — |
+| 1.5 | Header and footer were not landmarks | Fixed — `<header>` / `<footer>` | `dd28e0a` |
 
 Nine tests were added, because every defect above was invisible to everything
 the suite already did: contrast across four routes in both themes (compositing
@@ -246,10 +248,31 @@ errors across 13 views × 2 themes.
 
 ---
 
+### 1.5 The header and footer were not landmarks
+
+Landmark navigation is one of the main ways a screen-reader user moves around a
+page, and it offered only `nav` and `main`: the app header (logo, year, search,
+alerts bell, account menu) and the footer were plain `div`s.
+
+```
+before   nav["Primary"]  main[unnamed]
+after    header  nav["Primary"]  main[unnamed]  footer
+```
+
+**Fixed** by using the elements the roles are built into. The bottom nav was
+already correct — `<nav aria-label="Primary">`.
+
+---
+
 ## 5. Not covered by any of this
 
-Everything verified here is mechanical: contrast ratios, heading order,
-accessible names, focus behaviour, box geometry. Those catch a real class of
-problem and they cannot tell you whether the app is *comprehensible* to someone
-using VoiceOver or TalkBack. **No screen-reader pass has been done**, and
-nothing in this document substitutes for one.
+The accessibility tree is checked — landmarks, roles, accessible names, live
+regions, and that nothing focusable is hidden from assistive tech. That is a
+check of *what a screen reader is handed*, which is not the same question as
+whether the app is **comprehensible** through one. Whether the ledger rows read
+sensibly in sequence, whether the swipe actions are discoverable without sight,
+whether the notice stack interrupts at the right moment — none of that is
+answered here.
+
+**No screen-reader pass has been done.** It needs a person and a real device,
+and nothing in this document substitutes for one.
