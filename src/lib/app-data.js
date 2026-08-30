@@ -130,7 +130,12 @@
     chipKeep: "100%",
     primary: "#14413A",
     primaryInk: "#14413A",
-    coral: "#FF9B8C"
+    // coral and mint are the pair for text on the navy bands (the monthly
+    // totals row). They are the same in both themes because the band is dark
+    // in both. coral existed; mint did not, so the totals row fell back to the
+    // on-white green and printed 2.08:1 against the navy behind it.
+    coral: "#FF9B8C",
+    mint: "#7FD3A8"
   };
   const DARK = {
     navy: "#0A1210",
@@ -165,9 +170,14 @@
     chipKeep: "60%",
     // --primary paints (fills, borders, icons — 3:1 under 1.4.11);
     // --primaryInk colours text, which needs the full 4.5:1.
-    primary: "#3E8C7C",
+    primary: "#377E70",
     primaryInk: "#78B7A6",
-    coral: "#FF9B8C"
+    // coral and mint are the pair for text on the navy bands (the monthly
+    // totals row). They are the same in both themes because the band is dark
+    // in both. coral existed; mint did not, so the totals row fell back to the
+    // on-white green and printed 2.08:1 against the navy behind it.
+    coral: "#FF9B8C",
+    mint: "#7FD3A8"
   };
   // Contrast utilities (WCAG 2.1 relative luminance / ratio). Used to keep
   // category chips readable: a chip's text is its category hue drawn on a 13%

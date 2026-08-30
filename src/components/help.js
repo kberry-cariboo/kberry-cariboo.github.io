@@ -330,7 +330,7 @@
       }
       return null;
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: HELP_SECTIONS.map((s) => ({ id: s.id, title: s.title })), label: "Help" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
       "a",
       {
         key: s.id,

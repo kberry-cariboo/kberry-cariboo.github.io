@@ -1168,6 +1168,284 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// WCAG 1.4.4 asks that text scale to 200% without losing content or function,
+// and on a phone that is not a zoom control — it is the reader who has set a
+// larger system font and gets this on every page. Nothing here covered it.
+await test('text scaling: the layout holds at 200%', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const problems = [];
+  for (const hash of ['#/today', '#/flow/list', '#/envelopes', '#/plan/debt', '#/you']) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(() => {
+      const sc = document.querySelector('.app-scroll');
+      const vw = sc.clientWidth;
+      // Text outside the viewport only counts as lost if nothing between it
+      // and the page can scroll to it — the month strip is a horizontal
+      // scroller by design, and its off-window months are reachable.
+      const lost = [...document.querySelectorAll('main *')].filter((e) => {
+        if (e.children.length) return false;
+        const t = (e.textContent || '').trim();
+        if (!t) return false;
+        const b = e.getBoundingClientRect();
+        if (!b.width) return false;
+        if (b.right <= vw + 1 && b.left >= -1) return false;
+        let n = e;
+        while (n && n !== document.body) {
+          const c = getComputedStyle(n);
+          if (/auto|scroll/.test(c.overflowX) && n.scrollWidth > n.clientWidth + 1) return false;
+          n = n.parentElement;
+        }
+        return true;
+      }).map((e) => e.textContent.trim().slice(0, 18));
+      const nav = document.querySelector('.cf-bottomnav');
+      const nb = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+      return { slop: Math.max(sc.scrollWidth - sc.clientWidth,
+                 document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        lost: [...new Set(lost)].slice(0, 3),
+        // Nothing may be permanently parked under the fixed nav either.
+        buried: nb ? (() => { sc.scrollTop = sc.scrollHeight;
+          return [...document.querySelectorAll('main .cf-card, main button')]
+            .filter((e) => { const b = e.getBoundingClientRect();
+              return b.height > 0 && b.top > nb.top + 2; }).length; })() : 0 };
+    });
+    if (r.slop > 1) problems.push(hash + ' scrolls sideways ' + r.slop + 'px');
+    if (r.lost.length) problems.push(hash + ' loses "' + r.lost.join('", "') + '"');
+    if (r.buried) problems.push(hash + ' parks ' + r.buried + ' element(s) under the nav');
+  }
+  if (problems.length) throw new Error('at 200%: ' + problems.join(' | '));
+  await ctx.close();
+});
+
+// The app animates a fair amount — sheets, swipes, the settling row, chart
+// transitions — and someone who has asked their phone to stop that should get
+// nothing moving at all.
+await test('reduced motion: nothing animates when the reader has asked it not to', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 393, height: 852 },
+    hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  await page.addInitScript(mkStub(false, true));
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const r = await page.evaluate(() => {
+    const dur = (v) => Math.max(...String(v).split(',').map((x) => parseFloat(x) || 0));
+    const moving = [...document.querySelectorAll('main *, .cf-bottomnav *')]
+      .filter((e) => { const c = getComputedStyle(e);
+        return dur(c.transitionDuration) > 0.05 || dur(c.animationDuration) > 0.05; })
+      .map((e) => ((e.className || '') + '').split(' ')[0] || e.tagName);
+    return { matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      moving: [...new Set(moving)].slice(0, 5), count: moving.length };
+  });
+  if (!r.matches) throw new Error('the preference did not reach the page');
+  if (r.count) throw new Error(r.count + ' element(s) still animate: ' + r.moving.join(', '));
+  await ctx.close();
+});
+
+// Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
+// Both had a link index at the top and nothing after it, so fifteen screens
+// down the way back was a long scroll.
+await test('help and settings: the section index follows you down the page', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  for (const [hash, expect] of [['#/help', 10], ['#/you', 14]]) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(1500);
+    const top = await page.evaluate(() => {
+      const n = document.querySelector('.section-nav');
+      return { present: !!n, h: n ? Math.round(n.getBoundingClientRect().height) : 0,
+        label: n ? n.innerText.replace(/\s+/g, ' ') : null,
+        // The strip and the bar are the same index twice; on a phone only one
+        // of them should be paying for space.
+        strips: [...document.querySelectorAll('.settings-quicklinks')]
+          .filter((e) => getComputedStyle(e).display !== 'none').length };
+    });
+    if (!top.present) throw new Error(hash + ': no sticky section bar');
+    if (top.h > 80) throw new Error(hash + ': the bar is ' + top.h + 'px');
+    if (top.strips) throw new Error(hash + ': the index strip is still shown alongside the bar');
+    if (!new RegExp(expect + ' sections').test(top.label)) {
+      throw new Error(hash + ': bar says "' + top.label + '", expected ' + expect + ' sections');
+    }
+    // It stays put, and it renames itself as you go.
+    await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
+      sc.scrollTop = sc.scrollHeight * 0.6; });
+    await page.waitForTimeout(700);
+    const deep = await page.evaluate(() => {
+      const n = document.querySelector('.section-nav');
+      return { top: Math.round(n.getBoundingClientRect().top),
+               label: n.innerText.replace(/\s+/g, ' ') };
+    });
+    if (deep.top > 2) throw new Error(hash + ': the bar scrolled away (top ' + deep.top + ')');
+    if (deep.label === top.label) throw new Error(hash + ': the bar still says "' + deep.label + '" 60% down');
+  }
+
+  // And it gets you anywhere in two taps.
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  await page.locator('.section-nav-btn').tap({ force: true });
+  await page.waitForTimeout(600);
+  const sheet = await page.evaluate(() => ({
+    items: document.querySelectorAll('.section-nav-item').length,
+    marked: document.querySelectorAll('.section-nav-item[aria-current]').length,
+    minH: Math.min(...[...document.querySelectorAll('.section-nav-item')]
+      .map((e) => Math.round(e.getBoundingClientRect().height))) }));
+  if (sheet.items !== 14) throw new Error('the jump sheet lists ' + sheet.items + ' sections');
+  if (sheet.marked !== 1) throw new Error(sheet.marked + ' sections marked as current');
+  if (sheet.minH < 44) throw new Error('jump rows are ' + sheet.minH + 'px');
+  const before = await page.evaluate(() => document.querySelector('.app-scroll').scrollTop);
+  await page.evaluate(() => { const i = document.querySelectorAll('.section-nav-item');
+    i[i.length - 1].click(); });
+  await page.waitForTimeout(1100);
+  const after = await page.evaluate(() => ({
+    scrolled: document.querySelector('.app-scroll').scrollTop,
+    closed: !document.querySelector('.modal-card') }));
+  if (!after.closed) throw new Error('the jump sheet stayed open after choosing');
+  if (after.scrolled <= before) throw new Error('choosing a section did not move the page');
+  await ctx.close();
+});
+
+// Export is something you do having read the month, not before it — and its
+// "+ Add" is the bottom nav's compose button a second time.
+await test('flow: the export bar sits under the ledger on a phone, over it on a desktop', async () => {
+  const order = async (page) => page.evaluate(() => {
+    const bar = document.querySelector('.budget-toolbar-row');
+    const row = document.querySelector('main .budget-card-row, main .forecast-table tbody tr, main tbody tr');
+    if (!bar || !row) return null;
+    return { barAbove: bar.getBoundingClientRect().top < row.getBoundingClientRect().top,
+      lens: getComputedStyle(document.querySelector('.budget-list-lens')).display };
+  });
+  const phone = await ctxPage({ touch: true });
+  await phone.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await phone.page.waitForTimeout(1300);
+  const p = await order(phone.page);
+  if (!p) throw new Error('no toolbar or no ledger row on the phone');
+  if (p.barAbove) throw new Error('the export bar is still above the ledger on a phone');
+  await phone.ctx.close();
+
+  const desk = await ctxPage();
+  await desk.page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await desk.page.waitForTimeout(1300);
+  const d = await order(desk.page);
+  if (!d) throw new Error('no toolbar or no ledger row on the desktop');
+  // display:contents on desktop — the wrapper exists only for the phone rule.
+  if (d.lens !== 'contents') throw new Error('the lens wrapper is ' + d.lens + ' on a desktop');
+  if (!d.barAbove) throw new Error('the export bar moved on the desktop too');
+  await desk.ctx.close();
+});
+
+// Contrast is a thing this app has already had to fix once at scale (295
+// failing nodes), and it regressed twice since: the monthly-totals band kept
+// the on-white green against its navy ground (2.08:1), and the dark theme's
+// primary put white on #3E8C7C (4.00:1) under every primary button and active
+// pill. Both were invisible to every other check here.
+//
+// Backgrounds are composited, not read flat — an 8%-opacity wash is the wash
+// over what is behind it, and treating alpha as 1 invents failures that are
+// not there. That mistake cost me four false findings before I caught it.
+await test('contrast: every text node meets WCAG AA in both themes', async () => {
+  const ROUTES = ['#/today', '#/flow/list', '#/plan/debt', '#/envelopes'];
+  const problems = [];
+  for (const dark of [false, true]) {
+    const { ctx, page } = await ctxPage({ dark });
+    for (const hash of ROUTES) {
+      await page.goto(BASE + hash, { waitUntil: 'load' });
+      await page.waitForTimeout(900);
+      const found = await page.evaluate(() => {
+        const parse = (c) => { const m = (c || '').match(/[\d.]+/g) || [];
+          return { r: +m[0] || 0, g: +m[1] || 0, b: +m[2] || 0, a: m[3] === undefined ? 1 : +m[3] }; };
+        const over = (f, b) => ({ r: f.r * f.a + b.r * (1 - f.a), g: f.g * f.a + b.g * (1 - f.a),
+          b: f.b * f.a + b.b * (1 - f.a), a: 1 });
+        const lum = (c) => { const [r, g, b] = [c.r, c.g, c.b].map((v) => { v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+        const out = [];
+        document.querySelectorAll('main *').forEach((e) => {
+          if (e.children.length) return;
+          const t = (e.textContent || '').trim();
+          if (!t || !e.getClientRects().length) return;
+          const cs = getComputedStyle(e);
+          if (cs.visibility === 'hidden' || +cs.opacity === 0) return;
+          const stack = []; let n = e;
+          while (n) { const c = parse(getComputedStyle(n).backgroundColor); if (c.a > 0) stack.push(c);
+            n = n.parentElement; }
+          let bg = { r: 255, g: 255, b: 255, a: 1 };
+          for (let i = stack.length - 1; i >= 0; i--) bg = over(stack[i], bg);
+          const fg = over(parse(cs.color), bg);
+          const l1 = lum(fg), l2 = lum(bg);
+          const cr = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+          const size = parseFloat(cs.fontSize);
+          const large = size >= 24 || (size >= 18.66 && +cs.fontWeight >= 700);
+          const need = large ? 3 : 4.5;
+          if (cr < need - 0.05) out.push(t.slice(0, 22) + ' ' + cr.toFixed(2) + ':1 (needs ' + need + ') '
+            + cs.color + ' on rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(',') + ')');
+        });
+        return [...new Set(out)];
+      });
+      for (const f of found) problems.push((dark ? 'dark  ' : 'light ') + hash + '  ' + f);
+    }
+    await ctx.close();
+  }
+  if (problems.length) {
+    // One line: the runner prints only the first line of a failure message.
+    throw new Error(problems.length + ' text node(s) below AA \u2014 ' + problems.slice(0, 4).join(' | '));
+  }
+});
+
+// The breakpoints were width-only, so rotating a phone crossed into the desktop
+// layout: bottom nav gone, a 107px header taking 27% of a 390px-tall viewport,
+// and Flow's first ledger row off screen at y=431.
+await test('landscape: a rotated phone is still treated as a phone', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 },
+    hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  await page.addInitScript(mkStub(false, true));
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const r = await page.evaluate(() => {
+    const nav = document.querySelector('.cf-bottomnav');
+    const hdr = document.querySelector('.tab-bar-outer');
+    const row = document.querySelector('main .budget-card-row');
+    return { navShown: !!nav && getComputedStyle(nav).display !== 'none',
+      navH: nav ? Math.round(nav.getBoundingClientRect().height) : 0,
+      hdrH: hdr ? Math.round(hdr.getBoundingClientRect().height) : 0,
+      desktopTabs: !!document.querySelector('.tab-bar') &&
+        getComputedStyle(document.querySelector('.tab-bar')).display !== 'none',
+      firstRowTop: row ? Math.round(row.getBoundingClientRect().top) : null,
+      vh: window.innerHeight };
+  });
+  if (!r.navShown) throw new Error('the bottom nav is hidden in landscape');
+  if (r.desktopTabs) throw new Error('the desktop tab bar is showing on a rotated phone');
+  // The header is the band that has to give when height is the scarce axis.
+  if (r.hdrH > 56) throw new Error('the header is ' + r.hdrH + 'px of a ' + r.vh + 'px viewport');
+  if ((r.navH + r.hdrH) / r.vh > 0.30) {
+    throw new Error('nav + header take ' + Math.round((r.navH + r.hdrH) / r.vh * 100) + '% of the viewport');
+  }
+  await ctx.close();
+});
+
+// Sheets trapped focus but never took it, so one opened with the reader still
+// standing outside it and a screen reader was never told it appeared.
+await test('sheets: opening one moves focus into it', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('cf:quickadd')));
+  await page.waitForTimeout(600);
+  const r = await page.evaluate(() => {
+    const card = document.querySelector('.modal-card');
+    return { open: !!card, inside: !!(card && card.contains(document.activeElement)),
+      // The card takes it, not a text field — focusing an input opens the
+      // phone keyboard over the sheet you have just been shown.
+      onInput: document.activeElement && document.activeElement.tagName === 'INPUT' };
+  });
+  if (!r.open) throw new Error('the sheet did not open');
+  if (!r.inside) throw new Error('focus stayed outside the open sheet');
+  if (r.onInput) throw new Error('focus landed on a text field, which opens the keyboard');
+  await ctx.close();
+});
+
 // MOBILE-UI-AUDIT called this out and it had got worse, not better: Flow spent
 // 553px of an 844px phone screen before the first ledger row, and Forecast 751.
 // The single biggest item was four KPI tiles in a 2x2 grid above the rows they

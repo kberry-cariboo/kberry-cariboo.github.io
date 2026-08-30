@@ -333,6 +333,23 @@
   const SheetHandle = ({ onDismiss }) => {
     const ref = useRef(null);
     const drag = useRef(null);
+    // Every sheet trapped focus correctly but none of them took it, so a sheet
+    // opened with the reader still standing outside it — a screen reader was
+    // never told the dialog appeared. The card itself takes focus rather than
+    // its first field: focusing an input opens the phone keyboard over the
+    // sheet you have just been shown, which is its own kind of rude.
+    useEffect(() => {
+      const card = ref.current && ref.current.closest && ref.current.closest(".modal-card");
+      if (!card) return;
+      const prev = document.activeElement;
+      if (card.contains(prev)) return;
+      if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+      try {
+        card.focus({ preventScroll: true });
+      } catch (e) {
+        card.focus();
+      }
+    }, []);
     if (!onDismiss) return null;
     const cardOf = (el) => el && el.closest && el.closest(".modal-card");
     const move = (card, dy) => {

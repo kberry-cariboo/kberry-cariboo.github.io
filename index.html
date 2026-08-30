@@ -774,6 +774,17 @@
            meant the toolbar could not be adjusted per breakpoint. */
         .export-bar{display:flex;align-items:center;gap:6px;}
         .forecast-exportbar-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
+        /* display:contents so the desktop layout is exactly what it was —
+           the wrapper exists only to give the phone rule something to order
+           against. */
+        .budget-list-lens{display:contents;}
+        @media(max-width:768px){
+          /* Export is something you do having read the month, not before it,
+             and its "+ Add" is the bottom nav's compose button a second time.
+             The bar moves under the ledger; nothing is removed. */
+          .budget-list-lens{display:flex;flex-direction:column;}
+          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:12px;margin-bottom:0;}
+        }
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .budget-toolbar-row--end{justify-content:flex-end;}
         .yoy-toggle-active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;}
@@ -963,6 +974,31 @@
         .errorboundary-retry-btn{margin-top:16px;font-size:13px;font-weight:600;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;background:#1C2B3A;color:#fff;}
         .alert-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;margin-bottom:6px;cursor:pointer;width:100%;font:inherit;text-align:left;}
         .settings-page-pills{display:flex;gap:4px;padding:4px;background:var(--border);border-radius:12px;width:fit-content;max-width:100%;overflow-x:auto;}
+        /* Sticky to the top of .app-scroll, which is the scroller on a phone
+           — the app header scrolls away above it, so no offset is needed. */
+        .section-nav{display:none;position:sticky;top:0;z-index:900;
+          margin:0 0 14px;padding:8px 0;background:var(--bg);}
+        .section-nav-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;
+          padding:9px 14px;border:1px solid var(--border);border-radius:10px;
+          background:var(--bgCard);color:var(--text);font:inherit;font-size:13px;
+          font-weight:600;cursor:pointer;text-align:left;box-shadow:var(--shadowSm);}
+        .section-nav-here{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .section-nav-count{flex-shrink:0;font-size:11px;font-weight:400;color:var(--textLt);}
+        .section-nav-chev{flex-shrink:0;font-size:15px;line-height:1;color:var(--textMid);}
+        .section-nav-list{display:flex;flex-direction:column;}
+        .section-nav-item{display:flex;align-items:center;min-height:44px;padding:11px 2px;
+          border:none;border-top:1px solid var(--stripe);background:none;color:var(--text);
+          font:inherit;font-size:14px;text-align:left;cursor:pointer;width:100%;}
+        .section-nav-item:first-child{border-top:none;}
+        .section-nav-item[aria-current]{font-weight:700;color:var(--primaryInk);}
+        @media(max-width:768px){
+          .section-nav{display:block;}
+          /* The strip and the sticky bar are the same index twice. The strip is
+             a two-column grid of up to fourteen pills — about 200px, and only
+             reachable at the top of the page — so on a phone the sticky one
+             replaces it. */
+          .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
+        }
         .settings-quicklinks{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;margin-bottom:6px;}
         .year-openbal{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
         /* ── budget.js ── */
@@ -997,8 +1033,11 @@
         .ledger-row-wrap > .budget-card-row{position:relative;z-index:1;}
         .ledger-row-actions{position:absolute;inset:0;display:flex;
           justify-content:space-between;align-items:stretch;}
+        /* The ink is the page ground, not white: these two action colours are
+           light in the dark theme, where white on them measured 2.6:1. Taking
+           --bg gives 5.6:1 in light and 7.1:1 in dark. */
         .ledger-row-action{display:flex;align-items:center;padding:0 18px;
-          font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.01em;white-space:nowrap;}
+          font-size:12.5px;font-weight:700;color:var(--bg);letter-spacing:.01em;white-space:nowrap;}
         .ledger-row-action--pay{background:var(--greenDk);}
         .ledger-row-action--skip{background:var(--amberInk);margin-left:auto;}
         .budget-card-row.is-dragging{transition:none;}
@@ -1014,7 +1053,7 @@
         .card-balance-amt{font-weight:700;min-width:74px;text-align:right;}
         .openbal-card-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--stripe);border-bottom:1px solid var(--border);}
         .mno-700{font-weight:700;}
-        .mno-700-green{font-weight:700;color:var(--green);}
+        .mno-700-green{font-weight:700;color:var(--mint);}
         .mno-700-coral{font-weight:700;color:var(--coral);}
         .budget-empty-msg{padding:28px 14px;text-align:center;font-size:13px;color:var(--textLt);}
         /* Wraps rather than overflowing: three currency values plus the label
@@ -1776,9 +1815,25 @@
           background:var(--bgCard);border-top:1px solid var(--border);
           padding-bottom:env(safe-area-inset-bottom);
           box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
-        @media(max-width:768px){
+        /* A short viewport is a phone too. The breakpoints were width-only, so
+           rotating a phone (844x390) crossed into the desktop layout: the
+           bottom nav disappeared, the 107px desktop header took 27% of a
+           390px-tall viewport, and Flow's first ledger row landed off screen.
+           Height is the honest test for "is there room for a tall header and
+           no thumb nav", and it catches a short desktop window too. */
+        @media(max-width:768px),(max-height:500px){
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
+        }
+        /* Landscape on a phone is 390px of height for everything. Restoring the
+           bottom nav costs 62px of that, so the header gives the same back:
+           the logo row is the one band that is pure identity, and it can be a
+           good deal shorter when height is the scarce axis. */
+        @media(max-height:500px){
+          .header-inner{height:44px!important;}
+          .header-logo-img,.logo-area img{height:22px!important;}
+          .cf-bottomnav{padding-top:2px;}
+          .content-area{padding-top:14px;padding-bottom:14px;}
           /* Nav clearance belongs to the scroll container, not to <main>: the
              footer is a *sibling* of <main> inside .app-scroll, so padding on
              .content-area left it uncovered and the fixed nav sat on top of
@@ -6368,7 +6423,12 @@ document.addEventListener('DOMContentLoaded',function(){
     chipKeep: "100%",
     primary: "#14413A",
     primaryInk: "#14413A",
-    coral: "#FF9B8C"
+    // coral and mint are the pair for text on the navy bands (the monthly
+    // totals row). They are the same in both themes because the band is dark
+    // in both. coral existed; mint did not, so the totals row fell back to the
+    // on-white green and printed 2.08:1 against the navy behind it.
+    coral: "#FF9B8C",
+    mint: "#7FD3A8"
   };
   const DARK = {
     navy: "#0A1210",
@@ -6403,9 +6463,14 @@ document.addEventListener('DOMContentLoaded',function(){
     chipKeep: "60%",
     // --primary paints (fills, borders, icons — 3:1 under 1.4.11);
     // --primaryInk colours text, which needs the full 4.5:1.
-    primary: "#3E8C7C",
+    primary: "#377E70",
     primaryInk: "#78B7A6",
-    coral: "#FF9B8C"
+    // coral and mint are the pair for text on the navy bands (the monthly
+    // totals row). They are the same in both themes because the band is dark
+    // in both. coral existed; mint did not, so the totals row fell back to the
+    // on-white green and printed 2.08:1 against the navy behind it.
+    coral: "#FF9B8C",
+    mint: "#7FD3A8"
   };
   // Contrast utilities (WCAG 2.1 relative luminance / ratio). Used to keep
   // category chips readable: a chip's text is its category hue drawn on a 13%
@@ -7638,6 +7703,23 @@ const RUNWAY_DAYS = 90;
   const SheetHandle = ({ onDismiss }) => {
     const ref = useRef(null);
     const drag = useRef(null);
+    // Every sheet trapped focus correctly but none of them took it, so a sheet
+    // opened with the reader still standing outside it — a screen reader was
+    // never told the dialog appeared. The card itself takes focus rather than
+    // its first field: focusing an input opens the phone keyboard over the
+    // sheet you have just been shown, which is its own kind of rude.
+    useEffect(() => {
+      const card = ref.current && ref.current.closest && ref.current.closest(".modal-card");
+      if (!card) return;
+      const prev = document.activeElement;
+      if (card.contains(prev)) return;
+      if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+      try {
+        card.focus({ preventScroll: true });
+      } catch (e) {
+        card.focus();
+      }
+    }, []);
     if (!onDismiss) return null;
     const cardOf = (el) => el && el.closest && el.closest(".modal-card");
     const move = (card, dy) => {
@@ -9978,6 +10060,78 @@ const RUNWAY_DAYS = 90;
         return null;
     }
   }
+  // Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
+  // Both offered a link index at the top and nothing after it, so fifteen
+  // screens down the way back was a long scroll. This is that index, made
+  // permanent: a sticky bar naming the section you are actually in, which
+  // opens the full list.
+  //
+  // On a phone it replaces the index strip rather than joining it — the strip
+  // is a two-column grid of fourteen pills, about 200px, and it is only useful
+  // at the top of the page. Desktop keeps the strip and never renders this.
+  function SectionNav({ sections = [], label = "Section" }) {
+    const [open, setOpen] = useState(false);
+    const [current, setCurrent] = useState(null);
+    // Scroll position, not intersection. "First section currently on screen"
+    // reads wrong at the foot of the page, where several short sections are
+    // visible at once and the earliest one wins — jump to the last section and
+    // the bar names one several above it. The last section whose heading has
+    // passed the top of the viewport is what you are actually reading.
+    useEffect(() => {
+      if (!sections.length) return void 0;
+      const scroller = document.querySelector(".app-scroll") || window;
+      let frame = 0;
+      const measure = () => {
+        frame = 0;
+        let found = null;
+        for (const s of sections) {
+          const el = document.getElementById(s.id);
+          if (!el) continue;
+          if (el.getBoundingClientRect().top <= 96) found = s.id;
+        }
+        setCurrent(found || (sections[0] && sections[0].id));
+      };
+      const onScroll = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(measure);
+      };
+      measure();
+      scroller.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+      return () => {
+        if (frame) cancelAnimationFrame(frame);
+        scroller.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+      };
+    }, [sections]);
+    if (sections.length < 3) return null;
+    const here = sections.find((s) => s.id === current) || sections[0];
+    const go = (id) => {
+      setOpen(false);
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "section-nav", "data-noprint": true },
+      /* @__PURE__ */ React.createElement("button", {
+        className: "section-nav-btn", onClick: () => { haptic(); setOpen(true); },
+        "aria-haspopup": "dialog", "aria-label": label + ": " + here.title + ". Jump to a section"
+      },
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" },
+          sections.length, " sections"),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev", "aria-hidden": "true" }, "\u2304")),
+      open && /* @__PURE__ */ React.createElement("div", {
+        className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section"
+      },
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setOpen(false) }),
+          /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Jump to a section"),
+          /* @__PURE__ */ React.createElement("div", { className: "section-nav-list" },
+            sections.map((s) => /* @__PURE__ */ React.createElement("button", {
+              key: s.id, className: "section-nav-item", onClick: () => go(s.id),
+              "aria-current": s.id === here.id ? "true" : void 0
+            }, s.title))))));
+  }
   // Every transient notice in the app, in one place, on one scale.
   //
   // They used to be scattered: a low-balance banner and a backup nudge at app
@@ -11052,7 +11206,7 @@ const RUNWAY_DAYS = 90;
     });
     const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
-    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
+    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
     // ── Calendar ───────────────────────────────────────────────────────────
     // The month laid out as a month, which is the shape people already hold
     // this question in: "what's hitting my account, and when". Replaces Daily,
@@ -11290,7 +11444,7 @@ const RUNWAY_DAYS = 90;
           /* @__PURE__ */ React.createElement("span", { className: "month-summary-chev", "aria-hidden": "true" },
             monthSummaryOpen ? "\u2303" : "\u2304")),
         monthSummaryOpen && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }))),
-      lens === "list" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
+      lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-list-lens" }, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => {
@@ -11385,9 +11539,9 @@ const RUNWAY_DAYS = 90;
         // reconcile with each other and with the Closing Balance above.
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-totals-label" }, "Monthly Totals");
         if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat budget-col-category pad-10-14" });
-        if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-totals-amt", style: { color: "var(--green)" } }, fmt(s.income + s.transfersIn));
+        if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-totals-amt", style: { color: "var(--mint)" } }, fmt(s.income + s.transfersIn));
         if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense + s.transfersOut));
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(s.surplus, true));
+        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(s.surplus, true));
         return null;
       }), /* @__PURE__ */ React.createElement("td", { className: "budget-th-actions" })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events" }))), showEntryForm && /* @__PURE__ */ React.createElement(
         "div",
@@ -14465,7 +14619,7 @@ Fill every field of the response schema. Rules:
         } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-table-bal-td", style: {
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--green)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
       ),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, ariaLabel: `Line chart comparing ${(yoyMetrics.find((m) => m.id === yoyMetric) || {}).label} month by month across ${yearConfigs.map((y) => y.year).join(", ")}. The Annual Comparison table below carries the same figures.`, margin: { top: 4, right: 8, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
@@ -14978,7 +15132,7 @@ Fill every field of the response schema. Rules:
       }
       return null;
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: HELP_SECTIONS.map((s) => ({ id: s.id, title: s.title })), label: "Help" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
       "a",
       {
         key: s.id,
@@ -15568,6 +15722,26 @@ Fill every field of the response schema. Rules:
       [arr[i], arr[j]] = [arr[j], arr[i]];
       setCategories(arr);
     };
+    // One list, read by the index strip and by the sticky section bar.
+    const GENERAL_SECTIONS = [
+      // Order matches the sections as they appear down the page, which is
+      // alphabetical by heading — so the strip is also the index you would
+      // scan for a setting whose name you know.
+      ["sec-accounts", "Accounts"],
+      ["sec-ai-key", "AI Key"],
+      ["sec-alert", "Alert Threshold"],
+      ["sec-appearance", "Appearance"],
+      ["sec-years", "Budget Years"],
+      ["sec-money", "Currency & Format"],
+      ["sec-backup", "Data Backup"],
+      ["sec-categories", "Manage Categories"],
+      ["sec-notifications", "Notifications"],
+      ["sec-security", "Security"],
+      ["sec-holidays", "Statutory Holidays"],
+      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
+      ["sec-reset", "Target Reset"],
+      ["sec-danger", "Danger Zone"]
+    ];
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
       className: "settings-page-pills"
     }, [
@@ -15589,25 +15763,7 @@ Fill every field of the response schema. Rules:
       },
       /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
       label
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, [
-      // Order matches the sections as they appear down the page, which is
-      // alphabetical by heading — so the strip is also the index you would
-      // scan for a setting whose name you know.
-      ["sec-accounts", "Accounts"],
-      ["sec-ai-key", "AI Key"],
-      ["sec-alert", "Alert Threshold"],
-      ["sec-appearance", "Appearance"],
-      ["sec-years", "Budget Years"],
-      ["sec-money", "Currency & Format"],
-      ["sec-backup", "Data Backup"],
-      ["sec-categories", "Manage Categories"],
-      ["sec-notifications", "Notifications"],
-      ["sec-security", "Security"],
-      ["sec-holidays", "Statutory Holidays"],
-      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
-      ["sec-reset", "Target Reset"],
-      ["sec-danger", "Danger Zone"]
-    ].map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: GENERAL_SECTIONS.map(([id, title]) => ({ id, title })), label: "Settings" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, GENERAL_SECTIONS.map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
       "a",
       {
         key: anchorId,
