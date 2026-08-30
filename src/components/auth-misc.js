@@ -319,7 +319,7 @@
         onChange: (e) => setRemember(e.target.checked),
         className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16" }, info)), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-16", "data-tone": "critical", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-16", "data-tone": "good", role: "status" }, info)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -377,7 +377,7 @@
         setLoading(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "lockscreen-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "lockscreen-logo" }), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-welcome" }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-card" }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-bio-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-14", role: "alert" }, bioError), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "lockscreen-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "lockscreen-logo" }), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-welcome" }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-card" }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-bio-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-14", "data-tone": "critical", role: "alert" }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -423,7 +423,7 @@
         className: "auth-pw-toggle"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-14", role: "alert" }, pwError), /* @__PURE__ */ React.createElement(
+    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-14", "data-tone": "critical", role: "alert" }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: unlockWithPassword,

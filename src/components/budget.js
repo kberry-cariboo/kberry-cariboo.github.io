@@ -630,7 +630,7 @@
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      (lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+      (lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
         "span",
         {
           key: s.occId,
@@ -657,7 +657,7 @@
         },
         "Got it"
       )),
-      gq && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
+      gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
       // Surplus/Shortfall is the month's balance movement, so when the month
       // holds transfers it deliberately differs from Total Income minus Total
       // Expenses sitting beside it — those two exclude transfers by design.

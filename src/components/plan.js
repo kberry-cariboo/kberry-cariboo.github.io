@@ -151,7 +151,7 @@
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-12" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-12", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
         const pct = g.target > 0 ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
         const remaining = Math.max(0, g.target - g.saved);
         let projLabel = null, onTrack = null;
@@ -685,7 +685,7 @@
         const monthsDelta = sn.months - av.months;
         const deltaCallout = simDebts.length > 1 && (interestDelta > 0 || monthsDelta !== 0) && /* @__PURE__ */ React.createElement(
           "div",
-          { className: "strat-delta-banner" },
+          { className: "notice notice--sm", "data-tone": "good", role: "status" },
           /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 14 }),
           " Avalanche saves you",
           interestDelta > 0 && ` ${fmt(interestDelta)}`,
@@ -867,7 +867,7 @@
         message: "No debt entries detected \u2014 debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-10", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;

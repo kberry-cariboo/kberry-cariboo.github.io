@@ -1168,6 +1168,57 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// Ten shapes. Before this, every page-level bar in the app had its own
+// geometry — radii of 6, 8 and 10px, and paddings of 6/10, 8/12, 9/14, 10/14,
+// 12/14 and 12/16 — so bars sitting one above the other read as a family and
+// then missed each other by a few pixels, which looks like a mistake rather
+// than a choice. They all render through .notice now, in one of two sizes.
+await test('every notice bar in the app resolves to one of two shapes', async () => {
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000')
+    .replace(/alertThreshold: 50000/g, 'alertThreshold: 150000') });
+  // The bespoke classes are gone from the stylesheet, not just unused: leaving
+  // them behind is how a tenth shape comes back.
+  const retired = await page.evaluate(() => {
+    const want = ['insight-banner', 'forecast-danger-banner', 'ai-error-banner', 'ai-noapikey-banner',
+      'budget-search-banner', 'entries-headersearch-banner', 'search-filter-banner',
+      'strat-delta-banner', 'cf-error-banner', 'cf-info-banner', 'low-balance-banner',
+      'alert-banner-wrap', 'sample-banner', 'backup-nudge'];
+    const css = [...document.styleSheets].flatMap((sh) => {
+      try { return [...sh.cssRules].map((r) => r.selectorText || ''); } catch (e) { return []; }
+    }).join(' ');
+    return want.filter((c) => css.includes('.' + c + '{') || css.includes('.' + c + ' ') ||
+      new RegExp('\\.' + c + '\\b').test(css));
+  });
+  if (retired.length) throw new Error('retired banner rules still in the stylesheet: ' + retired.join(', '));
+
+  const shapes = new Map();
+  for (const hash of ['#/today', '#/flow/list', '#/flow/curve', '#/flow/entries', '#/envelopes',
+                      '#/plan/goals', '#/plan/strategy', '#/plan/debt', '#/plan/insights', '#/you']) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    await showDashAnalysis(page);
+    const found = await page.evaluate(() => [...document.querySelectorAll('.notice')].map((e) => {
+      const c = getComputedStyle(e);
+      return { key: c.padding + '|' + c.borderRadius + '|' + c.borderLeftWidth + '|' + c.fontSize,
+               tone: e.dataset.tone };
+    }));
+    for (const f of found) {
+      if (!f.tone) throw new Error('a notice on ' + hash + ' carries no data-tone');
+      if (!['critical', 'warn', 'info', 'good'].includes(f.tone)) {
+        throw new Error('unknown tone "' + f.tone + '" on ' + hash);
+      }
+      if (!shapes.has(f.key)) shapes.set(f.key, hash);
+    }
+  }
+  if (shapes.size === 0) throw new Error('no notices rendered at all — the sweep proves nothing');
+  if (shapes.size > 2) {
+    throw new Error(shapes.size + ' distinct notice shapes: ' +
+      [...shapes].map(([k, v]) => k + ' (' + v + ')').join(' / '));
+  }
+  await ctx.close();
+});
+
 // Notices used to be scattered: a low-balance banner and a backup nudge at app
 // level, an alert banner and a sample-data strip inside Today, four shapes and
 // four spacing scales. On an overdrawn household two of them printed the same

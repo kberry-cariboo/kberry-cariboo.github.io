@@ -799,7 +799,7 @@
         setError("");
       },
       placeholder: "e.g. 4F9B2C1D"
-    })), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner household-onboard-error", role: "alert" }, error), /* @__PURE__ */ React.createElement(
+    })), error && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm household-onboard-error", "data-tone": "critical", role: "alert" }, error), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: submit,

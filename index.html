@@ -392,6 +392,16 @@
         .notice[data-tone="critical"] .notice-icon{color:var(--red);}
         .notice[data-tone="warn"] .notice-icon{color:var(--amberInk);}
         .notice[data-tone="info"] .notice-icon{color:var(--textLt);}
+        .notice[data-tone="good"]{background:var(--greenLt);border:1px solid var(--green);
+          border-left:5px solid var(--green);}
+        .notice[data-tone="good"] .notice-icon{color:var(--greenDk);}
+        /* The compact size, for a notice that belongs beside the thing it is
+           about rather than at the top of the app — a search filter, an AI
+           error, the payoff simulator's verdict. Same tones, same severity
+           bar, one step down in weight so it does not outshout the panel it
+           annotates. It carries no shadow for the same reason. */
+        .notice--sm{padding:8px 12px;font-size:12px;border-radius:8px;box-shadow:none;gap:8px;}
+        .notice--sm .notice-msg{min-width:0;}
         .ptr-indicator{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:3000;
           background:var(--primary);color:#fff;border-radius:20px;padding:6px 16px 6px 12px;
           font-size:12px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s;
@@ -711,7 +721,6 @@
         .entries-search-wrap:focus-within{border-color:var(--primary);}
         .entries-search-icon{color:var(--textLt);flex-shrink:0;}
         .entries-search-input{font-size:13px;padding:6px 0;border:none;border-radius:0;background:transparent;color:var(--text);outline:none;width:200px;max-width:100%;min-width:0;}
-        .entries-headersearch-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);width:100%;margin-top:6px;}
         .entries-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         /* Stretch, not flex-start: the pills' option lists render in flow here
            (FilterPill `inline`) and need the full sheet width. */
@@ -746,8 +755,6 @@
         .kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
         .forecast-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px;}
         .forecast-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .search-filter-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);margin-top:8px;}
-        .forecast-danger-banner{background:var(--amberLt);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:16px;}
         .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
         .forecast-lowest-value{font-family:var(--font-mono);}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
@@ -806,14 +813,12 @@
         .ai-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
         .ai-subtitle{font-size:13px;color:var(--textMid);line-height:1.5;}
         .ai-lastrun{font-size:11px;color:var(--textLt);white-space:nowrap;margin-top:4px;}
-        .ai-noapikey-banner{margin-top:16px;padding:12px 16px;background:rgba(232,93,74,0.07);border-radius:10px;border:1px solid rgba(232,93,74,0.2);display:flex;align-items:center;gap:12px;}
         .ai-settings-link{font-size:13px;font-weight:700;color:var(--primaryInk);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;}
         .ai-disclaimer-row{font-size:11px;color:var(--textLt);margin-top:12px;display:flex;align-items:flex-start;gap:6px;}
         .ai-disclaimer-icon{flex-shrink:0;margin-top:1px;}
         .ai-actionrow{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
         .ai-generate-btn{font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;border:none;transition:all 0.15s;display:flex;align-items:center;gap:10px;}
         .ai-spinner{display:inline-block;animation:spin 1s linear infinite;font-style:normal;}
-        .ai-error-banner{font-size:13px;color:var(--red);margin-top:10px;padding:10px 14px;background:rgba(232,93,74,0.08);border-radius:8px;border:1px solid rgba(232,93,74,0.25);}
         .ai-skeleton-wrap{display:flex;flex-direction:column;gap:12px;}
         .ai-skeleton-title{height:18px;background:var(--border);border-radius:6px;width:40%;margin-bottom:16px;}
         .ai-skeleton-line{height:12px;background:var(--stripe);border-radius:4px;margin-bottom:10px;animation:pulse 1.5s ease-in-out infinite;}
@@ -1000,7 +1005,6 @@
         .totals-amounts-row{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;justify-content:flex-end;min-width:0;}
         .swipe-coach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;}
         .gotit-btn{font-size:12px;font-weight:700;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--primaryInk);white-space:nowrap;flex-shrink:0;}
-        .budget-search-banner{font-size:12px;color:var(--amberInk);margin-bottom:8px;padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -1213,7 +1217,6 @@
            and the only thing distinguishing an included debt from an excluded
            one. accent-color matches the sliders and the filter checkboxes. */
         .strat-debt-toggle input{margin:0;width:14px;height:14px;accent-color:var(--primary);cursor:pointer;}
-        .strat-delta-banner{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--greenDk);background:rgba(16,185,129,0.1);border-radius:8px;padding:8px 12px;margin:12px 0 0;}
         .strat-suggest-btn{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--primaryInk);cursor:pointer;text-decoration:underline;}
         .strat-chart-wrap{margin-top:16px;}
         .strat-chart-label{font-size:11px;color:var(--textLt);margin-bottom:4px;}
@@ -1262,7 +1265,6 @@
         .upcoming-desktop-desc{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .upcoming-desktop-amts{display:flex;align-items:center;gap:10px;flex-shrink:0;}
         .paid-btn{width:22px;height:22px;min-width:22px;border-radius:50%;color:var(--greenDk);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;padding:0;flex-shrink:0;}
-        .insight-banner{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:20px;line-height:1.5;}
         /* overflow-wrap for the same reason .kpi-card .kpi-value has it — the
            annual tiles are the other place a long amount can outgrow its card,
            and they were the pair that never got the treatment. */
@@ -1377,10 +1379,6 @@
         .chart-grid{display:grid;gap:16px;margin-bottom:16px;max-width:100%;overflow:hidden;
           align-items:start;}
         /* Inline error/info banner (auth screens, forms) */
-        .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
-          padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
-        .cf-info-banner{background:var(--greenLt);border:1px solid var(--green);border-radius:8px;
-          padding:10px 14px;font-size:13px;color:var(--greenDk);font-weight:500;}
         /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
         .cf-menu-item{width:100%;text-align:left;padding:12px 16px;font-size:13px;color:var(--text);
           background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;}
@@ -9326,7 +9324,7 @@ document.addEventListener('DOMContentLoaded',function(){
       "button",
       { onClick: openNew, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap" },
       "+ Add Entry"
-    ), globalSearch && /* @__PURE__ */ React.createElement("div", { className: "entries-headersearch-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
+    ), globalSearch && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', filtered.length, " match", filtered.length !== 1 ? "es" : "")), isMobile && showMobileFilters && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "modal-overlay",
@@ -10349,7 +10347,7 @@ document.addEventListener('DOMContentLoaded',function(){
         setError("");
       },
       placeholder: "e.g. 4F9B2C1D"
-    })), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner household-onboard-error", role: "alert" }, error), /* @__PURE__ */ React.createElement(
+    })), error && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm household-onboard-error", "data-tone": "critical", role: "alert" }, error), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: submit,
@@ -11002,7 +11000,7 @@ document.addEventListener('DOMContentLoaded',function(){
           nextYear: onAddNextYear ? activeYear + 1 : null
         }
       ),
-      (lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
+      (lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
         "span",
         {
           key: s.occId,
@@ -11029,7 +11027,7 @@ document.addEventListener('DOMContentLoaded',function(){
         },
         "Got it"
       )),
-      gq && /* @__PURE__ */ React.createElement("div", { className: "budget-search-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
+      gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
       // Surplus/Shortfall is the month's balance movement, so when the month
       // holds transfers it deliberately differs from Total Income minus Total
       // Expenses sitting beside it — those two exclude transfers by design.
@@ -11656,7 +11654,7 @@ document.addEventListener('DOMContentLoaded',function(){
       categories,
       categoryColors
     })), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-banner" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance)))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance))))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
       const adj = (scenarioAdj || {})[e.id];
       const dropped = !!(adj && adj.drop);
       const amt = adj && Number.isFinite(adj.amount) ? adj.amount : e.amount;
@@ -12229,7 +12227,7 @@ Fill every field of the response schema. Rules:
           ),
           lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())
         ),
-        blockedReason && /* @__PURE__ */ React.createElement("div", { className: "ai-noapikey-banner", role: "status" },
+        blockedReason && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" },
           /* @__PURE__ */ React.createElement("span", { className: "alert-banner-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: isOffline ? "alert-triangle" : "key", size: 18 })),
           /* @__PURE__ */ React.createElement("div", { className: "txm" }, blockedReason, !canRun && !isOffline && /* @__PURE__ */ React.createElement(React.Fragment, null, " Add your Anthropic API key in", " ",
             /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("settings"), className: "ai-settings-link" }, "Settings → General"),
@@ -12278,8 +12276,8 @@ Fill every field of the response schema. Rules:
           )
         ),
 
-        err && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "alert" }, "⚠ ", err),
-        truncated && /* @__PURE__ */ React.createElement("div", { className: "ai-error-banner", role: "status" }, "⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.")
+        err && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "critical", role: "alert" }, "⚠ ", err),
+        truncated && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "critical", role: "status" }, "⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.")
       ),
       loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, AI_SECTIONS.slice(0, 5).map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.key }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: { width: `${w}%` } }))))),
       reportSections && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null,
@@ -12542,7 +12540,7 @@ Fill every field of the response schema. Rules:
         message: "Save toward big expenses \u2014 property taxes, vacations, emergency fund.",
         actionLabel: "+ Add Goal",
         onAction: () => openGoalForm(null)
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-12" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-12", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering goals by "', globalSearch, '" \u2014 ', goalsFiltered.length, " match", goalsFiltered.length !== 1 ? "es" : ""), goalsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, gq ? "No goals match your search." : "All goals are archived.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-14" }, goalsFiltered.map((g) => {
         const pct = g.target > 0 ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
         const remaining = Math.max(0, g.target - g.saved);
         let projLabel = null, onTrack = null;
@@ -13076,7 +13074,7 @@ Fill every field of the response schema. Rules:
         const monthsDelta = sn.months - av.months;
         const deltaCallout = simDebts.length > 1 && (interestDelta > 0 || monthsDelta !== 0) && /* @__PURE__ */ React.createElement(
           "div",
-          { className: "strat-delta-banner" },
+          { className: "notice notice--sm", "data-tone": "good", role: "status" },
           /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 14 }),
           " Avalanche saves you",
           interestDelta > 0 && ` ${fmt(interestDelta)}`,
@@ -13258,7 +13256,7 @@ Fill every field of the response schema. Rules:
         message: "No debt entries detected \u2014 debts matching your budget entries show up here automatically, or add one manually.",
         actionLabel: "+ Add Debt",
         onAction: addManualRow
-      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "search-filter-banner mb-10" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
+      })) : /* @__PURE__ */ React.createElement(React.Fragment, null, gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-10", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering debts by "', globalSearch, '" \u2014 ', allRowsFiltered.length, " match", allRowsFiltered.length !== 1 ? "es" : ""), allRowsFiltered.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "goal-empty-wrap" }, "No debts match your search.") : /* @__PURE__ */ React.createElement("div", { className: "cf-cardgrid cf-gap-10" }, allRowsFiltered.map(({ key, label, monthlyPmt, isAuto, perOccurrence, recurDesc, timesPerYear }) => {
         var _a, _b, _c, _d;
         const bal = parseFloat((_a = debtData[key]) == null ? void 0 : _a.balance) || 0;
         const rate = parseFloat((_b = debtData[key]) == null ? void 0 : _b.rate) || 0;
@@ -13850,9 +13848,15 @@ Fill every field of the response schema. Rules:
         const above = insight.pct > 0;
         const inline = Math.abs(insight.pct) < 2;
         const showDriver = !inline && insight.driver && (above ? insight.driverDelta > 0 : insight.driverDelta < 0);
-        return /* @__PURE__ */ React.createElement("div", { "data-widget": "insight", className: "insight-banner", style: {
-          borderLeft: "3px solid " + (inline ? "var(--border)" : above ? "var(--amberInk)" : "var(--greenDk)")
-        } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, insight.month, " spending"), inline ? ` is in line with your ${insight.n}-month average.` : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average`, !inline && showDriver ? ` — ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).` : inline ? "" : "."));
+        // The same shape as every other notice in the app: this is a finding
+        // about the month, and it used to be a tenth distinct bar — 8px
+        // radius, 9/14 padding, a 3px accent — sitting between two 10px
+        // cards. Its tone reports the finding: over the average is a warning,
+        // under it is good news, and in line with it is neither.
+        return /* @__PURE__ */ React.createElement("div", {
+          "data-widget": "insight", className: "notice notice--sm", role: "status",
+          "data-tone": inline ? "info" : above ? "warn" : "good"
+        }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, insight.month, " spending"), inline ? ` is in line with your ${insight.n}-month average.` : ` is ${Math.abs(insight.pct)}% ${above ? "above" : "below"} your ${insight.n}-month average`, !inline && showDriver ? ` — ${above ? "driven by" : "biggest drop:"} ${insight.driver} (${insight.driverDelta > 0 ? "+" : "-"}${fmt(Math.abs(insight.driverDelta))}).` : inline ? "" : "."));
       },
       kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
       balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
@@ -16278,7 +16282,7 @@ Fill every field of the response schema. Rules:
         onChange: (e) => setRemember(e.target.checked),
         className: "remember-checkbox"
       }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-16", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "cf-info-banner mb-16" }, info)), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-16", "data-tone": "critical", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-16", "data-tone": "good", role: "status" }, info)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: attemptLogin,
@@ -16336,7 +16340,7 @@ Fill every field of the response schema. Rules:
         setLoading(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "lockscreen-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "lockscreen-logo" }), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-welcome" }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-card" }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-bio-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-14", role: "alert" }, bioError), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { className: "lockscreen-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "lockscreen-logo" }), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-welcome" }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-card" }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-bio-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-14", "data-tone": "critical", role: "alert" }, bioError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: tryBiometric,
@@ -16382,7 +16386,7 @@ Fill every field of the response schema. Rules:
         className: "auth-pw-toggle"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "cf-error-banner mb-14", role: "alert" }, pwError), /* @__PURE__ */ React.createElement(
+    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-14", "data-tone": "critical", role: "alert" }, pwError), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: unlockWithPassword,

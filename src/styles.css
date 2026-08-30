@@ -364,6 +364,16 @@
         .notice[data-tone="critical"] .notice-icon{color:var(--red);}
         .notice[data-tone="warn"] .notice-icon{color:var(--amberInk);}
         .notice[data-tone="info"] .notice-icon{color:var(--textLt);}
+        .notice[data-tone="good"]{background:var(--greenLt);border:1px solid var(--green);
+          border-left:5px solid var(--green);}
+        .notice[data-tone="good"] .notice-icon{color:var(--greenDk);}
+        /* The compact size, for a notice that belongs beside the thing it is
+           about rather than at the top of the app — a search filter, an AI
+           error, the payoff simulator's verdict. Same tones, same severity
+           bar, one step down in weight so it does not outshout the panel it
+           annotates. It carries no shadow for the same reason. */
+        .notice--sm{padding:8px 12px;font-size:12px;border-radius:8px;box-shadow:none;gap:8px;}
+        .notice--sm .notice-msg{min-width:0;}
         .ptr-indicator{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:3000;
           background:var(--primary);color:#fff;border-radius:20px;padding:6px 16px 6px 12px;
           font-size:12px;display:flex;align-items:center;gap:8px;transition:opacity 0.2s;
@@ -683,7 +693,6 @@
         .entries-search-wrap:focus-within{border-color:var(--primary);}
         .entries-search-icon{color:var(--textLt);flex-shrink:0;}
         .entries-search-input{font-size:13px;padding:6px 0;border:none;border-radius:0;background:transparent;color:var(--text);outline:none;width:200px;max-width:100%;min-width:0;}
-        .entries-headersearch-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);width:100%;margin-top:6px;}
         .entries-mobilefilters-card{padding:20px 20px 16px;width:min(480px,calc(100vw - 32px));max-height:80vh;overflow-y:auto;}
         /* Stretch, not flex-start: the pills' option lists render in flow here
            (FilterPill `inline`) and need the full sheet width. */
@@ -718,8 +727,6 @@
         .kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
         .forecast-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px;}
         .forecast-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .search-filter-banner{font-size:12px;color:var(--amberInk);padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);margin-top:8px;}
-        .forecast-danger-banner{background:var(--amberLt);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:16px;}
         .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
         .forecast-lowest-value{font-family:var(--font-mono);}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
@@ -778,14 +785,12 @@
         .ai-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
         .ai-subtitle{font-size:13px;color:var(--textMid);line-height:1.5;}
         .ai-lastrun{font-size:11px;color:var(--textLt);white-space:nowrap;margin-top:4px;}
-        .ai-noapikey-banner{margin-top:16px;padding:12px 16px;background:rgba(232,93,74,0.07);border-radius:10px;border:1px solid rgba(232,93,74,0.2);display:flex;align-items:center;gap:12px;}
         .ai-settings-link{font-size:13px;font-weight:700;color:var(--primaryInk);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;}
         .ai-disclaimer-row{font-size:11px;color:var(--textLt);margin-top:12px;display:flex;align-items:flex-start;gap:6px;}
         .ai-disclaimer-icon{flex-shrink:0;margin-top:1px;}
         .ai-actionrow{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
         .ai-generate-btn{font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;border:none;transition:all 0.15s;display:flex;align-items:center;gap:10px;}
         .ai-spinner{display:inline-block;animation:spin 1s linear infinite;font-style:normal;}
-        .ai-error-banner{font-size:13px;color:var(--red);margin-top:10px;padding:10px 14px;background:rgba(232,93,74,0.08);border-radius:8px;border:1px solid rgba(232,93,74,0.25);}
         .ai-skeleton-wrap{display:flex;flex-direction:column;gap:12px;}
         .ai-skeleton-title{height:18px;background:var(--border);border-radius:6px;width:40%;margin-bottom:16px;}
         .ai-skeleton-line{height:12px;background:var(--stripe);border-radius:4px;margin-bottom:10px;animation:pulse 1.5s ease-in-out infinite;}
@@ -972,7 +977,6 @@
         .totals-amounts-row{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;justify-content:flex-end;min-width:0;}
         .swipe-coach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;}
         .gotit-btn{font-size:12px;font-weight:700;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--primaryInk);white-space:nowrap;flex-shrink:0;}
-        .budget-search-banner{font-size:12px;color:var(--amberInk);margin-bottom:8px;padding:6px 10px;background:var(--amberLt);border-radius:6px;border:1px solid var(--amber);}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -1185,7 +1189,6 @@
            and the only thing distinguishing an included debt from an excluded
            one. accent-color matches the sliders and the filter checkboxes. */
         .strat-debt-toggle input{margin:0;width:14px;height:14px;accent-color:var(--primary);cursor:pointer;}
-        .strat-delta-banner{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--greenDk);background:rgba(16,185,129,0.1);border-radius:8px;padding:8px 12px;margin:12px 0 0;}
         .strat-suggest-btn{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--primaryInk);cursor:pointer;text-decoration:underline;}
         .strat-chart-wrap{margin-top:16px;}
         .strat-chart-label{font-size:11px;color:var(--textLt);margin-bottom:4px;}
@@ -1234,7 +1237,6 @@
         .upcoming-desktop-desc{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .upcoming-desktop-amts{display:flex;align-items:center;gap:10px;flex-shrink:0;}
         .paid-btn{width:22px;height:22px;min-width:22px;border-radius:50%;color:var(--greenDk);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;padding:0;flex-shrink:0;}
-        .insight-banner{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:20px;line-height:1.5;}
         /* overflow-wrap for the same reason .kpi-card .kpi-value has it — the
            annual tiles are the other place a long amount can outgrow its card,
            and they were the pair that never got the treatment. */
@@ -1349,10 +1351,6 @@
         .chart-grid{display:grid;gap:16px;margin-bottom:16px;max-width:100%;overflow:hidden;
           align-items:start;}
         /* Inline error/info banner (auth screens, forms) */
-        .cf-error-banner{background:var(--redLt);border:1px solid var(--red);border-radius:8px;
-          padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;}
-        .cf-info-banner{background:var(--greenLt);border:1px solid var(--green);border-radius:8px;
-          padding:10px 14px;font-size:13px;color:var(--greenDk);font-weight:500;}
         /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
         .cf-menu-item{width:100%;text-align:left;padding:12px 16px;font-size:13px;color:var(--text);
           background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;}
