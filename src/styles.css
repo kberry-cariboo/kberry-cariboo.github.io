@@ -969,8 +969,11 @@
         .ledger-row-wrap > .budget-card-row{position:relative;z-index:1;}
         .ledger-row-actions{position:absolute;inset:0;display:flex;
           justify-content:space-between;align-items:stretch;}
+        /* The ink is the page ground, not white: these two action colours are
+           light in the dark theme, where white on them measured 2.6:1. Taking
+           --bg gives 5.6:1 in light and 7.1:1 in dark. */
         .ledger-row-action{display:flex;align-items:center;padding:0 18px;
-          font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.01em;white-space:nowrap;}
+          font-size:12.5px;font-weight:700;color:var(--bg);letter-spacing:.01em;white-space:nowrap;}
         .ledger-row-action--pay{background:var(--greenDk);}
         .ledger-row-action--skip{background:var(--amberInk);margin-left:auto;}
         .budget-card-row.is-dragging{transition:none;}
@@ -986,7 +989,7 @@
         .card-balance-amt{font-weight:700;min-width:74px;text-align:right;}
         .openbal-card-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--stripe);border-bottom:1px solid var(--border);}
         .mno-700{font-weight:700;}
-        .mno-700-green{font-weight:700;color:var(--green);}
+        .mno-700-green{font-weight:700;color:var(--mint);}
         .mno-700-coral{font-weight:700;color:var(--coral);}
         .budget-empty-msg{padding:28px 14px;text-align:center;font-size:13px;color:var(--textLt);}
         /* Wraps rather than overflowing: three currency values plus the label
@@ -1748,9 +1751,25 @@
           background:var(--bgCard);border-top:1px solid var(--border);
           padding-bottom:env(safe-area-inset-bottom);
           box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
-        @media(max-width:768px){
+        /* A short viewport is a phone too. The breakpoints were width-only, so
+           rotating a phone (844x390) crossed into the desktop layout: the
+           bottom nav disappeared, the 107px desktop header took 27% of a
+           390px-tall viewport, and Flow's first ledger row landed off screen.
+           Height is the honest test for "is there room for a tall header and
+           no thumb nav", and it catches a short desktop window too. */
+        @media(max-width:768px),(max-height:500px){
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
+        }
+        /* Landscape on a phone is 390px of height for everything. Restoring the
+           bottom nav costs 62px of that, so the header gives the same back:
+           the logo row is the one band that is pure identity, and it can be a
+           good deal shorter when height is the scarce axis. */
+        @media(max-height:500px){
+          .header-inner{height:44px!important;}
+          .header-logo-img,.logo-area img{height:22px!important;}
+          .cf-bottomnav{padding-top:2px;}
+          .content-area{padding-top:14px;padding-bottom:14px;}
           /* Nav clearance belongs to the scroll container, not to <main>: the
              footer is a *sibling* of <main> inside .app-scroll, so padding on
              .content-area left it uncovered and the fixed nav sat on top of

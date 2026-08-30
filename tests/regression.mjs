@@ -1168,6 +1168,118 @@ await test('dark mode: charts render with theme colours', async () => {
   await ctx.close();
 }
 
+// Contrast is a thing this app has already had to fix once at scale (295
+// failing nodes), and it regressed twice since: the monthly-totals band kept
+// the on-white green against its navy ground (2.08:1), and the dark theme's
+// primary put white on #3E8C7C (4.00:1) under every primary button and active
+// pill. Both were invisible to every other check here.
+//
+// Backgrounds are composited, not read flat — an 8%-opacity wash is the wash
+// over what is behind it, and treating alpha as 1 invents failures that are
+// not there. That mistake cost me four false findings before I caught it.
+await test('contrast: every text node meets WCAG AA in both themes', async () => {
+  const ROUTES = ['#/today', '#/flow/list', '#/plan/debt', '#/envelopes'];
+  const problems = [];
+  for (const dark of [false, true]) {
+    const { ctx, page } = await ctxPage({ dark });
+    for (const hash of ROUTES) {
+      await page.goto(BASE + hash, { waitUntil: 'load' });
+      await page.waitForTimeout(900);
+      const found = await page.evaluate(() => {
+        const parse = (c) => { const m = (c || '').match(/[\d.]+/g) || [];
+          return { r: +m[0] || 0, g: +m[1] || 0, b: +m[2] || 0, a: m[3] === undefined ? 1 : +m[3] }; };
+        const over = (f, b) => ({ r: f.r * f.a + b.r * (1 - f.a), g: f.g * f.a + b.g * (1 - f.a),
+          b: f.b * f.a + b.b * (1 - f.a), a: 1 });
+        const lum = (c) => { const [r, g, b] = [c.r, c.g, c.b].map((v) => { v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+        const out = [];
+        document.querySelectorAll('main *').forEach((e) => {
+          if (e.children.length) return;
+          const t = (e.textContent || '').trim();
+          if (!t || !e.getClientRects().length) return;
+          const cs = getComputedStyle(e);
+          if (cs.visibility === 'hidden' || +cs.opacity === 0) return;
+          const stack = []; let n = e;
+          while (n) { const c = parse(getComputedStyle(n).backgroundColor); if (c.a > 0) stack.push(c);
+            n = n.parentElement; }
+          let bg = { r: 255, g: 255, b: 255, a: 1 };
+          for (let i = stack.length - 1; i >= 0; i--) bg = over(stack[i], bg);
+          const fg = over(parse(cs.color), bg);
+          const l1 = lum(fg), l2 = lum(bg);
+          const cr = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+          const size = parseFloat(cs.fontSize);
+          const large = size >= 24 || (size >= 18.66 && +cs.fontWeight >= 700);
+          const need = large ? 3 : 4.5;
+          if (cr < need - 0.05) out.push(t.slice(0, 22) + ' ' + cr.toFixed(2) + ':1 (needs ' + need + ') '
+            + cs.color + ' on rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(',') + ')');
+        });
+        return [...new Set(out)];
+      });
+      for (const f of found) problems.push((dark ? 'dark  ' : 'light ') + hash + '  ' + f);
+    }
+    await ctx.close();
+  }
+  if (problems.length) {
+    // One line: the runner prints only the first line of a failure message.
+    throw new Error(problems.length + ' text node(s) below AA \u2014 ' + problems.slice(0, 4).join(' | '));
+  }
+});
+
+// The breakpoints were width-only, so rotating a phone crossed into the desktop
+// layout: bottom nav gone, a 107px header taking 27% of a 390px-tall viewport,
+// and Flow's first ledger row off screen at y=431.
+await test('landscape: a rotated phone is still treated as a phone', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 },
+    hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  await page.addInitScript(mkStub(false, true));
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const r = await page.evaluate(() => {
+    const nav = document.querySelector('.cf-bottomnav');
+    const hdr = document.querySelector('.tab-bar-outer');
+    const row = document.querySelector('main .budget-card-row');
+    return { navShown: !!nav && getComputedStyle(nav).display !== 'none',
+      navH: nav ? Math.round(nav.getBoundingClientRect().height) : 0,
+      hdrH: hdr ? Math.round(hdr.getBoundingClientRect().height) : 0,
+      desktopTabs: !!document.querySelector('.tab-bar') &&
+        getComputedStyle(document.querySelector('.tab-bar')).display !== 'none',
+      firstRowTop: row ? Math.round(row.getBoundingClientRect().top) : null,
+      vh: window.innerHeight };
+  });
+  if (!r.navShown) throw new Error('the bottom nav is hidden in landscape');
+  if (r.desktopTabs) throw new Error('the desktop tab bar is showing on a rotated phone');
+  // The header is the band that has to give when height is the scarce axis.
+  if (r.hdrH > 56) throw new Error('the header is ' + r.hdrH + 'px of a ' + r.vh + 'px viewport');
+  if ((r.navH + r.hdrH) / r.vh > 0.30) {
+    throw new Error('nav + header take ' + Math.round((r.navH + r.hdrH) / r.vh * 100) + '% of the viewport');
+  }
+  await ctx.close();
+});
+
+// Sheets trapped focus but never took it, so one opened with the reader still
+// standing outside it and a screen reader was never told it appeared.
+await test('sheets: opening one moves focus into it', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('cf:quickadd')));
+  await page.waitForTimeout(600);
+  const r = await page.evaluate(() => {
+    const card = document.querySelector('.modal-card');
+    return { open: !!card, inside: !!(card && card.contains(document.activeElement)),
+      // The card takes it, not a text field — focusing an input opens the
+      // phone keyboard over the sheet you have just been shown.
+      onInput: document.activeElement && document.activeElement.tagName === 'INPUT' };
+  });
+  if (!r.open) throw new Error('the sheet did not open');
+  if (!r.inside) throw new Error('focus stayed outside the open sheet');
+  if (r.onInput) throw new Error('focus landed on a text field, which opens the keyboard');
+  await ctx.close();
+});
+
 // MOBILE-UI-AUDIT called this out and it had got worse, not better: Flow spent
 // 553px of an 844px phone screen before the first ledger row, and Forecast 751.
 // The single biggest item was four KPI tiles in a 2x2 grid above the rows they
