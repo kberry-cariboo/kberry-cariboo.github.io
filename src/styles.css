@@ -1458,35 +1458,16 @@
         .customize-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
         .customize-list{display:flex;flex-direction:column;gap:4px;}
         .customize-note{font-size:12px;line-height:1.45;color:var(--textMid);margin:-8px 0 14px;}
-        /* Where Today stops. A rule with the reason written on it, rather than
-           a gap the reader has to infer a meaning for. */
-        .customize-fold{display:flex;align-items:center;gap:8px;margin:8px 2px;
-          font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--textLt);}
-        .customize-fold::before,.customize-fold::after{content:"";flex:1;height:1px;background:var(--border);}
-        /* The disclosure that holds the analysis. It is a full-width control
-           on purpose: it is the end of Today, and it has to read as a floor
-           rather than as one more card. */
         /* Customize used to be the first thing on Today, above the runway:
            a control for changing the page, given the position that should
            belong to the page. It sits at the foot now, where you arrive
            having read the thing you might want to change. */
-        .dash-foot{display:flex;align-items:stretch;gap:10px;margin:4px 0 8px;}
-        .dash-foot .dash-more{flex:1;min-width:0;margin:0;}
+        .dash-foot{display:flex;align-items:stretch;justify-content:flex-end;gap:10px;margin:4px 0 8px;}
         .dash-foot-customize{flex:0 0 auto;min-height:44px;padding:11px 16px;
           border:1px solid var(--border);border-radius:10px;background:transparent;
           color:var(--textMid);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
           white-space:nowrap;}
         .dash-foot-customize:hover{color:var(--text);border-color:var(--textLt);}
-        .dash-more{margin:4px 0 8px;}
-        /* Inline, not flex: on a narrow screen the label wraps, and a flex
-           chevron gets left behind at the far edge of a two-line button. */
-        .dash-more-btn{display:block;width:100%;height:100%;text-align:center;line-height:1.35;
-          min-height:44px;padding:11px 16px;border:1px solid var(--border);border-radius:10px;
-          background:var(--bgCard);color:var(--textMid);font:inherit;font-size:13px;font-weight:600;
-          cursor:pointer;}
-        .dash-more-btn:hover{color:var(--text);border-color:var(--textLt);}
-        .dash-more-chev{margin-right:7px;font-size:15px;}
-        .dash-more-body{margin-top:14px;display:flex;flex-direction:column;gap:0;}
         .customize-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--text);}
         .customize-checkbox{width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;}
         .customize-label{flex:1;min-width:0;}
@@ -2051,6 +2032,50 @@
           .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px!important;}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden!important;max-width:100%!important;}
+          /* Today's panels were inset cards: a 10px page gutter, then a 1px
+             border, then 24px of card padding on each side — 18% of a 390px
+             phone spent on chrome before a figure is drawn, and the reason a
+             chart inside one reads as a widget inside a widget. Every other
+             list went full-bleed during the redesign (ledger rows, debts,
+             goals, envelopes) and Today was the last screen still boxed, so
+             its full-width panels join them: bands separated by a hairline,
+             on one padding scale instead of the three (24 / 16 / 14) they
+             carried between them. Content width goes 320px → 362px.
+
+             The tile grids stay inset. A tile with no side border, sitting
+             beside another tile, stops reading as a tile — so the three
+             glance figures and the four KPIs keep their card shape and the
+             page keeps its gutter around them.
+
+             16px, not the 10px gutter: it is what .debt-item and the goal
+             rows already use at this width, and a band whose text starts
+             where every other full-bleed row's text starts is the point of
+             moving Today onto the same pattern. */
+          .dash-page>.cf-card,.dash-page>.chart-grid{
+            margin-left:calc(-1 * var(--container-gutter))!important;
+            margin-right:calc(-1 * var(--container-gutter))!important;
+            max-width:none!important;}
+          .dash-page>.cf-card,.dash-page>.chart-grid>.cf-card{
+            border-radius:0!important;border-left:0!important;border-right:0!important;
+            padding:16px!important;}
+          /* The tile grids — the three at-a-glance figures, the four annual
+             KPIs — become one band apiece rather than a raft of little cards
+             floating in the gutter between two full-width ones, which is what
+             they looked like once everything around them went edge to edge.
+
+             The dividers are the grid's own 1px gaps with the grid painted
+             --border and each cell painting --bgCard back over it. A cell
+             border would have to know how many columns it is in — three
+             across at 768px, two at 480, and a lone last tile spanning both —
+             and the gap does not. */
+          .dash-page>.glance-grid,.dash-page>.kpi-grid-4{
+            margin-left:calc(-1 * var(--container-gutter))!important;
+            margin-right:calc(-1 * var(--container-gutter))!important;
+            max-width:none!important;gap:1px!important;background:var(--border);
+            border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+          .dash-page>.glance-grid>*,.dash-page>.kpi-grid-4>*{
+            border:0!important;border-radius:0!important;box-shadow:none!important;
+            padding:14px 16px!important;background:var(--bgCard)!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
           .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
             -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;

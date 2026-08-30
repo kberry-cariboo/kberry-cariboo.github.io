@@ -122,16 +122,6 @@ let pageErrors = [];
 // tests that need data the shared fixture doesn't carry (a mid-horizon expense
 // big enough to dip the forecast, a few savings goals). Everything else takes
 // the fixture as it is.
-// Today keeps the charts and tables one tap below the fold now. A test that
-// reads one of them is testing the panel, not the disclosure, so it opens it
-// first — the panels themselves are unchanged.
-async function showDashAnalysis(page) {
-  const b = page.locator('.dash-more-btn');
-  if (await b.count() === 0) return;
-  if (await b.getAttribute('aria-expanded') === 'true') return;
-  await b.click({ force: true });
-  await page.waitForTimeout(600);
-}
 async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x) => x } = {}) {
   const ctx = await browser.newContext({
     viewport: touch ? { width: 393, height: 852 } : { width: 1440, height: 900 },
@@ -182,7 +172,6 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
-  await showDashAnalysis(page);
 
   await test('dashboard: KPI tiles and charts render', async () => {
     for (const t of ['Balance today', 'Annual Income', 'Running Balance', 'Income vs Expenses', 'Top Expense Categories', 'Budget vs Actual']) {
@@ -547,8 +536,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     try {
       await page.goto(BASE + '#/today', { waitUntil: 'load' });
       await page.waitForTimeout(900);
-      await showDashAnalysis(page);
-      const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
+        const kpi = await page.locator('.kpi-tile', { hasText: 'Annual Income' }).locator('.kpi-spark-value').innerText();
       // German grouping puts points where en-CA puts commas, and the symbol
       // changes with the currency.
       if (!kpi.includes('€')) throw new Error('currency symbol did not change: ' + kpi);
@@ -593,7 +581,6 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   await test('dashboard: reconciling to the bank adjusts today without touching income or expenses', async () => {
     await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
-    await showDashAnalysis(page);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
 
@@ -715,7 +702,6 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   await test('dashboard: every monthly summary row reconciles with the balance beside it', async () => {
     await page.goto(BASE + '#/today', { waitUntil: 'load' });
     await page.waitForTimeout(900);
-    await showDashAnalysis(page);
     const grid = await page.evaluate(() => {
       const money = (t) => {
         const m = (t || '').replace(/[^0-9.+-]/g, '');
@@ -1816,7 +1802,6 @@ await test('every notice bar in the app resolves to one of two shapes', async ()
                       '#/plan/goals', '#/plan/strategy', '#/plan/debt', '#/plan/insights', '#/you']) {
     await page.goto(BASE + hash, { waitUntil: 'load' });
     await page.waitForTimeout(900);
-    await showDashAnalysis(page);
     const found = await page.evaluate(() => [...document.querySelectorAll('.notice')].map((e) => {
       const c = getComputedStyle(e);
       return { key: c.padding + '|' + c.borderRadius + '|' + c.borderLeftWidth + '|' + c.fontSize,
@@ -1877,12 +1862,17 @@ await test('every notice comes through one stack, collapsed when there is more t
     (els) => els.map((e) => e.dataset.tone));
   if (rows.join(',') !== 'critical,warn,info') throw new Error('not sorted by severity: ' + rows.join(','));
 
-  // One shape and one scale: that mismatch is what made them read as a family
-  // and then look wrong.
-  const box = await page.locator('.notice').evaluateAll((els) => els.map((e) => {
+  // One shape and one scale within the stack: that mismatch is what made them
+  // read as a family and then look wrong. Scoped to the stack, not the page —
+  // the inline .notice--sm scale (a search filter, a form error, the spending
+  // insight panel) is the app's documented second shape, and the sweep above
+  // is what holds the app to those two. This used to read the whole page and
+  // pass only because Today's insight panel was hidden below the fold.
+  const box = await page.locator('.notice-stack .notice').evaluateAll((els) => els.map((e) => {
     const c = getComputedStyle(e);
     return c.padding + '|' + c.borderRadius + '|' + c.borderLeftWidth;
   }));
+  if (!box.length) throw new Error('no notices in the stack to compare');
   if (new Set(box).size !== 1) throw new Error('notices disagree on shape: ' + [...new Set(box)].join(' vs '));
 
   // And the dip is stated once outside the stack. The Next-low-point tile
@@ -1923,51 +1913,66 @@ await test('no control still points at a route the IA change retired', async () 
   await ctx.close();
 });
 
-// Today used to open as all eighteen panels: roughly five phone screens of
-// charts to scroll past before reaching anything that tells you what to do. It
-// leads with a stack now and keeps the analysis one tap below. The rule is
-// positional, not a fixed list of ids, so reordering in Customize is what moves
-// a panel across the line — which is why this checks the count and the fold
-// rather than which widgets happen to be above it.
-await test('today opens on a stack, with the analysis one tap below it', async () => {
+// Today led with eight panels and kept the other ten behind a "More on 2026"
+// disclosure. That made a 1.6-screen page cost a tap to finish reading, and it
+// made the panels the reader had chosen in Customize into panels the page had
+// chosen for them. The disclosure is gone: Today is one page, and Customize —
+// which takes a panel off for good — is the only thing that shortens it.
+//
+// The same change put the full-width panels on the phone's full width. They
+// were inset cards: a 10px page gutter, a border, then 24px of card padding
+// each side, so a 390px phone drew its charts into 320px. This checks both,
+// because the second is the reason the first was affordable.
+await test('today is one page, and its panels use the whole phone', async () => {
   const { ctx, page } = await ctxPage({ touch: true });
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
-  const shut = await page.evaluate(() => {
+  const r = await page.evaluate(() => {
     const sc = document.querySelector('.app-scroll');
-    const b = document.querySelector('.dash-more-btn');
-    return { h: sc.scrollHeight, vh: sc.clientHeight, label: b && b.textContent.trim(),
-             expanded: b && b.getAttribute('aria-expanded'), body: !!document.querySelector('.dash-more-body') };
+    const page_ = document.querySelector('.dash-page');
+    const vw = sc.clientWidth;
+    // The panels that span the page. The tile grids are banded the same way;
+    // the toolbar, the foot and the inline chips are deliberately inset.
+    const wide = [...page_.querySelectorAll(':scope > .cf-card, :scope > .chart-grid, :scope > .glance-grid, :scope > .kpi-grid-4')];
+    return {
+      disclosure: !!document.querySelector('.dash-more-btn, .dash-more-body'),
+      // A panel that used to live below the fold, rendered without a tap.
+      tail: !!document.querySelector('.summary-toolbar-row'),
+      slop: sc.scrollWidth - sc.clientWidth,
+      vw,
+      narrow: wide.filter((e) => {
+        const b = e.getBoundingClientRect();
+        return b.left > 0.5 || b.right < vw - 0.5;
+      }).map((e) => e.className.slice(0, 28) + ' ' + Math.round(e.getBoundingClientRect().width)),
+      wideCount: wide.length,
+      // What a chart actually gets to draw in, inside the widest panel.
+      inner: Math.max(...wide.map((e) => {
+        const cs = getComputedStyle(e.classList.contains('chart-grid') ? (e.firstElementChild || e) : e);
+        return e.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      }))
+    };
   });
-  if (!shut.label) throw new Error('no disclosure at the foot of Today');
-  if (shut.body || shut.expanded !== 'false') throw new Error('the analysis is open before anyone asked');
-  if (!/More on \d{4} — \d+ more panels?/.test(shut.label)) throw new Error('unhelpful label: ' + shut.label);
-  // Two-and-a-bit screens is a briefing; five is a wall. The number is a
-  // ceiling, not a target — it exists so a panel added to the stack later
-  // fails here instead of quietly restoring the wall.
-  const screens = shut.h / shut.vh;
-  if (screens > 2.6) throw new Error('Today is ' + screens.toFixed(1) + ' screens tall with the analysis closed');
+  if (r.disclosure) throw new Error('Today still hides panels behind a disclosure');
+  if (!r.tail) throw new Error('a panel that used to sit below the fold does not render on load');
+  if (r.slop > 1) throw new Error('Today overflows sideways by ' + r.slop + 'px');
+  if (!r.wideCount) throw new Error('no full-width panels found — the selector has drifted');
+  if (r.narrow.length) throw new Error('inset panels on a phone: ' + r.narrow.join(', '));
+  // 320px was the old content width at this viewport. The floor is what the
+  // change bought, so restoring the gutter-and-24px-padding shape fails here.
+  if (r.inner < 350) throw new Error('panel content is only ' + Math.round(r.inner) + 'px wide inside a ' + r.vw + 'px phone');
 
-  await page.locator('.dash-more-btn').tap({ force: true });
-  await page.waitForTimeout(700);
-  const open = await page.evaluate(() => {
-    const sc = document.querySelector('.app-scroll');
-    return { h: sc.scrollHeight, slop: sc.scrollWidth - sc.clientWidth,
-             expanded: document.querySelector('.dash-more-btn').getAttribute('aria-expanded'),
-             body: !!document.querySelector('.dash-more-body') };
-  });
-  if (!open.body || open.expanded !== 'true') throw new Error('the disclosure did not open');
-  if (open.h <= shut.h) throw new Error('opening it revealed nothing');
-  if (open.slop > 1) throw new Error('the revealed panels overflow sideways by ' + open.slop + 'px');
-
-  // Customize draws the line, so the rule is visible rather than folklore.
+  // Customize is now the only way a panel leaves Today, so it has to work.
+  const before = await page.evaluate(() => document.querySelectorAll('.dash-page > *').length);
   await page.locator('.dash-foot-customize').tap({ force: true });
   await page.waitForTimeout(600);
-  const rows = await page.evaluate(() => [...document.querySelectorAll('.customize-list > *')]
-    .map((n) => (n.className || '').includes('fold') ? '@fold' : 'w'));
-  const at = rows.indexOf('@fold');
-  if (at < 0) throw new Error('Customize does not show where Today stops');
-  if (at !== 8) throw new Error('the fold falls after ' + at + ' panels, expected 8');
+  const ticked = await page.evaluate(() => document.querySelectorAll('.customize-list input:checked').length);
+  if (ticked < 2) throw new Error('Customize lists ' + ticked + ' shown panels');
+  await page.locator('.customize-list input:checked').first().click({ force: true });
+  await page.waitForTimeout(400);
+  await page.locator('.customize-done-row button').click({ force: true });
+  await page.waitForTimeout(700);
+  const after = await page.evaluate(() => document.querySelectorAll('.dash-page > *').length);
+  if (after >= before) throw new Error('unticking a panel left it on the page');
   await ctx.close();
 });
 
@@ -3096,7 +3101,6 @@ await test('a11y: every chart is either described or hidden, never bare', async 
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
-  await showDashAnalysis(page);
   const bare = await page.$$eval('svg', (els) => els
     .filter((e) => e.getAttribute('aria-hidden') !== 'true' && e.getAttribute('role') !== 'img')
     .map((e) => e.parentElement && e.parentElement.className));
@@ -3151,7 +3155,6 @@ await test('wide screens: cards size to their content, and card lists use the wi
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
-  await showDashAnalysis(page);
   const align = await page.locator('.chart-grid').first().evaluate((el) => getComputedStyle(el).alignItems);
   if (align !== 'start') throw new Error(`paired dashboard cards are ${align}, so the shorter one stretches`);
 
@@ -3219,7 +3222,6 @@ await test('invariant: every printed surplus agrees with the balances printed be
   // ── The Dashboard's Monthly Summary ───────────────────────────────────────
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1800);
-  await showDashAnalysis(page);
   const table = await page.evaluate(() => {
     const tb = [...document.querySelectorAll('table')].find((t) =>
       [...t.querySelectorAll('thead th')].some((h) => /Surplus/.test(h.textContent)));
