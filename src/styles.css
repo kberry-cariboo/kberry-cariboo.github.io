@@ -727,6 +727,18 @@
         .kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
         .forecast-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px;}
         .forecast-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
+        /* The horizon pills and the what-if switch are two controls that
+           configure the chart under them. Each had a card of its own, which on
+           a phone is ~260px of shell before the thing they configure — nearly
+           a full screen of chrome ahead of the forecast. They keep their cards
+           where there is width to spare and become plain control rows on a
+           phone. */
+        @media(max-width:768px){
+          .forecast-setup{background:none;border:none;box-shadow:none;padding:0;margin-bottom:12px;}
+          /* The card is titled "90-Day Forecast"; the line under it said the
+             same thing again. */
+          .forecast-sub{display:none;}
+        }
         .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
         .forecast-lowest-value{font-family:var(--font-mono);}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
@@ -985,6 +997,15 @@
         .totals-amounts-row{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;justify-content:flex-end;min-width:0;}
         .swipe-coach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--textMid);background:var(--stripe);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;}
         .gotit-btn{font-size:12px;font-weight:700;padding:10px 14px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--primaryInk);white-space:nowrap;flex-shrink:0;}
+        .month-summary{margin-bottom:16px;}
+        .month-summary-line{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;
+          padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bgCard);
+          color:var(--textMid);font:inherit;font-size:13px;cursor:pointer;text-align:left;}
+        .month-summary-line:hover{border-color:var(--textLt);color:var(--text);}
+        .month-summary-lead{flex:1;min-width:0;}
+        .month-summary-close{flex-shrink:0;white-space:nowrap;}
+        .month-summary-chev{flex-shrink:0;font-size:15px;line-height:1;}
+        .month-summary .kpi-grid{margin-top:10px;margin-bottom:0;}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
         .budget-th-col{font-size:11px;font-weight:700;color:#fff;padding:10px 14px;letter-spacing:0.08em;text-transform:uppercase;cursor:grab;user-select:none;transition:background 0.1s;}
@@ -1013,6 +1034,13 @@
         .bva-header-row{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;}
         .bva-header-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
         .bva-body{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px;}
+        /* On a phone the envelope rows give back the card's side padding: a
+           category name and two amounts on one line had 320px of a 390px
+           screen, and the amounts are what has to stay unwrapped. */
+        @media(max-width:480px){
+          .bva-body{padding:0 0 16px;}
+          .bva-body>*{padding:0 14px;}
+        }
         .bva-empty-wrap{font-size:13px;color:var(--textLt);text-align:center;padding:8px 0;}
         .context-menu-cursor{cursor:context-menu;}
         .bva-actual-amt{font-weight:600;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;}
@@ -1137,7 +1165,11 @@
         .cal-day-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;
           padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;}
         .cal-day-bal{margin-left:10px;font-weight:400;font-size:12px;color:var(--textMid);}
-        .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;flex-wrap:nowrap;}
+        /* The category chip is what gives way, not the amounts: the two
+           figures are the row's reason for existing, so a long category name
+           truncates rather than pushing them toward the edge. */
+        .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;flex-wrap:nowrap;min-width:0;}
+        .bva-row>.cat-chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .bva-amounts{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;flex:1;justify-content:flex-end;min-width:0;}
         .bva-target{color:var(--textMid);white-space:nowrap;flex-shrink:0;}
         /* ── plan-dashboard.js ── */

@@ -225,6 +225,9 @@
     }, [gq]);
     const [showBvaModal, setShowBvaModal] = useState(false);
     const [budgetCtx, setBudgetCtx] = useState(null);
+    // Device-local: whether you want the month's four totals open is a
+    // property of the screen you are reading on, like the analysis on Today.
+    const [monthSummaryOpen, setMonthSummaryOpen] = useLS("cf_month_summary", false);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useState("all");
@@ -664,7 +667,27 @@
       // The card says so in its sub-line rather than leaving the reader to
       // find a gap they can't account for; the year-over-year delta gives up
       // its place for that, which only happens in months that have transfers.
-      lens !== "bva" && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })),
+      lens !== "bva" && /* @__PURE__ */ React.createElement("div", { className: "month-summary" },
+        // Two-thirds of a phone screen went by before the first ledger row,
+        // and the biggest single item was this: four tiles in a 2x2 grid,
+        // ~200px, above the rows they summarise. The line states the month's
+        // answer; the tiles are one tap under it, with the year-over-year
+        // deltas and the transfer note they carry.
+        /* @__PURE__ */ React.createElement("button", {
+          className: "month-summary-line", "aria-expanded": monthSummaryOpen ? "true" : "false",
+          onClick: () => { haptic(); setMonthSummaryOpen(!monthSummaryOpen); }
+        },
+          /* @__PURE__ */ React.createElement("span", { className: "month-summary-lead" },
+            /* @__PURE__ */ React.createElement("strong", {
+              className: "cf-text-mono-13",
+              style: { color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }
+            }, fmt(s.surplus, true)),
+            s.surplus >= 0 ? " surplus" : " shortfall"),
+          /* @__PURE__ */ React.createElement("span", { className: "month-summary-close" },
+            "closes ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(s.close))),
+          /* @__PURE__ */ React.createElement("span", { className: "month-summary-chev", "aria-hidden": "true" },
+            monthSummaryOpen ? "\u2303" : "\u2304")),
+        monthSummaryOpen && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }))),
       lens === "list" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -1035,7 +1058,7 @@
               },
               className: "context-menu-cursor"
             },
-            /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
+            /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 1, minWidth: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
             } }, fmt(actual)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
               className: "bva-set-target",
