@@ -4,6 +4,10 @@
 > The findings below are kept as written — they are the record of what was
 > wrong and why, and every fix commit points back at a section number here.
 > See §7 for the item-by-item outcome.
+>
+> **Superseded in part by `MOBILE-UI-AUDIT-2.md`**, which audits the
+> mobile-first redesign that followed this one rather than the layout it
+> replaced. The two-axis problem described below is narrowed there, not gone.
 
 Audited build `v183` (`3c599fd`). Findings come from reading `src/` **and** from
 running the built app in Chromium at 320 / 390 / 430 / 820 px CSS widths with
