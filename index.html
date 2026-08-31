@@ -11795,9 +11795,14 @@ const RUNWAY_DAYS = 90;
           },
           BUDGET_COL_LABELS[col]
         )), /* @__PURE__ */ React.createElement("th", { className: "budget-th-actions", "aria-label": "Actions" })));
-      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { className: "openbal-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
-        background: "var(--amberLt)"
-      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td", style: { background: "var(--amberLt)" } }), bCols.map((col) => {
+      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { className: "openbal-row" },
+      // No background of their own: .openbal-row paints the row, and these two
+      // were left painting --amberLt from an earlier design where the whole
+      // row was amber. Against the row's --stripe that is a 68px cream block
+      // at its head, in both themes. The totals row below does the same thing
+      // with --navy on a navy row, which is why only this one shows a seam.
+      /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td" }),
+      /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td" }), bCols.map((col) => {
         if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: { color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(s.open));
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-label-cell" }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;

@@ -1543,6 +1543,55 @@ await test('panels: every view draws them as full-bleed bands, one padding scale
   await ctx.close();
 });
 
+// The ledger's opening-balance row painted its checkbox and day cells
+// --amberLt inline while the row itself is --stripe, so a 68px block of a
+// different colour sat at its head in both themes. It was left over from a
+// design where the whole row was amber; the totals row does the same thing
+// with --navy on a navy row, which is why only this one showed a seam.
+await test('ledger: the opening-balance row is one colour across its width', async () => {
+  const { ctx, page } = await ctxPage();
+  const problems = [];
+  for (const dark of [false, true]) {
+    const ctx2 = dark ? await browser.newContext({ colorScheme: 'dark' }) : null;
+    const pg = dark ? await ctx2.newPage() : page;
+    if (dark) await pg.addInitScript(mkStub(true, true));
+    await pg.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await pg.waitForTimeout(1200);
+    const r = await pg.evaluate(() => {
+      const rows = { openbal: document.querySelector('.openbal-row'),
+                     totals: document.querySelector('.budget-totals-row') };
+      const out = {};
+      for (const [k, tr] of Object.entries(rows)) {
+        if (!tr) { out[k] = null; continue; }
+        const rowBg = getComputedStyle(tr).backgroundColor;
+        // A cell painting nothing shows the row through; one painting its own
+        // colour has to paint the same colour.
+        const odd = [...tr.children].map((td) => {
+          const bg = getComputedStyle(td).backgroundColor;
+          return /rgba\(0, 0, 0, 0\)|transparent/.test(bg) || bg === rowBg
+            ? null : (td.className.split(' ')[0] || 'td') + ' ' + bg;
+        }).filter(Boolean);
+        out[k] = { rowBg, odd, cells: tr.children.length };
+      }
+      out.headCells = (document.querySelector('table thead tr') || { children: [] }).children.length;
+      return out;
+    });
+    const tag = dark ? 'dark' : 'light';
+    if (!r.openbal) { problems.push(tag + ': no opening-balance row'); }
+    else {
+      if (r.openbal.odd.length) problems.push(tag + ': opening-balance cells off the row colour — ' + r.openbal.odd.join(', '));
+      // Cell counts have to match the header or the columns would not line up.
+      if (r.headCells && r.openbal.cells !== r.headCells) {
+        problems.push(tag + ': the row has ' + r.openbal.cells + ' cells for ' + r.headCells + ' headings');
+      }
+    }
+    if (r.totals && r.totals.odd.length) problems.push(tag + ': totals cells off the row colour — ' + r.totals.odd.join(', '));
+    if (ctx2) await ctx2.close();
+  }
+  if (problems.length) throw new Error(problems.join(' | '));
+  await ctx.close();
+});
+
 // The gap between one panel and the next was 0, 4, 8, 10, 12, 14, 16 or 20px
 // depending on which margin class the widget happened to carry — eight values
 // across ten views, none of them a decision. Worst was the runway card, which
