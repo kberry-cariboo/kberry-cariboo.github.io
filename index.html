@@ -927,6 +927,44 @@
            — and that is the only shape the root screen has. */
         .set-dir-head{display:flex;justify-content:flex-end;align-items:center;
           gap:12px;margin-bottom:14px;}
+        /* ── Alerts ──────────────────────────────────────────────────
+           One card per episode — a contiguous stretch below the buffer —
+           rather than one row per event inside it. The old page drew sixty
+           red boxes for a single dip, which is the same as drawing none:
+           nothing on it was more important than anything else. */
+        .alerts-head{margin:0 0 16px;}
+        .alerts-title{font-size:20px;font-weight:700;color:var(--text);margin:0 0 4px;}
+        .alerts-sub{font-size:12px;color:var(--textLt);}
+        .alerts-group-title{font-size:11px;font-weight:700;letter-spacing:0.08em;
+          text-transform:uppercase;color:var(--textLt);margin:22px 0 8px 2px;}
+        .episode-list{display:flex;flex-direction:column;gap:12px;}
+        /* The tone is a 4px edge and the figures, not a wash over the whole
+           card: sixty pink boxes was the thing that stopped reading as alarm. */
+        .episode{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;
+          background:var(--bgCard);border:1px solid var(--border);border-left:4px solid var(--amberInk);
+          border-radius:10px;padding:14px 16px;}
+        .episode[data-tone="critical"]{border-left-color:var(--red);}
+        .episode:hover{border-color:var(--textLt);}
+        .episode-head{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;}
+        .episode-title{flex:1;min-width:0;font-size:15px;font-weight:700;color:var(--text);}
+        .episode-days{flex:0 0 auto;font-size:11px;color:var(--textLt);white-space:nowrap;}
+        .episode-low{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+        .episode-low-amt{font-family:var(--font-ui);font-variant-numeric:tabular-nums;
+          font-size:24px;font-weight:700;color:var(--amberInk);}
+        .episode[data-tone="critical"] .episode-low-amt{color:var(--red);}
+        .episode-low-when{font-size:12px;color:var(--textLt);}
+        .episode-spark{margin:10px 0 2px;height:34px;}
+        .episode-facts{display:flex;flex-direction:column;gap:2px;margin-top:8px;
+          font-size:12px;color:var(--textMid);}
+        .episode-trigger{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);
+          font-size:12px;color:var(--textMid);}
+        .episode-cta{display:block;margin-top:10px;font-size:12px;font-weight:600;
+          color:var(--primaryInk);}
+        .alerts-clear{display:flex;flex-direction:column;align-items:center;gap:6px;
+          text-align:center;padding:36px 16px;background:var(--bgCard);
+          border:1px solid var(--border);border-radius:10px;}
+        .alerts-clear-icon{color:var(--greenDk);line-height:0;}
+        .alerts-clear-title{font-size:16px;font-weight:700;color:var(--text);}
         .set-group{margin-bottom:22px;}
         .set-group-title{font-size:11px;font-weight:700;letter-spacing:0.08em;
           text-transform:uppercase;color:var(--textLt);margin:0 0 8px 2px;}
@@ -1534,7 +1572,11 @@
         .dash-year-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
         .dash-year-label{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);}
         .yoy-empty-wrap{background:var(--stripe);border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;}
-        .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+        .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;}
+        /* .card-flat is padding:0 so the table runs to the card's edges; the
+           header it now carries has to put its own padding back. */
+        .summary-card>.summary-head{padding:16px 16px 12px;}
+        .summary-card>.summary-head .cf-section-title-text{margin-bottom:10px;}
         .heat-inc-td{font-weight:600;color:var(--greenDk);}
         .heat-exp-td{font-weight:600;color:var(--red);}
         .dash-heat-bal-td{font-weight:700;padding:9px 16px;text-align:right;position:sticky;right:0;box-shadow:-6px 0 8px -6px rgba(0,0,0,0.25);}
@@ -2152,48 +2194,71 @@
           .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px!important;}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden!important;max-width:100%!important;}
-          /* Today's panels were inset cards: a 10px page gutter, then a 1px
-             border, then 24px of card padding on each side — 18% of a 390px
-             phone spent on chrome before a figure is drawn, and the reason a
-             chart inside one reads as a widget inside a widget. Every other
-             list went full-bleed during the redesign (ledger rows, debts,
-             goals, envelopes) and Today was the last screen still boxed, so
-             its full-width panels join them: bands separated by a hairline,
-             on one padding scale instead of the three (24 / 16 / 14) they
-             carried between them. Content width goes 320px → 362px.
+          /* Panels were inset cards: a 10px page gutter, then a 1px border,
+             then 24px of card padding on each side — 18% of a 390px phone
+             spent on chrome before a figure is drawn, and the reason a chart
+             inside one reads as a widget inside a widget. Every list went
+             full-bleed during the redesign (ledger rows, debts, goals,
+             envelopes) while the cards around them did not, so the panels
+             join them: bands separated by a hairline, on one padding scale
+             instead of the three (24 / 16 / 14) they carried between them.
+             Content width goes 320px → 358px.
 
-             The tile grids stay inset. A tile with no side border, sitting
-             beside another tile, stops reading as a tile — so the three
-             glance figures and the four KPIs keep their card shape and the
-             page keeps its gutter around them.
-
-             16px, not the 10px gutter: it is what .debt-item and the goal
-             rows already use at this width, and a band whose text starts
-             where every other full-bleed row's text starts is the point of
-             moving Today onto the same pattern. */
-          .dash-page>.cf-card,.dash-page>.chart-grid{
+             This started on Today and is now every view, because a panel that
+             is a band on one screen and an inset card on the next is two
+             answers to the same question. .cf-card--flush keeps its zero
+             padding: it wraps a table or a list that draws its own edges. */
+          main .cf-page>.cf-card,
+          main .cf-page>.chart-grid,
+          main .cf-page>.budget-list-lens>.cf-card{
             margin-left:calc(-1 * var(--container-gutter))!important;
             margin-right:calc(-1 * var(--container-gutter))!important;
             max-width:none!important;}
-          .dash-page>.cf-card,.dash-page>.chart-grid>.cf-card{
+          main .cf-page>.cf-card,
+          main .cf-page>.chart-grid>.cf-card,
+          main .cf-page>.budget-list-lens>.cf-card{
             border-radius:0!important;border-left:0!important;border-right:0!important;
             padding:16px!important;}
+          /* Forecast's two control blocks give up their card chrome entirely
+             on a phone — that was the §2.2 fix that took 751px of chrome down
+             to 619px, and putting the band's padding back would undo it. */
+          main .cf-page>.cf-card.forecast-setup{padding:0!important;
+            background:none!important;border:0!important;box-shadow:none!important;}
+          /* Lists that run to their card's edges do it with a negative margin,
+             which has to match the padding above or it overshoots — .goal-list
+             and .debt-list were written against the old 24px and scrolled the
+             page sideways by 8px once the band became 16px. */
+          main .cf-page>.cf-card .goal-list,
+          main .cf-page>.cf-card .debt-list{margin-left:-16px;margin-right:-16px;}
+          main .cf-page>.cf-card .goal-list>.goal-row-cursor,
+          main .cf-page>.cf-card .debt-list>.debt-item{padding-left:16px;padding-right:16px;}
+          /* .cf-card--flush and .card-flat wrap a table or a list that draws
+             its own edges, so the band's 16px would inset rows that are meant
+             to reach it — and on the monthly summary that cost enough width to
+             clip the Income column heading. Their own headers pad themselves. */
+          main .cf-page>.cf-card--flush,
+          main .cf-page>.card-flat,
+          main .cf-page>.chart-grid>.cf-card--flush,
+          main .cf-page>.budget-list-lens>.cf-card--flush{padding:0!important;}
+          /* Settings detail pages strip the card entirely — the page already
+             names itself — so they opt out rather than becoming bands. */
+          .set-detail>.cf-card{margin-left:0!important;margin-right:0!important;
+            border:0!important;padding:0!important;}
           /* The tile grids — the three at-a-glance figures, the four annual
              KPIs — become one band apiece rather than a raft of little cards
-             floating in the gutter between two full-width ones, which is what
-             they looked like once everything around them went edge to edge.
+             floating in the gutter between two full-width ones.
 
              The dividers are the grid's own 1px gaps with the grid painted
              --border and each cell painting --bgCard back over it. A cell
              border would have to know how many columns it is in — three
              across at 768px, two at 480, and a lone last tile spanning both —
              and the gap does not. */
-          .dash-page>.glance-grid,.dash-page>.kpi-grid-4{
+          main .cf-page>.glance-grid,main .cf-page>.kpi-grid-4{
             margin-left:calc(-1 * var(--container-gutter))!important;
             margin-right:calc(-1 * var(--container-gutter))!important;
             max-width:none!important;gap:1px!important;background:var(--border);
             border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-          .dash-page>.glance-grid>*,.dash-page>.kpi-grid-4>*{
+          main .cf-page>.glance-grid>*,main .cf-page>.kpi-grid-4>*{
             border:0!important;border-radius:0!important;box-shadow:none!important;
             padding:14px 16px!important;background:var(--bgCard)!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
@@ -6742,6 +6807,61 @@ document.addEventListener('DOMContentLoaded',function(){
       text: insight.month + " spending" + body
     };
   }
+// ── What an alert actually is ────────────────────────────────────────────
+// The alerts page used to list every event whose projected balance fell below
+// the threshold. Measured on a household that dips $14k under, that is sixty
+// rows across seven phone screens, and all sixty say one thing: you go under
+// on Sep 1 and stay under. Every row past the first is the consequence, not a
+// new problem — and naming the entry on it ("Rent", "Fuel") implies a cause
+// that isn't there, because the balance was already negative before it landed.
+//
+// So an alert is an *episode*: a contiguous stretch of the horizon spent below
+// the threshold. One crossing, one card. This is the only place that decides
+// that, so the bell badge and the page cannot disagree about how many there
+// are.
+//
+// `flow` is chronological and carries a running `balance` per event (see
+// computeFlow). Returns [] when nothing dips.
+function lowBalanceEpisodes(flow, alertThreshold, horizonDays = RUNWAY_DAYS) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(today);
+  end.setDate(today.getDate() + horizonDays);
+  const episodes = [];
+  let cur = null;
+  for (const ev of flow) {
+    if (!ev.date || ev.date < today || ev.date > end) continue;
+    if (ev.balance < alertThreshold) {
+      if (!cur) cur = { start: ev, low: ev, events: [], recover: null };
+      if (ev.balance < cur.low.balance) cur.low = ev;
+      cur.events.push(ev);
+    } else if (cur) {
+      cur.recover = ev;
+      episodes.push(cur);
+      cur = null;
+    }
+  }
+  // Still under when the horizon runs out: that is a real state, and saying
+  // "recovers on <last date>" would be a lie about data we do not have.
+  if (cur) episodes.push(cur);
+  return episodes.map((e) => ({
+    id: "ep-" + e.start.month + "-" + e.start.day,
+    start: e.start,
+    low: e.low,
+    recover: e.recover,
+    events: e.events,
+    // The entries that land on the crossing day are the ones that take it
+    // under. The other fifty-nine happen while it is already under.
+    trigger: e.events.filter((x) => x.month === e.start.month && x.day === e.start.day),
+    tone: e.low.balance < 0 ? "critical" : "warn",
+    // What it would take to not have this episode at all.
+    shortfall: alertThreshold - e.low.balance,
+    days: e.recover
+      ? Math.max(1, Math.round((e.recover.date - e.start.date) / 864e5))
+      : Math.max(1, Math.round((end - e.start.date) / 864e5)),
+    openEnded: !e.recover
+  }));
+}
 const RUNWAY_DAYS = 90;
   // ── The schedule, in words ──────────────────────────────────────────────
   // recurLabel abbreviates for a table column — "Monthly (weekday)" never says
@@ -12048,7 +12168,6 @@ const RUNWAY_DAYS = 90;
       });
       return out;
     }, [yearFlows, yearConfigs]);
-    const dangerDays = futureEvents.filter((ev) => ev.balance < alertThreshold);
     // The balance day by day across the horizon — the one thing the view whose
     // job is "where is this heading" had no way to show. It was a paginated
     // table: three pages for a 90-day horizon, with the low point unmarked even
@@ -12160,7 +12279,6 @@ const RUNWAY_DAYS = 90;
     // the same curve. They used to be computed two different ways on one
     // screen — the banner over event balances, which is the same answer only
     // as long as nothing about how the horizon opens ever differs.
-    const lowestBalance = lowPoint ? lowPoint.balance : null;
     const searchedEvents = futureEvents.filter((ev) => eventMatchesSearch(ev, gq2));
     // Cumulative at every width, where the desktop table used to paginate. A
     // forecast is a rolling window — "the next 90 days" cut into page 1, page 2
@@ -12189,7 +12307,7 @@ const RUNWAY_DAYS = 90;
       categories,
       categoryColors
     })), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm forecast-sub" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), dangerDays.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-danger-title" }, "\u26A0 ", dangerDays.length, " event", dangerDays.length > 1 ? "s" : "", " within ", horizon, " days where balance drops below ", fmt(alertThreshold)), /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Lowest projected balance in next ", horizon, " days: ", /* @__PURE__ */ React.createElement("strong", { className: "forecast-lowest-value", style: { color: lowestBalance < 0 ? "var(--red)" : "var(--amberInk)" } }, fmt(lowestBalance))))), /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm forecast-sub" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
       const adj = (scenarioAdj || {})[e.id];
       const dropped = !!(adj && adj.drop);
       const amt = adj && Number.isFinite(adj.amount) ? adj.amount : e.amount;
@@ -14304,7 +14422,6 @@ Fill every field of the response schema. Rules:
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
-      { id: "insight", label: "Spending insight", size: "full" },
       { id: "balanceChart", label: "Balance chart", size: "half" },
       { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
@@ -14324,7 +14441,6 @@ Fill every field of the response schema. Rules:
       });
       return merged;
     }, [dashOrder]);
-    const insight = useMemo(() => computeSpendingInsight(flow, activeYear), [flow, activeYear]);
     // Colour is reserved for state. A balance that is simply fine is ordinary
     // text — it only takes a colour when it has something to say (amber under
     // the alert threshold, red overdrawn). Eleven of the fourteen balance
@@ -14451,20 +14567,7 @@ Fill every field of the response schema. Rules:
         })));
       })()),
       monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
-      insight: () => {
-        // Written once, in app-data.js, so this bar and the Alerts centre's
-        // copy of it cannot drift apart. Its tone reports the finding: over
-        // the average is a warning, under it is good news, in line with it is
-        // neither.
-        const f = spendingInsightFinding(insight);
-        if (!f) return null;
-        return /* @__PURE__ */ React.createElement("div", {
-          "data-widget": "insight", className: "notice notice--sm", role: "status", "data-tone": f.tone
-        }, /* @__PURE__ */ React.createElement("span", { className: "notice-msg" },
-          /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, f.month, " spending"),
-          f.text.slice((f.month + " spending").length)));
-      },
-      kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
+            kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
       balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -14691,7 +14794,15 @@ Fill every field of the response schema. Rules:
           })());
         })));
       })()),
-      summary: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-12" }, "Monthly Summary"), /* @__PURE__ */ React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
+      summary: () => /* @__PURE__ */ React.createElement(Card, { className: "card-flat summary-card" },
+      // The heading and the export toolbar used to sit on the page ground
+      // above a white table, so one widget read as two things: a label
+      // floating over a card. They are inside it now, in a padded header,
+      // and the table keeps the card's zero padding so its rows still run
+      // to the edges.
+      /* @__PURE__ */ React.createElement("div", { className: "summary-head" },
+        React.createElement(SectionTitle, { className: "mb-12" }, "Monthly Summary"),
+        React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
           ChartToggle,
           {
             value: summaryView,
@@ -14708,8 +14819,8 @@ Fill every field of the response schema. Rules:
             ),
             onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
           }
-        )),
-        summaryView === "heat" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary heatmap" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+        ))),
+      summaryView === "heat" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary heatmap" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
           position: i === summaryCols.length - 1 ? "sticky" : "static",
           right: i === summaryCols.length - 1 ? 0 : "auto",
@@ -14726,7 +14837,7 @@ Fill every field of the response schema. Rules:
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
           return /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-inc-td", style: { background: heatInc } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-exp-td", style: { background: heatExp } }, fmt(m.expense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: { background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-heat-bal-td", style: { background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(m.close)));
         }))))),
-        summaryView === "table" && /* @__PURE__ */ React.createElement(Card, { className: "card-flat" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary table" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+      summaryView === "table" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary table" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
           textAlign: i === 0 ? "left" : "right",
           position: i === summaryCols.length - 1 ? "sticky" : "static",
           right: i === summaryCols.length - 1 ? 0 : "auto",
@@ -14738,8 +14849,7 @@ Fill every field of the response schema. Rules:
         } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-table-bal-td", style: {
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))
-      ),
+        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))),
       yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, ariaLabel: `Line chart comparing ${(yoyMetrics.find((m) => m.id === yoyMetric) || {}).label} month by month across ${yearConfigs.map((y) => y.year).join(", ")}. The Annual Comparison table below carries the same figures.`, margin: { top: 4, right: 8, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
         Line,
         {
@@ -15242,60 +15352,94 @@ Fill every field of the response schema. Rules:
       s.title
     ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))));
   }
+    // The alerts page. See lowBalanceEpisodes for what an alert is and why it
+  // is not one row per event: this page's whole job is to say how many
+  // distinct things are wrong, and the old one said sixty when the answer
+  // was one.
   function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
   } }) {
-    const today = /* @__PURE__ */ new Date();
-    const next90 = new Date(today);
-    next90.setDate(today.getDate() + 90);
-    const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next90 && ev.balance < alertThreshold).sort((a, b) => a.date - b.date);
-    const critical = alerts.filter((a) => a.balance < 0);
-    const warning = alerts.filter((a) => a.balance >= 0);
-    const renderAlertRow = (ev) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: ev.id,
+    const episodes = lowBalanceEpisodes(flow, alertThreshold);
+    const dateLabel = (ev) => MONTHS[ev.month] + " " + ev.day;
+
+    const renderEpisode = (ep) => {
+      const worst = ep.tone === "critical";
+      // The sentence a person would say. Everything else on the card is
+      // detail under it, not a second version of it.
+      const headline = worst
+        ? "Below zero from " + dateLabel(ep.start)
+        : "Below your " + fmt(alertThreshold) + " buffer from " + dateLabel(ep.start);
+      const series = ep.events.map((e) => e.balance);
+      return /* @__PURE__ */ React.createElement("button", {
+        key: ep.id,
         type: "button",
-        onClick: gotoForecast,
-        className: "alert-row",
-        style: {
-          background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amberInk)"}`
-        }
+        className: "episode",
+        "data-tone": ep.tone,
+        onClick: gotoForecast
       },
-      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
-      /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, ev.desc), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
-      /* @__PURE__ */ React.createElement("div", { className: "text-right" }, /* @__PURE__ */ React.createElement("div", { className: "alert-row-balance", style: {
-        color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)"
-      } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
-      /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
-    );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setTab("today"),
-        className: "cf-btn cf-btn--secondary cf-btn--md"
-      },
-      "← Back"
-    )), alerts.length === 0 && findings.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
-      color: "var(--red)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev) => renderAlertRow(ev))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
-      color: "var(--amberInk)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))),
-    // Everything else the app has worked out and would otherwise only say on
-    // the one screen that computes it. "Centralised" has to mean you can come
-    // here and see the lot, not just the balance warnings.
-    findings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
-      /* @__PURE__ */ React.createElement("div", { className: "alert-section-label" },
-        /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 13 }), "Worth knowing"),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
-        /* @__PURE__ */ React.createElement("button", {
-          key: f.id, type: "button", className: "notice notice--sm alerts-finding",
-          "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
-        },
-          /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
-            /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
-          /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
-          /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192"))))));
+        /* @__PURE__ */ React.createElement("div", { className: "episode-head" },
+          /* @__PURE__ */ React.createElement("span", { className: "episode-title" }, headline),
+          /* @__PURE__ */ React.createElement("span", { className: "episode-days" },
+            ep.openEnded ? ep.days + "+ days" : ep.days + " days")),
+        /* @__PURE__ */ React.createElement("div", { className: "episode-low" },
+          /* @__PURE__ */ React.createElement("span", { className: "episode-low-amt" }, fmt(ep.low.balance)),
+          /* @__PURE__ */ React.createElement("span", { className: "episode-low-when" },
+            "lowest on ", dateLabel(ep.low))),
+        series.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "episode-spark", "aria-hidden": "true" },
+          /* @__PURE__ */ React.createElement(Sparkline, {
+            data: series, responsive: true, area: true, height: 34,
+            color: worst ? "var(--red)" : "var(--amberInk)"
+          })),
+        /* @__PURE__ */ React.createElement("div", { className: "episode-facts" },
+          // The one number that answers "what do I do about it".
+          /* @__PURE__ */ React.createElement("span", null,
+            /* @__PURE__ */ React.createElement("strong", null, fmt(ep.shortfall)),
+            " more would clear it"),
+          /* @__PURE__ */ React.createElement("span", null, ep.openEnded
+            ? "Still below at the end of the 90 days"
+            : "Back above on " + dateLabel(ep.recover))),
+        // What takes it under — the entries on the crossing day itself, not
+        // every entry that happens while it is already under.
+        ep.trigger.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "episode-trigger" },
+          ep.trigger.length === 1 ? "Takes it under: " : "Take it under: ",
+          ep.trigger.map((t, i) => /* @__PURE__ */ React.createElement("span", { key: t.id },
+            i > 0 ? ", " : "", /* @__PURE__ */ React.createElement("strong", null, t.desc),
+            " ", fmt(signedAmount(t))))),
+        /* @__PURE__ */ React.createElement("span", { className: "episode-cta" }, "See it on the forecast →"));
+    };
+
+    const nothing = episodes.length === 0 && findings.length === 0;
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page alerts-page" },
+      /* @__PURE__ */ React.createElement("div", { className: "alerts-head" },
+        /* @__PURE__ */ React.createElement("h2", { className: "alerts-title" },
+          episodes.length === 0 ? "Nothing to flag"
+            : episodes.length === 1 ? "1 thing to watch"
+            : episodes.length + " things to watch"),
+        /* @__PURE__ */ React.createElement("span", { className: "alerts-sub" },
+          "Next 90 days · buffer ", fmt(alertThreshold),
+          " · ",
+          /* @__PURE__ */ React.createElement("a", { href: "#/you/threshold", className: "link-primary" }, "change"))),
+      nothing && /* @__PURE__ */ React.createElement("div", { className: "alerts-clear" },
+        /* @__PURE__ */ React.createElement("span", { className: "alerts-clear-icon", "aria-hidden": "true" },
+          /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 30 })),
+        /* @__PURE__ */ React.createElement("span", { className: "alerts-clear-title" }, "All clear"),
+        /* @__PURE__ */ React.createElement("span", { className: "txl" },
+          "Your balance stays above ", fmt(alertThreshold), " for the next 90 days.")),
+      episodes.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "episode-list" },
+        episodes.map(renderEpisode)),
+      // Everything else the app has worked out and would otherwise only say on
+      // the one screen that computes it. "Centralised" has to mean you can come
+      // here and see the lot, not just the balance warnings.
+      findings.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null,
+        /* @__PURE__ */ React.createElement("h3", { className: "alerts-group-title" }, "Worth knowing"),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
+          /* @__PURE__ */ React.createElement("button", {
+            key: f.id, type: "button", className: "notice notice--sm alerts-finding",
+            "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
+          },
+            /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+              /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
+            /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
+            /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "→"))))));
   }
   // Delivery hour choices for background push. Labelled in 12-hour form
   // because that's how the alert time reads on the phone that receives it.
@@ -18873,7 +19017,9 @@ Fill every field of the response schema. Rules:
     }, [activeFlow, activeYear, debtData, debtExtraForFindings]);
     const appNotices = useMemo(() => {
       const out = [];
-      if (showLowBanner) {
+      // Not on the alerts page itself: there the banner is a summary of the
+      // page under it, and its "View alerts" action goes nowhere.
+      if (showLowBanner && tab !== "alerts") {
         const under = navLowInfo.min < 0
           ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
         out.push({
@@ -18913,7 +19059,7 @@ Fill every field of the response schema. Rules:
         });
       }
       return out;
-    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries]);
+    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):
@@ -19159,18 +19305,22 @@ Fill every field of the response schema. Rules:
       },
       "\u2715"
     )), (() => {
-      const today2 = /* @__PURE__ */ new Date();
-      const n90 = new Date(today2);
-      n90.setDate(today2.getDate() + 90);
-      const upcoming = activeFlow.filter((ev) => ev.date >= today2 && ev.date <= n90 && ev.balance < alertThresh);
-      const critical = upcoming.filter((ev) => ev.balance < 0);
-      const warning = upcoming.filter((ev) => ev.balance >= 0);
+      // Episodes, not events — the same count the alerts page shows. Counting
+      // events made the badge read "9+" for a single dip, because a household
+      // that goes under stays under and every entry after the crossing was
+      // counted as another alert.
+      const episodes = lowBalanceEpisodes(activeFlow, alertThresh);
+      if (!episodes.length) return null;
+      const critical = episodes.filter((e) => e.tone === "critical");
+      const warning = episodes.filter((e) => e.tone !== "critical");
       const hasCritical = critical.length > 0;
-      const hasWarning = warning.length > 0;
-      if (!hasCritical && !hasWarning) return null;
-      const count = hasCritical ? upcoming.length : warning.length;
+      const count = episodes.length;
       const color = hasCritical ? "var(--red)" : "var(--amberInk)";
-      const label = hasCritical ? hasWarning ? `${critical.length} critical, ${warning.length} warning alert${upcoming.length > 1 ? "s" : ""}` : `${critical.length} critical alert${critical.length > 1 ? "s" : ""}` : `${warning.length} warning alert${warning.length > 1 ? "s" : ""}`;
+      const label = hasCritical
+        ? warning.length
+          ? `${critical.length} critical, ${warning.length} warning alert${count > 1 ? "s" : ""}`
+          : `${critical.length} critical alert${critical.length > 1 ? "s" : ""}`
+        : `${warning.length} warning alert${warning.length > 1 ? "s" : ""}`;
       return /* @__PURE__ */ React.createElement(
         "button",
         {
