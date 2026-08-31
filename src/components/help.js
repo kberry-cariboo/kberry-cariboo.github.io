@@ -343,5 +343,5 @@
         className: "quicklink-pill"
       },
       s.title
-    ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))), /* @__PURE__ */ React.createElement("div", { className: "help-footer txl" }, "Build ", APP_VERSION));
+    ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))));
   }

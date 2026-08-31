@@ -95,7 +95,10 @@ catch { browser = await chromium.launch(); }
 const results = [];
 const check = (n, ok, d = '') => { results.push({ n, ok }); console.log((ok ? '  PASS ' : '  FAIL ') + n + (ok ? '' : '\n         ↳ ' + d)); };
 
-async function open({ payload = PAYLOAD, opts = {}, seed = null, hash = '#/settings' } = {}) {
+// Settings is a directory of routed pages now, so "open Settings" has to name
+// one. The alert threshold is the page these cases want: a single number field
+// is the cheapest edit that triggers the debounced autosave under test.
+async function open({ payload = PAYLOAD, opts = {}, seed = null, hash = '#/you/threshold' } = {}) {
   const ctx = await browser.newContext({ viewport:{width:1440,height:900} });
   const page = await ctx.newPage(); page.setDefaultTimeout(9000);
   await page.addInitScript(mkStub(payload, opts));
@@ -194,7 +197,7 @@ console.log('\n── 6. Another device saved first (CONFLICT) ──');
   await page.evaluate(() => { window.__cf.payload = Object.assign({}, window.__cf.payload, { savedAt: '2026-08-05T12:00:00Z', alertThreshold: 77700 }); });
   const before = await page.evaluate(()=>window.__cf.loads);
   // Make an edit to trigger the debounced autosave.
-  await page.locator('#sec-alerts input[type=number], input[type=number]').first().fill('900');
+  await page.locator('#sec-alert input[type=number]').first().fill('900');
   await page.waitForTimeout(4000);
   check('a conflicting save triggers a reload instead of clobbering', await page.evaluate(()=>window.__cf.loads) > before,
     `loads before=${before} after=${await page.evaluate(()=>window.__cf.loads)}`);
