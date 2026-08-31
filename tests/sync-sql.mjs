@@ -201,11 +201,13 @@ const transferRow = await page.locator('tr', { hasText: 'SQL Transfer In' }).fir
 if (!/\+\$50\.00/.test(transferRow)) fail('after a refresh the transfer no longer adds to the balance: ' + JSON.stringify(transferRow.replace(/\s+/g, ' ')));
 else pass('it still adds to the balance after a refresh');
 
-await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+// Settings is a directory of routed pages, so the holidays page is a route
+// rather than a section to scroll to.
+await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
 await page.waitForTimeout(2500);
 
 const section = page.locator('#sec-holidays');
-await section.scrollIntoViewIfNeeded();
+await section.waitFor({ state: 'visible', timeout: 20000 });
 await section.getByRole('button', { name: '+ Add holiday' }).click();
 await page.locator('#holiday-date').fill(`${year}-08-17`);
 await page.locator('#holiday-name').fill('Sync SQL Shutdown');
@@ -236,9 +238,9 @@ else pass('no holiday appears twice');
 
 // 3. It comes back from the database, not from this device.
 await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
-await page.goto(BASE + '#/settings', { waitUntil: 'load' });
+await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
 await page.waitForTimeout(2500);
-await page.locator('#sec-holidays').scrollIntoViewIfNeeded();
+await page.locator('#sec-holidays').waitFor({ state: 'visible', timeout: 20000 });
 const shown = await page.locator('#sec-holidays').innerText();
 if (!/Sync SQL Shutdown/.test(shown)) fail('the holiday did not come back from the database after local storage was cleared');
 else pass('reloaded from the database with local storage cleared');

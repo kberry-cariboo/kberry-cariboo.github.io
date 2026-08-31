@@ -87,6 +87,43 @@ npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
 node tests/regression.mjs     # the browser suite
 ```
 
+That is not everything CI runs. Six more suites go with it, and two of them
+need a database:
+
+```bash
+for t in payload-fields payload-migration year-copy cloud-sync help-shots; do
+  node "tests/$t.mjs"
+done
+```
+
+`tests/payload-roundtrip.mjs` and `tests/sync-sql.mjs` drive the real SQL in
+`supabase/schema.sql`. Both **exit 0 with a "skipped" line** when `CF_TEST_PG`
+is unset, so a run that never touched them looks exactly like a run that passed
+them — which is how a stale selector in `sync-sql.mjs` reached CI green-looking
+from here. Point them at a throwaway Postgres before you believe a green local
+run:
+
+```bash
+# initdb refuses to run as root; the CI job runs as an unprivileged user too
+su postgres -s /bin/bash -c 'initdb -D /tmp/cfpg/data -U postgres'
+su postgres -s /bin/bash -c "pg_ctl -D /tmp/cfpg/data -o '-p 5439 -k /tmp/cfpg' start"
+export PGHOST=/tmp/cfpg PGPORT=5439 PGUSER=postgres PGDATABASE=cf_scratch
+createdb cf_scratch
+# schema.sql expects a Supabase project; the auth shim CI uses is quoted in
+# .github/workflows/build.yml, above the "Load the schema" step
+psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
+psql -v ON_ERROR_STOP=1 -f supabase/schema-test.sql
+CF_TEST_PG=1 node tests/payload-roundtrip.mjs
+CF_TEST_PG=1 node tests/sync-sql.mjs
+```
+
+Playwright is resolved from a local install, `PLAYWRIGHT_LIB`, or the global
+npm root. CI installs the current version fresh (`npm install -g playwright`),
+so a global install here can be older than the one the suite will actually run
+against — a removed API passes locally and throws on the runner. If a browser
+test fails in CI and not here, compare `npm view playwright version` with what
+`npm root -g` holds before looking anywhere else.
+
 Both lint arguments matter. `no-unused-vars` and `no-undef` are off for the
 per-file pass — every `src/` file references things defined in its siblings,
 which only resolve once `build.js` concatenates them — so those two rules run
