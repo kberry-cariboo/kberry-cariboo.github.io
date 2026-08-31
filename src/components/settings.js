@@ -201,7 +201,7 @@
         sourceChip(row.source),
         /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(
           "button",
-          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--tiny", "aria-label": `Edit ${row.name}` },
+          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--compact", "aria-label": `Edit ${row.name}` },
           "Edit"
         ), /* @__PURE__ */ React.createElement(
           "button",
@@ -706,7 +706,7 @@
       onClick: () => setRemovingAccount(a),
       "aria-label": `Remove ${a.name}`
     }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
-      className: "cf-btn cf-btn--secondary",
+      className: "cf-btn cf-btn--secondary cf-btn--md",
       onClick: () => {
         setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }]);
         logActivity("account", "Added an account");
@@ -1003,7 +1003,7 @@
           setInviteBusy(false);
         },
         disabled: inviteBusy,
-        className: "cf-btn cf-btn--primary"
+        className: "cf-btn cf-btn--primary cf-btn--md"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
     ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
@@ -1024,7 +1024,7 @@
           // export, and the export itself already succeeded.
         }
       }
-    }, className: "cf-btn cf-btn--primary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
+    }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -1254,7 +1254,7 @@
       "button",
       {
         onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger cf-btn--dangerwide"
+        className: "cf-btn cf-btn--danger cf-btn--md cf-btn--dangerwide"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
       "Reset Local Cache"

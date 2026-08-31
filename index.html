@@ -81,10 +81,11 @@
            same line as it. */
         .checkbox-help-row{display:flex;align-items:center;}
         /* ── Settings → Statutory Holidays ── */
-        .holiday-year-pill{font-family:var(--font-mono);font-size:12px;font-weight:600;
-          padding:5px 12px;min-height:32px;border-radius:8px;cursor:pointer;
-          border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);}
-        .holiday-year-pill[data-active="true"]{background:var(--navy);border-color:var(--navy);color:#fff;}
+        /* A year selector is a pill, and the app already has one — .cf-pill,
+           whose [data-active] state is the same state this was painting navy
+           by hand. All that is left here is the mono face, which is the one
+           thing about a year that is not like every other pill. */
+        .holiday-year-pill{font-family:var(--font-mono);}
         .holiday-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
         .holiday-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
           padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bgCard);}
@@ -99,8 +100,7 @@
         .holiday-chip--manual{background:var(--accentLt);color:var(--accent);border-color:transparent;}
         .holiday-chip--published{background:var(--greenLt);color:var(--greenDk);border-color:transparent;}
         .holiday-chip--optional{background:var(--amberLt);color:var(--amberInk);border-color:transparent;}
-        .holiday-remove-btn{font-family:var(--font-ui);font-size:11px;font-weight:600;
-          padding:4px 10px;min-height:30px;border-radius:6px;cursor:pointer;
+        .holiday-remove-btn{font-family:var(--font-ui);font-weight:600;cursor:pointer;
           border:1px solid transparent;background:transparent;color:var(--red);}
         .holiday-remove-btn:hover{background:var(--redLt);}
         .holiday-form{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--stripe);}
@@ -194,9 +194,21 @@
              (no modifier) — form and dialog buttons
 
            Non-size properties (weight, border, icon gaps) stay with the
-           modifier that owns them, below and beside their components. */
-        .cf-btn--compact,.cf-btn--micro,.cf-btn--yearremove{font-size:11px;padding:4px 10px;border-radius:6px;}
-        .cf-btn--sm,.cf-btn--xs,.cf-btn--tiny,.cf-btn--md,.cf-btn--showhide{font-size:12px;padding:7px 14px;}
+           modifier that owns them, below and beside their components — which
+           is also the trap. A button wearing only one of those (--iconrow,
+           --dangerwide) names no step and falls silently to the no-modifier
+           one, so the same page action came out 13px on Accounts and 12px on
+           Budget Years. A role is not a size: every button needs one of each.
+
+           The five classes that used to restate a step under their own name
+           now share these selectors instead — .holiday-remove-btn,
+           .year-active-btn and .copy-year-btn on dense, .reset-targets-btn on
+           base, and .holiday-year-pill folded into .cf-pill, whose
+           [data-active] state it had been painting navy by hand. */
+        .cf-btn--compact,.cf-btn--micro,.cf-btn--yearremove,
+        .holiday-remove-btn,.year-active-btn,.copy-year-btn{font-size:11px;padding:4px 10px;border-radius:6px;}
+        .cf-btn--sm,.cf-btn--xs,.cf-btn--tiny,.cf-btn--md,.cf-btn--showhide,
+        .reset-targets-btn{font-size:12px;padding:7px 14px;}
         .cf-btn--wide,.cf-btn--action{font-size:12px;padding:8px 18px;}
         /* Layout helpers */
         .cf-hidden{display:none!important;}
@@ -977,8 +989,8 @@
         .year-number{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);min-width:52px;}
         .openbal-label{font-size:11px;color:var(--textMid);white-space:nowrap;}
         .openbal-input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;max-width:100%;min-width:0;flex:0 1 120px;}
-        .year-active-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;}
-        .copy-year-btn{font-size:11px;color:var(--primaryInk);background:none;border:1px solid var(--primary);cursor:pointer;padding:4px 10px;border-radius:6px;white-space:nowrap;}
+        .year-active-btn{font-weight:600;border:1px solid var(--border);cursor:pointer;}
+        .copy-year-btn{font-weight:600;color:var(--primaryInk);background:none;border:1px solid var(--primary);cursor:pointer;white-space:nowrap;}
         .newyear-input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;}
         .cf-btn--iconrow{display:flex;align-items:center;gap:8px;}
         .backup-msg{font-size:12px;margin-top:10px;}
@@ -1023,7 +1035,8 @@
         .bio-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
         .bio-busy-text{font-size:12px;color:var(--textLt);}
         .error-text-mt6{font-size:12px;color:var(--red);margin-top:6px;}
-        .reset-targets-btn{font-size:13px;font-weight:600;padding:9px 20px;border-radius:8px;border:1px solid var(--primary);cursor:pointer;background:var(--primary);color:#fff;}
+        .reset-targets-btn{font-family:var(--font-ui);font-weight:600;border-radius:7px;cursor:pointer;
+          border:1px solid var(--primary);background:var(--primary);color:#fff;}
         .success-text-mt10{font-size:12px;color:var(--greenDk);margin-top:10px;}
         .danger-card{margin-bottom:20px;border:1px solid var(--redLt);}
         .cf-btn--dangerwide{border:1px solid var(--red);display:inline-flex;align-items:center;gap:6px;}
@@ -1640,9 +1653,10 @@
           border-radius:9px;background:#fff;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
         .cf-switch[aria-checked="true"] .cf-switch-knob{left:23px;}
         /* Pill segmented controls (month picker, view toggles) */
-        .cf-pill{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:none;
+        .cf-pill,.holiday-year-pill{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:none;
           cursor:pointer;flex-shrink:0;background:var(--border);color:var(--textMid);}
-        .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"]{background:var(--primary);color:#fff;}
+        .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"],
+        .holiday-year-pill[data-active="true"]{background:var(--primary);color:#fff;}
         .cf-pill--dashed{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;
           border:1.5px dashed var(--primary);cursor:pointer;flex-shrink:0;background:transparent;color:var(--primaryInk);}
         /* Compact variant for pill toggles docked in a card header (YoY metric,
@@ -4879,7 +4893,7 @@ document.addEventListener('DOMContentLoaded',function(){
   const HELP_SHOTS = {
     "settings-years": {
       "w": 917,
-      "h": 151
+      "h": 109
     },
     "entry-form": {
       "w": 680,
@@ -4907,7 +4921,7 @@ document.addEventListener('DOMContentLoaded',function(){
     },
     "dashboard-upcoming": {
       "w": 917,
-      "h": 228
+      "h": 194
     },
     "plan-goals": {
       "w": 917,
@@ -4915,7 +4929,7 @@ document.addEventListener('DOMContentLoaded',function(){
     },
     "settings-backup": {
       "w": 917,
-      "h": 102
+      "h": 60
     }
   };
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
@@ -15431,7 +15445,7 @@ Fill every field of the response schema. Rules:
         sourceChip(row.source),
         /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(
           "button",
-          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--tiny", "aria-label": `Edit ${row.name}` },
+          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--compact", "aria-label": `Edit ${row.name}` },
           "Edit"
         ), /* @__PURE__ */ React.createElement(
           "button",
@@ -15936,7 +15950,7 @@ Fill every field of the response schema. Rules:
       onClick: () => setRemovingAccount(a),
       "aria-label": `Remove ${a.name}`
     }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
-      className: "cf-btn cf-btn--secondary",
+      className: "cf-btn cf-btn--secondary cf-btn--md",
       onClick: () => {
         setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }]);
         logActivity("account", "Added an account");
@@ -16233,7 +16247,7 @@ Fill every field of the response schema. Rules:
           setInviteBusy(false);
         },
         disabled: inviteBusy,
-        className: "cf-btn cf-btn--primary"
+        className: "cf-btn cf-btn--primary cf-btn--md"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
     ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
@@ -16254,7 +16268,7 @@ Fill every field of the response schema. Rules:
           // export, and the export itself already succeeded.
         }
       }
-    }, className: "cf-btn cf-btn--primary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
+    }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -16484,7 +16498,7 @@ Fill every field of the response schema. Rules:
       "button",
       {
         onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger cf-btn--dangerwide"
+        className: "cf-btn cf-btn--danger cf-btn--md cf-btn--dangerwide"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
       "Reset Local Cache"

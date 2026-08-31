@@ -1459,6 +1459,53 @@ await test('contrast: every text node meets WCAG AA in both themes', async () =>
 // The breakpoints were width-only, so rotating a phone crossed into the desktop
 // layout: bottom nav gone, a 107px header taking 27% of a 390px-tall viewport,
 // and Flow's first ledger row off screen at y=431.
+// Splitting Settings into pages left the controls on those pages as they were,
+// and they had drifted: ten distinct shapes across the seventeen, of which six
+// were plain buttons that should have been two. Five classes restated a step
+// of the button scale under their own name (.holiday-remove-btn,
+// .year-active-btn, .copy-year-btn on dense, .reset-targets-btn on base) or
+// hand-painted a state the pill vocabulary already had (.holiday-year-pill),
+// and several buttons wore only a non-size modifier — --iconrow, --dangerwide
+// — which names no step, so they fell to the no-modifier one and the same page
+// action came out 13px on Accounts and 12px on Budget Years.
+//
+// The scale is the rule; this is the check that Settings still obeys it. It
+// counts geometry, not class names, because the whole failure was classes that
+// looked distinct and rendered identically — and the reverse.
+await test('settings: its buttons resolve to the two steps of the scale', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const PAGES = ['accounts', 'years', 'categories', 'money', 'holidays', 'reset', 'appearance',
+    'threshold', 'notifications', 'household', 'backup', 'sync', 'templates', 'activity',
+    'ai', 'security', 'danger'];
+  const shapes = new Map();
+  for (const id of PAGES) {
+    await page.goto(BASE + '#/you/' + id, { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    const rows = await page.evaluate(() => [...document.querySelectorAll(
+      // Buttons proper. The other affordances on these pages — the reorder
+      // arrows, the row-as-button, the help tip, the switch, the year pill —
+      // are deliberately not this shape and are not counted as it.
+      '.set-detail .cf-btn, .set-detail .holiday-remove-btn, .set-detail .year-active-btn,'
+      + ' .set-detail .copy-year-btn, .set-detail .reset-targets-btn')]
+      .filter((e) => e.getClientRects().length)
+      .map((e) => { const c = getComputedStyle(e);
+        return { key: c.borderRadius + '|' + c.fontSize + '|' + c.fontWeight + '|' + c.padding,
+          cls: e.className.toString().slice(0, 40),
+          txt: (e.textContent || '').trim().slice(0, 14) }; }));
+    for (const r of rows) {
+      if (!shapes.has(r.key)) shapes.set(r.key, []);
+      const ex = shapes.get(r.key);
+      if (ex.length < 2) ex.push(id + ' "' + r.txt + '" (' + r.cls + ')');
+    }
+  }
+  if (shapes.size === 0) throw new Error('no settings buttons found — the selector has drifted');
+  if (shapes.size > 2) {
+    throw new Error(shapes.size + ' button shapes across Settings: '
+      + [...shapes].map(([k, v]) => k + ' — ' + v.join(', ')).join(' / '));
+  }
+  await ctx.close();
+});
+
 // The nav-clearance rule that keeps the footer out from under the bottom nav
 // was written for the landscape fix and landed inside the (max-height:500px)
 // block, so it only ever ran on a rotated phone. In portrait the scroller had
