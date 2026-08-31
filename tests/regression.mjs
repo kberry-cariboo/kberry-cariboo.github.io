@@ -1506,6 +1506,111 @@ await test('settings: its buttons resolve to the two steps of the scale', async 
   await ctx.close();
 });
 
+// Today's panels became full-bleed bands and every other screen kept its inset
+// radius-10 cards, so a panel was one thing on one screen and another on the
+// next — three padding shapes across the app (24 / 16 / 0). The band treatment
+// is every view's now, and this is what holds it there.
+await test('panels: every view draws them as full-bleed bands, one padding scale', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const problems = [];
+  const pads = new Set();
+  for (const hash of ['#/today', '#/flow/list', '#/flow/calendar', '#/flow/curve', '#/flow/entries',
+                      '#/envelopes', '#/plan/goals', '#/plan/debt', '#/plan/strategy', '#/help']) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const r = await page.evaluate(() => {
+      const sc = document.querySelector('.app-scroll');
+      const vw = sc.clientWidth;
+      return { slop: sc.scrollWidth - vw, vw,
+        cards: [...document.querySelectorAll('main .cf-page > .cf-card')]
+          .filter((e) => e.getClientRects().length)
+          .map((e) => { const b = e.getBoundingClientRect(); const c = getComputedStyle(e);
+            return { cls: e.className.slice(0, 26), l: Math.round(b.left), r: Math.round(b.right),
+              radius: c.borderRadius, pad: c.paddingLeft + '/' + c.paddingRight }; }) };
+    });
+    if (r.slop > 1) problems.push(hash + ': scrolls sideways by ' + r.slop + 'px');
+    for (const c of r.cards) {
+      if (c.l > 0.5 || c.r < r.vw - 0.5) problems.push(hash + ': ' + c.cls + ' is inset (' + c.l + '→' + c.r + ' of ' + r.vw + ')');
+      if (parseFloat(c.radius) > 0.5) problems.push(hash + ': ' + c.cls + ' still has a ' + c.radius + ' radius');
+      pads.add(c.pad);
+    }
+  }
+  // 16px for a band, 0 for one wrapping a table or list that draws its own
+  // edges. A third value means a panel has opted out again.
+  const stray = [...pads].filter((p) => p !== '16px/16px' && p !== '0px/0px');
+  if (stray.length) problems.push('panel paddings beyond the two: ' + stray.join(', '));
+  if (problems.length) throw new Error(problems.slice(0, 5).join(' | '));
+  await ctx.close();
+});
+
+// Two screens each carried a bar restating something the alerts centre already
+// says: Today's spending insight, and Forecast's "N events below your
+// threshold" — which counted events, the thing the alerts page stopped doing.
+// The centre is where they live; the screens that compute them do not also
+// announce them.
+await test('notices: the screens that compute a finding do not also announce it', async () => {
+  const { ctx, page } = await ctxPage({ touch: true,
+    stub: (t) => t.replace(/openingBalance: 1250000/g, 'openingBalance: -4200000') });
+  const problems = [];
+  for (const hash of ['#/today', '#/flow/curve', '#/plan/debt', '#/envelopes']) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(1100);
+    const found = await page.evaluate(() => {
+      const stack = document.querySelector('.notice-stack');
+      // The app-level stack is the one bar a view is allowed to carry, and it
+      // is not the view's own.
+      return [...document.querySelectorAll('main .notice')]
+        .filter((e) => !stack || !stack.contains(e))
+        .map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 44));
+    });
+    for (const f of found) problems.push(hash + ': "' + f + '"');
+  }
+  if (problems.length) throw new Error('page-level notices outside the stack: ' + problems.join(' | '));
+  // And the insight is still reachable — in the centre.
+  await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
+  await page.waitForTimeout(1100);
+  const inCentre = await page.evaluate(() => [...document.querySelectorAll('.alerts-finding')]
+    .map((e) => (e.innerText || '').replace(/\s+/g, ' ')));
+  if (!inCentre.some((f) => /spending/i.test(f))) {
+    throw new Error('the spending insight left Today without arriving in the centre: ' + inCentre.join(' | '));
+  }
+  await ctx.close();
+});
+
+// The heading and the export toolbar sat on the page ground above a white
+// table, so one widget read as a label floating over a card.
+await test('monthly summary: its heading and toolbar are inside its card', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const r = await page.evaluate(() => {
+    const card = document.querySelector('.summary-card');
+    if (!card) return { missing: true };
+    const head = card.querySelector(':scope > .summary-head');
+    const title = head && head.querySelector('.cf-section-title-text, .section-title');
+    const bar = head && head.querySelector('.summary-toolbar-row');
+    const cb = card.getBoundingClientRect();
+    const tb = title && title.getBoundingClientRect();
+    // The table itself is wider than the phone and scrolls inside .hscroll;
+    // what has to reach the card's edges is that scroller, not the table.
+    const scroller = card.querySelector('.hscroll') || card.querySelector('table');
+    return { missing: false, head: !!head, title: !!title, bar: !!bar,
+      inside: tb ? tb.top >= cb.top - 0.5 && tb.bottom <= cb.bottom + 0.5 : false,
+      // A flat card wraps its table flush, so the rows still reach the edges.
+      pad: getComputedStyle(card).paddingLeft,
+      tableFull: scroller ? Math.round(scroller.getBoundingClientRect().width) === Math.round(cb.width) : null,
+      // Nothing of the widget left outside it.
+      strays: document.querySelectorAll('main .cf-page > .summary-toolbar-row').length };
+  });
+  if (r.missing) throw new Error('no .summary-card on Today');
+  if (!r.head || !r.title || !r.bar) throw new Error('the card does not hold both the heading and the toolbar: ' + JSON.stringify(r));
+  if (!r.inside) throw new Error('the heading renders outside its card');
+  if (r.strays) throw new Error(r.strays + ' summary toolbar(s) still on the page ground');
+  if (r.pad !== '0px') throw new Error('the flat card gained ' + r.pad + ' of padding, insetting its table');
+  if (r.tableFull === false) throw new Error('the table\'s scroller no longer reaches the card edges');
+  await ctx.close();
+});
+
 // The nav-clearance rule that keeps the footer out from under the bottom nav
 // was written for the landscape fix and landed inside the (max-height:500px)
 // block, so it only ever ran on a rotated phone. In portrait the scroller had

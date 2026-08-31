@@ -1544,7 +1544,11 @@
         .dash-year-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
         .dash-year-label{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);}
         .yoy-empty-wrap{background:var(--stripe);border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;}
-        .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+        .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;}
+        /* .card-flat is padding:0 so the table runs to the card's edges; the
+           header it now carries has to put its own padding back. */
+        .summary-card>.summary-head{padding:16px 16px 12px;}
+        .summary-card>.summary-head .cf-section-title-text{margin-bottom:10px;}
         .heat-inc-td{font-weight:600;color:var(--greenDk);}
         .heat-exp-td{font-weight:600;color:var(--red);}
         .dash-heat-bal-td{font-weight:700;padding:9px 16px;text-align:right;position:sticky;right:0;box-shadow:-6px 0 8px -6px rgba(0,0,0,0.25);}
@@ -2162,48 +2166,71 @@
           .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px!important;}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden!important;max-width:100%!important;}
-          /* Today's panels were inset cards: a 10px page gutter, then a 1px
-             border, then 24px of card padding on each side — 18% of a 390px
-             phone spent on chrome before a figure is drawn, and the reason a
-             chart inside one reads as a widget inside a widget. Every other
-             list went full-bleed during the redesign (ledger rows, debts,
-             goals, envelopes) and Today was the last screen still boxed, so
-             its full-width panels join them: bands separated by a hairline,
-             on one padding scale instead of the three (24 / 16 / 14) they
-             carried between them. Content width goes 320px → 362px.
+          /* Panels were inset cards: a 10px page gutter, then a 1px border,
+             then 24px of card padding on each side — 18% of a 390px phone
+             spent on chrome before a figure is drawn, and the reason a chart
+             inside one reads as a widget inside a widget. Every list went
+             full-bleed during the redesign (ledger rows, debts, goals,
+             envelopes) while the cards around them did not, so the panels
+             join them: bands separated by a hairline, on one padding scale
+             instead of the three (24 / 16 / 14) they carried between them.
+             Content width goes 320px → 358px.
 
-             The tile grids stay inset. A tile with no side border, sitting
-             beside another tile, stops reading as a tile — so the three
-             glance figures and the four KPIs keep their card shape and the
-             page keeps its gutter around them.
-
-             16px, not the 10px gutter: it is what .debt-item and the goal
-             rows already use at this width, and a band whose text starts
-             where every other full-bleed row's text starts is the point of
-             moving Today onto the same pattern. */
-          .dash-page>.cf-card,.dash-page>.chart-grid{
+             This started on Today and is now every view, because a panel that
+             is a band on one screen and an inset card on the next is two
+             answers to the same question. .cf-card--flush keeps its zero
+             padding: it wraps a table or a list that draws its own edges. */
+          main .cf-page>.cf-card,
+          main .cf-page>.chart-grid,
+          main .cf-page>.budget-list-lens>.cf-card{
             margin-left:calc(-1 * var(--container-gutter))!important;
             margin-right:calc(-1 * var(--container-gutter))!important;
             max-width:none!important;}
-          .dash-page>.cf-card,.dash-page>.chart-grid>.cf-card{
+          main .cf-page>.cf-card,
+          main .cf-page>.chart-grid>.cf-card,
+          main .cf-page>.budget-list-lens>.cf-card{
             border-radius:0!important;border-left:0!important;border-right:0!important;
             padding:16px!important;}
+          /* Forecast's two control blocks give up their card chrome entirely
+             on a phone — that was the §2.2 fix that took 751px of chrome down
+             to 619px, and putting the band's padding back would undo it. */
+          main .cf-page>.cf-card.forecast-setup{padding:0!important;
+            background:none!important;border:0!important;box-shadow:none!important;}
+          /* Lists that run to their card's edges do it with a negative margin,
+             which has to match the padding above or it overshoots — .goal-list
+             and .debt-list were written against the old 24px and scrolled the
+             page sideways by 8px once the band became 16px. */
+          main .cf-page>.cf-card .goal-list,
+          main .cf-page>.cf-card .debt-list{margin-left:-16px;margin-right:-16px;}
+          main .cf-page>.cf-card .goal-list>.goal-row-cursor,
+          main .cf-page>.cf-card .debt-list>.debt-item{padding-left:16px;padding-right:16px;}
+          /* .cf-card--flush and .card-flat wrap a table or a list that draws
+             its own edges, so the band's 16px would inset rows that are meant
+             to reach it — and on the monthly summary that cost enough width to
+             clip the Income column heading. Their own headers pad themselves. */
+          main .cf-page>.cf-card--flush,
+          main .cf-page>.card-flat,
+          main .cf-page>.chart-grid>.cf-card--flush,
+          main .cf-page>.budget-list-lens>.cf-card--flush{padding:0!important;}
+          /* Settings detail pages strip the card entirely — the page already
+             names itself — so they opt out rather than becoming bands. */
+          .set-detail>.cf-card{margin-left:0!important;margin-right:0!important;
+            border:0!important;padding:0!important;}
           /* The tile grids — the three at-a-glance figures, the four annual
              KPIs — become one band apiece rather than a raft of little cards
-             floating in the gutter between two full-width ones, which is what
-             they looked like once everything around them went edge to edge.
+             floating in the gutter between two full-width ones.
 
              The dividers are the grid's own 1px gaps with the grid painted
              --border and each cell painting --bgCard back over it. A cell
              border would have to know how many columns it is in — three
              across at 768px, two at 480, and a lone last tile spanning both —
              and the gap does not. */
-          .dash-page>.glance-grid,.dash-page>.kpi-grid-4{
+          main .cf-page>.glance-grid,main .cf-page>.kpi-grid-4{
             margin-left:calc(-1 * var(--container-gutter))!important;
             margin-right:calc(-1 * var(--container-gutter))!important;
             max-width:none!important;gap:1px!important;background:var(--border);
             border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-          .dash-page>.glance-grid>*,.dash-page>.kpi-grid-4>*{
+          main .cf-page>.glance-grid>*,main .cf-page>.kpi-grid-4>*{
             border:0!important;border-radius:0!important;box-shadow:none!important;
             padding:14px 16px!important;background:var(--bgCard)!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
