@@ -4,7 +4,7 @@
   const HELP_SHOTS = {
     "settings-years": {
       "w": 917,
-      "h": 151
+      "h": 109
     },
     "entry-form": {
       "w": 680,
@@ -32,7 +32,7 @@
     },
     "dashboard-upcoming": {
       "w": 917,
-      "h": 228
+      "h": 194
     },
     "plan-goals": {
       "w": 917,
@@ -40,6 +40,6 @@
     },
     "settings-backup": {
       "w": 917,
-      "h": 102
+      "h": 55
     }
   };

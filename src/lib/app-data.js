@@ -527,6 +527,12 @@ const RUNWAY_DAYS = 90;
   // it to calendar, the view that replaced it.
   const ROUTE_FLOW_SUBS = ["list", "calendar", "curve", "entries"];
   const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt", "insights"];
+  // Settings is a directory of pages rather than one long scroll, so each of
+  // them needs a route: the back button has to work, and a link to "where you
+  // change the alert threshold" has to be a link.
+  const ROUTE_YOU_SUBS = ["accounts", "years", "categories", "money", "holidays",
+    "reset", "appearance", "threshold", "notifications", "household", "backup",
+    "sync", "templates", "activity", "ai", "security", "danger"];
   // Every route the app has ever published, pointed at where it lives now.
   // Bookmarks, shared links and home-screen shortcuts outlive an information
   // architecture, and a link that silently lands on the home screen is worse
@@ -667,6 +673,7 @@ const RUNWAY_DAYS = 90;
       tab: ROUTE_TABS.includes(t) ? t : null,
       flowSub: ROUTE_FLOW_SUBS.includes(s) ? s : null,
       planSub: ROUTE_PLAN_SUBS.includes(s) ? s : null,
+      youSub: ROUTE_YOU_SUBS.includes(s) ? s : null,
       redirected: !!mapped
     };
   }

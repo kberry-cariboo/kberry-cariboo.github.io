@@ -201,7 +201,7 @@
         sourceChip(row.source),
         /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(
           "button",
-          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--tiny", "aria-label": `Edit ${row.name}` },
+          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--compact", "aria-label": `Edit ${row.name}` },
           "Edit"
         ), /* @__PURE__ */ React.createElement(
           "button",
@@ -309,7 +309,8 @@
       })
     );
   }
-  function SettingsView({ categories, setCategories, categoryColors = {}, setCategoryColors = () => {
+  function SettingsView({ youSub = null, setYouSub = () => {
+  }, categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
   }, enableNotifications = async () => {
   }, disableNotifications = async () => {
@@ -346,7 +347,6 @@
     const [yearMsg, setYearMsg] = useState("");
     const [pendingRestore, setPendingRestore] = useState(null);
     const [confirmWipe, setConfirmWipe] = useState(false);
-    const [settingsPage, setSettingsPage] = useState("general");
     const [removingAccount, setRemovingAccount] = useState(null);
     // What each account's name was when its field took focus, so a rename is
     // logged once on blur rather than once per keystroke.
@@ -516,6 +516,11 @@
     };
     const delCat = (i) => {
       const name = categories[i];
+      // Remove is reached from inside the row's editor, so close it: leaving
+      // editIdx on i leaves the editor open over whichever category slid up
+      // into that position, which reads as having renamed the wrong one.
+      setEditIdx(null);
+      setEditColor(null);
       // Snapshot both lists before touching either: a category's colour is
       // stored separately from its name, so restoring only the name brings it
       // back grey.
@@ -573,167 +578,23 @@
       [arr[i], arr[j]] = [arr[j], arr[i]];
       setCategories(arr);
     };
-    // One list, read by the index strip and by the sticky section bar.
-    const GENERAL_SECTIONS = [
-      // Order matches the sections as they appear down the page, which is
-      // alphabetical by heading — so the strip is also the index you would
-      // scan for a setting whose name you know.
-      ["sec-accounts", "Accounts"],
-      ["sec-ai-key", "AI Key"],
-      ["sec-alert", "Alert Threshold"],
-      ["sec-appearance", "Appearance"],
-      ["sec-years", "Budget Years"],
-      ["sec-money", "Currency & Format"],
-      ["sec-backup", "Data Backup"],
-      ["sec-categories", "Manage Categories"],
-      ["sec-notifications", "Notifications"],
-      ["sec-security", "Security"],
-      ["sec-holidays", "Statutory Holidays"],
-      ...sbConfigured && household ? [["sec-sync", "Supabase Sync"]] : [],
-      ["sec-reset", "Target Reset"],
-      ["sec-danger", "Danger Zone"]
-    ];
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-toprow" }, /* @__PURE__ */ React.createElement("div", {
-      className: "settings-page-pills"
-    }, [
-      { id: "general", icon: "settings", label: "General" },
-      { id: "household", icon: "users", label: "Household" },
-      { id: "templates", icon: "clipboard", label: "Templates" },
-      { id: "audit", icon: "clock", label: "Activity" }
-    ].map(({ id, icon, label }) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: id,
-        onClick: () => setSettingsPage(id),
-        className: "settings-pill-btn",
-        style: {
-          background: settingsPage === id ? "var(--bgCard)" : "transparent",
-          color: settingsPage === id ? "var(--text)" : "var(--textMid)",
-          boxShadow: settingsPage === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none"
-        }
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 14 }),
-      label
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" }, /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help"), /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION))), settingsPage === "general" && /* @__PURE__ */ React.createElement("div", { className: "settings-cards" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: GENERAL_SECTIONS.map(([id, title]) => ({ id, title })), label: "Settings" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, GENERAL_SECTIONS.map(([anchorId, label]) => /* @__PURE__ */ React.createElement(
-      "a",
-      {
-        key: anchorId,
-        href: `#${anchorId}`,
-        onClick: (e) => {
-          e.preventDefault();
-          const el = document.getElementById(anchorId);
-          if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-        },
-        className: "quicklink-pill"
-      },
-      label
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-accounts", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Where the household\u2019s money lives. A credit card is an ordinary account here \u2014 its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget." }, "Accounts"), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, accounts.map((a, i) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "account-row" }, /* @__PURE__ */ React.createElement("input", {
-      "aria-label": `Name of account ${i + 1}`,
-      className: "field-input account-name",
-      value: a.name,
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x)),
-      // Recorded on blur, not on every keystroke: a rename would otherwise
-      // write one log line per character typed.
-      onFocus: (e) => {
-        renamedFrom.current[a.id] = e.target.value;
-      },
-      onBlur: (e) => {
-        const was = renamedFrom.current[a.id];
-        delete renamedFrom.current[a.id];
-        if (was !== void 0 && was !== e.target.value) logActivity("account", `Renamed the account ${was} to ${e.target.value}`);
-      }
-    }), /* @__PURE__ */ React.createElement("select", {
-      "aria-label": `Kind of ${a.name}`,
-      className: "field-input account-kind",
-      value: a.kind || "chequing",
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { kind: e.target.value }) : x))
-    }, ACCOUNT_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label))), i === 0 ? /* @__PURE__ */ React.createElement("span", { className: "txl account-opening-note" }, "Opens with the rest \u2014 ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(openingShares[a.id] || 0))) : /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
-      type: "number",
-      inputMode: "decimal",
-      step: "0.01",
-      "aria-label": `Opening balance of ${a.name}`,
-      className: "field-input field-input--mono account-opening",
-      value: centsToDollars(Number.isFinite(a.opening) ? a.opening : 0),
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { opening: dollarsToCents(e.target.value) }) : x))
-    })), accounts.length > 1 && i > 0 && /* @__PURE__ */ React.createElement("button", {
-      className: "cf-btn cf-btn--secondary cf-btn--micro",
-      onClick: () => setRemovingAccount(a),
-      "aria-label": `Remove ${a.name}`
-    }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
-      className: "cf-btn cf-btn--secondary",
-      onClick: () => {
-        setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }]);
-        logActivity("account", "Added an account");
-      }
-    }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
-      title: `Remove ${removingAccount.name}?`,
-      message: (() => {
-        const n = entries.filter((e) => accountIdOf(e) === removingAccount.id).length;
-        const t = entries.filter((e) => e.toAccountId === removingAccount.id).length;
-        return n + t === 0 ? "Nothing is filed under this account, so removing it changes no figures." : `${n + t} ${n + t === 1 ? "entry moves" : "entries move"} back to ${accountName(accounts, (accounts[0] || {}).id)}. No entry is deleted and no amount changes \u2014 they simply stop being separated out.`;
-      })(),
-      confirmLabel: "Remove",
-      onCancel: () => setRemovingAccount(null),
-      onConfirm: () => {
-        // Entries are re-homed rather than deleted: an account is a label on
-        // money, and removing the label must not remove the money.
-        setEntries((prev) => prev.map((e) => {
-          if (accountIdOf(e) !== removingAccount.id && e.toAccountId !== removingAccount.id) return e;
-          const next = __spreadValues({}, e);
-          if (accountIdOf(e) === removingAccount.id) delete next.accountId;
-          if (e.toAccountId === removingAccount.id) delete next.toAccountId;
-          return next;
-        }));
-        setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
-        logActivity("account", `Removed the account ${removingAccount.name}`);
-        setRemovingAccount(null);
-      }
-    })), /* @__PURE__ */ React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
-      "a",
-      {
-        href: "https://console.anthropic.com",
-        target: "_blank",
-        rel: "noopener noreferrer",
-        className: "link-primary"
-      },
-      "console.anthropic.com"
-    ), "."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: showAiKey ? "text" : "password",
-        "aria-label": "Anthropic API Key",
-        value: aiApiKey,
-        onChange: (e) => setAiApiKey(e.target.value),
-        placeholder: "sk-ant-api03-...",
-        className: "cf-text-mono-13 ai-key-input"
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowAiKey((v) => !v),
-        className: "cf-btn cf-btn--secondary cf-btn--showhide"
-      },
-      showAiKey ? "Hide" : "Show"
-    ), aiApiKey.trim() && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setAiApiKey(""),
-        className: "clear-key-btn"
-      },
-      "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))), /* @__PURE__ */ React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, moneySymbol()), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "alert-threshold",
-        type: "number",
-        inputMode: "decimal",
-        step: "100",
-        min: "0",
-        className: "settings-input w-120",
-        value: centsToDollars(alertThreshold),
-        onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
-      }
-    )))), /* @__PURE__ */ React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))), /* @__PURE__ */ React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), sortedYears.map((yc) => {
+    // ── Settings is a directory, not a scroll ────────────────────────────
+    //
+    // It was 7.5 phone screens: fourteen cards down one page, with three more
+    // pages behind pills at the top, a sticky section bar and a fourteen-pill
+    // index strip both trying to make that scrollable. Two of those cards were
+    // 56% of the page on their own — Manage Categories at 94 controls and
+    // Statutory Holidays at 31 — because they are management screens that had
+    // been filed as sections.
+    //
+    // Each setting is its own page now, and the root is a directory of rows
+    // that each show what the setting is currently *set to*. That is the part
+    // the scroll never gave you: you had to reach a card to find out what it
+    // said. Every page is routed (#/you/categories), so Back works, a link to
+    // one is a link, and the section bar and index strip are both gone — a
+    // directory needs no index.
+    const SETTINGS_PAGES = {
+      years: { title: "Budget years", value: () => sortedYears.map((y) => y.year).join(", "), render: () => React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), sortedYears.map((yc) => {
       var _a;
       return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
@@ -811,7 +672,167 @@
         },
         onCancel: () => setConfirmCopyYear(null)
       }
-    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
+    )) },
+      accounts: { title: "Accounts", value: () => accounts.length + (accounts.length === 1 ? " account" : " accounts"), render: () => React.createElement(Card, { id: "sec-accounts", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Where the household\u2019s money lives. A credit card is an ordinary account here \u2014 its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget." }, "Accounts"), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, accounts.map((a, i) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "account-row" }, /* @__PURE__ */ React.createElement("input", {
+      "aria-label": `Name of account ${i + 1}`,
+      className: "field-input account-name",
+      value: a.name,
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x)),
+      // Recorded on blur, not on every keystroke: a rename would otherwise
+      // write one log line per character typed.
+      onFocus: (e) => {
+        renamedFrom.current[a.id] = e.target.value;
+      },
+      onBlur: (e) => {
+        const was = renamedFrom.current[a.id];
+        delete renamedFrom.current[a.id];
+        if (was !== void 0 && was !== e.target.value) logActivity("account", `Renamed the account ${was} to ${e.target.value}`);
+      }
+    }), /* @__PURE__ */ React.createElement("select", {
+      "aria-label": `Kind of ${a.name}`,
+      className: "field-input account-kind",
+      value: a.kind || "chequing",
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { kind: e.target.value }) : x))
+    }, ACCOUNT_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label))), i === 0 ? /* @__PURE__ */ React.createElement("span", { className: "txl account-opening-note" }, "Opens with the rest \u2014 ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(openingShares[a.id] || 0))) : /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
+      type: "number",
+      inputMode: "decimal",
+      step: "0.01",
+      "aria-label": `Opening balance of ${a.name}`,
+      className: "field-input field-input--mono account-opening",
+      value: centsToDollars(Number.isFinite(a.opening) ? a.opening : 0),
+      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { opening: dollarsToCents(e.target.value) }) : x))
+    })), accounts.length > 1 && i > 0 && /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary cf-btn--micro",
+      onClick: () => setRemovingAccount(a),
+      "aria-label": `Remove ${a.name}`
+    }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
+      className: "cf-btn cf-btn--secondary cf-btn--md",
+      onClick: () => {
+        setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }]);
+        logActivity("account", "Added an account");
+      }
+    }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
+      title: `Remove ${removingAccount.name}?`,
+      message: (() => {
+        const n = entries.filter((e) => accountIdOf(e) === removingAccount.id).length;
+        const t = entries.filter((e) => e.toAccountId === removingAccount.id).length;
+        return n + t === 0 ? "Nothing is filed under this account, so removing it changes no figures." : `${n + t} ${n + t === 1 ? "entry moves" : "entries move"} back to ${accountName(accounts, (accounts[0] || {}).id)}. No entry is deleted and no amount changes \u2014 they simply stop being separated out.`;
+      })(),
+      confirmLabel: "Remove",
+      onCancel: () => setRemovingAccount(null),
+      onConfirm: () => {
+        // Entries are re-homed rather than deleted: an account is a label on
+        // money, and removing the label must not remove the money.
+        setEntries((prev) => prev.map((e) => {
+          if (accountIdOf(e) !== removingAccount.id && e.toAccountId !== removingAccount.id) return e;
+          const next = __spreadValues({}, e);
+          if (accountIdOf(e) === removingAccount.id) delete next.accountId;
+          if (e.toAccountId === removingAccount.id) delete next.toAccountId;
+          return next;
+        }));
+        setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
+        logActivity("account", `Removed the account ${removingAccount.name}`);
+        setRemovingAccount(null);
+      }
+    })) },
+      categories: { title: "Categories", value: () => String(categories.length), render: () => React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: cat,
+        draggable: true,
+        onDragStart: () => onDragStart(i),
+        onDragOver: (e) => onDragOver(e, i),
+        onDrop: () => onDrop(i),
+        className: "cat-row",
+        style: {
+          background: dragOverIdx === i ? "var(--stripe)" : "var(--bg)"
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", { className: "drag-handle" }, "\u283F"),
+      editIdx === i ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Category color", className: "color-swatch", style: {
+        background: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors)
+      } }, /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "color",
+          value: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
+          onChange: (e) => setEditColor(e.target.value),
+          // Eleven of these on the General page, all announced as an unnamed
+          // "color picker" — the visible label is the swatch itself.
+          "aria-label": `Colour for ${cat}`,
+          className: "color-swatch-input"
+        }
+      )), /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          className: "settings-input flex-1",
+          value: editVal,
+          onChange: (e) => setEditVal(e.target.value),
+          onKeyDown: (e) => e.key === "Enter" && saveEdit(),
+          autoFocus: true
+        }
+      ), /* @__PURE__ */ React.createElement("button", { onClick: saveEdit, className: "cf-btn cf-btn--compact cf-btn--primary" }, "Save"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        setEditIdx(null);
+        setEditColor(null);
+      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Cancel"),
+      // Reset and Remove live in here now rather than on every resting row.
+      // Five buttons on a row the phone had to wrap made each category 195px
+      // tall; these two are the ones you reach for having decided to change
+      // this category, which is exactly what opening the editor says.
+      categoryColors[cat] && /* @__PURE__ */ React.createElement("button", {
+        onClick: () => setCategoryColors((prev) => {
+          const next = __spreadValues({}, prev);
+          delete next[cat];
+          return next;
+        }),
+        title: "Reset to automatic color",
+        className: "cf-btn cf-btn--compact cf-btn--secondary"
+      }, "Reset colour"),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => delCat(i), className: "cf-btn cf-btn--compact cf-btn--danger" }, "Remove")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Change color", className: "color-swatch", style: {
+        background: getCatColor(cat, categories, categoryColors)
+      } }, /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "color",
+          value: getCatColor(cat, categories, categoryColors),
+          onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
+          "aria-label": `Colour for ${cat}`,
+          className: "color-swatch-input"
+        }
+      )), /* @__PURE__ */ React.createElement("button", {
+        className: "cat-open",
+        onClick: () => {
+          setEditIdx(i);
+          setEditVal(cat);
+          setEditColor(null);
+        }
+      }, cat), /* @__PURE__ */ React.createElement("div", { className: "cat-actions-row" }, /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} up`, className: "wm-arrow", disabled: i === 0, style: { opacity: i === 0 ? 0.3 : 1 }, onClick: () => moveCat(i, -1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} down`, className: "wm-arrow", disabled: i === categories.length - 1, style: { opacity: i === categories.length - 1 ? 0.3 : 1 }, onClick: () => moveCat(i, 1) }, "\u2193")))
+    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("label", { title: "Pick a color (optional \u2014 auto-assigned if left default)", className: "color-swatch", style: {
+      background: newCatColor || "var(--border)"
+    } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "color",
+        value: newCatColor || "#888888",
+        onChange: (e) => setNewCatColor(e.target.value),
+        "aria-label": "Colour for the new category",
+        className: "color-swatch-input"
+      }
+    )), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        className: "settings-input flex-1",
+        value: newCat,
+        "aria-label": "New category name",
+        placeholder: "New category name\u2026",
+        onChange: (e) => {
+          setNewCat(e.target.value);
+          if (catMsg) setCatMsg("");
+        },
+        onKeyDown: (e) => e.key === "Enter" && addCat()
+      }
+    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)) },
+      money: { title: "Currency & format", value: () => currency + " \xB7 " + locale, render: () => React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
       /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-currency" }, "Currency"), /* @__PURE__ */ React.createElement("select", {
         id: "set-currency",
         className: "field-input settings-input",
@@ -826,7 +847,167 @@
         value: locale,
         onChange: (e) => setLocale(e.target.value)
       }, NUMBER_LOCALES.map((l) => /* @__PURE__ */ React.createElement("option", { key: l.code, value: l.code }, l.name))))
-    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")), /* @__PURE__ */ React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")) },
+      holidays: { title: "Statutory holidays", value: () => holidayRegion(holidayRegionCode).code, render: () => React.createElement(HolidaySettings, {
+          holidayRegionCode,
+          setHolidayRegionCode,
+      holidays,
+      setHolidays,
+      isOffline,
+      activeYear,
+      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
+    }) },
+      reset: { title: "Target budget reset", value: () => String(activeYear), render: () => React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setConfirmTgtReset(true),
+        className: "reset-targets-btn"
+      },
+      "\u21BA Reset Targets to Actuals"
+    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: `Reset all ${activeYear} targets?`,
+        message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
+        confirmLabel: "Reset Targets",
+        onConfirm: () => {
+          const prevTargets = budgetTargets;
+          const byMonthCat = {};
+          (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
+            const key = `${activeYear}:${ev.month}`;
+            if (!byMonthCat[key]) byMonthCat[key] = {};
+            byMonthCat[key][ev.category] = (byMonthCat[key][ev.category] || 0) + ev.amount;
+          });
+          setBudgetTargets((prev) => {
+            const next = __spreadValues({}, prev);
+            Object.keys(next).forEach((k) => {
+              if (k.startsWith(activeYear + ":")) delete next[k];
+            });
+            Object.keys(byMonthCat).forEach((key) => {
+              const cats = {};
+              Object.keys(byMonthCat[key]).forEach((c) => {
+                cats[c] = roundMoney(byMonthCat[key][c]);
+              });
+              next[key] = cats;
+            });
+            return next;
+          });
+          const monthsSet = Object.keys(byMonthCat).length;
+          setTgtResetMsg(`Targets for ${activeYear} reset from actuals across ${monthsSet} month${monthsSet !== 1 ? "s" : ""}.`);
+          setConfirmTgtReset(false);
+          // A year of hand-set targets is overwritten in one press, and the
+          // confirm dialog is the only thing between the button and the loss.
+          pushUndo(`${activeYear} targets reset from actuals`, () => {
+            setBudgetTargets(prevTargets);
+            setTgtResetMsg("");
+          });
+        },
+        onCancel: () => setConfirmTgtReset(false)
+      }
+    )) },
+      appearance: { title: "Appearance", value: () => darkMode ? "Dark" : "Light", render: () => React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))) },
+      threshold: { title: "Alert threshold", value: () => fmt(alertThreshold), render: () => React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, moneySymbol()), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        id: "alert-threshold",
+        type: "number",
+        inputMode: "decimal",
+        step: "100",
+        min: "0",
+        className: "settings-input w-120",
+        value: centsToDollars(alertThreshold),
+        onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
+      }
+    )))) },
+      notifications: { title: "Notifications", value: () => notifyEnabled ? "On \xB7 " + ((HOUR_OPTIONS.find((h) => h.value === notifyHour) || {}).label || "") : "Off", render: () => React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+      if (v) enableNotifications();
+      else disableNotifications();
+    }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "notify-hour-select",
+        value: notifyHour,
+        onChange: (e) => setNotifyHour(parseInt(e.target.value, 10)),
+        className: "autolock-select"
+      },
+      HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
+    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)))) },
+      household: { title: "Household", value: () => members.length + (members.length === 1 ? " member" : " members"), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everyone listed here signs in with their own email and password and shares this budget." }, "Household Members"), members.map((m) => {
+      const isEditing = editMemberId === m.user_id;
+      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, className: "member-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, isEditing ? /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          autoFocus: true,
+          "aria-label": "Member name",
+          className: "field-input member-edit-input",
+          value: editMemberVal,
+          onChange: (e) => setEditMemberVal(e.target.value),
+          onKeyDown: (e) => {
+            if (e.key === "Enter") saveMemberName(m.user_id);
+            if (e.key === "Escape") setEditMemberId(null);
+          }
+        }
+      ) : /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { className: "you-tag" }, "(You)")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \u00b7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => saveMemberName(m.user_id),
+          disabled: memberBusy,
+          className: "cf-btn cf-btn--primary cf-btn--xs"
+        },
+        memberBusy ? "Saving\u2026" : "Save"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setEditMemberId(null),
+          disabled: memberBusy,
+          className: "cf-btn cf-btn--secondary cf-btn--xs"
+        },
+        "Cancel"
+      )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setMemberMsg("");
+            setEditMemberId(m.user_id);
+            setEditMemberVal(m.full_name || "");
+          },
+          className: "cf-btn cf-btn--secondary cf-btn--xs"
+        },
+        "\u270E Edit"
+      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: async () => {
+            setMemberMsg("");
+            try {
+              await setMemberDisabled(m.user_id, !m.disabled);
+            } catch (e) {
+              setMemberMsg(e.message || "Only the household owner can do this.");
+            }
+          },
+          className: (m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger") + " cf-btn--xs"
+        },
+        m.disabled ? "Enable" : "Disable"
+      )));
+    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: async () => {
+          setInviteBusy(true);
+          try {
+            const code = await createInvite();
+            setInviteCode(code);
+          } catch (e) {
+            setMemberMsg(e.message || "Couldn't create an invite code.");
+          }
+          setInviteBusy(false);
+        },
+        disabled: inviteBusy,
+        className: "cf-btn cf-btn--primary cf-btn--md"
+      },
+      inviteBusy ? "Generating…" : "Generate invite code"
+    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
+      backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       // Built from the household-field table, so a new field is in the backup
       // the moment it is marked `backup: true` — this list used to be written
       // out by hand and drifted from what the app actually stores.
@@ -843,7 +1024,7 @@
           // export, and the export itself already succeeded.
         }
       }
-    }, className: "cf-btn cf-btn--primary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
+    }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -943,130 +1124,8 @@
           setPendingRestore(null);
         }
       }
-    ), /* @__PURE__ */ React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        key: cat,
-        draggable: true,
-        onDragStart: () => onDragStart(i),
-        onDragOver: (e) => onDragOver(e, i),
-        onDrop: () => onDrop(i),
-        className: "cat-row",
-        style: {
-          background: dragOverIdx === i ? "var(--stripe)" : "var(--bg)"
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "drag-handle" }, "\u283F"),
-      editIdx === i ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Category color", className: "color-swatch", style: {
-        background: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors)
-      } }, /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "color",
-          value: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
-          onChange: (e) => setEditColor(e.target.value),
-          // Eleven of these on the General page, all announced as an unnamed
-          // "color picker" — the visible label is the swatch itself.
-          "aria-label": `Colour for ${cat}`,
-          className: "color-swatch-input"
-        }
-      )), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          className: "settings-input flex-1",
-          value: editVal,
-          onChange: (e) => setEditVal(e.target.value),
-          onKeyDown: (e) => e.key === "Enter" && saveEdit(),
-          autoFocus: true
-        }
-      ), /* @__PURE__ */ React.createElement("button", { onClick: saveEdit, className: "cf-btn cf-btn--compact cf-btn--primary" }, "Save"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        setEditIdx(null);
-        setEditColor(null);
-      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Cancel")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Change color", className: "color-swatch", style: {
-        background: getCatColor(cat, categories, categoryColors)
-      } }, /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "color",
-          value: getCatColor(cat, categories, categoryColors),
-          onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
-          "aria-label": `Colour for ${cat}`,
-          className: "color-swatch-input"
-        }
-      )), /* @__PURE__ */ React.createElement("span", { className: "tx flex-1" }, cat), /* @__PURE__ */ React.createElement("div", { className: "cat-actions-row" }, /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} up`, className: "wm-arrow", disabled: i === 0, style: { opacity: i === 0 ? 0.3 : 1 }, onClick: () => moveCat(i, -1) }, "↑"), /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} down`, className: "wm-arrow", disabled: i === categories.length - 1, style: { opacity: i === categories.length - 1 ? 0.3 : 1 }, onClick: () => moveCat(i, 1) }, "↓"), categoryColors[cat] && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setCategoryColors((p) => {
-            const n = __spreadValues({}, p);
-            delete n[cat];
-            return n;
-          }),
-          title: "Reset to automatic color",
-          className: "cf-checkbtn reset-color-btn"
-        },
-        "Reset"
-      ), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-        setEditIdx(i);
-        setEditVal(cat);
-        setEditColor(null);
-      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Edit"), /* @__PURE__ */ React.createElement("button", { onClick: () => delCat(i), className: "cf-btn cf-btn--compact cf-btn--danger" }, "Remove")))
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("label", { title: "Pick a color (optional \u2014 auto-assigned if left default)", className: "color-swatch", style: {
-      background: newCatColor || "var(--border)"
-    } }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "color",
-        value: newCatColor || "#888888",
-        onChange: (e) => setNewCatColor(e.target.value),
-        "aria-label": "Colour for the new category",
-        className: "color-swatch-input"
-      }
-    )), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "settings-input flex-1",
-        value: newCat,
-        "aria-label": "New category name",
-        placeholder: "New category name\u2026",
-        onChange: (e) => {
-          setNewCat(e.target.value);
-          if (catMsg) setCatMsg("");
-        },
-        onKeyDown: (e) => e.key === "Enter" && addCat()
-      }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)), /* @__PURE__ */ React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
-      if (v) enableNotifications();
-      else disableNotifications();
-    }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "notify-hour-select",
-        value: notifyHour,
-        onChange: (e) => setNotifyHour(parseInt(e.target.value, 10)),
-        className: "autolock-select"
-      },
-      HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
-    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)))), /* @__PURE__ */ React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "auto-lock-select",
-        value: lockTimeout,
-        onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
-        className: "autolock-select"
-      },
-      /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
-      /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
-      /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
-      /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" })), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))), /* @__PURE__ */ React.createElement(HolidaySettings, {
-          holidayRegionCode,
-          setHolidayRegionCode,
-      holidays,
-      setHolidays,
-      isOffline,
-      activeYear,
-      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
-    }), sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+    )) },
+      sync: { title: "Cloud sync", value: () => houseUnsaved ? "Changes pending" : "On", render: () => sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
     } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
@@ -1087,162 +1146,16 @@
       },
       /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
       "Reload from Cloud"
-    ))), /* @__PURE__ */ React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setConfirmTgtReset(true),
-        className: "reset-targets-btn"
-      },
-      "\u21BA Reset Targets to Actuals"
-    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: `Reset all ${activeYear} targets?`,
-        message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
-        confirmLabel: "Reset Targets",
-        onConfirm: () => {
-          const prevTargets = budgetTargets;
-          const byMonthCat = {};
-          (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
-            const key = `${activeYear}:${ev.month}`;
-            if (!byMonthCat[key]) byMonthCat[key] = {};
-            byMonthCat[key][ev.category] = (byMonthCat[key][ev.category] || 0) + ev.amount;
-          });
-          setBudgetTargets((prev) => {
-            const next = __spreadValues({}, prev);
-            Object.keys(next).forEach((k) => {
-              if (k.startsWith(activeYear + ":")) delete next[k];
-            });
-            Object.keys(byMonthCat).forEach((key) => {
-              const cats = {};
-              Object.keys(byMonthCat[key]).forEach((c) => {
-                cats[c] = roundMoney(byMonthCat[key][c]);
-              });
-              next[key] = cats;
-            });
-            return next;
-          });
-          const monthsSet = Object.keys(byMonthCat).length;
-          setTgtResetMsg(`Targets for ${activeYear} reset from actuals across ${monthsSet} month${monthsSet !== 1 ? "s" : ""}.`);
-          setConfirmTgtReset(false);
-          // A year of hand-set targets is overwritten in one press, and the
-          // confirm dialog is the only thing between the button and the loss.
-          pushUndo(`${activeYear} targets reset from actuals`, () => {
-            setBudgetTargets(prevTargets);
-            setTgtResetMsg("");
-          });
-        },
-        onCancel: () => setConfirmTgtReset(false)
-      }
-    )), /* @__PURE__ */ React.createElement(Card, { id: "sec-danger", className: "danger-card" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger cf-btn--dangerwide"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
-      "Reset Local Cache"
-    ), confirmWipe && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: "Reset local cache?",
-        message: household ? "This clears entries, overrides, categories, templates, budget targets, and saved years cached on this device, then reloads them fresh from Supabase. Your cloud data is not deleted." : "This will permanently delete all entries, overrides, categories, templates, budget targets, and saved years from this device. This cannot be undone.",
-        confirmLabel: "Reset Everything",
-        onConfirm: () => {
-          try {
-            Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
-          } catch (e) {
-            // Storage can throw outright in private/partitioned modes.
-            // Nothing here is essential to the current interaction, so a
-            // failure is genuinely ignorable — real save failures surface
-            // via notifyStorageWriteFailure.
-          }
-          window.location.reload();
-        },
-        onCancel: () => setConfirmWipe(false)
-      }
-    ))), settingsPage === "household" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everyone listed here signs in with their own email and password and shares this budget." }, "Household Members"), members.map((m) => {
-      const isEditing = editMemberId === m.user_id;
-      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, className: "member-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, isEditing ? /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          autoFocus: true,
-          "aria-label": "Member name",
-          className: "field-input member-edit-input",
-          value: editMemberVal,
-          onChange: (e) => setEditMemberVal(e.target.value),
-          onKeyDown: (e) => {
-            if (e.key === "Enter") saveMemberName(m.user_id);
-            if (e.key === "Escape") setEditMemberId(null);
-          }
-        }
-      ) : /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { className: "you-tag" }, "(You)")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \u00b7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => saveMemberName(m.user_id),
-          disabled: memberBusy,
-          className: "cf-btn cf-btn--primary cf-btn--xs"
-        },
-        memberBusy ? "Saving\u2026" : "Save"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setEditMemberId(null),
-          disabled: memberBusy,
-          className: "cf-btn cf-btn--secondary cf-btn--xs"
-        },
-        "Cancel"
-      )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
-            setMemberMsg("");
-            setEditMemberId(m.user_id);
-            setEditMemberVal(m.full_name || "");
-          },
-          className: "cf-btn cf-btn--secondary cf-btn--xs"
-        },
-        "\u270E Edit"
-      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: async () => {
-            setMemberMsg("");
-            try {
-              await setMemberDisabled(m.user_id, !m.disabled);
-            } catch (e) {
-              setMemberMsg(e.message || "Only the household owner can do this.");
-            }
-          },
-          className: (m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger") + " cf-btn--xs"
-        },
-        m.disabled ? "Enable" : "Disable"
-      )));
-    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: async () => {
-          setInviteBusy(true);
-          try {
-            const code = await createInvite();
-            setInviteCode(code);
-          } catch (e) {
-            setMemberMsg(e.message || "Couldn't create an invite code.");
-          }
-          setInviteBusy(false);
-        },
-        disabled: inviteBusy,
-        className: "cf-btn cf-btn--primary"
-      },
-      inviteBusy ? "Generating…" : "Generate invite code"
-    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))), settingsPage === "templates" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
+    ))), when: () => !!(sbConfigured && household) },
+      templates: { title: "Entry templates", value: () => String((templates || []).length), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
         className: "cf-btn cf-btn--danger cf-btn--yearremove"
       },
       "Remove"
-    ))))), settingsPage === "audit" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everything anyone in the household has changed, newest first \u2014 entries, single dates, budget targets, goals and debts. Kept for the last 200 changes." }, "Activity"), (activity || []).length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "Nothing yet. Every change anyone makes to the budget shows up here, with who made it.") : (activity || []).map((a) => {
+    ))))) },
+      activity: { title: "Activity", value: () => String((activity || []).length), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everything anyone in the household has changed, newest first \u2014 entries, single dates, budget targets, goals and debts. Kept for the last 200 changes." }, "Activity"), (activity || []).length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "Nothing yet. Every change anyone makes to the budget shows up here, with who made it.") : (activity || []).map((a) => {
       const who = memberName(a.by, members, { selfId: sessionUser && sessionUser.id });
       return /* @__PURE__ */ React.createElement("div", { key: a.id, className: "activity-row" }, /* @__PURE__ */ React.createElement("span", { className: "activity-kind activity-kind--" + a.kind }, ACTIVITY_LABELS[a.kind] || a.kind), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "tx" }, a.what), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, new Date(a.at).toLocaleString(), who ? ` \u00b7 ${who}` : "")));
     })), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Single dates you have edited in the Budget grid, with the value each one had before. Revert puts an occurrence back to what its entry says." }, "Edited dates \u2014 ", activeYear), (() => {
@@ -1289,7 +1202,126 @@
           return who ? ` (${who})` : "";
         })(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
       });
-    })())));
+    })())) },
+      ai: { title: "AI key", value: () => aiApiKey ? "Set" : "Not set", render: () => React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
+      "a",
+      {
+        href: "https://console.anthropic.com",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "link-primary"
+      },
+      "console.anthropic.com"
+    ), "."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: showAiKey ? "text" : "password",
+        "aria-label": "Anthropic API Key",
+        value: aiApiKey,
+        onChange: (e) => setAiApiKey(e.target.value),
+        placeholder: "sk-ant-api03-...",
+        className: "cf-text-mono-13 ai-key-input"
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowAiKey((v) => !v),
+        className: "cf-btn cf-btn--secondary cf-btn--showhide"
+      },
+      showAiKey ? "Hide" : "Show"
+    ), aiApiKey.trim() && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setAiApiKey(""),
+        className: "clear-key-btn"
+      },
+      "Clear key"
+    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))) },
+      security: { title: "Security", value: () => lockTimeout ? "Lock after " + lockTimeout + "m" : "No auto-lock", render: () => React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "auto-lock-select",
+        value: lockTimeout,
+        onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
+        className: "autolock-select"
+      },
+      /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
+      /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
+      /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
+      /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
+    )), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" })), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))) },
+      danger: { title: "Danger zone", value: () => "", tone: "danger", render: () => React.createElement(Card, { id: "sec-danger", className: "danger-card" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setConfirmWipe(true),
+        className: "cf-btn cf-btn--danger cf-btn--md cf-btn--dangerwide"
+      },
+      /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
+      "Reset Local Cache"
+    ), confirmWipe && /* @__PURE__ */ React.createElement(
+      ConfirmDialog,
+      {
+        title: "Reset local cache?",
+        message: household ? "This clears entries, overrides, categories, templates, budget targets, and saved years cached on this device, then reloads them fresh from Supabase. Your cloud data is not deleted." : "This will permanently delete all entries, overrides, categories, templates, budget targets, and saved years from this device. This cannot be undone.",
+        confirmLabel: "Reset Everything",
+        onConfirm: () => {
+          try {
+            Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
+          } catch (e) {
+            // Storage can throw outright in private/partitioned modes.
+            // Nothing here is essential to the current interaction, so a
+            // failure is genuinely ignorable — real save failures surface
+            // via notifyStorageWriteFailure.
+          }
+          window.location.reload();
+        },
+        onCancel: () => setConfirmWipe(false)
+      }
+    )) }
+    };
+    // Grouped by what you came here to do, not alphabetically. The old index
+    // strip was alphabetical because it was an index; a directory you read
+    // top to bottom wants the related things together.
+    const SETTINGS_GROUPS = [
+      ["Your money", ["years", "accounts", "categories", "money", "holidays", "reset"]],
+      ["Alerts & display", ["appearance", "threshold", "notifications"]],
+      ["Sharing & data", ["household", "sync", "backup", "templates", "activity"]],
+      ["Advanced", ["ai", "security", "danger"]]
+    ];
+    const openPage = youSub && SETTINGS_PAGES[youSub] ? SETTINGS_PAGES[youSub] : null;
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" },
+      openPage ? /* @__PURE__ */ React.createElement("div", { className: "set-detail-head" },
+        /* @__PURE__ */ React.createElement("button", {
+          className: "set-back",
+          onClick: () => { haptic(); setYouSub(null); }
+        }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true" }, "\u2039"), "Settings")
+        // No page title here: every one of these pages already opens with its
+        // own heading, and that heading is the better of the two — it carries
+        // the help tip and the live year ("Target Budget Reset — 2026"). A
+        // second copy above it was just the same words twice.
+      ) : /* @__PURE__ */ React.createElement("div", { className: "set-dir-head" },
+        /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" },
+          /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help")),
+      openPage ? /* @__PURE__ */ React.createElement("div", { className: "settings-cards set-detail" }, openPage.render())
+        : /* @__PURE__ */ React.createElement("div", { className: "set-dir" },
+          SETTINGS_GROUPS.map(([groupTitle, ids]) => {
+            const rows = ids.filter((id) => SETTINGS_PAGES[id] && (!SETTINGS_PAGES[id].when || SETTINGS_PAGES[id].when()));
+            if (!rows.length) return null;
+            return /* @__PURE__ */ React.createElement("div", { key: groupTitle, className: "set-group" },
+              /* @__PURE__ */ React.createElement("h2", { className: "set-group-title" }, groupTitle),
+              /* @__PURE__ */ React.createElement("div", { className: "set-list" }, rows.map((id) => {
+                const d = SETTINGS_PAGES[id];
+                let val = "";
+                try { val = d.value() || ""; } catch (e) { val = ""; }
+                return /* @__PURE__ */ React.createElement("button", {
+                  key: id,
+                  className: "set-row" + (d.tone === "danger" ? " set-row--danger" : ""),
+                  onClick: () => { haptic(); setYouSub(id); }
+                }, /* @__PURE__ */ React.createElement("span", { className: "set-row-label" }, d.title),
+                   /* @__PURE__ */ React.createElement("span", { className: "set-row-value" }, val),
+                   /* @__PURE__ */ React.createElement("span", { className: "set-row-chev", "aria-hidden": "true" }, "\u203A"));
+              })));
+          })));;
   }
   class ErrorBoundary extends React.Component {
     constructor(props) {

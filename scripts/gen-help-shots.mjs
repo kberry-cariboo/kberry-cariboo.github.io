@@ -61,8 +61,7 @@ const SCALE = 2;
 // what the thing looks like, and a full year of rows is both unreadable at the
 // width Help renders it and several hundred kilobytes.
 const SHOTS = [
-  { name: 'settings-years', hash: '#/you', at: '#sec-years',
-    prepare: async (page) => { await page.locator('#sec-years').scrollIntoViewIfNeeded(); } },
+  { name: 'settings-years', hash: '#/you/years', at: '#sec-years' },
   { name: 'entry-form', hash: '#/flow/entries', at: '.modal-card',
     prepare: async (page) => {
       await page.getByRole('button', { name: '+ Add Entry' }).first().click();
@@ -86,8 +85,7 @@ const SHOTS = [
     prepare: async (page) => { await page.getByText('UPCOMING', { exact: false }).first().scrollIntoViewIfNeeded(); },
     pick: (page) => page.locator('.cf-card', { hasText: 'UPCOMING' }).first(), maxHeight: 260 },
   { name: 'plan-goals', hash: '#/plan/goals', at: '.cf-card' },
-  { name: 'settings-backup', hash: '#/you', at: '#sec-backup',
-    prepare: async (page) => { await page.locator('#sec-backup').scrollIntoViewIfNeeded(); } },
+  { name: 'settings-backup', hash: '#/you/backup', at: '#sec-backup' },
 ];
 
 let browser;

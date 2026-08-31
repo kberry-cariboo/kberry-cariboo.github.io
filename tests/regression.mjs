@@ -310,7 +310,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('settings: adding a category lists it', async () => {
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     await page.getByPlaceholder('New category name').fill('QA Category');
     await page.getByRole('button', { name: '+ Add', exact: true }).first().click();
@@ -319,6 +319,8 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   });
 
   await test('settings: the dark-mode toggle flips the theme live', async () => {
+    await page.goto(BASE + '#/you/appearance', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
     const before = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
     await page.getByRole('switch', { name: 'Dark Mode' }).click();
     await page.waitForTimeout(500);
@@ -520,7 +522,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // Currency and number format were hardcoded to en-CA and a bare "$" in
   // fmt(), which is the single function every amount in the app goes through.
   await test('settings: changing currency and number format rewrites every amount', async () => {
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/money', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -545,7 +547,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       const ticks = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((t) => t.textContent).join(' '));
       if (!ticks.includes('€')) throw new Error('chart axis still using the old symbol: ' + ticks.slice(0, 120));
     } finally {
-      await page.goto(BASE + '#/you', { waitUntil: 'load' });
+      await page.goto(BASE + '#/you/money', { waitUntil: 'load' });
       await page.waitForTimeout(700);
       await page.locator('#set-currency').selectOption('CAD');
       await page.locator('#set-locale').selectOption('en-CA');
@@ -556,7 +558,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // The statutory holidays that decide when a payday lands were British
   // Columbia's, with no way to pick another province.
   await test('settings: the holiday region changes which dates are computed', async () => {
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const list = () => page.locator('#sec-holidays').innerText();
     const bc = await list();
@@ -637,10 +639,8 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     await page.getByRole('button', { name: /^Save/ }).first().click();
     await page.waitForTimeout(600);
 
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/activity', { waitUntil: 'load' });
     await page.waitForTimeout(700);
-    await page.getByRole('button', { name: /Activity/i }).first().click();
-    await page.waitForTimeout(600);
     const entry = await page.locator('.audit-entry').first().innerText();
     if (!/Saved/.test(entry)) throw new Error('audit row has no save stamp: ' + entry);
     // The fixture household has a single member, and naming yourself on every
@@ -649,15 +649,12 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     // without throwing.
     if (/\bby\s*$/.test(entry)) throw new Error('dangling "by" with no name: ' + entry);
 
-    // Put back everything this touched. The suite shares one page session, so
-    // both the override and the Settings sub-page are state later cases read:
-    // leaving the override in place moved the Rent figures a downstream test
-    // asserts on, and leaving Settings on Activity meant the next test to open
-    // Settings found no category list at all.
+    // Put back the override: the suite shares one page session, and leaving it
+    // in place moves the Rent figures a downstream test asserts on. Settings
+    // needs no such reset any more — which page you are on is the route, not
+    // sticky state, so every case that opens Settings names where it is going.
     await page.locator('.audit-entry').first().getByRole('button', { name: /Revert/i }).click();
     await page.waitForTimeout(500);
-    await page.getByRole('button', { name: /General/i }).first().click();
-    await page.waitForTimeout(400);
   });
 
   // Undo used to exist for exactly one action (deleting an entry) while the
@@ -666,18 +663,22 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // covers the one that is easiest to press by accident and hardest to
   // reconstruct by hand.
   await test('settings: removing a category can be undone, colour and position included', async () => {
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     const nudge = page.getByRole('button', { name: 'Remind me later' });
     if (await nudge.count() > 0) await nudge.click().catch(() => {});
     const names = () => page.evaluate(() => [...document.querySelectorAll('#sec-categories .cat-row')]
-      .map((r) => r.innerText.replace(/\s+/g, ' ').replace(/[⠿↑↓]|Reset|Edit|Remove/g, '').trim()));
+      .map((r) => r.innerText.replace(/\s+/g, ' ').replace(/[⠿↑↓]/g, '').trim()));
     const swatches = () => page.evaluate(() => [...document.querySelectorAll('#sec-categories .cat-row')]
       .map((r) => { const d = r.querySelector('[style*="background"]'); return d ? getComputedStyle(d).backgroundColor : ''; }));
 
     const before = await names(), colorsBefore = await swatches();
     if (before.length < 2) throw new Error('expected a category list, got ' + JSON.stringify(before));
 
+    // Remove is inside the row's editor now — five buttons on a resting row
+    // is what made each category 195px tall on a phone.
+    await page.locator('#sec-categories .cat-row').first().locator('.cat-open').click();
+    await page.waitForTimeout(300);
     await page.locator('#sec-categories .cat-row').first().locator('button', { hasText: /^Remove$/ }).click();
     await page.waitForTimeout(400);
     const afterDelete = await names();
@@ -829,7 +830,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       }
     };
     await step('grant', () => ctx.grantPermissions(['notifications']).catch(() => {}));
-    await step('goto', () => page.goto(BASE + '#/you', { waitUntil: 'load' }));
+    await step('goto', () => page.goto(BASE + '#/you/notifications', { waitUntil: 'load' }));
     // This test is only about the Settings toggle's permission-request flow.
     // App.js has its own separate effect that fires a *real* Notification
     // for low-balance/due-bill conditions once notifyEnabled flips on, and
@@ -1122,9 +1123,14 @@ await test('dark mode: charts render with theme colours', async () => {
     await page.waitForTimeout(300);
     await page.locator('.user-menu-panel button', { hasText: 'Settings' }).first().tap({ force: true });
     await page.waitForTimeout(700);
+    // Settings opens on a directory, and the help tips live on the pages it
+    // lists — so this also checks a directory row gets you to one.
+    if (await page.locator('.set-row').count() === 0) throw new Error('the avatar route did not reach the settings directory');
+    await page.locator('.set-row', { hasText: 'Categories' }).first().tap({ force: true });
+    await page.waitForTimeout(700);
     const tips = page.locator('.helptip-btn');
     const n = await tips.count();
-    if (n === 0) throw new Error('no help tips on You');
+    if (n === 0) throw new Error('no help tips on the Categories page');
     for (let i = 0; i < n; i++) {
       const btn = tips.nth(i);
       await btn.scrollIntoViewIfNeeded();
@@ -1144,7 +1150,7 @@ await test('dark mode: charts render with theme colours', async () => {
   });
 
   await test('mobile: settings hides biometric unlock on a device with no authenticator', async () => {
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/security', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     await page.getByText('Auto-lock when in background', { exact: false }).waitFor(V);
     // headless chromium: no platform authenticator → toggle must be absent
@@ -1287,45 +1293,44 @@ await test('reduced motion: nothing animates when the reader has asked it not to
   await ctx.close();
 });
 
-// Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
-// Both had a link index at the top and nothing after it, so fifteen screens
-// down the way back was a long scroll.
-await test('help and settings: the section index follows you down the page', async () => {
+// Help runs 22 phone screens across 39 headings, with a link index at the top
+// and nothing after it: fifteen screens down, the way back was a long scroll.
+//
+// Settings had the same bar for the same reason and no longer needs it. It is
+// a directory of pages now, not one 7.5-screen scroll, so the second half of
+// this checks the opposite thing there — that neither the bar nor the index
+// strip came back. An index is what a page grows when it is too long to read,
+// and the answer to that was to stop it being one page.
+await test('help keeps its section index, and settings no longer needs one', async () => {
   const { ctx, page } = await ctxPage({ touch: true });
-  for (const [hash, expect] of [['#/help', 10], ['#/you', 14]]) {
-    await page.goto(BASE + hash, { waitUntil: 'load' });
-    await page.waitForTimeout(1500);
-    const top = await page.evaluate(() => {
-      const n = document.querySelector('.section-nav');
-      return { present: !!n, h: n ? Math.round(n.getBoundingClientRect().height) : 0,
-        label: n ? n.innerText.replace(/\s+/g, ' ') : null,
-        // The strip and the bar are the same index twice; on a phone only one
-        // of them should be paying for space.
-        strips: [...document.querySelectorAll('.settings-quicklinks')]
-          .filter((e) => getComputedStyle(e).display !== 'none').length };
-    });
-    if (!top.present) throw new Error(hash + ': no sticky section bar');
-    if (top.h > 80) throw new Error(hash + ': the bar is ' + top.h + 'px');
-    if (top.strips) throw new Error(hash + ': the index strip is still shown alongside the bar');
-    if (!new RegExp(expect + ' sections').test(top.label)) {
-      throw new Error(hash + ': bar says "' + top.label + '", expected ' + expect + ' sections');
-    }
-    // It stays put, and it renames itself as you go.
-    await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
-      sc.scrollTop = sc.scrollHeight * 0.6; });
-    await page.waitForTimeout(700);
-    const deep = await page.evaluate(() => {
-      const n = document.querySelector('.section-nav');
-      return { top: Math.round(n.getBoundingClientRect().top),
-               label: n.innerText.replace(/\s+/g, ' ') };
-    });
-    if (deep.top > 2) throw new Error(hash + ': the bar scrolled away (top ' + deep.top + ')');
-    if (deep.label === top.label) throw new Error(hash + ': the bar still says "' + deep.label + '" 60% down');
-  }
+  await page.goto(BASE + '#/help', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const top = await page.evaluate(() => {
+    const n = document.querySelector('.section-nav');
+    return { present: !!n, h: n ? Math.round(n.getBoundingClientRect().height) : 0,
+      label: n ? n.innerText.replace(/\s+/g, ' ') : null,
+      // The strip and the bar are the same index twice; on a phone only one
+      // of them should be paying for space.
+      strips: [...document.querySelectorAll('.settings-quicklinks')]
+        .filter((e) => getComputedStyle(e).display !== 'none').length };
+  });
+  if (!top.present) throw new Error('#/help: no sticky section bar');
+  if (top.h > 80) throw new Error('#/help: the bar is ' + top.h + 'px');
+  if (top.strips) throw new Error('#/help: the index strip is still shown alongside the bar');
+  if (!/10 sections/.test(top.label)) throw new Error('#/help: bar says "' + top.label + '", expected 10 sections');
+  // It stays put, and it renames itself as you go.
+  await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
+    sc.scrollTop = sc.scrollHeight * 0.6; });
+  await page.waitForTimeout(700);
+  const deep = await page.evaluate(() => {
+    const n = document.querySelector('.section-nav');
+    return { top: Math.round(n.getBoundingClientRect().top),
+             label: n.innerText.replace(/\s+/g, ' ') };
+  });
+  if (deep.top > 2) throw new Error('#/help: the bar scrolled away (top ' + deep.top + ')');
+  if (deep.label === top.label) throw new Error('#/help: the bar still says "' + deep.label + '" 60% down');
 
   // And it gets you anywhere in two taps.
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
-  await page.waitForTimeout(1400);
   await page.locator('.section-nav-btn').tap({ force: true });
   await page.waitForTimeout(600);
   const sheet = await page.evaluate(() => ({
@@ -1333,7 +1338,7 @@ await test('help and settings: the section index follows you down the page', asy
     marked: document.querySelectorAll('.section-nav-item[aria-current]').length,
     minH: Math.min(...[...document.querySelectorAll('.section-nav-item')]
       .map((e) => Math.round(e.getBoundingClientRect().height))) }));
-  if (sheet.items !== 14) throw new Error('the jump sheet lists ' + sheet.items + ' sections');
+  if (sheet.items !== 10) throw new Error('the jump sheet lists ' + sheet.items + ' sections');
   if (sheet.marked !== 1) throw new Error(sheet.marked + ' sections marked as current');
   if (sheet.minH < 44) throw new Error('jump rows are ' + sheet.minH + 'px');
   const before = await page.evaluate(() => document.querySelector('.app-scroll').scrollTop);
@@ -1344,7 +1349,23 @@ await test('help and settings: the section index follows you down the page', asy
     scrolled: document.querySelector('.app-scroll').scrollTop,
     closed: !document.querySelector('.modal-card') }));
   if (!after.closed) throw new Error('the jump sheet stayed open after choosing');
-  if (after.scrolled <= before) throw new Error('choosing a section did not move the page');
+  if (after.scrolled === before) throw new Error('choosing a section did not move the page');
+
+  // Settings: no bar, no strip, and short enough not to want either.
+  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const you = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    return { bar: document.querySelectorAll('.section-nav').length,
+      strip: [...document.querySelectorAll('.settings-quicklinks')]
+        .filter((e) => getComputedStyle(e).display !== 'none').length,
+      screens: sc.scrollHeight / sc.clientHeight };
+  });
+  if (you.bar) throw new Error('Settings grew a section bar back');
+  if (you.strip) throw new Error('Settings grew an index strip back');
+  // It was 7.5 screens. The ceiling is what keeps it a directory: a page
+  // added to the root rather than to a group would fail here.
+  if (you.screens > 2.2) throw new Error('the settings directory is ' + you.screens.toFixed(1) + ' screens');
   await ctx.close();
 });
 
@@ -1438,6 +1459,90 @@ await test('contrast: every text node meets WCAG AA in both themes', async () =>
 // The breakpoints were width-only, so rotating a phone crossed into the desktop
 // layout: bottom nav gone, a 107px header taking 27% of a 390px-tall viewport,
 // and Flow's first ledger row off screen at y=431.
+// Splitting Settings into pages left the controls on those pages as they were,
+// and they had drifted: ten distinct shapes across the seventeen, of which six
+// were plain buttons that should have been two. Five classes restated a step
+// of the button scale under their own name (.holiday-remove-btn,
+// .year-active-btn, .copy-year-btn on dense, .reset-targets-btn on base) or
+// hand-painted a state the pill vocabulary already had (.holiday-year-pill),
+// and several buttons wore only a non-size modifier — --iconrow, --dangerwide
+// — which names no step, so they fell to the no-modifier one and the same page
+// action came out 13px on Accounts and 12px on Budget Years.
+//
+// The scale is the rule; this is the check that Settings still obeys it. It
+// counts geometry, not class names, because the whole failure was classes that
+// looked distinct and rendered identically — and the reverse.
+await test('settings: its buttons resolve to the two steps of the scale', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const PAGES = ['accounts', 'years', 'categories', 'money', 'holidays', 'reset', 'appearance',
+    'threshold', 'notifications', 'household', 'backup', 'sync', 'templates', 'activity',
+    'ai', 'security', 'danger'];
+  const shapes = new Map();
+  for (const id of PAGES) {
+    await page.goto(BASE + '#/you/' + id, { waitUntil: 'load' });
+    await page.waitForTimeout(700);
+    const rows = await page.evaluate(() => [...document.querySelectorAll(
+      // Buttons proper. The other affordances on these pages — the reorder
+      // arrows, the row-as-button, the help tip, the switch, the year pill —
+      // are deliberately not this shape and are not counted as it.
+      '.set-detail .cf-btn, .set-detail .holiday-remove-btn, .set-detail .year-active-btn,'
+      + ' .set-detail .copy-year-btn, .set-detail .reset-targets-btn')]
+      .filter((e) => e.getClientRects().length)
+      .map((e) => { const c = getComputedStyle(e);
+        return { key: c.borderRadius + '|' + c.fontSize + '|' + c.fontWeight + '|' + c.padding,
+          cls: e.className.toString().slice(0, 40),
+          txt: (e.textContent || '').trim().slice(0, 14) }; }));
+    for (const r of rows) {
+      if (!shapes.has(r.key)) shapes.set(r.key, []);
+      const ex = shapes.get(r.key);
+      if (ex.length < 2) ex.push(id + ' "' + r.txt + '" (' + r.cls + ')');
+    }
+  }
+  if (shapes.size === 0) throw new Error('no settings buttons found — the selector has drifted');
+  if (shapes.size > 2) {
+    throw new Error(shapes.size + ' button shapes across Settings: '
+      + [...shapes].map(([k, v]) => k + ' — ' + v.join(', ')).join(' / '));
+  }
+  await ctx.close();
+});
+
+// The nav-clearance rule that keeps the footer out from under the bottom nav
+// was written for the landscape fix and landed inside the (max-height:500px)
+// block, so it only ever ran on a rotated phone. In portrait the scroller had
+// no bottom padding at all and Privacy, Terms and the build stamp sat under
+// the fixed nav on every route — a thing you could not see without scrolling
+// to the very bottom and looking, which is why nothing caught it. This checks
+// the orientation the app is actually held in as well as the other one.
+await test('footer: Privacy, Terms and the build stamp clear the bottom nav', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const problems = [];
+  for (const [w, h] of [[390, 844], [320, 568], [844, 390]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const hash of ['#/today', '#/flow/list', '#/you', '#/help']) {
+      await page.goto(BASE + hash, { waitUntil: 'load' });
+      await page.waitForTimeout(900);
+      await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
+        sc.scrollTop = sc.scrollHeight; });
+      await page.waitForTimeout(400);
+      const r = await page.evaluate(() => {
+        const nav = document.querySelector('.cf-bottomnav');
+        if (!nav || !nav.getClientRects().length) return null;
+        const navTop = nav.getBoundingClientRect().top;
+        return [...document.querySelectorAll('.app-footer a, .app-footer .build-version-tag')]
+          .filter((e) => e.getClientRects().length)
+          .map((e) => ({ t: (e.textContent || '').trim().slice(0, 14),
+                         over: Math.round(e.getBoundingClientRect().bottom - navTop) }))
+          .filter((x) => x.over > 0);
+      });
+      if (r === null) continue;
+      for (const x of r) problems.push(`${w}x${h} ${hash}: "${x.t}" is ${x.over}px under the nav`);
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  if (problems.length) throw new Error(problems.slice(0, 4).join(' | '));
+  await ctx.close();
+});
+
 await test('landscape: a rotated phone is still treated as a phone', async () => {
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 },
     hasTouch: true, isMobile: true });
@@ -2395,7 +2500,7 @@ await test('holidays: Settings lists the BC dates the app is using, and a manual
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(holidayFixture());
 
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const section = page.locator('#sec-holidays');
   await section.scrollIntoViewIfNeeded();
@@ -2436,7 +2541,7 @@ await test('holidays: Settings lists the BC dates the app is using, and a manual
   if (!/Mon Sep 14/.test(why)) throw new Error('deposit date not worked out from the manual holiday: ' + why);
 
   // Removing it puts the payday back to depositing on the day.
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
   await page.waitForTimeout(900);
   await section.scrollIntoViewIfNeeded();
   await section.locator('.holiday-row', { hasText: 'QA Company Shutdown' }).getByRole('button', { name: /Remove/ }).click();
@@ -2461,7 +2566,7 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(holidayFixture());
 
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const section = page.locator('#sec-holidays');
   await section.scrollIntoViewIfNeeded();
@@ -2661,7 +2766,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
   await page.addInitScript(syncFixture(0));
 
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const section = page.locator('#sec-holidays');
   await section.scrollIntoViewIfNeeded();
@@ -2709,7 +2814,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
 
   await test('year copy: Settings "+ Add" creates the year and carries the work forward', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     await page.getByRole('button', { name: '+ Add 2027' }).click();
     await page.waitForTimeout(900);
@@ -2743,7 +2848,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
 
   await test('year copy: "Copy →" is safe to press twice', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     await page.getByRole('button', { name: '+ Add 2027' }).click();
     await page.waitForTimeout(900);
@@ -2770,7 +2875,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   // "+ Add" path used not to pass it at all.
   await test('year copy: a copy the user deletes does not come back on the next copy', async () => {
     const { ctx, page } = await ctxPage();
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     await page.getByRole('button', { name: '+ Add 2027' }).click();
     await page.waitForTimeout(900);
@@ -2791,7 +2896,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     const tomb = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('cf_deleted_copy_ids') || '{}')).length);
     if (tomb !== 1) throw new Error('deleting a copy recorded ' + tomb + ' tombstones, expected 1');
     // Now re-run the copy. The entry is "missing" from 2027, but deliberately.
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
     await page.waitForTimeout(1400);
     const copy = page.getByRole('button', { name: /^Copy .*2027$/ });
     if (await copy.count() === 0) throw new Error('no Copy button after the delete');
@@ -2837,7 +2942,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   const openSettings = async () => {
     const { ctx, page } = await ctxPage();
     await page.addInitScript(CAPTURE_DOWNLOADS);
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/backup', { waitUntil: 'load' });
     await page.waitForTimeout(1600);
     return { ctx, page };
   };
@@ -3442,10 +3547,8 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
 await test('activity: what changed, who changed it, across every kind of change', async () => {
   const { ctx, page } = await ctxPage();
   const feed = async () => {
-    await page.goto(BASE + '#/you', { waitUntil: 'load' });
+    await page.goto(BASE + '#/you/activity', { waitUntil: 'load' });
     await page.waitForTimeout(1100);
-    await page.getByRole('button', { name: 'Activity' }).click();
-    await page.waitForTimeout(500);
     return page.$$eval('.activity-row', (rs) => rs.map((r) => r.innerText.replace(/\s+/g, ' ')));
   };
   if ((await feed()).length !== 0) throw new Error('the feed is not empty on a fresh household');
@@ -3586,7 +3689,7 @@ await test('accounts: a household that predates them gets one, and nothing it ca
   // Asserted through the UI, not localStorage: a field still sitting at its
   // default has no storage row yet, so an absent row means "the default", not
   // "no accounts".
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/accounts', { waitUntil: 'load' });
   await page.waitForTimeout(1300);
   const names = await page.$$eval('#sec-accounts .account-name', (els) => els.map((e) => e.value));
   if (names.length !== 1 || names[0] !== 'Chequing') throw new Error('accounts are ' + JSON.stringify(names));
@@ -3727,7 +3830,7 @@ await test('accounts: removing one re-homes its entries rather than deleting the
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace('const payload = {', `entries.push(...${saved}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/accounts', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -3772,7 +3875,7 @@ await test('carry-through: adding a year keeps the newest entry fields on the co
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace('const payload = {', `entries.push(...${extra}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -3837,7 +3940,7 @@ await test('carry-through: a backup round-trips accounts, activity and the entry
     .replace('const payload = {', `entries.push(...${extra}); const payload = {`)
     .replace('goals: [],', `goals: [], accounts: ${accts},`) });
   await page.addInitScript(capture);
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/backup', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -3884,7 +3987,7 @@ await test('carry-through: a backup round-trips accounts, activity and the entry
 // the rest of the app cannot render.
 await test('carry-through: restoring a backup that predates accounts leaves exactly one', async () => {
   const { ctx, page } = await ctxPage();
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/backup', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -3925,7 +4028,7 @@ await test('accounts: a payload carrying an empty account list never leaves a ho
   if (pageErrors.length) throw new Error('the empty list threw: ' + pageErrors[0]);
   if (await page.locator('.budget-totals-row').count() !== 1) throw new Error('an empty account list left no budget to render');
   // ...and the same through a restore.
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/backup', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   await page.setInputFiles('input[type=file][accept=".json"]', {
     name: 'CashFlow_Backup_2026-08-25.json', mimeType: 'application/json',
@@ -3970,7 +4073,7 @@ await test('accounts: a filter naming an account that is gone falls back to comb
 await test('activity: budget years and accounts are recorded too', async () => {
   const { ctx, page } = await ctxPage();
   const feed = () => page.evaluate(() => JSON.parse(localStorage.getItem('cf_activity') || '[]'));
-  await page.goto(BASE + '#/you', { waitUntil: 'load' });
+  await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
   await page.waitForTimeout(1600);
   const nudge = page.getByRole('button', { name: 'Remind me later' });
   if (await nudge.count() > 0) await nudge.click().catch(() => {});
@@ -3980,6 +4083,8 @@ await test('activity: budget years and accounts are recorded too', async () => {
   if (!(await feed()).some((a) => a.kind === 'year' && /Added budget year 2027/.test(a.what))) {
     throw new Error('adding a budget year was not recorded');
   }
+  await page.goto(BASE + '#/you/accounts', { waitUntil: 'load' });
+  await page.waitForTimeout(1000);
   await page.getByRole('button', { name: '+ Add account' }).click();
   await page.waitForTimeout(700);
   if (!(await feed()).some((a) => a.kind === 'account' && /Added an account/.test(a.what))) {

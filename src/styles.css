@@ -53,10 +53,11 @@
            same line as it. */
         .checkbox-help-row{display:flex;align-items:center;}
         /* ── Settings → Statutory Holidays ── */
-        .holiday-year-pill{font-family:var(--font-mono);font-size:12px;font-weight:600;
-          padding:5px 12px;min-height:32px;border-radius:8px;cursor:pointer;
-          border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);}
-        .holiday-year-pill[data-active="true"]{background:var(--navy);border-color:var(--navy);color:#fff;}
+        /* A year selector is a pill, and the app already has one — .cf-pill,
+           whose [data-active] state is the same state this was painting navy
+           by hand. All that is left here is the mono face, which is the one
+           thing about a year that is not like every other pill. */
+        .holiday-year-pill{font-family:var(--font-mono);}
         .holiday-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
         .holiday-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
           padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bgCard);}
@@ -71,8 +72,7 @@
         .holiday-chip--manual{background:var(--accentLt);color:var(--accent);border-color:transparent;}
         .holiday-chip--published{background:var(--greenLt);color:var(--greenDk);border-color:transparent;}
         .holiday-chip--optional{background:var(--amberLt);color:var(--amberInk);border-color:transparent;}
-        .holiday-remove-btn{font-family:var(--font-ui);font-size:11px;font-weight:600;
-          padding:4px 10px;min-height:30px;border-radius:6px;cursor:pointer;
+        .holiday-remove-btn{font-family:var(--font-ui);font-weight:600;cursor:pointer;
           border:1px solid transparent;background:transparent;color:var(--red);}
         .holiday-remove-btn:hover{background:var(--redLt);}
         .holiday-form{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--stripe);}
@@ -166,9 +166,21 @@
              (no modifier) — form and dialog buttons
 
            Non-size properties (weight, border, icon gaps) stay with the
-           modifier that owns them, below and beside their components. */
-        .cf-btn--compact,.cf-btn--micro,.cf-btn--yearremove{font-size:11px;padding:4px 10px;border-radius:6px;}
-        .cf-btn--sm,.cf-btn--xs,.cf-btn--tiny,.cf-btn--md,.cf-btn--showhide{font-size:12px;padding:7px 14px;}
+           modifier that owns them, below and beside their components — which
+           is also the trap. A button wearing only one of those (--iconrow,
+           --dangerwide) names no step and falls silently to the no-modifier
+           one, so the same page action came out 13px on Accounts and 12px on
+           Budget Years. A role is not a size: every button needs one of each.
+
+           The five classes that used to restate a step under their own name
+           now share these selectors instead — .holiday-remove-btn,
+           .year-active-btn and .copy-year-btn on dense, .reset-targets-btn on
+           base, and .holiday-year-pill folded into .cf-pill, whose
+           [data-active] state it had been painting navy by hand. */
+        .cf-btn--compact,.cf-btn--micro,.cf-btn--yearremove,
+        .holiday-remove-btn,.year-active-btn,.copy-year-btn{font-size:11px;padding:4px 10px;border-radius:6px;}
+        .cf-btn--sm,.cf-btn--xs,.cf-btn--tiny,.cf-btn--md,.cf-btn--showhide,
+        .reset-targets-btn{font-size:12px;padding:7px 14px;}
         .cf-btn--wide,.cf-btn--action{font-size:12px;padding:8px 18px;}
         /* Layout helpers */
         .cf-hidden{display:none!important;}
@@ -516,7 +528,6 @@
           box-shadow:var(--shadowSm);}
         .help-shot-cap{font-size:11px;line-height:1.5;color:var(--textLt);margin-top:6px;max-width:68ch;}
         .help-keys{max-width:420px;margin-bottom:12px;}
-        .help-footer{margin:4px 0 8px;text-align:right;}
         /* Settings lost its explanatory paragraphs to the Help page, so it
            carries a link to where they went. */
         .settings-help-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;
@@ -880,6 +891,47 @@
         .alerts-empty-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
         .alert-section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
         .settings-toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px;}
+        /* ── Settings directory ──────────────────────────────────────
+           One row vocabulary for the whole of Settings, which is the other
+           half of splitting it into pages: the old single scroll had eleven
+           distinct button shapes on it, because every card had grown its own
+           controls. A directory row is a row — label, current value, chevron
+           — and that is the only shape the root screen has. */
+        .set-dir-head{display:flex;justify-content:flex-end;align-items:center;
+          gap:12px;margin-bottom:14px;}
+        .set-group{margin-bottom:22px;}
+        .set-group-title{font-size:11px;font-weight:700;letter-spacing:0.08em;
+          text-transform:uppercase;color:var(--textLt);margin:0 0 8px 2px;}
+        .set-list{background:var(--bgCard);border:1px solid var(--border);
+          border-radius:10px;overflow:hidden;}
+        .set-row{display:flex;align-items:center;gap:12px;width:100%;
+          min-height:52px;padding:12px 14px;background:transparent;border:0;
+          border-top:1px solid var(--border);font:inherit;font-size:14px;
+          color:var(--text);text-align:left;cursor:pointer;}
+        .set-row:first-child{border-top:0;}
+        .set-row:hover{background:var(--stripe);}
+        .set-row-label{flex:1 1 auto;min-width:0;}
+        /* The value is why the directory is worth reading: the old scroll made
+           you reach a card to find out what it said. It gives way first when
+           the row is tight — the label names the setting, the value only
+           reminds you of it. */
+        .set-row-value{flex:0 1 auto;min-width:0;color:var(--textLt);
+          font-size:13px;text-align:right;overflow:hidden;text-overflow:ellipsis;
+          white-space:nowrap;}
+        .set-row-chev{flex:0 0 auto;color:var(--textLt);font-size:17px;line-height:1;}
+        .set-row--danger .set-row-label{color:var(--red);font-weight:600;}
+        /* A detail page names itself and offers the way back, in one row. The
+           bottom nav still says You, so this is the only "up" there is. */
+        .set-detail-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+        .set-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;
+          padding:0 12px 0 8px;margin-left:-8px;background:transparent;border:0;
+          font:inherit;font-size:14px;font-weight:600;color:var(--primaryInk);
+          cursor:pointer;border-radius:8px;}
+        .set-back:hover{background:var(--stripe);}
+        .set-back span{font-size:19px;line-height:1;}
+        /* A page holds one card, so the card's own chrome is a second border
+           around the page you already named. */
+        .set-detail>.cf-card{border:0;padding:0;background:transparent;}
         .settings-pill-btn{font-size:12px;font-weight:600;padding:8px 20px;border-radius:9px;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;display:inline-flex;align-items:center;gap:7px;}
         /* Sat as bare mono text against the page, which read as debug output
            left in by accident rather than a deliberate build stamp. Same
@@ -887,6 +939,11 @@
         .build-version-tag{font-family:var(--font-mono);font-size:11px;color:var(--textLt);
           background:var(--stripe);border:1px solid var(--border);border-radius:12px;
           padding:2px 10px;align-self:center;white-space:nowrap;}
+        /* In the footer it is on the navy band, where a light chip would read
+           as a button. It keeps the mono face — the part that says "quote this
+           when something is wrong" — and takes the footer's own ink. */
+        .app-footer .build-version-tag{background:transparent;border:0;padding:0;
+          color:rgba(255,255,255,0.55);}
         .quicklink-pill{font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bgCard);color:var(--textMid);text-decoration:none;white-space:nowrap;flex-shrink:0;}
         .ai-key-input{flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--inputBg);color:var(--text);outline:none;}
         .cf-btn--showhide{white-space:nowrap;}
@@ -904,8 +961,8 @@
         .year-number{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);min-width:52px;}
         .openbal-label{font-size:11px;color:var(--textMid);white-space:nowrap;}
         .openbal-input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;max-width:100%;min-width:0;flex:0 1 120px;}
-        .year-active-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;}
-        .copy-year-btn{font-size:11px;color:var(--primaryInk);background:none;border:1px solid var(--primary);cursor:pointer;padding:4px 10px;border-radius:6px;white-space:nowrap;}
+        .year-active-btn{font-weight:600;border:1px solid var(--border);cursor:pointer;}
+        .copy-year-btn{font-weight:600;color:var(--primaryInk);background:none;border:1px solid var(--primary);cursor:pointer;white-space:nowrap;}
         .newyear-input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;}
         .cf-btn--iconrow{display:flex;align-items:center;gap:8px;}
         .backup-msg{font-size:12px;margin-top:10px;}
@@ -913,11 +970,36 @@
         .sync-icon{font-size:20px;}
         .sync-msg{font-size:11px;}
         .cf-btn--iconrow-sm{display:inline-flex;align-items:center;gap:6px;}
-        .cat-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:6px;cursor:grab;border:1px solid var(--border);transition:background 0.1s;}
+        /* A category was a bordered card with five buttons on it — ↑ ↓ Reset
+           Edit Remove — which a phone could not fit on one line, so the
+           actions wrapped underneath and each of fifteen categories stood
+           195px tall. It is a hairline row now, the same shape as .debt-item
+           and the goal rows: the name is the button that opens the editor,
+           where Reset and Remove moved to, and only the two reorder arrows
+           stay out here. */
+        .cat-row{display:flex;align-items:center;gap:10px;padding:6px 0;
+          border-top:1px solid var(--border);cursor:grab;transition:background 0.1s;}
+        .cat-row:first-child{border-top:0;}
+        .cat-open{flex:1 1 auto;min-width:0;background:transparent;border:0;
+          font:inherit;font-size:14px;color:var(--text);text-align:left;cursor:pointer;
+          min-height:44px;padding:0 6px;border-radius:8px;overflow:hidden;
+          text-overflow:ellipsis;white-space:nowrap;}
+        .cat-open:hover{background:var(--stripe);}
+        /* Editing is the one state that needs two lines: the name field and
+           four buttons cannot share 390px, and the field is the half that
+           loses — it was 60px wide, showing "ne" of "Income". The swatch and
+           the field take the first line, the buttons the second. */
+        .cat-row:has(.settings-input){flex-wrap:wrap;row-gap:8px;padding:10px 0;}
+        .cat-row:has(.settings-input) .settings-input{flex:1 1 140px;min-width:0;}
+        .cat-row:has(.settings-input) .cf-btn{flex:0 0 auto;}
+        @media(max-width:560px){
+          .cat-row:has(.settings-input) .settings-input{flex-basis:100%;}
+          .cat-row:has(.settings-input) .color-swatch{order:-1;}
+        }
         .drag-handle{color:var(--textLt);font-size:14px;cursor:grab;}
         .color-swatch{position:relative;width:22px;height:22px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid var(--bgCard);box-shadow:0 0 0 1px var(--border);}
         .color-swatch-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:none;}
-        .cat-actions-row{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+        .cat-actions-row{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0;justify-content:flex-end;}
         .reset-color-btn{font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--textLt);}
         .error-text-mt8{font-size:12px;color:var(--red);margin-top:8px;}
         .error-text-mt10{font-size:12px;color:var(--red);margin-top:10px;}
@@ -925,7 +1007,8 @@
         .bio-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
         .bio-busy-text{font-size:12px;color:var(--textLt);}
         .error-text-mt6{font-size:12px;color:var(--red);margin-top:6px;}
-        .reset-targets-btn{font-size:13px;font-weight:600;padding:9px 20px;border-radius:8px;border:1px solid var(--primary);cursor:pointer;background:var(--primary);color:#fff;}
+        .reset-targets-btn{font-family:var(--font-ui);font-weight:600;border-radius:7px;cursor:pointer;
+          border:1px solid var(--primary);background:var(--primary);color:#fff;}
         .success-text-mt10{font-size:12px;color:var(--greenDk);margin-top:10px;}
         .danger-card{margin-bottom:20px;border:1px solid var(--redLt);}
         .cf-btn--dangerwide{border:1px solid var(--red);display:inline-flex;align-items:center;gap:6px;}
@@ -1542,9 +1625,10 @@
           border-radius:9px;background:#fff;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
         .cf-switch[aria-checked="true"] .cf-switch-knob{left:23px;}
         /* Pill segmented controls (month picker, view toggles) */
-        .cf-pill{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:none;
+        .cf-pill,.holiday-year-pill{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:none;
           cursor:pointer;flex-shrink:0;background:var(--border);color:var(--textMid);}
-        .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"]{background:var(--primary);color:#fff;}
+        .cf-pill[aria-pressed="true"],.cf-pill[data-active="true"],
+        .holiday-year-pill[data-active="true"]{background:var(--primary);color:#fff;}
         .cf-pill--dashed{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;
           border:1.5px dashed var(--primary);cursor:pointer;flex-shrink:0;background:transparent;color:var(--primaryInk);}
         /* Compact variant for pill toggles docked in a card header (YoY metric,
@@ -1777,6 +1861,24 @@
         @media(max-width:768px),(max-height:500px){
           .cf-bottomnav{display:flex;}
           .tab-bar{display:none!important;}
+          /* Nav clearance belongs to the scroll container, not to <main>: the
+             footer is a *sibling* of <main> inside .app-scroll, so padding on
+             .content-area left it uncovered and the fixed nav sat on top of
+             the Privacy / Terms links — permanently, since .app-footer has
+             margin-top:auto and is either pinned to the bottom (short page)
+             or the last thing on it (long page). Padding the scroller means
+             every child clears the nav, and the flex `margin-top:auto` now
+             resolves against the padded content box.
+
+             This lives here rather than in the landscape block below, which
+             is where it was first written and where it only ever fixed the
+             rotated case: the condition that buries the footer is "the fixed
+             nav is on screen", and that is this media query — the same one
+             that shows the nav. In portrait the scroller had no bottom
+             padding at all, so Privacy, Terms and the build stamp sat under
+             the nav on every route. */
+          .app-scroll{padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+          .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
         }
         /* Landscape on a phone is 390px of height for everything. Restoring the
            bottom nav costs 62px of that, so the header gives the same back:
@@ -1787,17 +1889,7 @@
           .header-logo-img,.logo-area img{height:22px!important;}
           .cf-bottomnav{padding-top:2px;}
           .content-area{padding-top:14px;padding-bottom:14px;}
-          /* Nav clearance belongs to the scroll container, not to <main>: the
-             footer is a *sibling* of <main> inside .app-scroll, so padding on
-             .content-area left it uncovered and the fixed nav sat on top of
-             the Privacy / Terms links — permanently, since .app-footer has
-             margin-top:auto and is either pinned to the bottom (short page)
-             or the last thing on it (long page). Padding the scroller means
-             every child clears the nav, and the flex `margin-top:auto` now
-             resolves against the padded content box. */
-          .app-scroll{padding-bottom:calc(72px + env(safe-area-inset-bottom));}
           .content-area{padding-bottom:20px!important;}
-          .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
         }
         /* Camera capture: touch devices only — desktop shows gallery picker alone */
         .attach-camera{display:none!important;}
@@ -2238,7 +2330,9 @@
              pushed the whole app root 61px wide — and html{overflow-x:clip}
              made that unrecoverable: "Remove" hung off the card and the
              "+ Add" button below it was entirely outside the viewport. */
-          .cat-actions-row{margin-left:0!important;flex-shrink:1!important;width:100%;}
+          /* The full-width wrap this used to force is what made each row
+             195px tall. Two arrows fit beside a name at 320px, so the row
+             stays one line and the editor holds everything else. */
           .cat-row{row-gap:8px;}
         }
 

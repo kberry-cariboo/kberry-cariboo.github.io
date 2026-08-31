@@ -256,13 +256,25 @@
     // resets every existing device on upgrade. Only the value vocabulary moved.
     const flowSub = ROUTE_FLOW_SUBS.includes(flowSubRaw) ? flowSubRaw : (LEGACY_FLOW_SUBS[flowSubRaw] || "list");
     const [planSub, setPlanSub] = useLS("cf_plan_subtab", "goals");
+    // Deliberately not useLS, unlike the other two. Flow and Plan remember
+    // which lens you read them in, because that is a preference. Settings is a
+    // directory: opening it should show the directory, not drop you back
+    // inside whichever page you were last in. The route carries it instead, so
+    // Back works and a link to a settings page is a link.
+    const [youSub, setYouSub] = useState(null);
     const hashSyncGuard = useRef(false);
     const hashInitialized = useRef(false);
     useEffect(() => {
       const fromHash = parseTabHash();
       if (fromHash.flowSub) setFlowSub(fromHash.flowSub);
       if (fromHash.planSub) setPlanSub(fromHash.planSub);
+      if (fromHash.youSub) setYouSub(fromHash.youSub);
     }, []);
+    // Leaving Settings closes whichever page was open, so coming back lands on
+    // the directory rather than three levels in.
+    useEffect(() => {
+      if (tab !== "you" && youSub) setYouSub(null);
+    }, [tab, youSub]);
     useEffect(() => {
       if (hashSyncGuard.current) {
         hashSyncGuard.current = false;
@@ -270,7 +282,7 @@
       }
       let newHash;
       try {
-        newHash = "#/" + tab + (tab === "flow" && flowSub ? "/" + flowSub : "") + (tab === "plan" && planSub ? "/" + planSub : "");
+        newHash = "#/" + tab + (tab === "flow" && flowSub ? "/" + flowSub : "") + (tab === "plan" && planSub ? "/" + planSub : "") + (tab === "you" && youSub ? "/" + youSub : "");
         if (location.hash !== newHash) {
           // First sync on a hashless load replaces the entry instead of
           // pushing — otherwise the first Back press appears to do nothing.
@@ -282,7 +294,7 @@
         // A malformed or inaccessible hash just means no deep link; the
         // default view is correct.
       }
-    }, [tab, flowSub, planSub]);
+    }, [tab, flowSub, planSub, youSub]);
     // Name the view in the one place the browser reads: the tab strip, the
     // history entry and the bookmark. Every one of them used to say
     // "CashFlow Budget", which made a back button through six views
@@ -318,7 +330,8 @@
           try {
             const canonical = "#/" + parsed.tab
               + (parsed.tab === "flow" && parsed.flowSub ? "/" + parsed.flowSub : "")
-              + (parsed.tab === "plan" && parsed.planSub ? "/" + parsed.planSub : "");
+              + (parsed.tab === "plan" && parsed.planSub ? "/" + parsed.planSub : "")
+              + (parsed.tab === "you" && parsed.youSub ? "/" + parsed.youSub : "");
             if (location.hash !== canonical) history.replaceState(null, "", canonical);
           } catch (e) {
             // An inaccessible history just means the old hash stays in the
@@ -338,6 +351,10 @@
         setTab(parsed.tab);
         if (parsed.tab === "flow" && parsed.flowSub) setFlowSub(parsed.flowSub);
         if (parsed.tab === "plan" && parsed.planSub) setPlanSub(parsed.planSub);
+        // Unlike the other two this is set unconditionally, including to null:
+        // Back out of a settings page has to return to the directory, and a
+        // hash of "#/you" is exactly how the history entry says so.
+        setYouSub(parsed.tab === "you" ? parsed.youSub : null);
       };
       window.addEventListener("popstate", onPopState);
       // popstate doesn't fire for an ordinary in-page link to "#/help" or for
@@ -1726,6 +1743,8 @@
     )), tab === "plan" && planSub === "insights" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "you" && /* @__PURE__ */ React.createElement(
       SettingsView,
       {
+        youSub,
+        setYouSub,
         categories,
         activity,
         accounts,
@@ -1831,7 +1850,12 @@
         className: "cf-footer-link"
       },
       "Terms of Use"
-    )))));
+    ), /* @__PURE__ */ React.createElement("span", { className: "footer-sep", "aria-hidden": "true" }, "|"),
+    // The build number was in the Settings header and again at the foot of
+    // Help. It is not a setting — it is the thing you read out when something
+    // is wrong — so it belongs where the other every-page small print already
+    // is, reachable from any view rather than from two particular ones.
+    /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)))));
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));
