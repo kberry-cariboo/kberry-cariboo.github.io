@@ -243,6 +243,21 @@
         .flex-1{flex:1;}
         .min-w-0{min-width:0;}
         .cf-page{max-width:var(--container-w);width:100%;margin:0 auto;}
+        /* One vertical rhythm for the panel stack.
+           Measured across ten views, the gap between one panel and the next
+           was 0, 4, 8, 10, 12, 14, 16 or 20px depending on which margin class
+           the widget happened to carry — .mb-16 on some, a bespoke
+           margin-bottom on .glance-grid (14), .ending-soon-row (20) and
+           .dash-toolbar (10), and nothing at all on the runway card, which
+           left it touching the panel below it. None of that was a decision;
+           it is what accumulated.
+           The stack sets the spacing now and the panels stop carrying it, so
+           adding one cannot introduce a ninth value. Type and class selectors
+           only, so it beats .mb-16 and its bespoke siblings on specificity
+           without !important — a panel that genuinely needs different spacing
+           can still say so with a more specific rule. */
+        main>.cf-page>*{margin-top:0;margin-bottom:16px;}
+        main>.cf-page>*:last-child{margin-bottom:0;}
         /* Spacing scale — dedupes the most repeated one-off margin/padding
            values found across components (audit round 6, inline-style pass) */
         .mb-0{margin-bottom:0;}
@@ -794,7 +809,16 @@
              and its "+ Add" is the bottom nav's compose button a second time.
              The bar moves under the ledger; nothing is removed. */
           .budget-list-lens{display:flex;flex-direction:column;}
-          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:12px;margin-bottom:0;}
+          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:16px;margin-bottom:0;}
+          /* Forecast's export bar was left where the list lens's used to be —
+             above the ledger — so the same rule applies to it. Its bar and its
+             ledger are siblings on the page rather than inside a wrapper, so
+             the page orders them directly. Worth 60px of chrome ahead of the
+             first row, which is what put it back inside its budget once the
+             stack's spacing was made uniform. */
+          .forecast-page{display:flex;flex-direction:column;}
+          .forecast-page>.cf-card--flush{order:1;}
+          .forecast-page>.forecast-exportbar-row{order:2;margin-top:16px;margin-bottom:0;}
         }
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
         .budget-toolbar-row--end{justify-content:flex-end;}
@@ -2217,13 +2241,25 @@
           main .cf-page>.cf-card,
           main .cf-page>.chart-grid>.cf-card,
           main .cf-page>.budget-list-lens>.cf-card{
-            border-radius:0!important;border-left:0!important;border-right:0!important;
+            border-radius:0!important;border-left:0!important;border-right:0!important;}
+          /* The band's padding, except on the cards that wrap a table or a
+             list drawing its own edges — those declare padding:0 for
+             themselves, and 16px insets rows meant to reach the edge. It cost
+             the Income column heading on the monthly summary and 16px a side
+             on every budget-vs-actual row. */
+          main .cf-page>.cf-card:not(.cf-card--flush):not(.card-flat):not(.bva-card):not(.forecast-setup),
+          main .cf-page>.chart-grid>.cf-card:not(.cf-card--flush):not(.card-flat),
+          main .cf-page>.budget-list-lens>.cf-card:not(.cf-card--flush):not(.card-flat){
             padding:16px!important;}
           /* Forecast's two control blocks give up their card chrome entirely
              on a phone — that was the §2.2 fix that took 751px of chrome down
              to 619px, and putting the band's padding back would undo it. */
           main .cf-page>.cf-card.forecast-setup{padding:0!important;
             background:none!important;border:0!important;box-shadow:none!important;}
+          /* Named in the :not() above rather than left to out-specify it: a
+             :not() chain carries the specificity of everything inside it, so
+             the padding rule had quietly grown stronger than this one and put
+             the chrome back. */
           /* Lists that run to their card's edges do it with a negative margin,
              which has to match the padding above or it overshoots — .goal-list
              and .debt-list were written against the old 24px and scrolled the
@@ -2232,14 +2268,7 @@
           main .cf-page>.cf-card .debt-list{margin-left:-16px;margin-right:-16px;}
           main .cf-page>.cf-card .goal-list>.goal-row-cursor,
           main .cf-page>.cf-card .debt-list>.debt-item{padding-left:16px;padding-right:16px;}
-          /* .cf-card--flush and .card-flat wrap a table or a list that draws
-             its own edges, so the band's 16px would inset rows that are meant
-             to reach it — and on the monthly summary that cost enough width to
-             clip the Income column heading. Their own headers pad themselves. */
-          main .cf-page>.cf-card--flush,
-          main .cf-page>.card-flat,
-          main .cf-page>.chart-grid>.cf-card--flush,
-          main .cf-page>.budget-list-lens>.cf-card--flush{padding:0!important;}
+
           /* Settings detail pages strip the card entirely — the page already
              names itself — so they opt out rather than becoming bands. */
           .set-detail>.cf-card{margin-left:0!important;margin-right:0!important;
@@ -12307,7 +12336,7 @@ const RUNWAY_DAYS = 90;
       categories,
       categoryColors
     })), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm forecast-sub" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page forecast-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm forecast-sub" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
       const adj = (scenarioAdj || {})[e.id];
       const dropped = !!(adj && adj.drop);
       const amt = adj && Number.isFinite(adj.amount) ? adj.amount : e.amount;

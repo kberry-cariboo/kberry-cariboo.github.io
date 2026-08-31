@@ -1543,6 +1543,43 @@ await test('panels: every view draws them as full-bleed bands, one padding scale
   await ctx.close();
 });
 
+// The gap between one panel and the next was 0, 4, 8, 10, 12, 14, 16 or 20px
+// depending on which margin class the widget happened to carry — eight values
+// across ten views, none of them a decision. Worst was the runway card, which
+// carried none at all and sat flush against the panel below it. The stack owns
+// the rhythm now; this is what stops a ninth value appearing.
+await test('panels: one vertical rhythm, every view and every width', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  const problems = [];
+  for (const [w, h] of [[390, 844], [820, 900], [1400, 900]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const hash of ['#/today', '#/flow/list', '#/flow/curve', '#/flow/entries',
+                        '#/envelopes', '#/plan/goals', '#/plan/debt', '#/help', '#/alerts', '#/you']) {
+      await page.goto(BASE + hash, { waitUntil: 'load' });
+      await page.waitForTimeout(800);
+      const gaps = await page.evaluate(() => {
+        const root = document.querySelector('main > .cf-page');
+        if (!root) return [];
+        // Sorted by position, not source order: Forecast's export bar is
+        // moved below the ledger with `order`, and a rhythm is what the eye
+        // sees down the page rather than what the markup happens to say.
+        const kids = [...root.children].filter((e) => e.getClientRects().length)
+          .map((e) => e.getBoundingClientRect())
+          .sort((a, b) => a.top - b.top);
+        const out = [];
+        for (let i = 1; i < kids.length; i++) out.push(Math.round(kids[i].top - kids[i - 1].bottom));
+        return out;
+      });
+      for (const g of new Set(gaps)) {
+        if (g !== 16) problems.push(`${w}px ${hash}: a ${g}px gap between panels`);
+      }
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  if (problems.length) throw new Error([...new Set(problems)].slice(0, 6).join(' | '));
+  await ctx.close();
+});
+
 // Two screens each carried a bar restating something the alerts centre already
 // says: Today's spending insight, and Forecast's "N events below your
 // threshold" — which counted events, the thing the alerts page stopped doing.
