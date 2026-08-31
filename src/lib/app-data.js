@@ -330,6 +330,61 @@
       text: insight.month + " spending" + body
     };
   }
+// ── What an alert actually is ────────────────────────────────────────────
+// The alerts page used to list every event whose projected balance fell below
+// the threshold. Measured on a household that dips $14k under, that is sixty
+// rows across seven phone screens, and all sixty say one thing: you go under
+// on Sep 1 and stay under. Every row past the first is the consequence, not a
+// new problem — and naming the entry on it ("Rent", "Fuel") implies a cause
+// that isn't there, because the balance was already negative before it landed.
+//
+// So an alert is an *episode*: a contiguous stretch of the horizon spent below
+// the threshold. One crossing, one card. This is the only place that decides
+// that, so the bell badge and the page cannot disagree about how many there
+// are.
+//
+// `flow` is chronological and carries a running `balance` per event (see
+// computeFlow). Returns [] when nothing dips.
+function lowBalanceEpisodes(flow, alertThreshold, horizonDays = RUNWAY_DAYS) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(today);
+  end.setDate(today.getDate() + horizonDays);
+  const episodes = [];
+  let cur = null;
+  for (const ev of flow) {
+    if (!ev.date || ev.date < today || ev.date > end) continue;
+    if (ev.balance < alertThreshold) {
+      if (!cur) cur = { start: ev, low: ev, events: [], recover: null };
+      if (ev.balance < cur.low.balance) cur.low = ev;
+      cur.events.push(ev);
+    } else if (cur) {
+      cur.recover = ev;
+      episodes.push(cur);
+      cur = null;
+    }
+  }
+  // Still under when the horizon runs out: that is a real state, and saying
+  // "recovers on <last date>" would be a lie about data we do not have.
+  if (cur) episodes.push(cur);
+  return episodes.map((e) => ({
+    id: "ep-" + e.start.month + "-" + e.start.day,
+    start: e.start,
+    low: e.low,
+    recover: e.recover,
+    events: e.events,
+    // The entries that land on the crossing day are the ones that take it
+    // under. The other fifty-nine happen while it is already under.
+    trigger: e.events.filter((x) => x.month === e.start.month && x.day === e.start.day),
+    tone: e.low.balance < 0 ? "critical" : "warn",
+    // What it would take to not have this episode at all.
+    shortfall: alertThreshold - e.low.balance,
+    days: e.recover
+      ? Math.max(1, Math.round((e.recover.date - e.start.date) / 864e5))
+      : Math.max(1, Math.round((end - e.start.date) / 864e5)),
+    openEnded: !e.recover
+  }));
+}
 const RUNWAY_DAYS = 90;
   // ── The schedule, in words ──────────────────────────────────────────────
   // recurLabel abbreviates for a table column — "Monthly (weekday)" never says

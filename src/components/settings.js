@@ -1,57 +1,91 @@
+    // The alerts page. See lowBalanceEpisodes for what an alert is and why it
+  // is not one row per event: this page's whole job is to say how many
+  // distinct things are wrong, and the old one said sixty when the answer
+  // was one.
   function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
   } }) {
-    const today = /* @__PURE__ */ new Date();
-    const next90 = new Date(today);
-    next90.setDate(today.getDate() + 90);
-    const alerts = flow.filter((ev) => ev.date >= today && ev.date <= next90 && ev.balance < alertThreshold).sort((a, b) => a.date - b.date);
-    const critical = alerts.filter((a) => a.balance < 0);
-    const warning = alerts.filter((a) => a.balance >= 0);
-    const renderAlertRow = (ev) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: ev.id,
+    const episodes = lowBalanceEpisodes(flow, alertThreshold);
+    const dateLabel = (ev) => MONTHS[ev.month] + " " + ev.day;
+
+    const renderEpisode = (ep) => {
+      const worst = ep.tone === "critical";
+      // The sentence a person would say. Everything else on the card is
+      // detail under it, not a second version of it.
+      const headline = worst
+        ? "Below zero from " + dateLabel(ep.start)
+        : "Below your " + fmt(alertThreshold) + " buffer from " + dateLabel(ep.start);
+      const series = ep.events.map((e) => e.balance);
+      return /* @__PURE__ */ React.createElement("button", {
+        key: ep.id,
         type: "button",
-        onClick: gotoForecast,
-        className: "alert-row",
-        style: {
-          background: ev.balance < 0 ? "var(--redLt)" : "var(--amberLt)",
-          border: `1px solid ${ev.balance < 0 ? "var(--red)" : "var(--amberInk)"}`
-        }
+        className: "episode",
+        "data-tone": ep.tone,
+        onClick: gotoForecast
       },
-      /* @__PURE__ */ React.createElement("span", { className: "alert-row-icon", style: { color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 18 })),
-      /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, ev.desc), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, MONTHS[ev.month], " ", ev.day, " \xB7 ", ev.category)),
-      /* @__PURE__ */ React.createElement("div", { className: "text-right" }, /* @__PURE__ */ React.createElement("div", { className: "alert-row-balance", style: {
-        color: ev.balance < 0 ? "var(--red)" : "var(--amberInk)"
-      } }, fmt(ev.balance)), /* @__PURE__ */ React.createElement("div", { className: "caption-10" }, "projected balance")),
-      /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192 Forecast")
-    );
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "c-textMid" }, /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 24 })), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "settings-header-title" }, "Notifications"), /* @__PURE__ */ React.createElement("div", { className: "txm mt-2" }, "Balance alerts within the next 90 days \xB7 Threshold: ", fmt(alertThreshold))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setTab("today"),
-        className: "cf-btn cf-btn--secondary cf-btn--md"
-      },
-      "← Back"
-    )), alerts.length === 0 && findings.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 40 })), /* @__PURE__ */ React.createElement("div", { className: "alerts-empty-title" }, "All clear!"), /* @__PURE__ */ React.createElement("div", { className: "txl" }, "No balance alerts in the next 90 days."))), critical.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
-      color: "var(--red)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Critical \u2014 Balance goes negative"), critical.map((ev) => renderAlertRow(ev))), warning.length > 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "alert-section-label", style: {
-      color: "var(--amberInk)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 13 }), "Warning \u2014 Balance below threshold"), warning.map((ev) => renderAlertRow(ev))),
-    // Everything else the app has worked out and would otherwise only say on
-    // the one screen that computes it. "Centralised" has to mean you can come
-    // here and see the lot, not just the balance warnings.
-    findings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
-      /* @__PURE__ */ React.createElement("div", { className: "alert-section-label" },
-        /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 13 }), "Worth knowing"),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
-        /* @__PURE__ */ React.createElement("button", {
-          key: f.id, type: "button", className: "notice notice--sm alerts-finding",
-          "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
-        },
-          /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
-            /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
-          /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
-          /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "\u2192"))))));
+        /* @__PURE__ */ React.createElement("div", { className: "episode-head" },
+          /* @__PURE__ */ React.createElement("span", { className: "episode-title" }, headline),
+          /* @__PURE__ */ React.createElement("span", { className: "episode-days" },
+            ep.openEnded ? ep.days + "+ days" : ep.days + " days")),
+        /* @__PURE__ */ React.createElement("div", { className: "episode-low" },
+          /* @__PURE__ */ React.createElement("span", { className: "episode-low-amt" }, fmt(ep.low.balance)),
+          /* @__PURE__ */ React.createElement("span", { className: "episode-low-when" },
+            "lowest on ", dateLabel(ep.low))),
+        series.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "episode-spark", "aria-hidden": "true" },
+          /* @__PURE__ */ React.createElement(Sparkline, {
+            data: series, responsive: true, area: true, height: 34,
+            color: worst ? "var(--red)" : "var(--amberInk)"
+          })),
+        /* @__PURE__ */ React.createElement("div", { className: "episode-facts" },
+          // The one number that answers "what do I do about it".
+          /* @__PURE__ */ React.createElement("span", null,
+            /* @__PURE__ */ React.createElement("strong", null, fmt(ep.shortfall)),
+            " more would clear it"),
+          /* @__PURE__ */ React.createElement("span", null, ep.openEnded
+            ? "Still below at the end of the 90 days"
+            : "Back above on " + dateLabel(ep.recover))),
+        // What takes it under — the entries on the crossing day itself, not
+        // every entry that happens while it is already under.
+        ep.trigger.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "episode-trigger" },
+          ep.trigger.length === 1 ? "Takes it under: " : "Take it under: ",
+          ep.trigger.map((t, i) => /* @__PURE__ */ React.createElement("span", { key: t.id },
+            i > 0 ? ", " : "", /* @__PURE__ */ React.createElement("strong", null, t.desc),
+            " ", fmt(signedAmount(t))))),
+        /* @__PURE__ */ React.createElement("span", { className: "episode-cta" }, "See it on the forecast →"));
+    };
+
+    const nothing = episodes.length === 0 && findings.length === 0;
+    return /* @__PURE__ */ React.createElement("div", { className: "cf-page alerts-page" },
+      /* @__PURE__ */ React.createElement("div", { className: "alerts-head" },
+        /* @__PURE__ */ React.createElement("h2", { className: "alerts-title" },
+          episodes.length === 0 ? "Nothing to flag"
+            : episodes.length === 1 ? "1 thing to watch"
+            : episodes.length + " things to watch"),
+        /* @__PURE__ */ React.createElement("span", { className: "alerts-sub" },
+          "Next 90 days · buffer ", fmt(alertThreshold),
+          " · ",
+          /* @__PURE__ */ React.createElement("a", { href: "#/you/threshold", className: "link-primary" }, "change"))),
+      nothing && /* @__PURE__ */ React.createElement("div", { className: "alerts-clear" },
+        /* @__PURE__ */ React.createElement("span", { className: "alerts-clear-icon", "aria-hidden": "true" },
+          /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 30 })),
+        /* @__PURE__ */ React.createElement("span", { className: "alerts-clear-title" }, "All clear"),
+        /* @__PURE__ */ React.createElement("span", { className: "txl" },
+          "Your balance stays above ", fmt(alertThreshold), " for the next 90 days.")),
+      episodes.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "episode-list" },
+        episodes.map(renderEpisode)),
+      // Everything else the app has worked out and would otherwise only say on
+      // the one screen that computes it. "Centralised" has to mean you can come
+      // here and see the lot, not just the balance warnings.
+      findings.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null,
+        /* @__PURE__ */ React.createElement("h3", { className: "alerts-group-title" }, "Worth knowing"),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
+          /* @__PURE__ */ React.createElement("button", {
+            key: f.id, type: "button", className: "notice notice--sm alerts-finding",
+            "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
+          },
+            /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
+              /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
+            /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
+            /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "→"))))));
   }
   // Delivery hour choices for background push. Labelled in 12-hour form
   // because that's how the alert time reads on the phone that receives it.

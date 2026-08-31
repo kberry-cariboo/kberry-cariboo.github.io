@@ -1855,6 +1855,83 @@ await test('plan: debts are flat rows, and the strategies are one comparison', a
   await ctx.close();
 });
 
+// The balance alerts themselves had no test at all — which is how the page
+// could list sixty rows for one dip without anything objecting, and how
+// replacing the whole thing left the suite green. What it lists is now the
+// thing under test.
+//
+// An alert is an episode: a contiguous stretch below the buffer. The fixture
+// here goes $42k under and never recovers inside the horizon, so sixty-odd
+// events fall below the threshold and all of them are one problem.
+await test('alerts: a dip is one alert, however many events fall inside it', async () => {
+  const { ctx, page } = await ctxPage({ touch: true,
+    stub: (t) => t.replace(/openingBalance: 1250000/g, 'openingBalance: -4200000') });
+  await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    const under = [...document.querySelectorAll('.episode')];
+    return { eps: under.length, screens: sc.scrollHeight / sc.clientHeight,
+      slop: sc.scrollWidth - sc.clientWidth,
+      title: (document.querySelector('.alerts-title') || {}).textContent || '',
+      card: under.length ? under[0].innerText.replace(/\s+/g, ' ') : '',
+      tone: under.length ? under[0].dataset.tone : null,
+      badge: (document.querySelector('.alert-bell-badge') || {}).textContent || '',
+      // The banner is a summary of the page you are already on, and its
+      // "View alerts" action would go nowhere.
+      notices: document.querySelectorAll('.notice-stack .notice, .notice-stack .notice-summary').length,
+      // The retired shape, so this cannot quietly come back.
+      oldRows: document.querySelectorAll('.alert-row').length };
+  });
+  if (r.oldRows) throw new Error(r.oldRows + ' one-row-per-event alerts are back');
+  if (r.eps !== 1) throw new Error('expected 1 episode for one continuous dip, got ' + r.eps);
+  if (r.tone !== 'critical') throw new Error('a dip below zero is not marked critical: ' + r.tone);
+  if (!/1 thing to watch/.test(r.title)) throw new Error('the page says "' + r.title + '"');
+  if (r.badge !== '1') throw new Error('the bell badge says "' + r.badge + '" for one episode');
+  if (r.notices) throw new Error('the low-balance banner is repeated on the alerts page itself');
+  if (r.slop > 1) throw new Error('the page overflows sideways by ' + r.slop + 'px');
+  // It used to be 6.9 screens for this household.
+  if (r.screens > 2) throw new Error('the page is ' + r.screens.toFixed(1) + ' screens for a single dip');
+  // The card has to answer: when, how deep, what it would take, what caused it.
+  for (const [what, re] of [['the crossing date', /Below zero from Sep 1/],
+                            ['the low point', /lowest on/],
+                            ['the shortfall', /more would clear it/],
+                            ['that it never recovers', /Still below at the end/],
+                            ['what takes it under', /(Takes?) it under: .*Rent/]]) {
+    if (!re.test(r.card)) throw new Error('the card does not say ' + what + ': ' + r.card);
+  }
+  // And the banner is still there on the pages that are not this one.
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const onToday = await page.evaluate(() =>
+    document.querySelectorAll('.notice-stack .notice, .notice-stack .notice-summary').length);
+  if (!onToday) throw new Error('suppressing the banner on Alerts also removed it from Today');
+  await ctx.close();
+});
+
+// Two separate dips are two alerts, and one that ends says when.
+await test('alerts: separate dips are separate, and a recovery is dated', async () => {
+  const { ctx, page } = await ctxPage({ touch: true,
+    stub: (t) => t.replace(/alertThreshold: 50000/g, 'alertThreshold: 4500000') });
+  await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => ({
+    title: (document.querySelector('.alerts-title') || {}).textContent || '',
+    badge: (document.querySelector('.alert-bell-badge') || {}).textContent || '',
+    cards: [...document.querySelectorAll('.episode')]
+      .map((e) => ({ tone: e.dataset.tone, t: e.innerText.replace(/\s+/g, ' ') })) }));
+  if (r.cards.length !== 2) throw new Error('expected 2 episodes, got ' + r.cards.length);
+  if (!/2 things to watch/.test(r.title)) throw new Error('the page says "' + r.title + '"');
+  if (r.badge !== '2') throw new Error('the bell badge says "' + r.badge + '"');
+  for (const c of r.cards) {
+    // Above zero but under the buffer is a warning, not a crisis.
+    if (c.tone !== 'warn') throw new Error('a dip that stays above zero is marked ' + c.tone);
+    if (!/Back above on \w+ \d+/.test(c.t)) throw new Error('no dated recovery: ' + c.t);
+    if (/Still below at the end/.test(c.t)) throw new Error('a recovering dip claims it never recovers: ' + c.t);
+  }
+  await ctx.close();
+});
+
 // "Centralised" has to mean the Alerts centre lists everything the app worked
 // out, not only the balance warnings.
 await test('alerts: the centre carries the findings, not just the balance warnings', async () => {

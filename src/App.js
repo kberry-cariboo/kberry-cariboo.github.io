@@ -1144,7 +1144,9 @@
     }, [activeFlow, activeYear, debtData, debtExtraForFindings]);
     const appNotices = useMemo(() => {
       const out = [];
-      if (showLowBanner) {
+      // Not on the alerts page itself: there the banner is a summary of the
+      // page under it, and its "View alerts" action goes nowhere.
+      if (showLowBanner && tab !== "alerts") {
         const under = navLowInfo.min < 0
           ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
         out.push({
@@ -1184,7 +1186,7 @@
         });
       }
       return out;
-    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries]);
+    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):
@@ -1430,18 +1432,22 @@
       },
       "\u2715"
     )), (() => {
-      const today2 = /* @__PURE__ */ new Date();
-      const n90 = new Date(today2);
-      n90.setDate(today2.getDate() + 90);
-      const upcoming = activeFlow.filter((ev) => ev.date >= today2 && ev.date <= n90 && ev.balance < alertThresh);
-      const critical = upcoming.filter((ev) => ev.balance < 0);
-      const warning = upcoming.filter((ev) => ev.balance >= 0);
+      // Episodes, not events — the same count the alerts page shows. Counting
+      // events made the badge read "9+" for a single dip, because a household
+      // that goes under stays under and every entry after the crossing was
+      // counted as another alert.
+      const episodes = lowBalanceEpisodes(activeFlow, alertThresh);
+      if (!episodes.length) return null;
+      const critical = episodes.filter((e) => e.tone === "critical");
+      const warning = episodes.filter((e) => e.tone !== "critical");
       const hasCritical = critical.length > 0;
-      const hasWarning = warning.length > 0;
-      if (!hasCritical && !hasWarning) return null;
-      const count = hasCritical ? upcoming.length : warning.length;
+      const count = episodes.length;
       const color = hasCritical ? "var(--red)" : "var(--amberInk)";
-      const label = hasCritical ? hasWarning ? `${critical.length} critical, ${warning.length} warning alert${upcoming.length > 1 ? "s" : ""}` : `${critical.length} critical alert${critical.length > 1 ? "s" : ""}` : `${warning.length} warning alert${warning.length > 1 ? "s" : ""}`;
+      const label = hasCritical
+        ? warning.length
+          ? `${critical.length} critical, ${warning.length} warning alert${count > 1 ? "s" : ""}`
+          : `${critical.length} critical alert${critical.length > 1 ? "s" : ""}`
+        : `${warning.length} warning alert${warning.length > 1 ? "s" : ""}`;
       return /* @__PURE__ */ React.createElement(
         "button",
         {
