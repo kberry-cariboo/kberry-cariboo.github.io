@@ -118,11 +118,24 @@ CF_TEST_PG=1 node tests/sync-sql.mjs
 ```
 
 Playwright is resolved from a local install, `PLAYWRIGHT_LIB`, or the global
-npm root. CI installs the current version fresh (`npm install -g playwright`),
-so a global install here can be older than the one the suite will actually run
-against — a removed API passes locally and throws on the runner. If a browser
-test fails in CI and not here, compare `npm view playwright version` with what
-`npm root -g` holds before looking anywhere else.
+npm root. **CI pins the version** (`playwright@1.62.1` in
+`.github/workflows/build.yml`); it used to install whatever npm had published
+that morning, which is how a suite passing locally on 1.56.1 threw on the
+runner when `page.accessibility` was removed upstream. Your global install can
+still be a different version from the pin, so before bumping it — or when a
+browser test fails in CI and not here — run the suite against the pinned one:
+
+```bash
+mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@1.62.1
+cd -   # back to the repo
+PLAYWRIGHT_LIB=/tmp/pw/node_modules/playwright/index.mjs \
+  CHROMIUM_PATH=/opt/pw-browsers/chromium node tests/regression.mjs
+```
+
+`CHROMIUM_PATH` points a Playwright build at a browser it did not download
+itself; every browser suite honours it, and without it a pinned Playwright
+looks for a chromium revision that isn't there.
 
 Both lint arguments matter. `no-unused-vars` and `no-undef` are off for the
 per-file pass — every `src/` file references things defined in its siblings,

@@ -90,10 +90,16 @@ jobs:
       # Global install (not a package.json dependency) matches how the rest of
       # this repo has no node_modules — tests/regression.mjs resolves it via
       # `npm root -g` when no local install is present.
+      #
+      # Pinned, because unpinned it took whatever npm had published that
+      # morning. That is how a suite that passed locally on 1.56.1 threw here
+      # on 1.62.1: page.accessibility had been removed upstream, and nothing
+      # about the diff said so. Bump this deliberately, and run the suite
+      # against the new version before you do — see README, "Making a change".
       - name: Install Playwright
         run: |
-          npm install -g playwright
-          npx playwright install --with-deps chromium
+          npm install -g playwright@1.62.1
+          npx playwright@1.62.1 install --with-deps chromium
 
       # Needs neither a browser nor a database: it reads HOUSEHOLD_FIELDS out of
       # src/lib/household-sync.js and cf_payload_keys() out of

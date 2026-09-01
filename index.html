@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>CashFlow Budget</title>
-<meta name="theme-color" content="#1C2B3A"/>
+<meta name="theme-color" content="#14413A"/>
 <meta name="color-scheme" content="dark light"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -12,13 +12,13 @@
 <meta name="apple-mobile-web-app-title" content="CashFlow"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
-<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   html{height:100%;-webkit-text-size-adjust:100%;scrollbar-gutter:stable;}
-  body{height:100%;background:#1C2B3A;font-family:Inter,sans-serif;overflow-x:hidden;scrollbar-gutter:stable;}
+  body{height:100%;background:#14413A;font-family:Inter,sans-serif;overflow-x:hidden;scrollbar-gutter:stable;}
   #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;}
-  .bbar{width:180px;height:3px;background:#243447;border-radius:2px;overflow:hidden;}
+  .bbar{width:180px;height:3px;background:#1A5049;border-radius:2px;overflow:hidden;}
   .bfill{height:100%;background:#fff;border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
   .bicon{font-size:36px;margin-bottom:4px;}
   .bname{font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;font-size:16px;letter-spacing:0.04em;}
@@ -2282,14 +2282,23 @@
              border would have to know how many columns it is in — three
              across at 768px, two at 480, and a lone last tile spanning both —
              and the gap does not. */
-          main .cf-page>.glance-grid,main .cf-page>.kpi-grid-4{
-            margin-left:calc(-1 * var(--container-gutter))!important;
-            margin-right:calc(-1 * var(--container-gutter))!important;
+          main .cf-page .glance-grid,main .cf-page .kpi-grid,main .cf-page .kpi-grid-4{
             max-width:none!important;gap:1px!important;background:var(--border);
             border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-          main .cf-page>.glance-grid>*,main .cf-page>.kpi-grid-4>*{
+          main .cf-page .glance-grid>*,main .cf-page .kpi-grid>*,main .cf-page .kpi-grid-4>*{
             border:0!important;border-radius:0!important;box-shadow:none!important;
             padding:14px 16px!important;background:var(--bgCard)!important;}
+          /* A band reaches the edges of whatever holds it. On the page that is
+             the gutter; inside a panel it is the panel's 16px. Flow's month
+             summary and Plan's debt tracker keep their tiles in a card, which
+             is why they stayed a raft of inset boxes while Today's were
+             already bands — same KpiCard, same .kpi-grid, two nestings. */
+          main .cf-page>.glance-grid,main .cf-page>.kpi-grid,main .cf-page>.kpi-grid-4,
+          main .cf-page>.month-summary>.kpi-grid{
+            margin-left:calc(-1 * var(--container-gutter))!important;
+            margin-right:calc(-1 * var(--container-gutter))!important;}
+          main .cf-page>.cf-card .glance-grid,main .cf-page>.cf-card .kpi-grid,
+          main .cf-page>.cf-card .kpi-grid-4{margin-left:-16px!important;margin-right:-16px!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
           .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
             -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
@@ -11795,9 +11804,14 @@ const RUNWAY_DAYS = 90;
           },
           BUDGET_COL_LABELS[col]
         )), /* @__PURE__ */ React.createElement("th", { className: "budget-th-actions", "aria-label": "Actions" })));
-      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { className: "openbal-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
-        background: "var(--amberLt)"
-      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td", style: { background: "var(--amberLt)" } }), bCols.map((col) => {
+      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { className: "openbal-row" },
+      // No background of their own: .openbal-row paints the row, and these two
+      // were left painting --amberLt from an earlier design where the whole
+      // row was amber. Against the row's --stripe that is a 68px cream block
+      // at its head, in both themes. The totals row below does the same thing
+      // with --navy on a navy row, which is why only this one shows a seam.
+      /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td" }),
+      /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td" }), bCols.map((col) => {
         if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: { color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(s.open));
         if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-label-cell" }, "Opening Balance");
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
