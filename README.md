@@ -97,7 +97,10 @@ done
 ```
 
 `tests/payload-roundtrip.mjs` and `tests/sync-sql.mjs` drive the real SQL in
-`supabase/schema.sql`. Both **exit 0 with a "skipped" line** when `CF_TEST_PG`
+`supabase/schema.sql`. **Run them on the same Postgres major as production** —
+this project's Supabase is on 17, and CI's service container matches it. A
+local scratch database on another major still catches most things, but a
+version-sensitive difference in the schema would slip through. Both **exit 0 with a "skipped" line** when `CF_TEST_PG`
 is unset, so a run that never touched them looks exactly like a run that passed
 them — which is how a stale selector in `sync-sql.mjs` reached CI green-looking
 from here. Point them at a throwaway Postgres before you believe a green local

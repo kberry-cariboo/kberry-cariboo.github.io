@@ -46,7 +46,12 @@ jobs:
     # costs one container and turns all three suites on.
     services:
       postgres:
-        image: postgres:16
+        # Tracks the major this schema actually runs on in production: the
+        # project's Supabase is Postgres 17.6. It was 16, so the one place
+        # supabase/schema.sql got exercised was a different major from the one
+        # it ships to — a difference that can only ever show up as a surprise
+        # in production, since that is the side with no test.
+        image: postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -73,7 +78,12 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "26"
+          # 24 is the LTS line (Krypton). It was 26, the Current line, which
+          # takes breaking changes and reaches end-of-life sooner — for a repo
+          # whose whole Node surface is fs / path / url / http / child_process
+          # plus top-level await, there is nothing to gain from being ahead of
+          # LTS and a support window to lose by it.
+          node-version: "24"
 
       - name: Build index.html and sw.js
         run: node build.js
