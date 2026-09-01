@@ -1543,6 +1543,113 @@ await test('panels: every view draws them as full-bleed bands, one padding scale
   await ctx.close();
 });
 
+// Nothing checked the manifest or the icons, which is how they sat on the
+// pre-redesign palette (#1C2B3A navy, #F7F4EF ground) through the whole
+// redesign, and how the same rounded-plate file came to be declared both "any"
+// and "maskable" — two genuinely different images. Android crops a maskable
+// icon to its own shape, so it must be opaque to the edges with everything
+// important inside the 80%-diameter safe circle; the shipped one had
+// transparent corners and an arrow tip at 83% of the half-width.
+await test('app icons: the manifest matches the app, and the maskable icon is maskable', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1000);
+  const problems = [];
+  const manifest = await page.evaluate(() => fetch('/manifest.json').then((r) => r.json()));
+
+  // The colour the app actually paints its header, read from the live token.
+  const navy = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--navy').trim().toUpperCase());
+  if ((manifest.theme_color || '').toUpperCase() !== navy) {
+    problems.push('manifest theme_color is ' + manifest.theme_color + ', the app header is ' + navy);
+  }
+  const bg = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toUpperCase());
+  if ((manifest.background_color || '').toUpperCase() !== bg) {
+    problems.push('manifest background_color is ' + manifest.background_color + ', the app ground is ' + bg);
+  }
+  // The boot splash and the status bar are the first thing an installed app
+  // shows; they drifted off the header colour too.
+  const meta = await page.evaluate(() =>
+    (document.querySelector('meta[name=theme-color]') || {}).content || '');
+  if (meta.toUpperCase() !== navy) problems.push('<meta theme-color> is ' + meta + ', the app header is ' + navy);
+
+  const maskables = (manifest.icons || []).filter((i) => /maskable/.test(i.purpose || ''));
+  const anys = (manifest.icons || []).filter((i) => /(^|\s)any(\s|$)/.test(i.purpose || 'any'));
+  if (!maskables.length) problems.push('no maskable icon declared');
+  if (!anys.length) problems.push('no "any" icon declared');
+  for (const m of maskables) {
+    if (anys.some((a) => a.src === m.src)) {
+      problems.push(m.src + ' is declared both any and maskable — those are different images');
+    }
+  }
+
+  // Read each declared icon's pixels.
+  const probe = async (src) => page.evaluate((s) => new Promise((res) => {
+    const img = new Image();
+    img.onerror = () => res({ missing: true });
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(img, 0, 0);
+      const W = c.width, H = c.height;
+      const d = g.getImageData(0, 0, W, H).data;
+      const at = (x, y) => { const i = (y * W + x) * 4; return [d[i], d[i+1], d[i+2], d[i+3]]; };
+      const corners = [at(0,0), at(W-1,0), at(0,H-1), at(W-1,H-1)].map((p) => p[3]);
+      // The plate is whatever the icon paints just inside its left edge, at
+      // mid-height; the mark is anything far from it.
+      const plate = at(Math.round(W * 0.06), Math.round(H / 2));
+      const far = (p) => Math.abs(p[0]-plate[0]) + Math.abs(p[1]-plate[1]) + Math.abs(p[2]-plate[2]) > 90 && p[3] > 40;
+      const cx = W/2, cy = H/2, R = W * 0.4;
+      let outside = 0, furthest = 0;
+      for (let x = 0; x < W; x += 2) for (let y = 0; y < H; y += 2) {
+        if (!far(at(x,y))) continue;
+        const r = Math.hypot(x-cx, y-cy);
+        if (r > furthest) furthest = r;
+        if (r > R) outside++;
+      }
+      res({ W, H, corners, plate: plate.slice(0,3), outside, furthest: furthest / (W/2) });
+    };
+    img.src = s;
+  }), src);
+
+  for (const ic of manifest.icons || []) {
+    const r = await probe('/' + ic.src);
+    if (r.missing) { problems.push(ic.src + ' does not load'); continue; }
+    const [wantW, wantH] = (ic.sizes || '').split('x').map(Number);
+    if (r.W !== wantW || r.H !== wantH) {
+      problems.push(ic.src + ' is ' + r.W + 'x' + r.H + ' but declares ' + ic.sizes);
+    }
+    // Every plate is the app's navy, whatever the icon's purpose.
+    const hex = '#' + r.plate.map((v) => v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    if (hex !== navy) problems.push(ic.src + ' plate is ' + hex + ', the app header is ' + navy);
+    if (/maskable/.test(ic.purpose || '')) {
+      if (r.corners.some((a) => a !== 255)) {
+        problems.push(ic.src + ' is maskable but has transparent corners (' + r.corners.join(',') + ')');
+      }
+      if (r.outside) {
+        problems.push(ic.src + ': ' + r.outside + ' mark pixels outside the 80% safe circle, furthest at '
+          + Math.round(r.furthest * 100) + '%');
+      }
+    }
+  }
+
+  // iOS masks this itself and composites transparency onto black.
+  const apple = await page.evaluate(() =>
+    (document.querySelector('link[rel="apple-touch-icon"]') || {}).getAttribute?.('href') || '');
+  if (!apple) problems.push('no apple-touch-icon');
+  else {
+    const r = await probe('/' + apple);
+    if (r.missing) problems.push('apple-touch-icon ' + apple + ' does not load');
+    else if (r.corners.some((a) => a !== 255)) {
+      problems.push('apple-touch-icon ' + apple + ' has transparent corners — iOS composites those onto black');
+    }
+  }
+  if (problems.length) throw new Error(problems.join(' | '));
+  await ctx.close();
+});
+
 // The ledger's opening-balance row painted its checkbox and day cells
 // --amberLt inline while the row itself is --stripe, so a 68px block of a
 // different colour sat at its head in both themes. It was left over from a
@@ -3768,16 +3875,31 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
 // the default; this is the per-entry answer that overrides it.
 await test('deposit dates: an entry can opt in or out of the banking-day rule', async () => {
   // "Acme deposit" is not payroll to the description heuristic — that is the
-  // point. It is monthly from Saturday 15 August 2026, so every occurrence
-  // lands on a day the banks are shut, and before this setting existed none of
-  // them could ever be marked however obviously they were a direct deposit.
+  // point. Before this setting existed it could never be marked, however
+  // obviously it was a direct deposit.
+  //
+  // The start date is computed, not written down: the next Saturday at least a
+  // week out. It used to be a hard-coded 2026-08-15, with a comment claiming
+  // every monthly occurrence landed on a day the banks are shut — only two in
+  // that year did. Worse, the deposit marker is a projection and is not drawn
+  // on occurrences that have already happened, so the case only held while
+  // August was still ahead. It passed for as long as "now" was August and
+  // failed the day it became September. A date derived from today keeps this a
+  // test of the setting rather than of the calendar.
+  const sat = new Date();
+  sat.setDate(sat.getDate() + 7 + ((6 - ((sat.getDay() + 7) % 7)) % 7));
+  const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+    + '-' + String(d.getDate()).padStart(2, '0');
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][sat.getMonth()];
   const deposits = JSON.stringify([{ id: 9101, desc: 'Acme deposit', type: 'income', amount: 250000,
     category: 'Income', repeats: true, recurUnit: 'month', recurEvery: 1, recurDays: [],
-    recurEnd: '', startDate: '2026-08-15', notes: '' }]);
+    recurEnd: '', startDate: iso(sat), notes: '' }]);
   const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${deposits}); const payload = {`) });
   const marksOnIt = async () => {
     await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(1200);
+    await page.locator('.month-pill', { hasText: new RegExp('^' + MON + '$') }).first().click();
+    await page.waitForTimeout(700);
     return page.locator('tbody tr', { hasText: 'Acme deposit' }).first().locator('.helptip-btn--mark').count();
   };
   const setRule = async (value) => {
@@ -3802,7 +3924,7 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
   // not read as payroll.
   if (await marksOnIt() !== 0) throw new Error('a non-payroll description was shifted without being asked');
   await setRule('yes');
-  if (await marksOnIt() === 0) throw new Error('opting in marked no deposit date on a Saturday payday');
+  if (await marksOnIt() === 0) throw new Error('opting in marked no deposit date on Saturday ' + iso(sat));
   await setRule('no');
   if (await marksOnIt() !== 0) throw new Error('opting out still marked a deposit date');
   await ctx.close();
