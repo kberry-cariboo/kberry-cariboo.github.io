@@ -16,6 +16,12 @@ on:
       # that would notice a missing or orphaned one.
       - "images/**"
       - "scripts/**"
+      # Without this the workflow could not test changes to itself: a commit
+      # that only edits build.yml matches none of the paths above, so no run
+      # is queued and the new config sits unexercised until an unrelated src/
+      # change happens to land. The Node and Postgres bumps below were pushed
+      # and never built for exactly that reason.
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "src/**"
@@ -27,6 +33,7 @@ on:
       - "tests/**"
       - "images/**"
       - "scripts/**"
+      - ".github/workflows/**"
   workflow_dispatch: {}
 
 permissions:

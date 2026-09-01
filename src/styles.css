@@ -765,8 +765,6 @@
              same thing again. */
           .forecast-sub{display:none;}
         }
-        .forecast-danger-title{font-size:13px;font-weight:700;color:var(--amberInk);margin-bottom:4px;}
-        .forecast-lowest-value{font-family:var(--font-mono);}
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         /* ExportBar's own box. It used to carry inline display/gap, which
            meant the toolbar could not be adjusted per breakpoint. */
@@ -838,7 +836,6 @@
         .wizard-card{max-width:480px;margin:0 auto 24px;border:2px solid var(--primary);}
         .wizard-dots-row{display:flex;justify-content:center;gap:8px;margin-bottom:20px;}
         .wizard-dot{width:10px;height:10px;border-radius:50%;transition:background 0.2s;}
-        .alert-banner-icon{color:var(--red);flex-shrink:0;}
         .ai-header-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
         .ai-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
         .ai-subtitle{font-size:13px;color:var(--textMid);line-height:1.5;}
@@ -904,17 +901,9 @@
         .cf-gap-16{gap:16px;}
         .mt-14{margin-top:14px;}
         .mt-16{margin-top:16px;}
-        .alert-row-icon{flex-shrink:0;}
-        .alert-row-balance{font-family:var(--font-mono);font-size:14px;font-weight:700;}
         .caption-10{font-size:10px;color:var(--textLt);margin-top:2px;}
         .alert-row-cta{font-size:12px;color:var(--textLt);}
-        .settings-header-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
         .settings-header-title{font-size:20px;font-weight:700;color:var(--text);}
-        .alerts-empty-wrap{text-align:center;padding:32px 16px;}
-        .alerts-empty-icon{color:var(--greenDk);margin-bottom:12px;}
-        .alerts-empty-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
-        .alert-section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-        .settings-toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px;}
         /* ── Settings directory ──────────────────────────────────────
            One row vocabulary for the whole of Settings, which is the other
            half of splitting it into pages: the old single scroll had eleven
@@ -994,7 +983,6 @@
         /* A page holds one card, so the card's own chrome is a second border
            around the page you already named. */
         .set-detail>.cf-card{border:0;padding:0;background:transparent;}
-        .settings-pill-btn{font-size:12px;font-weight:600;padding:8px 20px;border-radius:9px;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;display:inline-flex;align-items:center;gap:7px;}
         /* Sat as bare mono text against the page, which read as debug output
            left in by accident rather than a deliberate build stamp. Same
            chip treatment the rest of the app uses for small metadata. */
@@ -1062,7 +1050,6 @@
         .color-swatch{position:relative;width:22px;height:22px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid var(--bgCard);box-shadow:0 0 0 1px var(--border);}
         .color-swatch-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:none;}
         .cat-actions-row{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0;justify-content:flex-end;}
-        .reset-color-btn{font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--textLt);}
         .error-text-mt8{font-size:12px;color:var(--red);margin-top:8px;}
         .error-text-mt10{font-size:12px;color:var(--red);margin-top:10px;}
         .autolock-select{font-size:13px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--inputBg);color:var(--text);outline:none;}
@@ -1089,8 +1076,6 @@
         .errorboundary-title{color:#E85D4A;font-size:18px;font-weight:700;margin-bottom:12px;}
         .errorboundary-pre{background:#f8f8f8;border:1px solid #eee;border-radius:6px;padding:14px;font-size:11px;overflow:auto;color:#555;white-space:pre-wrap;}
         .errorboundary-retry-btn{margin-top:16px;font-size:13px;font-weight:600;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;background:#1C2B3A;color:#fff;}
-        .alert-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;margin-bottom:6px;cursor:pointer;width:100%;font:inherit;text-align:left;}
-        .settings-page-pills{display:flex;gap:4px;padding:4px;background:var(--border);border-radius:12px;width:fit-content;max-width:100%;overflow-x:auto;}
         /* Sticky to the top of .app-scroll, which is the scroller on a phone
            — the app header scrolls away above it, so no offset is needed. */
         .section-nav{display:none;position:sticky;top:0;z-index:900;
@@ -1744,8 +1729,6 @@
              would flex-shrink and crush the header/footer to nothing. */
           .app-scroll>*{flex-shrink:0;}
         }
-        .settings-page-pills{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
-        .settings-page-pills::-webkit-scrollbar{display:none;}
         /* ── Modern interaction polish (pointer devices) ───────────────── */
         @media (hover:hover) and (pointer:fine){
           /* Cards lift subtly on hover for depth */
@@ -1759,8 +1742,6 @@
           .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
-          .alert-row{transition:opacity 0.15s;}
-          .alert-row:hover{opacity:0.8;}
           .ctx-menu-item{font-size:13px;padding:9px 16px;border:none;width:100%;cursor:pointer;
             text-align:left;background:transparent;display:flex;align-items:center;gap:10px;
             transition:background 0.1s;}
@@ -1810,7 +1791,6 @@
              wrapper and a tap just outside the 22px circle lands on a plain
              div and does nothing. */
           .color-swatch-input{min-height:0;inset:-11px!important;width:auto!important;height:auto!important;}
-          .reset-color-btn{min-height:44px;}
           .grid-pagination-size select,.grid-pagination-nav{min-height:44px;}
           /* Every form control, not just the ones that happened to get a
              class. Anything the user has to hit with a thumb clears 44px;
@@ -1819,7 +1799,7 @@
           input:not([type=checkbox]):not([type=radio]):not([type=color]),
           select,textarea{min-height:44px;}
           .reset-targets-btn,.ai-generate-btn,
-          .settings-pill-btn,.quicklink-pill,.oem-remove-btn,.oem-reset-btn,
+          .quicklink-pill,.oem-remove-btn,.oem-reset-btn,
           .clear-key-btn,.copy-year-btn,.year-active-btn,.gotit-btn,
           .household-mode-btn,.debt-restore-btn,.revert-btn{min-height:44px;}
           .filter-pill-btn,.filter-pill-option-row,.filter-pill-all-row{min-height:44px;}
@@ -1835,7 +1815,6 @@
           .ai-settings-link,.strat-suggest-btn{display:inline;padding:0;min-height:0;}
           .link-btn-sm{min-width:44px;min-height:44px;}
           .cf-footer-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;}
-          .settings-page-pills button{min-height:44px;}
           .settings-quicklinks a{min-height:44px;display:inline-flex;align-items:center;}
           .settings-help-link{min-height:44px;}
           .cf-switch::after{content:'';position:absolute;inset:-10px;}
@@ -1879,7 +1858,7 @@
           /* Five actions at 44px each don't fit a 320px row; the gap and the
              text buttons' padding buy back just enough that they usually do. */
           .cat-actions-row{gap:4px;}
-          .cat-actions-row .cf-btn--compact,.cat-actions-row .reset-color-btn{padding-left:8px;padding-right:8px;}
+          .cat-actions-row .cf-btn--compact{padding-left:8px;padding-right:8px;}
           .cf-btn--compact,.cf-btn--micro,.cf-btn--xs,.cf-btn--yearremove{min-width:44px;}
           .entries-th--col .entries-th-drag-hint,
           .budget-th-col .entries-th-drag-hint{display:none;}
@@ -2381,22 +2360,14 @@
           .help-defs dd{margin-bottom:10px;}
           /* Entries filter row: stack on phone */
           .entries-filter-row{flex-wrap:wrap!important;gap:6px!important;}
-          /* These two rows scroll horizontally with the scrollbar explicitly
-             hidden and no edge fade, so at 320px "Templates" just clips
-             mid-word with nothing to suggest it's reachable. There are only a
-             handful of pills, so let them wrap — that's a function of the
-             width available, not of what's pointing at them. The month strip
-             keeps its scroll + fade: twelve months can't wrap into a usable
-             row. */
-          /* Same reasoning as the quicklink index below: four tabs wrapping
-             three-then-one left a lone "Activity" hanging off a ragged row.
-             An even two-by-two grid is the same set of tabs, squared off. */
-          .settings-page-pills{display:grid;grid-template-columns:1fr 1fr;
-            overflow-x:visible;width:auto;}
-          .settings-page-pills button{width:100%;box-sizing:border-box;}
-          /* Wrapping fourteen pills of fourteen different widths left a
-             ragged three-per-row staircase. Same pills, two even columns —
-             the strip reads as an index rather than as spill. */
+          /* The quicklink index scrolls horizontally with the scrollbar
+             explicitly hidden and no edge fade, so at 320px the last pill
+             just clips mid-word with nothing to suggest it is reachable.
+             Wrapping fourteen pills of fourteen different widths left a
+             ragged three-per-row staircase instead, so: same pills, two even
+             columns — the strip reads as an index rather than as spill. The
+             month strip keeps its scroll + fade; twelve months cannot wrap
+             into a usable row. */
           .settings-quicklinks{display:grid;grid-template-columns:1fr 1fr;gap:6px;
             overflow-x:visible;}
           .settings-quicklinks .quicklink-pill{width:100%;box-sizing:border-box;
