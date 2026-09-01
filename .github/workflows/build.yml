@@ -46,7 +46,12 @@ jobs:
     # costs one container and turns all three suites on.
     services:
       postgres:
-        image: postgres:16
+        # Tracks the major this schema actually runs on in production: the
+        # project's Supabase is Postgres 17.6. It was 16, so the one place
+        # supabase/schema.sql got exercised was a different major from the one
+        # it ships to — a difference that can only ever show up as a surprise
+        # in production, since that is the side with no test.
+        image: postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
