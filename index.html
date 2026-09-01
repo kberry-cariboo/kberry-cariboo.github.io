@@ -166,12 +166,9 @@
         .cf-visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
           overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;}
         /* Typography */
-        .cf-text-ui{font-family:var(--font-ui);}
         .cf-text-mono{font-family:var(--font-mono);}
         .cf-text-mono-13{font-family:var(--font-mono);font-size:13px;}
         .cf-section-title-text{margin:0;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        .cf-text-label{font-family:var(--font-ui);font-size:11px;font-weight:700;color:var(--textMid);
-          letter-spacing:0.06em;text-transform:uppercase;}
         /* Buttons */
         .cf-btn{font-family:var(--font-ui);font-size:13px;font-weight:600;padding:9px 18px;
           border-radius:7px;border:none;cursor:pointer;transition:filter 0.15s;}
@@ -220,25 +217,6 @@
         .cf-gap-10{gap:10px;}
         .cf-gap-12{gap:12px;}
         .cf-gap-14{gap:14px;}
-        /* A list of cards, one per row on a normal screen and side by side once
-           there is room for two. A savings goal or a debt holds a name, a bar
-           and a couple of figures; stacked in a single column it ran the full
-           1096px of a 1440px page and left 400-500px of empty page below the
-           last one. 480px is about where one of these cards stops looking
-           stretched, so two columns appear at 1200px and a third at ~1660px —
-           auto-fill rather than auto-fit so a lone card keeps its column width
-           instead of springing back to full bleed.
-
-           Must stay below the .cf-gap-* utilities: they set the `gap`
-           shorthand, which would otherwise reset the wider column gap. Side by
-           side, the vertical rhythm that separates one card from the next stops
-           doing the same job horizontally, so the columns get more air than the
-           rows. */
-        .cf-cardgrid{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;}
-        @media(min-width:1200px){
-          .cf-cardgrid{grid-template-columns:repeat(auto-fill,minmax(480px,1fr));
-            column-gap:36px;}
-        }
         .cf-wrap{flex-wrap:wrap;}
         .flex-1{flex:1;}
         .min-w-0{min-width:0;}
@@ -278,12 +256,10 @@
         .c-textMid{color:var(--textMid);}
         .c-textLt{color:var(--textLt);}
         .c-greenDk{color:var(--greenDk);}
-        .c-red{color:var(--red);}
         .table-collapse{width:100%;border-collapse:collapse;}
         /* Compound type styles that recur as a unit (extends the existing
            .tx/.txm/.txl/.lbl/.hint scale from round 3) */
         .tx-sb{font-family:var(--font-ui);font-size:13px;font-weight:600;color:var(--text);}
-        .txm-11{font-family:var(--font-ui);font-size:11px;color:var(--textMid);}
         .text-9{font-size:9px;}
         /* Table header row (dark navy bg, used under .th cells) */
         .thead-row{background:var(--navy);}
@@ -691,7 +667,6 @@
         .filter-pill-checkbox{cursor:pointer;accent-color:var(--primary);}
         .filter-pill-option-row{display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--text);}
         /* ── entries.js ── */
-        .cf-gap-4{gap:4px;}
         .cursor-pointer{cursor:pointer;}
         .cf-btn--nowrap{white-space:nowrap;}
         .recur-onetime{color:var(--amberInk);font-size:13px;}
@@ -701,8 +676,8 @@
            aligning the trailing edge lines the decimals up and magnitudes
            become comparable at a glance. Left-aligned, -$1,650.00 and
            -$55.00 start at the same x and you have to read both. Matches
-           .budget-amount-td / .forecast-td-amount-mobile and the mobile
-           entries cards, which already right-align. Keyed to the column
+           .budget-amount-td and the mobile entries cards,
+           which already right-align. Keyed to the column
            name, not a position — see the header className in entries.js. */
         .entries-col-amount{font-weight:600;padding:10px 12px;text-align:right;}
         /* Doubled-up class so it outranks .entries-th--col's text-align:left,
@@ -842,7 +817,6 @@
         .forecast-td-date{font-size:13px;padding:8px 14px;color:var(--text);white-space:nowrap;}
         .forecast-td-income{padding:8px 14px;text-align:right;color:var(--greenDk);font-weight:600;}
         .forecast-td-expense{padding:8px 14px;text-align:right;color:var(--text);font-weight:600;}
-        .forecast-td-amount-mobile{padding:8px 14px;text-align:right;font-weight:600;}
         .forecast-td-balance{padding:8px 14px;text-align:right;font-weight:700;}
         .forecast-conf-pct{font-weight:600;}
         .wizard-step-icon{display:flex;justify-content:center;margin-bottom:12px;}
@@ -884,15 +858,11 @@
         .ai-section-card{margin-bottom:0;}
         .ai-section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
         .ai-section-title{font-size:15px;font-weight:700;}
-        .ai-hr{border:none;border-top:1px solid var(--border);margin:8px 0;}
-        .ai-item-heading{font-size:13px;font-weight:700;color:var(--textMid);margin-bottom:6px;margin-top:10px;}
-        .ai-item-bold{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;margin-top:8px;}
         .ai-numbered-row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
         .ai-numbered-badge{min-width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
         .ai-item-text{font-size:13px;color:var(--text);line-height:1.6;}
         .ai-bullet-row{display:flex;gap:10px;align-items:flex-start;}
         .ai-bullet-dot{border-radius:50%;flex-shrink:0;}
-        .ai-plain-text{font-size:13px;color:var(--textMid);line-height:1.6;margin-bottom:6px;}
         .ai-footer-disclaimer{font-size:11px;color:var(--textLt);text-align:center;padding:12px 0 4px;line-height:1.5;}
         /* 40px of padding inside a 24px card inside the page gutter put the
            feature labels in a 280px column on a 390px phone. It is an empty
@@ -924,12 +894,10 @@
         .cashflow-bar{position:absolute;left:18%;right:18%;border-radius:2px;}
         .cashflow-month-label{font-size:9px;text-align:center;color:var(--textLt);margin-top:2px;}
         /* ── settings.js ── */
-        .text-right{text-align:right;}
         .link-primary{color:var(--primaryInk);}
         .cf-gap-16{gap:16px;}
         .mt-14{margin-top:14px;}
         .mt-16{margin-top:16px;}
-        .caption-10{font-size:10px;color:var(--textLt);margin-top:2px;}
         .alert-row-cta{font-size:12px;color:var(--textLt);}
         .settings-header-title{font-size:20px;font-weight:700;color:var(--text);}
         /* ── Settings directory ──────────────────────────────────────
@@ -1041,7 +1009,6 @@
         .openbal-input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;max-width:100%;min-width:0;flex:0 1 120px;}
         .year-active-btn{font-weight:600;border:1px solid var(--border);cursor:pointer;}
         .copy-year-btn{font-weight:600;color:var(--primaryInk);background:none;border:1px solid var(--primary);cursor:pointer;white-space:nowrap;}
-        .newyear-input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--inputBg);color:var(--text);outline:none;width:120px;}
         .cf-btn--iconrow{display:flex;align-items:center;gap:8px;}
         .backup-msg{font-size:12px;margin-top:10px;}
         .sync-status-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;}
@@ -1223,8 +1190,6 @@
         .csvimport-drop-zone:hover{border-color:var(--primary);color:var(--text);}
         .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
         .csvimport-cat-select{min-width:120px;font-size:12px;padding:4px 6px;height:auto;}
-        .caption-10-nomargin{font-size:10px;color:var(--textLt);}
-        .no-activity-msg{text-align:center;color:var(--textLt);padding:32px 24px;}
         .rollover-label{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);cursor:pointer;}
         .btn-pad-24{padding:9px 24px;}
         .bva-card{margin-top:20px;margin-bottom:12px;padding:0;overflow:hidden;}
@@ -1379,10 +1344,11 @@
         .goal-list{margin:0 -24px;display:grid;grid-template-columns:minmax(0,1fr);align-items:start;}
         .goal-list>.goal-row-cursor{padding:12px 24px;border-top:1px solid var(--border);min-width:0;}
         .goal-list>.goal-row-cursor:first-child{border-top:none;}
-        /* Two goals abreast once there is room for them, the same width
-           .cf-cardgrid uses everywhere else. The full-bleed margin and the
-           hairlines are a single-column idea, so both are dropped here — side
-           by side, a rule between columns would read as a table. */
+        /* Two goals abreast once there is room for them: 480px is about where
+           one of these rows stops looking stretched, so a second column
+           appears at 1200px. The full-bleed margin and the hairlines are a
+           single-column idea, so both are dropped here — side by side, a rule
+           between columns would read as a table. */
         @media(min-width:1200px){
           .goal-list{margin:0;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));column-gap:36px;}
           .goal-list>.goal-row-cursor{padding:12px 0;border-top:none;}
@@ -1530,15 +1496,6 @@
         .upcoming-hdr-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
         .upcoming-count{font-size:11px;color:var(--textLt);}
         .upcoming-list{display:flex;flex-direction:column;gap:8px;}
-        .upcoming-item-mobile{margin-bottom:4px;}
-        .upcoming-mobile-top{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin-bottom:2px;}
-        /* The chip belongs to the description, so the description is sized to
-           its text (shrinking to an ellipsis when it has to) and the chip
-           follows it instead of being pushed to the far edge of the row. */
-        .upcoming-mobile-desc{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto;min-width:0;}
-        .upcoming-mobile-bottom{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;}
-        .upcoming-mobile-date{font-size:12px;color:var(--textMid);flex-shrink:0;}
-        .upcoming-mobile-amts{display:flex;gap:10px;align-items:baseline;}
         .upcoming-desktop-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap;}
         .upcoming-desktop-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;}
         .upcoming-desktop-date{font-size:13px;color:var(--textMid);white-space:nowrap;}
@@ -1999,8 +1956,6 @@
               text-transform:uppercase;letter-spacing:0.08em;color:#fff;padding:10px 14px;}
         /* Standard data table body cell */
         .td  {font-family:var(--font-ui);font-size:13px;color:var(--text);padding:9px 14px;}
-        /* Mono table body cell (amounts) */
-        .tdm {font-family:var(--font-mono);font-size:13px;padding:9px 14px;text-align:right;}
         /* ── Budget Monthly grid columns ──────────────────────────────────
            Desktop: fixed layout + explicit widths so columns never shift
            between months. Mobile overrides live in the ≤480px block below. */
@@ -2015,7 +1970,6 @@
            animating in — the plain slideUp keyframe would drop it. */
         @keyframes slideUpCentered{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
         @media(max-width:768px){
-          .search-box input{width:100%!important;flex:1;}
           /* Hide header search on mobile — saves space for essential controls.
              Known, accepted asymmetry: global search (month match-dots, search
              banners) is desktop-only; mobile searches per-view via the
@@ -2024,7 +1978,6 @@
           /* Hide year pills on mobile — managed in Settings */
           .year-pills{display:none!important;}
         }
-        @media(max-width:768px){.help-btn{display:none!important;}}
         /* A card's title + action-button row (Savings Goals, Debt Payoff
            Tracker, Budget vs Actual) has no room for both on a phone width —
            title text was overlapping the first button instead of wrapping.
