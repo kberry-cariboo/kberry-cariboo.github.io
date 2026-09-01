@@ -2282,14 +2282,23 @@
              border would have to know how many columns it is in — three
              across at 768px, two at 480, and a lone last tile spanning both —
              and the gap does not. */
-          main .cf-page>.glance-grid,main .cf-page>.kpi-grid-4{
-            margin-left:calc(-1 * var(--container-gutter))!important;
-            margin-right:calc(-1 * var(--container-gutter))!important;
+          main .cf-page .glance-grid,main .cf-page .kpi-grid,main .cf-page .kpi-grid-4{
             max-width:none!important;gap:1px!important;background:var(--border);
             border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-          main .cf-page>.glance-grid>*,main .cf-page>.kpi-grid-4>*{
+          main .cf-page .glance-grid>*,main .cf-page .kpi-grid>*,main .cf-page .kpi-grid-4>*{
             border:0!important;border-radius:0!important;box-shadow:none!important;
             padding:14px 16px!important;background:var(--bgCard)!important;}
+          /* A band reaches the edges of whatever holds it. On the page that is
+             the gutter; inside a panel it is the panel's 16px. Flow's month
+             summary and Plan's debt tracker keep their tiles in a card, which
+             is why they stayed a raft of inset boxes while Today's were
+             already bands — same KpiCard, same .kpi-grid, two nestings. */
+          main .cf-page>.glance-grid,main .cf-page>.kpi-grid,main .cf-page>.kpi-grid-4,
+          main .cf-page>.month-summary>.kpi-grid{
+            margin-left:calc(-1 * var(--container-gutter))!important;
+            margin-right:calc(-1 * var(--container-gutter))!important;}
+          main .cf-page>.cf-card .glance-grid,main .cf-page>.cf-card .kpi-grid,
+          main .cf-page>.cf-card .kpi-grid-4{margin-left:-16px!important;margin-right:-16px!important;}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
           .month-picker{gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto!important;
             -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;

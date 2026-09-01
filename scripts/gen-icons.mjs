@@ -48,7 +48,10 @@ const ICONS = [
   { file: 'apple-touch-icon.png', size: 180, mark: 0.62, radius: 0 }
 ];
 
-const browser = await chromium.launch();
+// Same escape hatch the test suites use: a pinned Playwright looks for a
+// chromium revision it downloaded itself, which may not be the one present.
+const browser = await chromium.launch(
+  process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const ic of ICONS) {
   const page = await browser.newPage({ viewport: { width: ic.size, height: ic.size } });
   await page.setContent(`<!doctype html><meta charset="utf-8"><style>

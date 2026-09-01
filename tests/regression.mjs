@@ -2084,6 +2084,64 @@ const DEBT_FIXTURE = (() => {
   return (t) => t.replace('goals: [],', 'goals: [], debtData: ' + JSON.stringify(d) + ',');
 })();
 
+// The stat tiles are one component, KpiCard, in one kind of grid — and they
+// were bands on Today and a raft of inset rounded boxes on Flow's month
+// summary and Plan's debt tracker. The difference was only where the grid
+// sits: Today's are direct children of the page, the other two are inside a
+// panel, and the band rule reached the page but not the panel. A band reaches
+// the edges of whatever holds it.
+await test('stat tiles: one band, wherever the grid happens to sit', async () => {
+  const { ctx, page } = await ctxPage({ touch: true, stub: DEBT_FIXTURE });
+  const problems = [];
+  const read = async (where) => page.evaluate(() => {
+    const sc = document.querySelector('.app-scroll');
+    const vw = sc.clientWidth;
+    return [...document.querySelectorAll('main .glance-grid, main .kpi-grid, main .kpi-grid-4')]
+      .filter((e) => e.getClientRects().length)
+      .map((e) => {
+        const b = e.getBoundingClientRect();
+        const cell = [...e.children].filter((c) => c.getClientRects().length)[0];
+        const cs = cell ? getComputedStyle(cell) : {};
+        return { cls: e.className.trim().split(/\s+/)[0], vw,
+          left: Math.round(b.left), right: Math.round(b.right),
+          gap: getComputedStyle(e).gap,
+          radius: parseFloat(cs.borderRadius || '0'),
+          border: parseFloat(cs.borderTopWidth || '0') };
+      });
+  });
+  const check = (where, grids) => {
+    if (!grids.length) { problems.push(where + ': no tile grid found — the fixture or selector has drifted'); return; }
+    for (const g of grids) {
+      if (g.left > 0.5 || g.right < g.vw - 0.5) {
+        problems.push(where + ' .' + g.cls + ' is inset (' + g.left + '→' + g.right + ' of ' + g.vw + ')');
+      }
+      // 1px gaps painted --border are what divides the cells; a larger gap
+      // means they are floating as separate boxes again.
+      if (!/^1px/.test(g.gap)) problems.push(where + ' .' + g.cls + ' has a ' + g.gap + ' gap between cells');
+      if (g.radius > 0.5) problems.push(where + ' .' + g.cls + ' cells still have a ' + g.radius + 'px radius');
+      if (g.border > 0.5) problems.push(where + ' .' + g.cls + ' cells still have their own border');
+    }
+  };
+
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  check('#/today', await read());
+
+  await page.goto(BASE + '#/plan/debt', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  check('#/plan/debt', await read());
+
+  // The month summary keeps its tiles a tap below the one-line answer.
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  await page.locator('.month-summary-line').first().click({ force: true });
+  await page.waitForTimeout(700);
+  check('#/flow/list', await read());
+
+  if (problems.length) throw new Error(problems.slice(0, 6).join(' | '));
+  await ctx.close();
+});
+
 await test('plan: debts are flat rows, and the strategies are one comparison', async () => {
   const { ctx, page } = await ctxPage({ touch: true, stub: DEBT_FIXTURE });
   await page.goto(BASE + '#/plan/debt', { waitUntil: 'load' });
