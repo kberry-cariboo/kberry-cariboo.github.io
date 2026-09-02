@@ -439,7 +439,11 @@
       paid: !!completed[ev.id],
       selected: selIds.has(ev.id),
       past: isPast(ev.day),
-      dateLabel: opts.hideDayLabel ? null : "Day " + ev.day,
+      // "Day 3" is not how the rest of the app dates a row — the alerts feed
+      // and the forecast ledger both print "Sep 3" — and repeated down a
+      // phone screen the word is ten copies of something the column header
+      // says once on a desktop.
+      dateLabel: opts.hideDayLabel ? null : MONTHS[ev.month] + " " + ev.day,
       onTogglePaid: toggleComplete,
       onToggleSelect: toggleSel,
       onOpen: openOccurrenceEdit,
