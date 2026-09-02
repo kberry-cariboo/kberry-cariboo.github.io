@@ -87,6 +87,33 @@ npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
 node tests/regression.mjs     # the browser suite
 ```
 
+### Tests that quietly depend on what day it is
+
+The browser fixture is a **2026** household, so "today" walks across it and
+eventually off the end of it. Twice CI has gone red overnight on behaviour that
+was still correct — a payday marker that is deliberately not drawn on past
+occurrences, and an alert card naming the crossing date it had actually
+computed. Both were found by CI rather than here.
+
+`CF_FAKE_TODAY` pins every page's `Date`, so the suite can be walked forward and
+asked what breaks before the calendar gets to do it:
+
+```bash
+CF_FAKE_TODAY=2026-12-20 node tests/regression.mjs
+```
+
+Tests that assert fixed strings about the fixture pin their own clock and
+override this, which is the point: they are not date-dependent and have nothing
+to contribute to a sweep. Anything new that derives a date of its own should
+read `FAKE_TODAY` rather than `new Date()`, or the sweep reports a mismatch it
+created itself.
+
+The sweep is only meaningful **inside the fixture's budget year**. Past it the
+household has no entries left to project, and the suite reports nine failures
+that all reduce to "there is no data" — an empty forecast, no ledger rows, no
+second curve. That is the signal to roll the fixture year forward, not a defect
+in the app.
+
 That is not everything CI runs. Six more suites go with it, and two of them
 need a database:
 

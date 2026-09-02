@@ -118,6 +118,32 @@ try { browser = await chromium.launch({ executablePath: exe }); } catch { browse
 const results = [];
 let pageErrors = [];
 
+// The fixture is a 2026 household, so "today" walks across it and eventually
+// off the end of it. Twice now a test has gone red overnight on behaviour that
+// was still correct — a payday marker that is not drawn on past occurrences, an
+// alert card naming the crossing date it actually computed. Both were found by
+// CI rather than here.
+//
+// CF_FAKE_TODAY pins every page's Date to a date you choose, so the suite can
+// be walked forward and asked what breaks before the calendar does it for us:
+//
+//   CF_FAKE_TODAY=2026-12-20 node tests/regression.mjs
+//
+// A test that pins its own clock (see the alerts episode test) overrides this,
+// which is the point: it is asserting fixed strings about a fixed day, so it is
+// not date-dependent and has nothing to contribute to the sweep.
+const FAKE_TODAY = process.env.CF_FAKE_TODAY
+  ? new Date(process.env.CF_FAKE_TODAY.includes('T')
+      ? process.env.CF_FAKE_TODAY
+      : process.env.CF_FAKE_TODAY + 'T12:00:00')
+  : null;
+if (FAKE_TODAY && isNaN(FAKE_TODAY)) throw new Error('CF_FAKE_TODAY is not a date: ' + process.env.CF_FAKE_TODAY);
+if (FAKE_TODAY) console.log('CF_FAKE_TODAY: every page thinks today is ' + FAKE_TODAY.toDateString() + '\n');
+// A test that derives a date of its own has to derive it from the same day the
+// page believes in, or the sweep reports a mismatch it created itself. The
+// ones here all pin their own clock and compute from that; anything new that
+// wants to follow the sweep instead should read FAKE_TODAY, not new Date().
+
 // `stub` rewrites the fixture script before it is injected — for the handful of
 // tests that need data the shared fixture doesn't carry (a mid-horizon expense
 // big enough to dip the forecast, a few savings goals). Everything else takes
@@ -130,6 +156,9 @@ async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
+  // setFixedTime rather than install(): it pins Date and leaves the page's own
+  // timers running, so nothing that waits on a debounce or a transition hangs.
+  if (FAKE_TODAY) await page.clock.setFixedTime(FAKE_TODAY);
   await page.addInitScript(stub(mkStub(dark, loggedIn)));
   await page.addInitScript(`try{localStorage.setItem('cf_darkMode', ${JSON.stringify(JSON.stringify(dark))})}catch(e){}`);
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
@@ -1430,6 +1459,11 @@ await test('contrast: every text node meets WCAG AA in both themes', async () =>
           if (!t || !e.getClientRects().length) return;
           const cs = getComputedStyle(e);
           if (cs.visibility === 'hidden' || +cs.opacity === 0) return;
+          // WCAG 1.4.3 exempts an inactive user-interface component, and the
+          // app dims disabled controls on purpose. Without this the month
+          // navigator fails every December and every January, when one of its
+          // two arrows has nowhere left to go.
+          if (e.disabled || e.closest('[disabled],[aria-disabled="true"]')) return;
           const stack = []; let n = e;
           while (n) { const c = parse(getComputedStyle(n).backgroundColor); if (c.a > 0) stack.push(c);
             n = n.parentElement; }
@@ -2222,6 +2256,14 @@ await test('plan: debts are flat rows, and the strategies are one comparison', a
 await test('alerts: a dip is one alert, however many events fall inside it', async () => {
   const { ctx, page } = await ctxPage({ touch: true,
     stub: (t) => t.replace(/openingBalance: 1250000/g, 'openingBalance: -4200000') });
+  // The fixture is a 2026 household and the page projects ninety days from
+  // today, so "today" walks off the end of its own data. Left to the real
+  // clock this test reports correct behaviour as a failure twice: from about
+  // 24 September the dip reaches the thin tail of the year and recovers on
+  // Dec 18 instead of running open-ended, and from about 20 December the
+  // horizon contains no fixture events at all and there is no episode to find.
+  // Pinning the day is what lets the assertions below name exact strings.
+  await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
   await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => {
@@ -2249,38 +2291,21 @@ await test('alerts: a dip is one alert, however many events fall inside it', asy
   // It used to be 6.9 screens for this household.
   if (r.screens > 2) throw new Error('the page is ' + r.screens.toFixed(1) + ' screens for a single dip');
   // The card has to answer: when, how deep, what it would take, what caused it.
-  //
-  // Two of those move with the calendar. The fixture opens below zero, so the
-  // crossing is simply the first scheduled occurrence from today onwards, and
-  // which entries land on it changes from one day to the next. Pinning "Sep 1"
-  // and "Rent" made this pass on the afternoon it was written and fail the
-  // next morning, on a card that was still saying the right thing.
-  const crossing = /Below zero from ([A-Z][a-z]{2} \d{1,2})/.exec(r.card);
-  if (!crossing) throw new Error('the card does not say the crossing date: ' + r.card);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const crossed = new Date(crossing[1] + ' ' + today.getFullYear());
-  // A run in December projecting into January.
-  if (crossed < today) crossed.setFullYear(today.getFullYear() + 1);
-  const horizonEnd = new Date(today); horizonEnd.setDate(today.getDate() + 90);
-  if (!(crossed >= today && crossed <= horizonEnd)) {
-    throw new Error('the crossing date ' + crossing[1] + ' is outside the 90 days the page projects');
-  }
-  for (const [what, re] of [['the low point', /lowest on [A-Z][a-z]{2} \d{1,2}/],
-                            ['the shortfall', /more would clear it/],
-                            ['that it never recovers', /Still below at the end/]]) {
+  // On 1 September this household crosses on the 1st, on Rent and Fuel — the
+  // two entries that land that day, not the sixty that fall inside the dip.
+  for (const [what, re] of [['the crossing date', /Below zero from Sep 1/],
+                            ['the low point', /lowest on Sep 10/],
+                            ['the shortfall', /\$14,655\.00 more would clear it/],
+                            ['that it never recovers', /Still below at the end/],
+                            ['what takes it under', /Take it under: Rent .* Fuel /]]) {
     if (!re.test(r.card)) throw new Error('the card does not say ' + what + ': ' + r.card);
   }
-  // Only the entries on the crossing day take it under — the other fifty-nine
-  // happen while it is already under. Which ones they are depends on the date;
-  // that they are real entries, and a handful rather than the whole dip, does
-  // not. Listing them all is the failure this guards.
-  const under = /Takes? it under: (.+)$/.exec(r.card);
-  if (!under) throw new Error('the card does not say what takes it under: ' + r.card);
-  const trigger = under[1].replace(/See it on the forecast.*$/, '').trim();
-  const named = entries.map((e) => e.desc).filter((d) => trigger.includes(d));
-  if (!named.length) throw new Error('"takes it under" names no entry of the household: ' + trigger);
-  if (named.length > 3) {
-    throw new Error(named.length + ' entries take it under — that is the dip, not the crossing day');
+  // Everything else that day is already under, and saying so is the whole
+  // point of an episode. If the trigger ever becomes the full event list this
+  // line is what catches it.
+  const listed = entries.map((e) => e.desc).filter((d) => r.card.includes(d));
+  if (listed.length > 2) {
+    throw new Error(listed.length + ' entries take it under — that is the dip, not the crossing day');
   }
   // And the banner is still there on the pages that are not this one.
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
@@ -2295,6 +2320,9 @@ await test('alerts: a dip is one alert, however many events fall inside it', asy
 await test('alerts: separate dips are separate, and a recovery is dated', async () => {
   const { ctx, page } = await ctxPage({ touch: true,
     stub: (t) => t.replace(/alertThreshold: 50000/g, 'alertThreshold: 4500000') });
+  // The fixture is a 2026 household. Pinned so this stays a test of how two dips are told apart,
+  // rather than of whether today still falls inside the fixture's budget year.
+  await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
   await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => ({
@@ -2399,6 +2427,9 @@ await test('every notice comes through one stack, collapsed when there is more t
     .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000')
     .replace(/alertThreshold: 50000/g, 'alertThreshold: 150000')
     .replace(/const payload = \{ entries,/, 'entries[0].sample = true;\n  const payload = { entries,') });
+  // The fixture is a 2026 household. Pinned so this stays a test of how notices collapse,
+  // rather than of whether today still falls inside the fixture's budget year.
+  await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(6500); // the backup nudge fires five seconds in
 
@@ -2414,7 +2445,9 @@ await test('every notice comes through one stack, collapsed when there is more t
   const sum = page.locator('.notice-summary');
   await sum.waitFor(V);
   const label = (await sum.innerText()).replace(/\s+/g, ' ');
-  if (!/^3 notices —/.test(label)) throw new Error('summary does not lead with the count: ' + label);
+  const said = /^(\d+) notices —/.exec(label);
+  if (!said) throw new Error('summary does not lead with the count: ' + label);
+  if (+said[1] !== 3) throw new Error('the household has three findings, the summary counts ' + said[1]);
   if (!/dips to/.test(label)) throw new Error('summary does not lead with the worst notice: ' + label);
   if (await page.locator('.notice-stack-body').count() > 0) throw new Error('the stack is open before anyone asked');
   const shutH = await page.locator('.notice-stack').evaluate((el) => el.getBoundingClientRect().height);
@@ -2459,6 +2492,9 @@ await test('every notice comes through one stack, collapsed when there is more t
 await test('no control still points at a route the IA change retired', async () => {
   const { ctx, page } = await ctxPage({ stub: (t) => t
     .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000') });
+  // The fixture is a 2026 household. Pinned so this stays a test of where the bell goes,
+  // rather than of whether today still falls inside the fixture's budget year.
+  await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const bell = page.locator('.alert-bell-btn');
@@ -3589,7 +3625,10 @@ await test('forecast: a balance curve marks the low point and the alert threshol
   if (!/dipping to a low of/.test(alt)) throw new Error('the description does not name the low point: ' + alt);
   // Month boundaries are named; the other ~87 days are not, or the axis would
   // be a smear.
-  const ticks = marks.filter((t) => /^[A-Z][a-z]{2} \d+$/.test(t));
+  // "Jan 1, 2027" once the ninety days cross a year boundary — the axis is
+  // right to disambiguate, and a tick pattern that only allowed "Jan 1" read
+  // that as no tick at all.
+  const ticks = marks.filter((t) => /^[A-Z][a-z]{2} \d+(, \d{4})?$/.test(t));
   if (ticks.length < 2 || ticks.length > 8) throw new Error(`x axis prints ${ticks.length} date labels across 90 days: ${ticks.join(' ')}`);
   await ctx.close();
 });
@@ -3968,9 +4007,15 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
   // that year did. Worse, the deposit marker is a projection and is not drawn
   // on occurrences that have already happened, so the case only held while
   // August was still ahead. It passed for as long as "now" was August and
-  // failed the day it became September. A date derived from today keeps this a
-  // test of the setting rather than of the calendar.
-  const sat = new Date();
+  // failed the day it became September.
+  //
+  // Deriving it from the real today fixed that and broke a different way: from
+  // December the next Saturday is in 2027, outside the fixture household's
+  // only budget year, so the occurrence is not in the ledger to be marked.
+  // Both the page and the arithmetic take the same pinned day, which keeps the
+  // derivation readable while landing it inside the year every time.
+  const PINNED = new Date('2026-09-01T12:00:00');
+  const sat = new Date(PINNED);
   sat.setDate(sat.getDate() + 7 + ((6 - ((sat.getDay() + 7) % 7)) % 7));
   const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
     + '-' + String(d.getDate()).padStart(2, '0');
@@ -3979,6 +4024,7 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
     category: 'Income', repeats: true, recurUnit: 'month', recurEvery: 1, recurDays: [],
     recurEnd: '', startDate: iso(sat), notes: '' }]);
   const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${deposits}); const payload = {`) });
+  await page.clock.setFixedTime(PINNED);
   const marksOnIt = async () => {
     await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
     await page.waitForTimeout(1200);
@@ -4020,6 +4066,9 @@ await test('deposit dates: an entry can opt in or out of the banking-day rule', 
 // happened silently.
 await test('activity: what changed, who changed it, across every kind of change', async () => {
   const { ctx, page } = await ctxPage();
+  // The fixture is a 2026 household. Pinned so this stays a test of what the audit feed records,
+  // rather than of whether today still falls inside the fixture's budget year.
+  await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
   const feed = async () => {
     await page.goto(BASE + '#/you/activity', { waitUntil: 'load' });
     await page.waitForTimeout(1100);
