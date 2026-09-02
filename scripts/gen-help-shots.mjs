@@ -16,7 +16,7 @@ import { createServer } from 'http';
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'images', 'help');
@@ -159,3 +159,10 @@ server.close();
 const total = written.reduce((n, f) => n + statSync(join(OUT, f)).size, 0);
 console.log(`\n${written.length} shots, ${(total / 1024).toFixed(0)} KB total`);
 console.log('wrote src/lib/help-shots.js');
+
+// src/lib/help-shots.js is compiled into index.html, so rewriting it leaves the
+// built bundle one version behind. Running this script and then forgetting to
+// rebuild left index.html silently disagreeing with src/, which CI fails on
+// any branch — it only auto-rebuilds pushes to main — so the omission surfaced
+// as a red build two commits later. Rebuilding here removes the footgun.
+execFileSync(process.execPath, [join(ROOT, 'build.js')], { stdio: 'inherit' });
