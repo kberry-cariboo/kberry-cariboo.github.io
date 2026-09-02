@@ -1197,7 +1197,18 @@
         .month-summary-line:hover{border-color:var(--textLt);color:var(--text);}
         .month-summary-lead{flex:1;min-width:0;}
         .month-summary-close{flex-shrink:0;white-space:nowrap;}
-        .month-summary-chev{flex-shrink:0;font-size:15px;line-height:1;}
+        /* Was a bare ⌃/⌄ arrowhead text glyph: hairline at 15px, sat off the
+           row's optical centre, and swapped to a different character on open
+           so the two states were not the same shape moving. It is the app's
+           chevron in a disclosure well now — same treatment the settings rows
+           use — and it rotates rather than swapping. */
+        .month-summary-chev{flex-shrink:0;display:inline-flex;align-items:center;
+          justify-content:center;width:26px;height:26px;border-radius:50%;
+          color:var(--textLt);background:var(--stripe);
+          transition:transform 0.18s ease,background 0.15s ease,color 0.15s ease;}
+        .month-summary-line:hover .month-summary-chev{background:var(--accentLt);color:var(--text);}
+        .month-summary-chev--open{transform:rotate(180deg);}
+        @media(prefers-reduced-motion:reduce){.month-summary-chev{transition:none;}}
         .month-summary .kpi-grid{margin-top:10px;margin-bottom:0;}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
@@ -10246,6 +10257,10 @@ const RUNWAY_DAYS = 90;
     switch (name) {
       case "plus":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 5v14" }), /* @__PURE__ */ React.createElement("path", { d: "M5 12h14" }));
+      // Points down. A disclosure that opens upward rotates it rather than
+      // swapping in a second glyph, so the two states are the same shape.
+      case "chevron-down":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9.5 12 15.5 18 9.5" }));
       case "home":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 11.5 12 4l8 7.5" }), /* @__PURE__ */ React.createElement("path", { d: "M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" }), /* @__PURE__ */ React.createElement("path", { d: "M10 20v-6h4v6" }));
       case "calendar":
@@ -11721,8 +11736,9 @@ const RUNWAY_DAYS = 90;
             s.surplus >= 0 ? " surplus" : " shortfall"),
           /* @__PURE__ */ React.createElement("span", { className: "month-summary-close" },
             "closes ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(s.close))),
-          /* @__PURE__ */ React.createElement("span", { className: "month-summary-chev", "aria-hidden": "true" },
-            monthSummaryOpen ? "\u2303" : "\u2304")),
+          /* @__PURE__ */ React.createElement("span", {
+            className: "month-summary-chev" + (monthSummaryOpen ? " month-summary-chev--open" : "")
+          }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))),
         monthSummaryOpen && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }))),
       lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-list-lens" }, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",
