@@ -49,7 +49,10 @@
            card layouts are tuned against. */
         :root{--font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
               --font-mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-              --container-w:1200px;--container-w-mobile:430px;--container-gutter:24px;}
+              --container-w:1200px;--container-w-mobile:430px;--container-gutter:24px;
+              /* How wide a name-then-value row may run before the pair stops
+                 reading as a pair. Charts and tables use --container-w. */
+              --measure-rows:760px;}
         @media(min-width:1400px){:root{--container-gutter:40px;}}
         @media(max-width:768px){:root{--container-gutter:12px;}}
         @media(max-width:480px){:root{--container-gutter:10px;}}
@@ -334,6 +337,11 @@
         .alert-bell-badge{position:absolute;top:-5px;right:-5px;color:#fff;border-radius:50%;
           width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;
           justify-content:center;line-height:1;}
+        /* Settings, Alerts and Help hang off the avatar rather than the tab
+           bar, so while you were in any of them the bar showed nothing
+           selected and the header gave no clue where you were. */
+        .user-avatar-btn[data-here="1"]{border-color:var(--amber);
+          box-shadow:0 0 0 2px color-mix(in srgb, var(--amber) 55%, transparent);}
         .user-avatar-btn{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);
           cursor:pointer;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;transition:background 0.15s;}
         .user-menu-backdrop{position:fixed;inset:0;z-index:1400;}
@@ -452,8 +460,13 @@
           text-transform:uppercase;color:var(--textMid);margin-bottom:10px;}
         .forecast-legend{font-size:11px;line-height:1.6;color:var(--textLt);
           padding:10px 16px 0;border-top:1px solid var(--border);margin-top:2px;}
+        /* The compose button used to be the tallest item and set the bar's
+           height; once its mark stopped consuming that extra 18px the bar
+           shrank with it, and 4px of bottom padding that had never been the
+           floor suddenly was. 8px gives the labels room again and the bar is
+           still 13px shorter than it was. */
         .bottomnav-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;
-          padding:7px 0 4px;border:none;cursor:pointer;background:transparent;font-size:9px;}
+          padding:7px 0 8px;border:none;cursor:pointer;background:transparent;font-size:9px;}
         /* The label is a bare text node in a flex item. Without min-width:0
            above and this clamp, the longest label sets the item's floor and
            the five-up nav overflows the viewport instead of sharing it. */
@@ -919,6 +932,22 @@
         .alerts-group-title{font-size:11px;font-weight:700;letter-spacing:0.08em;
           text-transform:uppercase;color:var(--textLt);margin:22px 0 8px 2px;}
         .episode-list{display:flex;flex-direction:column;gap:12px;}
+        /* ── A measure for label-and-value rows ──────────────────────────
+           These row families are a name on the left and its value on the
+           right, and they were written for a phone, where that is the whole
+           width and reads perfectly. Left to fill a 1440px page they became
+           1120px bars with nothing in the middle: a settings row put "Budget
+           years" and "2026" more than a thousand pixels apart, and a debt row
+           put its menu that far from the debt's name. The eye cannot pair a
+           label with a value across that, so cap the span and centre it.
+           Rows that have something to put in the middle — a budget-vs-actual
+           bar, a table — are deliberately not in this list: there the width
+           is carrying data, and Envelopes at 1440px is the proof. */
+        @media(min-width:1000px){
+          .set-dir,.set-dir-head,.episode-list,.upcoming-list,.upcoming-header-row,
+          .alerts-finding,.alerts-group-title,.alerts-head{max-width:var(--measure-rows);
+            margin-left:auto;margin-right:auto;}
+        }
         /* The tone is a 4px edge and the figures, not a wash over the whole
            card: sixty pink boxes was the thing that stopped reading as alarm. */
         .episode{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;
@@ -1458,6 +1487,16 @@
            chrome before a single figure — the negative margin gives that back
            and leaves one visible box instead of three. */
         .debt-list{margin:0 -24px;display:flex;flex-direction:column;}
+        /* Debts are the same shape of object on the same tab as goals, and
+           only .goal-list ever got the two-abreast treatment — so a debt sat
+           alone across the full card while a goal beside it paired up. This
+           has to come after the flex rule above rather than beside the goal
+           one: same specificity, and the later rule is the one that wins. */
+        @media(min-width:1200px){
+          .debt-list{margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));
+            column-gap:36px;}
+          .debt-list>.debt-item{padding-left:0;padding-right:0;}
+        }
         .debt-item{padding:12px 24px;border-top:1px solid var(--border);cursor:context-menu;}
         .debt-item:first-child{border-top:none;}
         .debt-item-head{display:flex;align-items:baseline;gap:10px;}
@@ -1622,9 +1661,13 @@
            segments is what stops a flex row of 91 children from insisting on
            its content width and pushing the card off a 320px screen. */
         .runway-card{padding:14px 16px;}
-        .runway-bar{display:flex;height:30px;border-radius:7px;overflow:hidden;
+        /* align-items:flex-end so a segment shorter than the strip sits on
+           the floor: the tops of the segments are the balance line, which is
+           what gives the strip a shape on a household that never dips. */
+        .runway-bar{display:flex;align-items:flex-end;height:30px;border-radius:7px;overflow:hidden;
           border:1px solid var(--border);background:var(--bgCard);}
         .runway-seg{display:block;flex:1 1 0;min-width:0;height:100%;}
+        .runway-bar-track{position:relative;border-radius:7px;background:var(--stripe);overflow:hidden;}
         .runway-scale{display:flex;justify-content:space-between;margin-top:6px;
           font-size:11px;color:var(--textLt);}
         .runway-note{margin-top:8px;font-size:12.5px;color:var(--textMid);}
@@ -1872,11 +1915,22 @@
         /* The compose button. It reads as the one action in a row of
            destinations, so it gets a filled mark rather than a line icon —
            and it sits in the middle, where a thumb naturally rests. */
-        .bottomnav-compose{padding-top:2px;}
+        /* The mark is 42px where every other icon slot is 24px, so shrinking
+           the button's top padding to fit it pushed this one label 13px below
+           the other four — and its baseline to within 4px of the viewport
+           floor, before the safe-area inset a home indicator adds. The mark
+           keeps its size and rises out of the bar instead: the negative margin
+           means it occupies the same 24px of layout as an icon, so all five
+           labels sit on one line. overflow has to be visible on the button and
+           the bar for the raised part to draw; the label keeps its own
+           ellipsis clamp, which is what the button's overflow was standing in
+           for. */
+        .bottomnav-compose{padding-top:7px;overflow:visible;}
         .bottomnav-compose-mark{display:grid;place-items:center;width:42px;height:42px;
-          border-radius:13px;background:var(--primary);color:#fff;box-shadow:var(--shadowMd);}
+          margin-top:-18px;border-radius:13px;background:var(--primary);color:#fff;
+          box-shadow:var(--shadowMd);}
         .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
-          background:var(--bgCard);border-top:1px solid var(--border);
+          overflow:visible;background:var(--bgCard);border-top:1px solid var(--border);
           padding-bottom:env(safe-area-inset-bottom);
           box-shadow:0 -2px 12px rgba(28,43,58,0.06);}
         /* A short viewport is a phone too. The breakpoints were width-only, so
@@ -1963,6 +2017,18 @@
         .budget-monthly-table .budget-col-income{width:105px;}
         .budget-monthly-table .budget-col-expense{width:105px;}
         .budget-monthly-table .budget-col-balance{width:120px;}
+        /* Fixed layout hands every spare pixel to the one auto column, so on a
+           1440px page Description ran ~550px wide for entries rarely over
+           130px, and the category ended up half the table away from the thing
+           it describes. Widening the fixed columns spends that slack on the
+           figures instead, which are the part worth more room. Has to sit
+           after the widths above: same specificity, later rule wins. */
+        @media(min-width:1200px){
+          .budget-monthly-table .budget-col-category{width:190px;}
+          .budget-monthly-table .budget-col-income{width:150px;}
+          .budget-monthly-table .budget-col-expense{width:150px;}
+          .budget-monthly-table .budget-col-balance{width:170px;}
+        }
         /* Centered fixed-position toasts keep their translateX(-50%) while
            animating in — the plain slideUp keyframe would drop it. */
         @keyframes slideUpCentered{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
@@ -2306,7 +2372,16 @@
              tile spanning the row. !important because the column count is set
              inline from the widget run length in dashboard.js. */
           .glance-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
-          .glance-grid>.glance-tile:last-child:nth-child(odd){grid-column:1/-1;}
+          /* Spanning the row left the odd tile reading as a stretched copy
+             of the two above it — the same stacked label-over-value in twice
+             the width, which looks like the grid ran out rather than like a
+             choice. Given the width, it lays out along it instead: label on
+             the left, figure on the right, the way every other full-width row
+             in the app is built. */
+          .glance-grid>.glance-tile:last-child:nth-child(odd){grid-column:1/-1;
+            display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+          .glance-grid>.glance-tile:last-child:nth-child(odd) .glance-tile-title{margin-bottom:0;}
+          .glance-grid>.glance-tile:last-child:nth-child(odd) .glance-value{text-align:right;}
           .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
           .month-picker button{padding:9px 10px!important;font-size:11px!important;}
           /* Hide ‹ › arrows on mobile — month buttons are tappable directly */
@@ -14367,6 +14442,20 @@ Fill every field of the response schema. Rules:
         const under = days.filter((d) => d.balance < alertThreshold).length;
         const negative = days.filter((d) => d.balance < 0).length;
         const low = days.reduce((lo, d) => d.balance < lo.balance ? d : lo, days[0]);
+        // Colour alone answers "is anything wrong", and on a household where
+        // nothing is, every segment came out the same 30% primary — a flat
+        // slab that reads as a component that has not loaded yet. The comment
+        // above promises shape before figures, so give the segments a height:
+        // each day's balance against the range the horizon actually covers,
+        // which makes the strip a filled balance line in the same tones. The
+        // floor keeps a flat run visible as a line rather than nothing, and a
+        // household whose balance never moves gets a full bar instead of NaN.
+        const hi = days.reduce((m, d) => Math.max(m, d.balance), -Infinity);
+        const lo = Math.min(low.balance, 0);
+        const span = hi - lo;
+        days.forEach((d) => {
+          d.height = span > 0 ? Math.round((12 + 88 * ((d.balance - lo) / span)) * 10) / 10 : 100;
+        });
         return { days, under, negative, low, start, end: days[days.length - 1].date };
       } catch (err) {
         console.error("dashboard runway computation failed, hiding the strip", err);
@@ -14429,7 +14518,7 @@ Fill every field of the response schema. Rules:
         }, runway.days.map((d, i) => /* @__PURE__ */ React.createElement("i", {
           key: i,
           className: "runway-seg",
-          style: { background: railTone(d.balance, alertThreshold) }
+          style: { background: railTone(d.balance, alertThreshold), height: d.height + "%" }
         }))),
         /* @__PURE__ */ React.createElement("div", { className: "runway-scale" },
           /* @__PURE__ */ React.createElement("span", null, "Today"),
@@ -19311,6 +19400,11 @@ Fill every field of the response schema. Rules:
           "aria-expanded": menuOpen,
           title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
           className: "user-avatar-btn",
+          // Settings, Alerts and Help are reached from this menu rather than
+          // from the tab bar, so while you are in one of them the bar shows
+          // nothing selected. The avatar is where they live; it is what
+          // should look current.
+          "data-here": tab === "you" || tab === "alerts" || tab === "help" ? "1" : void 0,
           style: { background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }
         },
         initials

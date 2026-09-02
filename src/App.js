@@ -1474,6 +1474,11 @@
           "aria-expanded": menuOpen,
           title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
           className: "user-avatar-btn",
+          // Settings, Alerts and Help are reached from this menu rather than
+          // from the tab bar, so while you are in one of them the bar shows
+          // nothing selected. The avatar is where they live; it is what
+          // should look current.
+          "data-here": tab === "you" || tab === "alerts" || tab === "help" ? "1" : void 0,
           style: { background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }
         },
         initials
