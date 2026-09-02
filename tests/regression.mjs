@@ -2249,12 +2249,38 @@ await test('alerts: a dip is one alert, however many events fall inside it', asy
   // It used to be 6.9 screens for this household.
   if (r.screens > 2) throw new Error('the page is ' + r.screens.toFixed(1) + ' screens for a single dip');
   // The card has to answer: when, how deep, what it would take, what caused it.
-  for (const [what, re] of [['the crossing date', /Below zero from Sep 1/],
-                            ['the low point', /lowest on/],
+  //
+  // Two of those move with the calendar. The fixture opens below zero, so the
+  // crossing is simply the first scheduled occurrence from today onwards, and
+  // which entries land on it changes from one day to the next. Pinning "Sep 1"
+  // and "Rent" made this pass on the afternoon it was written and fail the
+  // next morning, on a card that was still saying the right thing.
+  const crossing = /Below zero from ([A-Z][a-z]{2} \d{1,2})/.exec(r.card);
+  if (!crossing) throw new Error('the card does not say the crossing date: ' + r.card);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const crossed = new Date(crossing[1] + ' ' + today.getFullYear());
+  // A run in December projecting into January.
+  if (crossed < today) crossed.setFullYear(today.getFullYear() + 1);
+  const horizonEnd = new Date(today); horizonEnd.setDate(today.getDate() + 90);
+  if (!(crossed >= today && crossed <= horizonEnd)) {
+    throw new Error('the crossing date ' + crossing[1] + ' is outside the 90 days the page projects');
+  }
+  for (const [what, re] of [['the low point', /lowest on [A-Z][a-z]{2} \d{1,2}/],
                             ['the shortfall', /more would clear it/],
-                            ['that it never recovers', /Still below at the end/],
-                            ['what takes it under', /(Takes?) it under: .*Rent/]]) {
+                            ['that it never recovers', /Still below at the end/]]) {
     if (!re.test(r.card)) throw new Error('the card does not say ' + what + ': ' + r.card);
+  }
+  // Only the entries on the crossing day take it under — the other fifty-nine
+  // happen while it is already under. Which ones they are depends on the date;
+  // that they are real entries, and a handful rather than the whole dip, does
+  // not. Listing them all is the failure this guards.
+  const under = /Takes? it under: (.+)$/.exec(r.card);
+  if (!under) throw new Error('the card does not say what takes it under: ' + r.card);
+  const trigger = under[1].replace(/See it on the forecast.*$/, '').trim();
+  const named = entries.map((e) => e.desc).filter((d) => trigger.includes(d));
+  if (!named.length) throw new Error('"takes it under" names no entry of the household: ' + trigger);
+  if (named.length > 3) {
+    throw new Error(named.length + ' entries take it under — that is the dip, not the crossing day');
   }
   // And the banner is still there on the pages that are not this one.
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
