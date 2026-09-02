@@ -4746,6 +4746,68 @@ await test('phone: a section heading reads from the left, whatever else is in it
   if (gap > 2) throw new Error(`the heading starts ${gap}px in from the card's text edge, so it is not left-aligned`);
 });
 
+
+// The compose button's mark is 42px where every other icon slot is 24px. It
+// used to buy that back out of the button's top padding, which pushed its
+// label 13px below the other four and to within 4px of the viewport floor —
+// before the safe-area inset a home indicator adds on top.
+await test('phone: every bottom-nav label sits on one baseline', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const nav = await page.evaluate(() => {
+    const bar = document.querySelector('.cf-bottomnav');
+    if (!bar) return null;
+    return { barBottom: Math.round(bar.getBoundingClientRect().bottom),
+      labels: [...bar.querySelectorAll('.bottomnav-label')].map((l) => ({
+        text: l.textContent.trim(),
+        top: Math.round(l.getBoundingClientRect().top),
+        bottom: Math.round(l.getBoundingClientRect().bottom) })) };
+  });
+  await ctx.close();
+  if (!nav) throw new Error('no bottom nav on a phone');
+  if (nav.labels.length !== 5) throw new Error(nav.labels.length + ' nav labels, expected 5');
+  const tops = [...new Set(nav.labels.map((l) => l.top))];
+  if (tops.length !== 1) {
+    throw new Error('nav labels sit on ' + tops.length + ' baselines: '
+      + nav.labels.map((l) => l.text + '@' + l.top).join(', '));
+  }
+  // And the row clears the bar's own floor, which is where the safe-area
+  // inset gets added on a device that has one.
+  const tight = nav.labels.filter((l) => nav.barBottom - l.bottom < 6);
+  if (tight.length) throw new Error(tight[0].text + ' sits ' + (nav.barBottom - tight[0].bottom)
+    + 'px off the bar floor, so a home indicator would cross it');
+});
+
+// A name on the left and its value on the right reads perfectly on a phone,
+// where that is the whole width. Left to fill a 1440px page the pair came
+// more than a thousand pixels apart — "Budget years" and "2026" at opposite
+// ends of an empty bar — and stopped reading as a pair at all.
+await test('wide screens: a name-and-value row keeps the two within reach', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const worst = [];
+  for (const [hash, sel] of [['#/you', '.set-row'], ['#/today', '.upcoming-desktop-row']]) {
+    await page.goto(BASE + hash, { waitUntil: 'load' });
+    await page.waitForTimeout(1500);
+    const w = await page.evaluate((s) => {
+      const rows = [...document.querySelectorAll(s)].filter((r) => r.getClientRects().length);
+      if (!rows.length) return null;
+      return Math.max(...rows.map((r) => Math.round(r.getBoundingClientRect().width)));
+    }, sel);
+    if (w === null) throw new Error('no ' + sel + ' rendered on ' + hash);
+    worst.push({ hash, sel, w });
+  }
+  await ctx.close();
+  // The measure is 760px; anything near the 1120px content width means the
+  // cap stopped applying.
+  const over = worst.filter((r) => r.w > 860);
+  if (over.length) {
+    throw new Error(over.map((r) => r.sel + ' on ' + r.hash + ' runs ' + r.w + 'px').join('; ')
+      + ' — the label and its value are back at opposite ends of the page');
+  }
+});
+
 await browser.close();
 server.close();
 

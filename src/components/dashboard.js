@@ -337,6 +337,20 @@
         const under = days.filter((d) => d.balance < alertThreshold).length;
         const negative = days.filter((d) => d.balance < 0).length;
         const low = days.reduce((lo, d) => d.balance < lo.balance ? d : lo, days[0]);
+        // Colour alone answers "is anything wrong", and on a household where
+        // nothing is, every segment came out the same 30% primary — a flat
+        // slab that reads as a component that has not loaded yet. The comment
+        // above promises shape before figures, so give the segments a height:
+        // each day's balance against the range the horizon actually covers,
+        // which makes the strip a filled balance line in the same tones. The
+        // floor keeps a flat run visible as a line rather than nothing, and a
+        // household whose balance never moves gets a full bar instead of NaN.
+        const hi = days.reduce((m, d) => Math.max(m, d.balance), -Infinity);
+        const lo = Math.min(low.balance, 0);
+        const span = hi - lo;
+        days.forEach((d) => {
+          d.height = span > 0 ? Math.round((12 + 88 * ((d.balance - lo) / span)) * 10) / 10 : 100;
+        });
         return { days, under, negative, low, start, end: days[days.length - 1].date };
       } catch (err) {
         console.error("dashboard runway computation failed, hiding the strip", err);
@@ -399,7 +413,7 @@
         }, runway.days.map((d, i) => /* @__PURE__ */ React.createElement("i", {
           key: i,
           className: "runway-seg",
-          style: { background: railTone(d.balance, alertThreshold) }
+          style: { background: railTone(d.balance, alertThreshold), height: d.height + "%" }
         }))),
         /* @__PURE__ */ React.createElement("div", { className: "runway-scale" },
           /* @__PURE__ */ React.createElement("span", null, "Today"),
