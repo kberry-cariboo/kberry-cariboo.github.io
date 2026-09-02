@@ -685,8 +685,9 @@
             s.surplus >= 0 ? " surplus" : " shortfall"),
           /* @__PURE__ */ React.createElement("span", { className: "month-summary-close" },
             "closes ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(s.close))),
-          /* @__PURE__ */ React.createElement("span", { className: "month-summary-chev", "aria-hidden": "true" },
-            monthSummaryOpen ? "\u2303" : "\u2304")),
+          /* @__PURE__ */ React.createElement("span", {
+            className: "month-summary-chev" + (monthSummaryOpen ? " month-summary-chev--open" : "")
+          }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))),
         monthSummaryOpen && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }))),
       lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-list-lens" }, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
         "button",

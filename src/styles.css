@@ -1169,7 +1169,18 @@
         .month-summary-line:hover{border-color:var(--textLt);color:var(--text);}
         .month-summary-lead{flex:1;min-width:0;}
         .month-summary-close{flex-shrink:0;white-space:nowrap;}
-        .month-summary-chev{flex-shrink:0;font-size:15px;line-height:1;}
+        /* Was a bare ⌃/⌄ arrowhead text glyph: hairline at 15px, sat off the
+           row's optical centre, and swapped to a different character on open
+           so the two states were not the same shape moving. It is the app's
+           chevron in a disclosure well now — same treatment the settings rows
+           use — and it rotates rather than swapping. */
+        .month-summary-chev{flex-shrink:0;display:inline-flex;align-items:center;
+          justify-content:center;width:26px;height:26px;border-radius:50%;
+          color:var(--textLt);background:var(--stripe);
+          transition:transform 0.18s ease,background 0.15s ease,color 0.15s ease;}
+        .month-summary-line:hover .month-summary-chev{background:var(--accentLt);color:var(--text);}
+        .month-summary-chev--open{transform:rotate(180deg);}
+        @media(prefers-reduced-motion:reduce){.month-summary-chev{transition:none;}}
         .month-summary .kpi-grid{margin-top:10px;margin-bottom:0;}
         .budget-th-checkbox{width:30px;padding:10px 4px;text-align:center;}
         .budget-th-day{font-size:11px;font-weight:700;color:#fff;padding:10px 6px;text-align:left;letter-spacing:0.04em;text-transform:uppercase;}

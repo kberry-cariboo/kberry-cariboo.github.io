@@ -104,6 +104,10 @@
     switch (name) {
       case "plus":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 5v14" }), /* @__PURE__ */ React.createElement("path", { d: "M5 12h14" }));
+      // Points down. A disclosure that opens upward rotates it rather than
+      // swapping in a second glyph, so the two states are the same shape.
+      case "chevron-down":
+        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9.5 12 15.5 18 9.5" }));
       case "home":
         return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 11.5 12 4l8 7.5" }), /* @__PURE__ */ React.createElement("path", { d: "M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" }), /* @__PURE__ */ React.createElement("path", { d: "M10 20v-6h4v6" }));
       case "calendar":
