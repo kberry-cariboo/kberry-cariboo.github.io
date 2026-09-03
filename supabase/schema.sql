@@ -205,6 +205,36 @@ create table if not exists goals (
   primary key (household_id, id)
 );
 
+-- One row per tracked debt. This was a jsonb blob on household_settings while
+-- every other thing the household owns — entries, accounts, goals, templates,
+-- budget targets, holidays — had a table, and it is the only one of them that
+-- is money: a balance, an interest rate and a monthly payment, the three
+-- figures the Payoff screen does arithmetic on. In the blob they were
+-- untyped, unconstrained and unqueryable, stored as *strings* of cents next
+-- to numeric(14,2) columns holding the same unit everywhere else.
+--
+-- `key` is the client's own map key, kept verbatim: 'manual_<id>' for one
+-- typed in by hand, or the sanitised description of the recurring expense the
+-- tracker matched it to. It is the identity the client works in, so it is the
+-- identity here.
+--
+-- Every column is nullable on purpose. The client distinguishes "not filled in
+-- yet" from zero — a debt with a payment and no balance is a real state the
+-- tracker renders differently ("payments found, no balances yet") — and
+-- load_household strips nulls back out, so a record round-trips as exactly the
+-- fields it was saved with rather than gaining empty ones.
+create table if not exists debts (
+  household_id uuid not null references households(id) on delete cascade,
+  key text not null,
+  sort_order int not null default 0,
+  label text,
+  balance numeric(14,2),
+  rate numeric(12,6),                       -- an annual percentage, not money
+  payment numeric(14,2),
+  hidden boolean,
+  primary key (household_id, key)
+);
+
 -- Statutory holidays, one row per date. These decide when payroll that falls on
 -- a closed day is actually deposited (the budget marks the row rather than
 -- moving it — see priorBankingDay in src/lib/dates.js), and Settings →
@@ -349,6 +379,13 @@ alter table household_settings add column if not exists activity jsonb not null 
 alter table entry_overrides add column if not exists actual_amount numeric(14,2);
 alter table entry_overrides add column if not exists skipped boolean not null default false;
 alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
+-- Stamped once, when a household's legacy debt_data blob has been unpacked
+-- into the debts table. It is what stops a re-run of this file — the
+-- documented upgrade procedure — from resurrecting debts the user has since
+-- deleted: without a marker the only available gate is "debts is empty for
+-- this household", which is also true of a household that deliberately
+-- deleted its last one.
+alter table household_settings add column if not exists debts_migrated_at timestamptz;
 
 -- Client row ids are text, not bigint -----------------------------------------
 --
@@ -475,6 +512,7 @@ alter table budget_targets enable row level security;
 alter table templates enable row level security;
 alter table completed_occurrences enable row level security;
 alter table goals enable row level security;
+alter table debts enable row level security;
 alter table holidays enable row level security;
 alter table holiday_years enable row level security;
 alter table household_settings enable row level security;
@@ -600,6 +638,10 @@ create policy "member read completed_occurrences" on completed_occurrences
 
 drop policy if exists "member read goals" on goals;
 create policy "member read goals" on goals
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read debts" on debts;
+create policy "member read debts" on debts
   for select using (is_household_member(household_id));
 
 drop policy if exists "member read holidays" on holidays;
@@ -1202,6 +1244,39 @@ begin
       );
   end if;
 
+  -- debts ---------------------------------------------------------------------
+  -- Keyed by the client's own map key rather than a generated id, so the
+  -- object it sent and the object it gets back are the same object. Nulls are
+  -- stored as nulls: cf_num('') is null, which is how "cleared" survives as
+  -- something other than zero.
+  if jsonb_typeof(d->'debtData') = 'object' then
+    insert into debts (household_id, key, sort_order, label, balance, rate, payment, hidden)
+    select hid,
+           x.key,
+           x.ord,
+           nullif(x.value->>'label', ''),
+           cf_num(x.value->>'balance'),
+           cf_num(x.value->>'rate'),
+           cf_num(x.value->>'payment'),
+           case when x.value ? 'hidden' then (x.value->>'hidden')::boolean end
+    from jsonb_each(d->'debtData') with ordinality x(key, value, ord)
+    where jsonb_typeof(x.value) = 'object'
+    on conflict (household_id, key) do update set
+      sort_order = excluded.sort_order,
+      label = excluded.label,
+      balance = excluded.balance,
+      rate = excluded.rate,
+      payment = excluded.payment,
+      hidden = excluded.hidden
+    where (debts.sort_order, debts.label, debts.balance, debts.rate, debts.payment, debts.hidden)
+      is distinct from
+          (excluded.sort_order, excluded.label, excluded.balance, excluded.rate, excluded.payment, excluded.hidden);
+
+    delete from debts t
+    where t.household_id = hid
+      and not exists (select 1 from jsonb_each(d->'debtData') y(key, value) where y.key = t.key);
+  end if;
+
   -- statutory holidays -----------------------------------------------------
   -- Wire shape: { "2026": { "2026-07-01": { name, optional, source }, ... } }.
   -- A year present with an empty object is a household that deleted every
@@ -1261,7 +1336,10 @@ begin
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
      reg_filter_status, dash_hidden, dash_order, currency, locale, holiday_region,
-     debt_data, deleted_copy_ids, activity,
+     -- debt_data is not in this list: a debt is a row in `debts` now. The
+     -- column keeps its default on a new household and whatever it last held
+     -- on an existing one, as the pre-migration backup.
+     deleted_copy_ids, activity,
      rollover, schema_version, updated_at, updated_by)
   values
     (hid,
@@ -1280,7 +1358,6 @@ begin
      d->>'currency',
      d->>'locale',
      d->>'holidayRegion',
-     case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
      case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
      case when jsonb_typeof(d->'activity') = 'array' then d->'activity' else '[]'::jsonb end,
      -- budgetTargets._rollover is a per-category flag, not a per-month target,
@@ -1310,7 +1387,7 @@ begin
      currency = case when d ? 'currency' then excluded.currency else s.currency end,
      locale = case when d ? 'locale' then excluded.locale else s.locale end,
      holiday_region = case when d ? 'holidayRegion' then excluded.holiday_region else s.holiday_region end,
-     debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
+     -- debt_data is deliberately absent here: see the insert list above.
      deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
      activity = case when d ? 'activity' then excluded.activity else s.activity end,
      rollover = case when d ? 'budgetTargets' then excluded.rollover else s.rollover end,
@@ -1572,7 +1649,20 @@ begin
       'locale', s.locale,
       'holidayRegion', s.holiday_region,
       'activity', coalesce(s.activity, '[]'::jsonb),
-      'debtData', s.debt_data,
+      -- Rebuilt from the debts table, not read back out of the legacy jsonb
+      -- column beside it. jsonb_strip_nulls is what makes the round trip
+      -- exact: a debt saved with only a balance and a rate comes back with
+      -- only a balance and a rate, rather than gaining an empty label and a
+      -- null payment it never had.
+      'debtData', coalesce((
+        select jsonb_object_agg(t.key, jsonb_strip_nulls(jsonb_build_object(
+          'label', t.label,
+          'balance', t.balance,
+          'rate', t.rate,
+          'payment', t.payment,
+          'hidden', t.hidden
+        )))
+        from debts t where t.household_id = hid), '{}'::jsonb),
       'deletedCopyIds', s.deleted_copy_ids,
       'schemaVersion', s.schema_version,
       'savedAt', s.updated_at
@@ -1882,6 +1972,40 @@ begin
     raise notice 'No households needed migration (already migrated or no legacy data).';
   else
     raise notice 'Migration complete: % household(s) migrated. The legacy household_data table was kept as a backup.', migrated;
+  end if;
+end $$;
+
+-- Unpack the legacy debt_data blob into the debts table, once per household.
+--
+-- Gated on debts_migrated_at rather than on "the household has no debt rows",
+-- because this file is the documented upgrade procedure and gets re-run: a
+-- household that has since deleted its last debt would otherwise have it
+-- handed back every time. The blob itself is left alone as the backup.
+do $$
+declare moved int := 0;
+begin
+  insert into debts (household_id, key, sort_order, label, balance, rate, payment, hidden)
+  select s.household_id,
+         x.key,
+         x.ord,
+         nullif(x.value->>'label', ''),
+         cf_num(x.value->>'balance'),
+         cf_num(x.value->>'rate'),
+         cf_num(x.value->>'payment'),
+         case when x.value ? 'hidden' then (x.value->>'hidden')::boolean end
+  from household_settings s
+  cross join lateral jsonb_each(s.debt_data) with ordinality x(key, value, ord)
+  where s.debts_migrated_at is null
+    and jsonb_typeof(s.debt_data) = 'object'
+    and jsonb_typeof(x.value) = 'object'
+  on conflict (household_id, key) do nothing;
+  get diagnostics moved = row_count;
+
+  update household_settings set debts_migrated_at = now() where debts_migrated_at is null;
+  if moved = 0 then
+    raise notice 'debts: nothing to unpack (already migrated, or no legacy debt data).';
+  else
+    raise notice 'debts: unpacked % debt(s) out of the legacy blob into the debts table.', moved;
   end if;
 end $$;
 

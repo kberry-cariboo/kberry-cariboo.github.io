@@ -334,6 +334,20 @@ longer ride along inside every sync payload. (Legacy entry-level receipts are
 re-keyed onto the entry's start-date occurrence by the migration.) All reads/writes go through the
 `load_household`/`save_household` RPCs, which keep each save atomic.
 
+Debts are rows in `debts`, keyed by the client's own map key, with the balance,
+the interest rate and the monthly payment as typed columns. They were the last
+thing the household owns that was still a JSONB blob (`household_settings.debt_data`)
+— untyped, unqueryable, and holding the figures as *strings* of cents beside
+`numeric(14,2)` columns carrying the same unit everywhere else. Every column is
+nullable on purpose: the tracker distinguishes "not filled in yet" from zero (a
+debt with a payment and no balance is the state it renders as "payments found,
+no balances yet"), and `load_household` strips nulls back out, so a record
+round-trips as exactly the fields it was saved with. The old column is kept as
+the pre-migration backup and is no longer written; a one-shot backfill guarded
+by `household_settings.debts_migrated_at` unpacks it, and the marker rather
+than "this household has no debt rows" is what stops a re-run of `schema.sql`
+handing back a debt the user has since deleted.
+
 Statutory holidays (which decide when payroll landing on a closed day is
 actually deposited) are rows too: one per date in `holidays`, plus a
 `holiday_years` row per year the household has taken over from the built-in

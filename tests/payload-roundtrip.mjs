@@ -131,7 +131,17 @@ const payload = {
                    _rollover: { Food: true } },
   templates: [{ desc: 'Gym', type: 'expense', amount: 5500, category: 'Personal', repeats: true,
                 recurEvery: 1, recurUnit: 'month', recurDays: [], notes: 'tpl' }],
-  debtData: { Car_loan: { balance: 1200000, rate: 5.9, hidden: false } },
+  // Three shapes, because a debt is a row in `debts` now and the columns are
+  // nullable so that "not filled in yet" survives as something other than
+  // zero: one fully filled in, one with a payment and no balance (the state
+  // the tracker renders as "payments found, no balances yet"), and one hidden.
+  // A record must come back as exactly the fields it was saved with — no
+  // empty label, no null payment it never had.
+  debtData: {
+    Car_loan: { balance: 1200000, rate: 5.9, hidden: false },
+    manual_visa: { label: 'Visa', balance: 450000, rate: 19.99, payment: 30000, hidden: false },
+    manual_partial: { label: 'Line of credit', payment: 25000 },
+  },
   deletedCopyIds: { 'e-old': true },
   holidays: { 2026: { '2026-07-01': { name: 'Canada Day', optional: false, source: 'computed' } } },
   dashHidden: { charts: true },
@@ -183,6 +193,28 @@ for (const k of ['completed', 'goals', 'categories', 'categoryColors', 'yearConf
                  'colOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus',
                  'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon']) {
   check(k, payload[k], back[k]);
+}
+
+// The round trip above would pass just as well if debtData were still a jsonb
+// blob — it is the same bytes in and out either way. What makes it normalized
+// is that the figures are rows with typed columns, so check that directly, and
+// check that the legacy column it used to live in is no longer the thing being
+// written.
+{
+  const rows = psql(`select count(*) from debts where household_id='${HID}';`);
+  if (rows !== '3') issues.push({ label: 'debts table', sent: '3 rows', got: rows + ' rows' });
+  const visa = psql(`select label || '|' || balance || '|' || rate || '|' || payment
+                     from debts where household_id='${HID}' and key='manual_visa';`);
+  if (visa !== 'Visa|450000.00|19.990000|30000.00') {
+    issues.push({ label: 'debts columns are typed', sent: 'Visa|450000.00|19.990000|30000.00', got: visa });
+  }
+  // The partly-filled one keeps its blanks as nulls rather than zeros: a debt
+  // with a $0 balance and a debt with no balance yet are different states.
+  const partial = psql(`select coalesce(balance::text,'NULL') || '|' || coalesce(hidden::text,'NULL')
+                        from debts where household_id='${HID}' and key='manual_partial';`);
+  if (partial !== 'NULL|NULL') issues.push({ label: 'unfilled debt fields stay null', sent: 'NULL|NULL', got: partial });
+  const legacy = psql(`select debt_data::text from household_settings where household_id='${HID}';`);
+  if (legacy !== '{}') issues.push({ label: 'the legacy debt_data blob is no longer written', sent: '{}', got: legacy });
 }
 
 // households first: household_settings and household_members hang off it, and
