@@ -628,7 +628,9 @@
         }
       },
       label2,
-      /* @__PURE__ */ React.createElement("span", { className: "filter-pill-chevron" }, open ? "\u25B2" : "\u25BC")
+      /* @__PURE__ */ React.createElement("span", {
+        className: "filter-pill-chevron" + (open ? " filter-pill-chevron--open" : "")
+      }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 13, strokeWidth: 2.25 }))
     ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "") }, /* @__PURE__ */ React.createElement(
       "label",
       {

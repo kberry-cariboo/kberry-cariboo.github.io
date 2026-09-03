@@ -670,7 +670,12 @@
         .ctx-menu-divider{height:1px;background:var(--border);margin:3px 8px;}
         .ctx-menu-icon{font-size:15px;width:18px;text-align:center;}
         .filter-pill-btn{font-size:12px;padding:6px 14px;border-radius:20px;outline:none;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;}
-        .filter-pill-chevron{font-size:9px;opacity:0.5;}
+        /* Was ▲/▼ — two different characters for the two states, at 9px and
+           half opacity. Same chevron as the month summary now, rotating. */
+        .filter-pill-chevron{display:inline-flex;align-items:center;color:var(--textLt);
+          transition:transform 0.18s ease;}
+        .filter-pill-chevron--open{transform:rotate(180deg);}
+        @media(prefers-reduced-motion:reduce){.filter-pill-chevron{transition:none;}}
         .filter-pill-dropdown{position:absolute;top:calc(100% + 6px);left:0;z-index:500;background:var(--bgCard);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadowLg);min-width:180px;max-height:260px;overflow-y:auto;padding:6px 0;}
         /* In-flow variant for the mobile filter sheet — see FilterPill's
            `inline` prop. Absolute positioning inside a scrolling sheet let the
@@ -1842,6 +1847,11 @@
           .clear-key-btn,.copy-year-btn,.year-active-btn,.gotit-btn,
           .household-mode-btn,.debt-restore-btn,.revert-btn{min-height:44px;}
           .filter-pill-btn,.filter-pill-option-row,.filter-pill-all-row{min-height:44px;}
+          /* The collapsed stack is one button carrying every notice, and it
+             came out 42px — under the floor, and only reachable once a
+             household has more than one thing to say at a time, which is why
+             nothing had caught it. */
+          .notice-summary{min-height:44px;}
           .ctx-menu-item--touch{min-height:48px;}
           /* WCAG 2.5.5 exempts a link inside a sentence, and the exemption is
              load-bearing here rather than a technicality: a 44px inline-block
@@ -2310,6 +2320,13 @@
             -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
             padding-bottom:4px!important;margin-left:-6px!important;margin-right:-6px!important;
             padding-left:6px!important;padding-right:6px!important;}
+          /* The strip escapes its wrapper by 6px a side (the negative margins
+             above), but the fades are positioned against the wrapper — so the
+             hint sat 6px inside the edge where a pill actually gets cut, and
+             the leftmost month clipped against nothing. Same inset, so the
+             fade covers the cut instead of stopping short of it. */
+          .month-picker-fade--left{left:-6px;}
+          .month-picker-fade--right{right:-6px;}
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:6px!important;}
           /* Icon-only sub-tabs were unreadable: a scale for "Budget vs
@@ -9063,7 +9080,9 @@ const RUNWAY_DAYS = 90;
         }
       },
       label2,
-      /* @__PURE__ */ React.createElement("span", { className: "filter-pill-chevron" }, open ? "\u25B2" : "\u25BC")
+      /* @__PURE__ */ React.createElement("span", {
+        className: "filter-pill-chevron" + (open ? " filter-pill-chevron--open" : "")
+      }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 13, strokeWidth: 2.25 }))
     ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "") }, /* @__PURE__ */ React.createElement(
       "label",
       {
@@ -11490,7 +11509,11 @@ const RUNWAY_DAYS = 90;
       paid: !!completed[ev.id],
       selected: selIds.has(ev.id),
       past: isPast(ev.day),
-      dateLabel: opts.hideDayLabel ? null : "Day " + ev.day,
+      // "Day 3" is not how the rest of the app dates a row — the alerts feed
+      // and the forecast ledger both print "Sep 3" — and repeated down a
+      // phone screen the word is ten copies of something the column header
+      // says once on a desktop.
+      dateLabel: opts.hideDayLabel ? null : MONTHS[ev.month] + " " + ev.day,
       onTogglePaid: toggleComplete,
       onToggleSelect: toggleSel,
       onOpen: openOccurrenceEdit,
@@ -19127,8 +19150,34 @@ Fill every field of the response schema. Rules:
           actions: [{ label: "Remove sample data", onClick: () => setEntries((prev) => prev.filter((e) => !e.sample)) }]
         });
       }
+      // Every January this household's whole app quietly empties: the active
+      // year is last year, so the forecast projects ninety days that contain
+      // nothing, the ledger opens on a month that has been and gone, and the
+      // only clue is a year badge in the header that a reader has no reason to
+      // suspect. The screens are not wrong — there really is nothing scheduled
+      // — they just never say why, so this does, and hands over the one action
+      // that fixes it.
+      const nowYear = (/* @__PURE__ */ new Date()).getFullYear();
+      if (activeYear !== nowYear) {
+        const haveIt = yearConfigs.some((y) => y.year === nowYear);
+        out.push({
+          id: "staleyear", tone: "info", icon: "calendar",
+          plain: `You are looking at ${activeYear}, and today is in ${nowYear}`,
+          msg: React.createElement(React.Fragment, null,
+            "You're looking at ", React.createElement("strong", null, String(activeYear)),
+            " \u2014 today is in ", React.createElement("strong", null, String(nowYear)),
+            haveIt
+              ? ", so the forecast and the ledger are showing a year that has passed."
+              : `, and ${nowYear} has not been set up yet.`),
+          actions: [haveIt
+            ? { label: `Switch to ${nowYear}`, primary: true, onClick: () => setActiveYear(nowYear) }
+            : { label: `Set up ${nowYear}`, primary: true,
+                onClick: () => { setTab("you"); setYouSub("years"); } }]
+        });
+      }
       return out;
-    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab]);
+    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab,
+        activeYear, yearConfigs]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):

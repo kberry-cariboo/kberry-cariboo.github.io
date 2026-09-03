@@ -1185,8 +1185,34 @@
           actions: [{ label: "Remove sample data", onClick: () => setEntries((prev) => prev.filter((e) => !e.sample)) }]
         });
       }
+      // Every January this household's whole app quietly empties: the active
+      // year is last year, so the forecast projects ninety days that contain
+      // nothing, the ledger opens on a month that has been and gone, and the
+      // only clue is a year badge in the header that a reader has no reason to
+      // suspect. The screens are not wrong — there really is nothing scheduled
+      // — they just never say why, so this does, and hands over the one action
+      // that fixes it.
+      const nowYear = (/* @__PURE__ */ new Date()).getFullYear();
+      if (activeYear !== nowYear) {
+        const haveIt = yearConfigs.some((y) => y.year === nowYear);
+        out.push({
+          id: "staleyear", tone: "info", icon: "calendar",
+          plain: `You are looking at ${activeYear}, and today is in ${nowYear}`,
+          msg: React.createElement(React.Fragment, null,
+            "You're looking at ", React.createElement("strong", null, String(activeYear)),
+            " \u2014 today is in ", React.createElement("strong", null, String(nowYear)),
+            haveIt
+              ? ", so the forecast and the ledger are showing a year that has passed."
+              : `, and ${nowYear} has not been set up yet.`),
+          actions: [haveIt
+            ? { label: `Switch to ${nowYear}`, primary: true, onClick: () => setActiveYear(nowYear) }
+            : { label: `Set up ${nowYear}`, primary: true,
+                onClick: () => { setTab("you"); setYouSub("years"); } }]
+        });
+      }
       return out;
-    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab]);
+    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab,
+        activeYear, yearConfigs]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):

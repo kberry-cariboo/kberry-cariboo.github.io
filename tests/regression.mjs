@@ -4795,10 +4795,13 @@ await test('wide screens: a name-and-value row keeps the two within reach', asyn
       if (!rows.length) return null;
       return Math.max(...rows.map((r) => Math.round(r.getBoundingClientRect().width)));
     }, sel);
-    if (w === null) throw new Error('no ' + sel + ' rendered on ' + hash);
-    worst.push({ hash, sel, w });
+    // A household whose budget year has ended renders no rows at all. That is
+    // a different subject; this test is about how wide a row runs when there
+    // is one.
+    if (w !== null) worst.push({ hash, sel, w });
   }
   await ctx.close();
+  if (!worst.length) throw new Error('neither route rendered a row to measure');
   // The measure is 760px; anything near the 1120px content width means the
   // cap stopped applying.
   const over = worst.filter((r) => r.w > 860);
@@ -4806,6 +4809,39 @@ await test('wide screens: a name-and-value row keeps the two within reach', asyn
     throw new Error(over.map((r) => r.sel + ' on ' + r.hash + ' runs ' + r.w + 'px').join('; ')
       + ' — the label and its value are back at opposite ends of the page');
   }
+});
+
+
+// Every January an untouched household empties out: the active year is last
+// year, so the forecast projects ninety days containing nothing and the ledger
+// opens on a month long gone. Nothing was wrong with those screens — there
+// really is nothing scheduled — but nothing said why either, and the only clue
+// was a year badge in the header.
+await test('the year you are looking at says so when it is not this one', async () => {
+  // A context per clock: setFixedTime pins the page it is called on, and
+  // re-pinning a live one to an earlier date does not survive the reload.
+  const noticeAt = async (when) => {
+    const { ctx, page } = await ctxPage();
+    await page.clock.setFixedTime(new Date(when));
+    await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
+    await page.waitForTimeout(1600);
+    const n = await page.evaluate(() =>
+      [...document.querySelectorAll('.notice-stack .notice, .notice-stack .notice-summary')]
+        .map((e) => e.innerText.replace(/\s+/g, ' ')));
+    await ctx.close();
+    return { all: n, stale: n.find((t) => /looking at/.test(t)) || null };
+  };
+
+  // A year that has ended, and no replacement set up.
+  const gone = await noticeAt('2027-03-01T12:00:00');
+  if (!gone.stale) throw new Error('a household stranded in last year is told nothing: ' + JSON.stringify(gone.all));
+  for (const want of [/looking at 2026/, /today is in 2027/, /not been set up/, /Set up 2027/]) {
+    if (!want.test(gone.stale)) throw new Error('the notice does not say ' + want + ': ' + gone.stale);
+  }
+
+  // And it stays quiet while the active year is the one you are living in.
+  const now = await noticeAt('2026-09-01T12:00:00');
+  if (now.stale) throw new Error('the notice fires on a household whose year is current: ' + now.stale);
 });
 
 await browser.close();
