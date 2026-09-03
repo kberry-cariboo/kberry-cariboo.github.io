@@ -29,8 +29,15 @@
 //                                                # supabase/schema-test.sql
 //   CF_TEST_PG=1 PGDATABASE=cf_scratch node tests/payload-roundtrip.mjs
 import { execFileSync } from 'child_process';
+import { reportServerMajor } from './pg-version.mjs';
 
-const UID = '11111111-1111-1111-1111-111111111111';
+// Its own user, not the one tests/sync-sql.mjs uses. They shared 1111… and
+// the teardown below deletes it, which auth.users refuses while the *other*
+// suite's household_settings still names it as updated_by — so running the two
+// against one scratch database, in the order the README gives, failed at the
+// last statement of a suite that had otherwise passed. CI never saw it: it
+// gets a fresh container every run, and runs them in the one order that works.
+const UID = '44444444-4444-4444-8444-444444444444';
 const HID = '33333333-3333-4333-8333-333333333333';
 
 if (!process.env.CF_TEST_PG) {
@@ -48,6 +55,8 @@ try {
   console.log('payload-roundtrip: skipped (no reachable database: ' + String(e.message || e).split('\n')[0] + ')');
   process.exit(0);
 }
+
+reportServerMajor(psql, 'payload-roundtrip');
 
 // One of everything the app can save.
 const payload = {
@@ -176,6 +185,8 @@ for (const k of ['completed', 'goals', 'categories', 'categoryColors', 'yearConf
   check(k, payload[k], back[k]);
 }
 
+// households first: household_settings and household_members hang off it, and
+// auth.users cannot go while anything still points at it.
 psql(`delete from households where id='${HID}'; delete from auth.users where id='${UID}';`);
 
 if (!issues.length) {

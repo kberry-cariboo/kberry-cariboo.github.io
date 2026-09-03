@@ -315,6 +315,11 @@
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
     const renderEventRow = (ev, i) => {
       const past = isPast(ev.day);
+      // A recurring entry appears several times in one month, so its name on
+      // its own does not identify the row: five of September's ledger rows are
+      // "Fuel". The day is what tells them apart on screen, so it is what
+      // tells them apart to a screen reader too.
+      const rowName = `${ev.desc}, ${MONTHS[monthIdx]} ${ev.day}`;
       const isDone = !!completed[ev.id];
       const isDragging = draggingId === ev.id;
       const isDropTarget = draggingId != null && draggingId !== ev.id && dragOverDay === ev.day;
@@ -355,7 +360,11 @@
             },
             role: "checkbox",
             "aria-checked": isDone || selIds.has(ev.id),
-            "aria-label": isDone ? "Mark unpaid" : selIds.has(ev.id) ? "Deselect row" : "Select row",
+            // Named, like the phone card beside it (LedgerRow) and the Entries
+            // table's own checkbox — a monthly ledger puts twenty of these on
+            // screen, and "Select row" told a screen reader nothing about
+            // which row it had landed on.
+            "aria-label": (isDone ? "Mark unpaid: " : selIds.has(ev.id) ? "Deselect: " : "Select: ") + rowName,
             title: isDone ? "Paid \u2014 click to mark unpaid" : "Select to mark paid",
             className: "cf-checkbtn budget-row-checkbtn",
             style: {
@@ -416,7 +425,7 @@
               e.stopPropagation();
               setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
             },
-            "aria-label": ev.desc + " actions",
+            "aria-label": rowName + " actions",
             title: ev.desc + " actions",
             className: "cf-checkbtn row-menu-btn"
           },

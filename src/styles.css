@@ -1816,7 +1816,13 @@
              that actually opens the picker. Put it on the .color-swatch
              wrapper and a tap just outside the 22px circle lands on a plain
              div and does nothing. */
-          .color-swatch-input{min-height:0;inset:-11px!important;width:auto!important;height:auto!important;}
+          /* -13, not -11. An absolutely-positioned box insets from its
+             containing block's *padding* box, and .color-swatch is 22px
+             border-box with a 2px border — so its padding box is 18px and
+             -11px each side came out at 40, four short of the floor. The
+             sweep across every route found it; the eight screens the
+             touch-target test visits do not include this one. */
+          .color-swatch-input{min-height:0;inset:-13px!important;width:auto!important;height:auto!important;}
           .grid-pagination-size select,.grid-pagination-nav{min-height:44px;}
           /* Every form control, not just the ones that happened to get a
              class. Anything the user has to hit with a thumb clears 44px;
@@ -2052,6 +2058,16 @@
           .header-search{display:none!important;}
           /* Hide year pills on mobile — managed in Settings */
           .year-pills{display:none!important;}
+        }
+        /* The other half of that bargain, which was never written down: the
+           Entries toolbar search *substitutes* for the header search on a
+           phone, so above the same breakpoint it is a second box doing the
+           first one's job. Both are bound to the same globalSearch state and
+           both announce themselves as "Search 2026 entries", so a desktop
+           user got two identical search fields side by side and a screen
+           reader had no way to tell them apart. */
+        @media(min-width:769px){
+          .entries-search-wrap{display:none;}
         }
         /* A card's title + action-button row (Savings Goals, Debt Payoff
            Tracker, Budget vs Actual) has no room for both on a phone width —

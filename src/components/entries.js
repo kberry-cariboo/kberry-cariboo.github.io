@@ -484,7 +484,7 @@
       "aria-label": `Select ${e.desc}`,
       checked: selIds.has(e.id),
       onChange: () => toggleSel(e.id)
-    })), visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": "Entry actions", title: "Entry actions", className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 2, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
+    })), visibleCols.map((col) => cellVal(e, col)), /* @__PURE__ */ React.createElement("td", { key: "actions", className: "entries-actions" }, /* @__PURE__ */ React.createElement("button", { onClick: (ev) => openCtx(ev, e), "aria-label": `${e.desc} actions`, title: `${e.desc} actions`, className: "cf-checkbtn row-menu-btn" }, "\u22EE")))), filtered.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: visibleCols.length + 2, className: "entries-empty-cell" }, /* @__PURE__ */ React.createElement(EmptyState, {
       icon: /* @__PURE__ */ React.createElement(Icon, { name: globalSearch ? "search" : "clipboard", size: 26, className: "c-textLt" }),
       message: globalSearch ? `No entries matching "${globalSearch}"` : "No entries found matching your filters.",
       actionLabel: !(globalSearch) && "+ Add Entry",
@@ -513,7 +513,7 @@
               ev.stopPropagation();
               openCtx(ev, e);
             },
-            "aria-label": "Entry actions",
+            "aria-label": `${e.desc} actions`,
             className: "cf-checkbtn row-menu-btn"
           },
           "⋮"

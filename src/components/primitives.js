@@ -36,6 +36,11 @@
   }) => {
     const signed = signedAmount(ev);
     const dim = paid ? "var(--textLt)" : null;
+    // The same reason the desktop ledger row names itself by date: a recurring
+    // entry is several rows in one month and nine of them across a 90-day
+    // forecast, so "Fuel" identifies none of them. dateLabel is what the row
+    // already prints to tell them apart on screen.
+    const rowName = dateLabel ? `${ev.desc}, ${dateLabel}` : ev.desc;
     const coarse = useIsCoarsePointer();
     const rowRef = useRef(null);
     const drag = useRef(null);
@@ -118,7 +123,7 @@
         },
         role: "checkbox",
         "aria-checked": paid || selected,
-        "aria-label": (paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + ev.desc,
+        "aria-label": (paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + rowName,
         title: paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid",
         className: "cf-checkbtn budget-card-checkbtn",
         style: {
@@ -162,7 +167,7 @@
             }, fmt(ev.balance))))),
       onMenu && /* @__PURE__ */ React.createElement("button", {
         onClick: (e) => { e.stopPropagation(); onMenu(e, ev); },
-        "aria-label": ev.desc + " actions", title: ev.desc + " actions",
+        "aria-label": rowName + " actions", title: ev.desc + " actions",
         className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
       }, "\u22EE"));
     if (!swipeable) return row;
@@ -554,7 +559,13 @@
       nextYear
     )));
   };
-  const ChartToggle = ({ options, value, onChange }) => /* @__PURE__ */ React.createElement("div", { role: "group", className: "chart-toggle-group" }, options.map((o) => /* @__PURE__ */ React.createElement(
+  // `label` names the group, not the buttons. A dashboard puts five of these
+  // on one page and every one of them offers "Line" and "Bar", so on their own
+  // the buttons are five identical controls with nothing to tell them apart —
+  // a screen reader hears "Line, button" over and over with no idea which
+  // chart it would change. Naming the group is what a role="group" is for: it
+  // is announced on entry, and it leaves the button names alone.
+  const ChartToggle = ({ options, value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { role: "group", "aria-label": label ? label + " view" : void 0, className: "chart-toggle-group" }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
     {
       key: o.id,

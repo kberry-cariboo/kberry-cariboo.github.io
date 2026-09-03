@@ -40,77 +40,14 @@ await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
 
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
 
-// Fictional demo data (self-contained). Money is stored as integer cents
-// (schema v8) — `amount` args below are dollars, multiplied by 100 so the
-// fixtures read naturally while matching the app's on-disk representation.
-const E = (id, desc, type, amount, category, opts = {}) => ({
-  id, desc, type, amount: Math.round(amount * 100), category,
-  repeats: opts.once ? false : true,
-  recurUnit: opts.unit || 'month',
-  recurEvery: opts.every || 1,
-  startDate: opts.start || '2026-01-05',
-  ...(opts.recurEnd ? { recurEnd: opts.recurEnd } : {}),
-  notes: opts.notes || ''
-});
-const entries = [
-  E(1, 'Salary — Acme Corp', 'income', 3250, 'Income', { start: '2026-01-02', unit: 'week', every: 2 }),
-  E(2, 'Freelance design', 'income', 850, 'Income', { start: '2026-01-20' }),
-  E(3, 'Tax refund', 'income', 950, 'Income', { once: true, start: '2026-04-14' }),
-  E(4, 'Rent', 'expense', 1650, 'Housing', { start: '2026-01-01' }),
-  E(5, 'Groceries', 'expense', 260, 'Food', { start: '2026-01-04', unit: 'week', every: 2 }),
-  E(6, 'Car insurance', 'expense', 210, 'Insurance', { start: '2026-01-15' }),
-  E(7, 'Hydro & gas', 'expense', 185, 'Utilities', { start: '2026-01-12' }),
-  E(8, 'Internet', 'expense', 95, 'Utilities', { start: '2026-01-08' }),
-  E(9, 'Streaming bundle', 'expense', 45, 'Subscriptions', { start: '2026-01-10' }),
-  E(10, 'Fuel', 'expense', 80, 'Transportation', { start: '2026-01-06', unit: 'week', every: 1 }),
-  E(11, 'Dining out', 'expense', 120, 'Personal', { start: '2026-01-09', unit: 'week', every: 2 }),
-  E(12, 'Gym membership', 'expense', 55, 'Personal', { start: '2026-01-03' }),
-  E(13, 'Car loan', 'expense', 385, 'Debt / Credit', { start: '2026-01-18', recurEnd: '2026-09-18' }),
-  E(14, 'RRSP contribution', 'expense', 400, 'Savings / RRSP', { start: '2026-01-25' }),
-  E(15, 'Phone plan', 'expense', 75, 'Subscriptions', { start: '2026-01-11' }),
-  E(16, 'Summer vacation', 'expense', 1800, 'Personal', { once: true, start: '2026-07-24' }),
-  E(17, 'Vet checkup', 'expense', 240, 'Farm / Animals', { once: true, start: '2026-08-12' }),
-];
-const monthTargets = {
-  Housing: 165000, Food: 56000, Insurance: 21000, Utilities: 29000, Subscriptions: 12500,
-  Transportation: 34000, Personal: 32000, 'Debt / Credit': 38500, 'Savings / RRSP': 40000
-};
-const entriesMatch = 'const entries = ' + JSON.stringify(entries) + ';';
-const eMatch = '';
-const targetsMatch = 'const monthTargets = ' + JSON.stringify(monthTargets) + ';';
-const btMatch = "const budgetTargets = {}; for (let m = 0; m <= 11; m++) budgetTargets['2026:' + m] = { ...monthTargets };";
-
-const mkStub = (dark, loggedIn = true) => `
-(() => {
-  ${eMatch}
-  ${entriesMatch}
-  ${targetsMatch}
-  ${btMatch}
-  const session = ${loggedIn} ? { user: { id: 'u-demo', email: 'demo@example.com' }, access_token: 'demo' } : null;
-  const payload = { entries, overridesByYr: {}, yearConfigs: [{ year: 2026, openingBalance: 1250000 }], budgetTargets, templates: [], completed: {}, activeYear: 2026, alertThreshold: 50000, darkMode: ${dark}, goals: [], dashHidden: {}, dashOrder: [], schemaVersion: 999 };
-  const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }];
-  const resolved = (data) => Promise.resolve({ data, error: null });
-  function chain(table) {
-    const c = {};
-    for (const m of ['select','eq','limit','order','update','insert','delete','neq','in']) {
-      c[m] = () => { if (m === 'order') return resolved(table === 'household_members' ? members : []); return c; };
-    }
-    c.maybeSingle = () => resolved(table === 'household_members' ? { household_id: 'hh-demo' } : { id: 'hh-demo', name: 'Demo Household' });
-    c.single = c.maybeSingle;
-    c.then = (res, rej) => resolved(null).then(res, rej);
-    return c;
-  }
-  const fakeClient = {
-    auth: { getSession: () => resolved({ session }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }), signOut: () => resolved(null) },
-    from: (t) => chain(t),
-    rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),
-    channel: () => { const ch = { on: () => ch, subscribe: () => ({ unsubscribe(){} }) }; return ch; },
-    removeChannel(){},
-  };
-  const fake = { createClient: () => fakeClient };
-  Object.defineProperty(window, 'supabase', { get: () => fake, set: () => {} });
-})();
-`;
+// The fictional household lives in its own module now — tests/layout-sweep.mjs
+// drives the same one, and two copies of it would have drifted. mkStub returns
+// the script injected before every page load; several tests below rewrite
+// substrings of that script to add data the shared household doesn't carry.
+// `entries` is the household's own list, read by the alerts test to check that
+// an episode names the entries that take the balance under rather than all of
+// the ones that fall inside the dip.
+import { FIXTURE_YEAR, entries, mkStub, spansYearEnd } from './household-fixture.mjs';
 
 const exe = process.env.CHROMIUM_PATH || (readFileSync ? '/opt/pw-browsers/chromium' : null);
 let browser;
@@ -139,6 +76,26 @@ const FAKE_TODAY = process.env.CF_FAKE_TODAY
   : null;
 if (FAKE_TODAY && isNaN(FAKE_TODAY)) throw new Error('CF_FAKE_TODAY is not a date: ' + process.env.CF_FAKE_TODAY);
 if (FAKE_TODAY) console.log('CF_FAKE_TODAY: every page thinks today is ' + FAKE_TODAY.toDateString() + '\n');
+
+// A household has one budget year, and every screen this suite drives reads
+// from it. Once "today" leaves that year there is nothing left to project,
+// list or draw, and the suite reports nine failures that all reduce to "there
+// is no data" — an empty forecast, no ledger rows, no second curve. Read from
+// the failures alone that looks like nine regressions on a morning nobody
+// pushed anything, which is a bad hour to spend. Say it once, up front, and
+// name the line to change.
+{
+  const today = FAKE_TODAY || new Date();
+  if (today.getFullYear() !== FIXTURE_YEAR) {
+    console.error(`\nThe fixture household is a ${FIXTURE_YEAR} one, and today is `
+      + `${today.toDateString()}. Nothing this suite drives has data in it.\n\n`
+      + `Roll the household forward: FIXTURE_YEAR in tests/household-fixture.mjs.\n`
+      + `Tests that carry their own fixture and pin their own clock (the payday\n`
+      + `and statutory-holiday ones, which depend on which weekday a date falls\n`
+      + `on) are deliberately not tied to it and do not move.\n`);
+    process.exit(1);
+  }
+}
 // A test that derives a date of its own has to derive it from the same day the
 // page believes in, or the sweep reports a mismatch it created itself. The
 // ones here all pin their own clock and compute from that; anything new that
@@ -164,7 +121,7 @@ async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x
   if (FAKE_TODAY) await page.clock.setFixedTime(FAKE_TODAY);
   await page.addInitScript(stub(mkStub(dark, loggedIn)));
   await page.addInitScript(`try{localStorage.setItem('cf_darkMode', ${JSON.stringify(JSON.stringify(dark))})}catch(e){}`);
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   return { ctx, page };
 }
 
@@ -1934,7 +1891,9 @@ await test('sheets: opening one moves focus into it', async () => {
 // The single biggest item was four KPI tiles in a 2x2 grid above the rows they
 // summarise, and on Forecast two cards that each wrapped one control.
 await test('flow: you can see the ledger without scrolling past a screen of chrome', async () => {
-  const { ctx, page } = await ctxPage({ touch: true });
+  // spansYearEnd: one of the three lenses below is the ninety-day forecast, so
+  // in late December this needs a household that has somewhere to project into.
+  const { ctx, page } = await ctxPage({ touch: true, stub: spansYearEnd });
   const topOfFirstRow = async () => page.evaluate(() => {
     const r = document.querySelector('main .budget-card-row, main .cal-cell, main .forecast-table tbody tr');
     return r ? Math.round(r.getBoundingClientRect().top) : null;
@@ -2851,7 +2810,7 @@ await test('migration: a pre-v8 dollar-scale cloud payload is upgraded to cents 
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.addInitScript(stub);
   await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
   await page.getByText('Old Format Rent', { exact: false }).first().waitFor(V);
@@ -2954,7 +2913,7 @@ await test('payroll: a payday on a weekend or a stat holiday stays put and is ma
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.addInitScript(stub);
 
   await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
@@ -3077,7 +3036,7 @@ await test('holidays: Settings lists the BC dates the app is using, and a manual
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.addInitScript(holidayFixture());
 
   await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
@@ -3143,7 +3102,7 @@ await test('holidays: fetching a year on demand replaces the list and re-marks t
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.addInitScript(holidayFixture());
 
   await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
@@ -3192,7 +3151,7 @@ await test('vendor: the Supabase client bundle exposes the API the app calls', a
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.setContent('<!doctype html><html><body></body></html>');
   await page.addScriptTag({ path: join(ROOT, 'src', 'vendor', 'supabase-client.js') });
 
@@ -3310,7 +3269,7 @@ await test('sync: an entry added while a save is still in flight is not swallowe
   const page = await ctx.newPage();
   page.setDefaultTimeout(20000);
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.addInitScript(syncFixture(4000));
 
   await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
@@ -3343,7 +3302,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
   const page = await ctx.newPage();
   page.setDefaultTimeout(15000);
   lastPage = page;
-  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
   await page.addInitScript(syncFixture(0));
 
   await page.goto(BASE + '#/you/holidays', { waitUntil: 'load' });
@@ -3702,7 +3661,7 @@ await test('forecast: a balance curve marks the low point and the alert threshol
   const roof = JSON.stringify([{ id: 9901, desc: 'Roof repair', type: 'expense', amount: 3800000,
     category: 'Housing', repeats: false, recurUnit: 'month', recurEvery: 1,
     startDate: when.toISOString().slice(0, 10), notes: '' }]);
-  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('const payload = {', `entries.push(...${roof}); const payload = {`) });
+  const { ctx, page } = await ctxPage({ stub: (t) => spansYearEnd(t.replace('const payload = {', `entries.push(...${roof}); const payload = {`)) });
   await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   const svg = page.locator('svg[role="img"]').first();
@@ -3726,7 +3685,7 @@ await test('forecast: a balance curve marks the low point and the alert threshol
 // A rolling window cut into pages stops rolling the moment you have to press
 // Next, and the run-up to the low point is as likely to straddle a break as not.
 await test('forecast: the ledger scrolls rather than paginating', async () => {
-  const { ctx, page } = await ctxPage();
+  const { ctx, page } = await ctxPage({ stub: spansYearEnd });
   await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
   await page.waitForTimeout(1400);
   if (await page.locator('[aria-label="Next page"]').count() !== 0) throw new Error('the forecast still paginates');
@@ -4217,7 +4176,7 @@ await test('activity: what changed, who changed it, across every kind of change'
 // The app could project a year and rank debt strategies, but not answer the one
 // question a low-balance warning provokes: what would I have to change?
 await test('what-if: a scenario draws a second curve and says what it is worth', async () => {
-  const { ctx, page } = await ctxPage();
+  const { ctx, page } = await ctxPage({ stub: spansYearEnd });
   await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
   await page.waitForTimeout(1500);
   const nudge = page.getByRole('button', { name: 'Remind me later' });

@@ -190,6 +190,20 @@ jobs:
       - name: Run UI regression suite
         run: node tests/regression.mjs
 
+      # Every route at every width, checking the handful of things that have to
+      # hold on all of them — no sideways scroll, nothing off the edge or
+      # clipped, every touch target over 44px, no two visible controls with the
+      # same name, no console errors. Four and a half minutes for 210 screens.
+      #
+      # It goes after the named suite because the named suite says *what* broke
+      # and this one says *where*: a stylesheet mistake lights up thirty rows
+      # here and one intelligible failure there. It exists because the suite
+      # above can only go where someone thought to send it — the Alerts centre
+      # shipped 32px tap targets because the touch-target test ran at one width
+      # and never visited that page.
+      - name: Run layout sweep
+        run: node tests/layout-sweep.mjs
+
       - name: Check for changes
         id: diff
         run: |
