@@ -85,11 +85,14 @@ node scripts/lint-bundle.js   # restitches .eslint-bundle.js from src/
 npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
   build.js .eslint-bundle.js  # what CI runs
 node tests/regression.mjs     # the browser suite
+node tests/layout-sweep.mjs   # every route at every width
 ```
 
 ### Tests that quietly depend on what day it is
 
-The browser fixture is a **2026** household, so "today" walks across it and
+The browser fixture is a **2026** household — `FIXTURE_YEAR` in
+`tests/household-fixture.mjs`, which both browser suites import and which is
+the only place the year is written down. So "today" walks across it and
 eventually off the end of it. Twice CI has gone red overnight on behaviour that
 was still correct — a payday marker that is deliberately not drawn on past
 occurrences, and an alert card naming the crossing date it had actually
@@ -109,16 +112,60 @@ read `FAKE_TODAY` rather than `new Date()`, or the sweep reports a mismatch it
 created itself.
 
 The sweep is only meaningful **inside the fixture's budget year**. Past it the
-household has no entries left to project, and the suite reports nine failures
-that all reduce to "there is no data" — an empty forecast, no ledger rows, no
-second curve. That is the signal to roll the fixture year forward, not a defect
-in the app.
+household has no entries left to project — an empty forecast, no ledger rows,
+no second curve — so both browser suites stop at the door rather than reporting
+that as nine regressions. It is the signal to roll the fixture year forward,
+not a defect in the app.
 
-That is not everything CI runs. Six more suites go with it, and two of them
+The 90-day forecast is what runs out first, and it runs out before the year
+does. The four tests that read those ninety days now take a household with next
+year in it as well (`spansYearEnd` in the fixture module — the app's forecast
+reads every budget year, not just the active one, and a household in its second
+year has both), which is what a real household looks like by December anyway.
+The rest of the suite keeps the single-year fixture.
+
+Past the end of the year there is nothing left to do but roll it. Both browser
+suites refuse to start when "today" is outside `FIXTURE_YEAR` and say so in one
+line, rather than letting you read nine failures that all mean "there is no
+data". Rolling it is that one constant — but check the suite still passes
+afterwards: several tests turn on which *weekday* a date falls on (a payday
+landing on a Saturday, a statutory holiday landing on a Monday). Those carry
+their own fixtures and pin their own clocks, so they do not move with
+`FIXTURE_YEAR`, and the shared household's paydays land differently in a
+different year.
+
+### The layout sweep
+
+`tests/regression.mjs` goes where a test author thought to send it.
+`tests/layout-sweep.mjs` goes everywhere: all thirty routes — the seventeen
+Settings pages included — at five widths plus two of them again in dark mode,
+210 screens in about four and a half minutes. On each one it asserts only the
+things that have to be true of *every* screen:
+
+- the page does not scroll sideways, and nothing hangs off either edge
+  (outside a container that scrolls on purpose)
+- no text is clipped by its own box without an ellipsis
+- on a touch viewport, every control clears 44px — measured through the
+  padded-halo pattern, so a 15px button with a 15px `::after` counts as 45
+- no two *visible* controls answer to the same accessible name, unless they
+  sit in differently-named `role="group"`s
+- nothing throws, and nothing reaches the console as an error
+
+It found the Alerts centre shipping 32px tap targets: the touch-target test in
+the named suite only ran at 393px, where the finding's sentence wraps onto a
+second line and clears 44px by accident, and it had never been sent to
+`#/alerts` at all. Nothing was wrong with that test. A sweep just doesn't
+depend on anyone having thought of the case.
+
+It shares the fixture household with the named suite —
+`tests/household-fixture.mjs`, which is where the two of them would otherwise
+have drifted apart.
+
+That is not everything CI runs. Seven more suites go with it, and two of them
 need a database:
 
 ```bash
-for t in payload-fields payload-migration year-copy cloud-sync help-shots; do
+for t in payload-fields payload-migration year-copy cloud-sync help-shots layout-sweep; do
   node "tests/$t.mjs"
 done
 ```
@@ -127,7 +174,10 @@ done
 `supabase/schema.sql`. **Run them on the same Postgres major as production** —
 this project's Supabase is on 17, and CI's service container matches it. A
 local scratch database on another major still catches most things, but a
-version-sensitive difference in the schema would slip through. Both **exit 0 with a "skipped" line** when `CF_TEST_PG`
+version-sensitive difference in the schema would slip through. Both suites now
+**print the major they just ran against**, and say so plainly when it isn't the
+one production runs — a green line that doesn't mention a version is a green
+line that gets believed further than it should be. Both **exit 0 with a "skipped" line** when `CF_TEST_PG`
 is unset, so a run that never touched them looks exactly like a run that passed
 them — which is how a stale selector in `sync-sql.mjs` reached CI green-looking
 from here. Point them at a throwaway Postgres before you believe a green local

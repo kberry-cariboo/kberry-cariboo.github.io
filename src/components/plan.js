@@ -93,6 +93,30 @@
     const [showFundForm, setShowFundForm] = useState(false);
     const [fundForm, setFundForm] = useState(null);
     const [confirmGoalDelete, setConfirmGoalDelete] = useState(null);
+    // Escape closes, the backdrop doesn't — the bargain every other overlay in
+    // the app strikes, and the four dialogs on this screen were the ones that
+    // never struck it. The goal form, the funding form, the debt form and the
+    // debt picker all opened over what you were reading with no keyboard way
+    // out: a person who reaches for Escape (or an external keyboard on a
+    // tablet) had to find Cancel with the pointer.
+    //
+    // One handler rather than four, because the state is all here and only one
+    // of them is ever on screen. The delete confirmation is the exception: it
+    // carries its own handler (ConfirmDialog), and it opens over the goal form
+    // — so bail out while it is up rather than dismissing both with one press.
+    useEffect(() => {
+      if (confirmGoalDelete) return void 0;
+      if (!showDebtPicker && !showFundForm && !showGoalForm && !showDebtForm) return void 0;
+      const h = (e) => {
+        if (e.key !== "Escape") return;
+        if (showDebtPicker) setShowDebtPicker(false);
+        else if (showFundForm) setShowFundForm(false);
+        else if (showGoalForm) setShowGoalForm(false);
+        else if (showDebtForm) setShowDebtForm(false);
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [confirmGoalDelete, showDebtPicker, showFundForm, showGoalForm, showDebtForm]);
     const saveGoal = () => {
       const errs = {};
       const name = (goalForm.name || "").trim();
@@ -583,12 +607,27 @@
         return r.label && r.label.trim() || parseFloat(d.balance) > 0 || parseFloat(d.rate) > 0 || parseFloat(d.payment) > 0;
       });
       const allRowsFiltered = gq ? allRows.filter((r) => (r.label || "").toLowerCase().includes(gq)) : allRows;
+      // Amortised month by month, the same way simulateDebtStrategy does it,
+      // because the two have to agree: the interest was `pmt * m - bal`, which
+      // charges the whole of the final month's payment even though that
+      // payment only ever clears what is left. On $4,000 at 19.9% paying $300
+      // the tracker printed $800 of "Total Interest Remaining" against the
+      // $558.33 the Payoff Strategy screen simulated for the same debt — a
+      // 43% overstatement, on the number the screen exists to tell you.
       const calcPayoff = (bal, rate, pmt) => {
         if (!bal || !pmt) return { monthsLeft: null, totalInterest: null, payoffDate: null };
         const r = rate / 100 / 12;
         if (r > 0 && pmt <= bal * r) return { monthsLeft: null, totalInterest: null, payoffDate: null };
-        const m = r > 0 ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt);
-        const interest = r > 0 ? roundMoney((pmt * m - bal)) : null;
+        let left = bal, accrued = 0, m = 0;
+        while (left > 5e-3 && m < 600) {
+          m++;
+          const i = left * r;
+          left += i;
+          accrued += i;
+          left -= Math.min(pmt, left);
+        }
+        if (m >= 600) return { monthsLeft: null, totalInterest: null, payoffDate: null };
+        const interest = r > 0 ? roundMoney(accrued) : null;
         const d = /* @__PURE__ */ new Date();
         d.setMonth(d.getMonth() + m);
         return { monthsLeft: m, totalInterest: interest, payoffDate: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };

@@ -26,6 +26,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { execFileSync, execSync } from 'child_process';
+import { reportServerMajor } from './pg-version.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8765;
@@ -50,6 +51,8 @@ try {
   console.log('sync-sql: skipped (no reachable database: ' + String(e.message || e).split('\n')[0] + ')');
   process.exit(0);
 }
+
+reportServerMajor(psql, 'sync-sql');
 
 const fail = (msg) => { console.error('FAIL ' + msg); process.exitCode = 1; };
 const pass = (msg) => console.log('PASS ' + msg);
