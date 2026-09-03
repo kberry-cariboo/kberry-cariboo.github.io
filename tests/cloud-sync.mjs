@@ -190,6 +190,73 @@ console.log('\n── 5. The load fails ──');
   await ctx.close();
 }
 
+// Case 5 proves the marker gets set for an *entry*. It is set by a hand-kept
+// list of fields, though, and only seven of the twenty-eight are on it — so
+// the same offline edit to a household setting, a category, a currency, a
+// holiday or a debt figure left no marker at all. With no marker the next
+// successful load takes the `adoptLoaded(applyPayload(payload))` path at the
+// bottom of loadData: no divergence prompt, no push, the server copy simply
+// replaces what you typed. The autosave dependency list learned this exact
+// lesson already ("a field left out of this array is only ever saved as a
+// passenger on somebody else's edit") and is derived from the table; this
+// list was not.
+console.log('\n── 5b. An offline edit to a field that is not an entry ──');
+{
+  const { ctx, page } = await open({ opts: { loadFails: true }, hash: '#/you/threshold' });
+  await page.locator('#sec-alert input[type=number]').first().fill('987');
+  await page.locator('#sec-alert input[type=number]').first().blur();
+  await page.waitForTimeout(900);
+  check('editing the alert threshold while autosave is off marks the device unsaved',
+    await page.evaluate(()=>!!localStorage.getItem('cf_unsaved_since')),
+    'no marker — the next successful load would overwrite it without asking');
+  await ctx.close();
+}
+
+// The same thing again through a different field, because the point is the
+// class rather than the one field: a household that changed its currency
+// offline must not come back in the old one.
+console.log('\n── 5c. An offline edit to the household currency ──');
+{
+  const { ctx, page } = await open({ opts: { loadFails: true }, hash: '#/you/money' });
+  await page.evaluate(() => { try { localStorage.setItem('cf_currency', JSON.stringify('EUR')); } catch (e) {} });
+  // Through the app, not just the key: the marker is set by a React effect on
+  // the state, so writing localStorage behind it would prove nothing.
+  const sel = page.locator('main select').first();
+  await sel.selectOption({ index: 1 }).catch(() => {});
+  await page.waitForTimeout(900);
+  check('changing a household-wide setting offline marks the device unsaved',
+    await page.evaluate(()=>!!localStorage.getItem('cf_unsaved_since')),
+    'no marker — the change would be silently reverted on the next load');
+  await ctx.close();
+}
+
+// Autosave is a 2-second trailing debounce, and nothing flushed it. Type a
+// figure and switch apps, lock the phone, or close the tab inside those two
+// seconds and the timer dies with the page: no save went out, and no unsaved
+// marker was set either (the marker is only written when a save is *attempted*
+// and fails, or when autosave is off), so the next load applies the server
+// copy over the edit without a word. On a phone this is the ordinary case, not
+// an edge one — editing and immediately backgrounding the app is how the app
+// is used.
+console.log('\n── 5d. The page is hidden inside the debounce window ──');
+{
+  const { ctx, page } = await open({ hash: '#/you/threshold' });
+  const before = await page.evaluate(()=>window.__cf.saves.length);
+  await page.locator('#sec-alert input[type=number]').first().fill('4242');
+  await page.locator('#sec-alert input[type=number]').first().blur();
+  // Well inside the 2s debounce.
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(700);
+  const after = await page.evaluate(()=>window.__cf.saves.length);
+  check('hiding the page flushes the pending save instead of dropping it',
+    after > before, `saves before=${before} after=${after} — the edit only existed on this device`);
+  await ctx.close();
+}
+
 console.log('\n── 6. Another device saved first (CONFLICT) ──');
 {
   const { ctx, page } = await open();

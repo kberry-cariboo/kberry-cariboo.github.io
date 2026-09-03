@@ -60,12 +60,19 @@
   //     truthy    must be truthy (a year of 0 or an empty filter is not a value)
   //   apply     a custom guard, when one of the above won't do
   //   backup    goes into Settings → Export Backup, and is restored from one
-  //   marksUnsaved  editing it while autosave is disabled means this device is
-  //                 holding work the server doesn't have
+  //
+  // There is no "does editing this count as unsaved work" flag. There was one,
+  // on seven of the twenty-eight fields, and the other twenty-one were the bug:
+  // edit a category, a currency, the alert threshold, a holiday or a debt
+  // figure while autosave is off (which is what a failed load leaves you with)
+  // and nothing recorded that the device was holding work — so the next
+  // successful load took the plain adoptLoaded path and replaced it, with no
+  // prompt and no push. Every field in this table is a field the server is
+  // supposed to have, so editing any of them is unsaved work.
   const HOUSEHOLD_FIELDS = [
-    { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true, marksUnsaved: true },
-    { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, marksUnsaved: true },
-    { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true, marksUnsaved: true },
+    { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
+    { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true },
+    { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true },
     { key: "categories", storage: "cf_categories", initial: () => DEFAULT_CATEGORIES, kind: "array", backup: true },
     { key: "categoryColors", storage: "cf_category_colors", initial: () => DEFAULT_CATEGORY_COLORS, kind: "object", backup: true },
     // The default must track the cf_years row above — a hardcoded year left
@@ -80,7 +87,7 @@
       }
     }, kind: "value", backup: true },
     { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
-    { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true, marksUnsaved: true },
+    { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true },
     { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
     { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
     // "actions" is a fixed trailing column, not a reorderable one: an older
@@ -93,13 +100,33 @@
     // silently reset every existing user's saved filters, locally and in any
     // synced household, on upgrade. Only the in-code bindings in App.js were
     // renamed to the "entries" wording used everywhere else.
+    // The Budget grid's column order, beside the Entries grid's `colOrder`
+    // above. It was the device's alone while its sibling was the household's,
+    // which is not a distinction anyone would have designed on purpose — you
+    // reorder the columns of one grid and it follows you to your phone, you
+    // reorder the other and it doesn't.
+    { key: "budgetColOrder", storage: "cf_budget_col_order", initial: () => DEFAULT_BUDGET_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v);
+    } },
+    // The two inputs to the payoff simulation. Not reading preferences: they
+    // change the debt-free date, the total interest and the payoff order the
+    // Payoff screen reports, so with them on the device two people looking at
+    // the same household got different answers to "when are we out of debt".
+    // The debts themselves have always been household data; what you are
+    // planning to do about them is the same kind of thing.
+    //
+    // Which of avalanche and snowball is *highlighted* stays device-local, and
+    // that is the line: the comparison is the household's, the pane you happen
+    // to be reading is yours.
+    { key: "debtExtra", storage: "cf_debt_extra", initial: () => "100", kind: "truthy", backup: true },
+    { key: "debtSimExcluded", storage: "cf_debt_sim_excluded", initial: () => [], kind: "array", backup: true },
     { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
     { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
     { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
     { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
-    { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true, marksUnsaved: true },
+    { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true },
     { key: "templates", storage: "cf_templates", initial: () => [], kind: "array", backup: true },
-    { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true, marksUnsaved: true },
+    { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true },
     { key: "debtData", storage: "cf_debt_data", initial: () => ({}), kind: "object", backup: true },
     // Tombstones for the year-copy sync: source-entry id -> true, recorded
     // whenever the user deletes a one-time entry that was itself a copy
@@ -140,7 +167,7 @@
     // cannot render — every entry would point at an account that isn't there.
     // An absent or empty list means "whatever this device already has", which
     // for a household that predates accounts is the one default below.
-    { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, marksUnsaved: true, apply: (v, set) => {
+    { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, apply: (v, set) => {
       if (Array.isArray(v) && v.length > 0) set(v);
     } }
   ];
@@ -798,13 +825,58 @@
       };
     }, [household, loadData, divergence]);
 
+    // Autosave is a 2-second trailing debounce, and a page that goes away
+    // takes the pending timer with it. Type a figure and switch apps, lock the
+    // phone, or close the tab inside those two seconds and the save never
+    // happened — and nothing recorded that it hadn't, because the marker is
+    // written when a save is *attempted and fails*, not when one is merely
+    // scheduled. The next load then applied the server copy over the edit
+    // without asking. On a phone, editing and immediately backgrounding the
+    // app is the ordinary way to use it, not an edge case.
+    //
+    // So the debounce is flushed on the way out. `pagehide` is the reliable
+    // end-of-page event on iOS (where `beforeunload` frequently does not
+    // fire), and `visibilitychange` to hidden covers backgrounding without a
+    // navigation. Both go through the same saveData the timer would have
+    // called: a request started here is not guaranteed to finish, but an
+    // unfinished one leaves the unsaved marker its failure path sets, which is
+    // exactly what the next load needs to see.
+    useEffect(() => {
+      if (!household) return;
+      const flush = () => {
+        if (!saveTimer.current || !initialized.current || divergence) return;
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        // Mark first, then save. If the page dies mid-request the marker is
+        // already on disk, so the edit is remembered rather than lost; a save
+        // that does land clears it.
+        markUnsaved();
+        saveDataRef.current(true);
+      };
+      const onHide = () => {
+        if (document.visibilityState === "hidden") flush();
+      };
+      document.addEventListener("visibilitychange", onHide);
+      window.addEventListener("pagehide", flush);
+      return () => {
+        document.removeEventListener("visibilitychange", onHide);
+        window.removeEventListener("pagehide", flush);
+      };
+    }, [household, divergence, markUnsaved]);
+
     // Edits made while autosave is disabled (i.e. the initial load failed) are
     // the exact case that used to vanish. Nothing will try to save them until
     // connectivity returns, so record that they exist.
     useEffect(() => {
       if (!household || !loadAttempted.current || initialized.current) return;
       markUnsaved();
-    }, [household, markUnsaved, ...HOUSEHOLD_FIELDS.filter((f) => f.marksUnsaved).map((f) => values[f.key])]);
+    // Every field, derived from the table — for the same reason the autosave
+    // effect above derives its dependencies rather than listing them. A field
+    // missing from this array is one whose offline edit nothing remembers, and
+    // an unremembered edit is not kept back for the user to resolve: loadData
+    // only reaches its divergence branch when the marker is set, so without it
+    // the server copy is applied over the edit silently.
+    }, HOUSEHOLD_FIELDS.map((f) => values[f.key]).concat([household, markUnsaved]));
 
     return { status, msg, saveData, loadData, unsaved, divergence, keepLocalChanges, discardLocalChanges };
   }

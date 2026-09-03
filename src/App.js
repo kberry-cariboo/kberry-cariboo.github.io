@@ -163,6 +163,9 @@
       dashHidden,
       dashOrder,
       colOrder,
+      budgetColOrder,
+      debtExtra,
+      debtSimExcluded,
       // The Entries filters keep their "regFilter*" payload names for
       // compatibility (see the table); only these bindings are renamed.
       regFilter: entriesFilter,
@@ -195,6 +198,9 @@
       dashHidden: setDashHidden,
       dashOrder: setDashOrder,
       colOrder: setColOrder,
+      budgetColOrder: setBudgetColOrder,
+      debtExtra: setDebtExtra,
+      debtSimExcluded: setDebtSimExcluded,
       regFilter: setEntriesFilter,
       regFilterCats: setEntriesFilterCats,
       regFilterScheds: setEntriesFilterScheds,
@@ -250,7 +256,6 @@
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     // The Plan screen owns this; the Alerts centre only reads it, so its
     // finding is computed against the same extra payment you set there.
-    const [debtExtraForFindings] = useLS("cf_debt_extra", "100");
     const [flowSubRaw, setFlowSub] = useLS("cf_budget_subtab", "list");
     // The key keeps its old name on purpose: renaming a storage key silently
     // resets every existing device on upgrade. Only the value vocabulary moved.
@@ -551,7 +556,6 @@
     // Not household fields: which month the Budget tab is showing and how its
     // columns are ordered are per-device view preferences.
     const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
-    const [budgetColOrder, setBudgetColOrder] = useLS("cf_budget_col_order", DEFAULT_BUDGET_COLS);
     // fmt() reads module state, so React has no idea its output changed when
     // the currency does. This is the one re-render that has to be forced.
     const [, setMoneyTick] = useState(0);
@@ -1136,12 +1140,12 @@
           pmt: parseFloat(v && v.payment) || 0
         }))
         .filter((d) => d.bal > 0 && d.pmt > 0 && !(debtData[d.key] || {}).hidden);
-      const extra = Math.round((parseFloat(debtExtraForFindings) || 0) * 100);
+      const extra = Math.round((parseFloat(debtExtra) || 0) * 100);
       return [
         spendingInsightFinding(computeSpendingInsight(activeFlow, activeYear)),
         debtStrategyFinding(simDebts, extra)
       ].filter(Boolean);
-    }, [activeFlow, activeYear, debtData, debtExtraForFindings]);
+    }, [activeFlow, activeYear, debtData, debtExtra]);
     const appNotices = useMemo(() => {
       const out = [];
       // Not on the alerts page itself: there the banner is a summary of the
@@ -1775,7 +1779,11 @@
         setActiveYear,
         setDeletedCopyIds,
         planSub,
-        setPlanSub
+        setPlanSub,
+        debtExtra,
+        setDebtExtra,
+        debtSimExcluded,
+        setDebtSimExcluded
       }
     )), tab === "plan" && planSub === "insights" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "you" && /* @__PURE__ */ React.createElement(
       SettingsView,

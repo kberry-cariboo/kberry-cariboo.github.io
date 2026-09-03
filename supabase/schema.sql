@@ -205,6 +205,88 @@ create table if not exists goals (
   primary key (household_id, id)
 );
 
+-- One row per tracked debt. This was a jsonb blob on household_settings while
+-- every other thing the household owns — entries, accounts, goals, templates,
+-- budget targets, holidays — had a table, and it is the only one of them that
+-- is money: a balance, an interest rate and a monthly payment, the three
+-- figures the Payoff screen does arithmetic on. In the blob they were
+-- untyped, unconstrained and unqueryable, stored as *strings* of cents next
+-- to numeric(14,2) columns holding the same unit everywhere else.
+--
+-- `key` is the client's own map key, kept verbatim: 'manual_<id>' for one
+-- typed in by hand, or the sanitised description of the recurring expense the
+-- tracker matched it to. It is the identity the client works in, so it is the
+-- identity here.
+--
+-- Every column is nullable on purpose. The client distinguishes "not filled in
+-- yet" from zero — a debt with a payment and no balance is a real state the
+-- tracker renders differently ("payments found, no balances yet") — and
+-- load_household strips nulls back out, so a record round-trips as exactly the
+-- fields it was saved with rather than gaining empty ones.
+create table if not exists debts (
+  household_id uuid not null references households(id) on delete cascade,
+  key text not null,
+  sort_order int not null default 0,
+  label text,
+  balance numeric(14,2),
+  rate numeric(12,6),                       -- an annual percentage, not money
+  payment numeric(14,2),
+  hidden boolean,
+  primary key (household_id, key)
+);
+
+-- The edit history of one occurrence override: one row per previous value,
+-- oldest first, capped client-side at ten.
+--
+-- It was a jsonb array on entry_overrides, and each element carried `prev` — a
+-- spread of the whole override as it was, *including its own `_history`*. So
+-- the second edit stored the first edit's history inside itself, the third
+-- stored the second's, and the payload grew with the square of the edits on a
+-- busy occurrence. The columns below hold what a previous value actually is;
+-- the nested copy of the log inside the log is the one thing that does not
+-- survive, and it was never anything but a duplicate of the rows around it.
+create table if not exists entry_override_history (
+  household_id uuid not null references households(id) on delete cascade,
+  year int not null,
+  occurrence_id text not null,
+  seq int not null,                         -- position in the list, oldest first
+  ts timestamptz,
+  by_user uuid,
+  prev_description text,
+  prev_amount numeric(14,2),
+  prev_day int,
+  prev_month int,
+  prev_actual_amount numeric(14,2),
+  prev_skipped boolean,
+  prev_notes text,
+  prev_saved_at timestamptz,
+  prev_by uuid,
+  primary key (household_id, year, occurrence_id, seq)
+);
+
+-- What changed, who changed it, and when. One row per record; the client keeps
+-- the newest ACTIVITY_LIMIT of them and this table holds exactly what the
+-- client last sent, so the cap stays in one place.
+--
+-- It was a jsonb array on household_settings, justified as "append-only,
+-- bounded, and only ever read back whole". True of the log, but it is still a
+-- list of records with four fields each, and the reason to keep it in the
+-- database at all is so a shared household can answer "what happened while I
+-- was away" — a question rows answer and a blob does not.
+--
+-- `at` is the client's own timestamp rather than a server default: the log is
+-- ordered by it, and a row inserted on a later sync must not sort ahead of one
+-- that happened before it.
+create table if not exists activity_log (
+  household_id uuid not null references households(id) on delete cascade,
+  id text not null,                         -- client-generated, opaque (see cf_id)
+  at timestamptz,
+  by_user uuid,                             -- absent for a household of one
+  kind text,
+  what text,
+  primary key (household_id, id)
+);
+
 -- Statutory holidays, one row per date. These decide when payroll that falls on
 -- a closed day is actually deposited (the budget marks the row rather than
 -- moving it — see priorBankingDay in src/lib/dates.js), and Settings →
@@ -349,6 +431,67 @@ alter table household_settings add column if not exists activity jsonb not null 
 alter table entry_overrides add column if not exists actual_amount numeric(14,2);
 alter table entry_overrides add column if not exists skipped boolean not null default false;
 alter table household_settings add column if not exists rollover jsonb not null default '{}'::jsonb;
+-- Stamped once, when a household's legacy debt_data blob has been unpacked
+-- into the debts table. It is what stops a re-run of this file — the
+-- documented upgrade procedure — from resurrecting debts the user has since
+-- deleted: without a marker the only available gate is "debts is empty for
+-- this household", which is also true of a household that deliberately
+-- deleted its last one.
+alter table household_settings add column if not exists debts_migrated_at timestamptz;
+
+-- One-shot backfills, recorded so a re-run of this file — the documented
+-- upgrade procedure — does not run them again. The alternative gate, "the new
+-- column is still empty", is also true of a household that has deliberately
+-- emptied it, which would mean handing back a hidden panel or a rollover flag
+-- the user had just cleared.
+create table if not exists cf_migrations (
+  name text primary key,
+  applied_at timestamptz not null default now()
+);
+
+-- Three settings that were jsonb maps of `{ id: true }`. They are sets: the
+-- client only ever reads them for truthiness, and writes a key or deletes it.
+-- A set is a text[], which is what col_order, dash_order and the three
+-- reg_filter_* columns beside them already are — so these are the odd ones
+-- out rather than the pattern.
+--
+-- dash_hidden is the exception worth naming: the Customize dialog writes
+-- `{ [id]: false }` when you *show* a panel again, so the old map carried
+-- entries that meant "not hidden". Absent and false are the same thing to
+-- every reader, so the array holds only the ids that are actually hidden and
+-- a false-valued key simply does not survive — which is a narrowing of the
+-- representation, not of the behaviour.
+alter table household_settings add column if not exists dash_hidden_ids text[] not null default '{}';
+alter table household_settings add column if not exists deleted_copy_id_list text[] not null default '{}';
+alter table household_settings add column if not exists rollover_categories text[] not null default '{}';
+
+do $$
+begin
+  if not exists (select 1 from cf_migrations where name = 'settings_json_sets_to_arrays') then
+    update household_settings s
+       set dash_hidden_ids = coalesce((
+             select array_agg(k order by k) from jsonb_each(s.dash_hidden) x(k, v)
+             where jsonb_typeof(v) <> 'null' and v not in ('false'::jsonb, '0'::jsonb, '""'::jsonb)), '{}'),
+           deleted_copy_id_list = coalesce((
+             select array_agg(k order by k) from jsonb_each(s.deleted_copy_ids) x(k, v)
+             where jsonb_typeof(v) <> 'null' and v not in ('false'::jsonb, '0'::jsonb, '""'::jsonb)), '{}'),
+           rollover_categories = coalesce((
+             select array_agg(k order by k) from jsonb_each(s.rollover) x(k, v)
+             where jsonb_typeof(v) <> 'null' and v not in ('false'::jsonb, '0'::jsonb, '""'::jsonb)), '{}');
+    insert into cf_migrations (name) values ('settings_json_sets_to_arrays');
+    raise notice 'settings: dash_hidden / deleted_copy_ids / rollover unpacked into text[] columns.';
+  end if;
+end $$;
+
+-- Three settings that used to sit on the device only. budget_col_order is the
+-- Budget grid's column order, beside col_order for the Entries grid, which was
+-- always the household's; debt_extra and debt_sim_excluded are the two inputs
+-- to the payoff simulation, and they decide the debt-free date and the total
+-- interest the Payoff screen reports, so on the device they meant two people
+-- could read different answers off the same household.
+alter table household_settings add column if not exists budget_col_order text[] not null default '{}';
+alter table household_settings add column if not exists debt_extra text;
+alter table household_settings add column if not exists debt_sim_excluded text[] not null default '{}';
 
 -- Client row ids are text, not bigint -----------------------------------------
 --
@@ -434,6 +577,9 @@ create index if not exists push_subscriptions_household_idx on push_subscription
 -- opened, and the ledger only matters for alerts already sent today), so
 -- rebuilding them is cheaper and less error-prone than migrating a primary
 -- key in place. Re-running this file therefore clears both — harmless.
+-- The items table below references this one, so it goes first; on a re-run
+-- both are recreated together a few lines down.
+drop table if exists notification_schedule_items;
 drop table if exists notification_schedule;
 create table notification_schedule (
   household_id uuid not null references households(id) on delete cascade,
@@ -442,12 +588,30 @@ create table notification_schedule (
   occurrence_id text not null default '',   -- '' for alerts with no occurrence
   title text not null,
   body text not null default '',
-  items jsonb not null default '[]'::jsonb, -- [{id, desc, cents}] for 'bills_due'
   url text not null default './',
   created_at timestamptz not null default now(),
   primary key (household_id, for_date, kind, occurrence_id)
 );
 create index if not exists notification_schedule_date_idx on notification_schedule (for_date);
+
+-- The bills itemised inside a 'bills_due' notification: one row each, rather
+-- than the [{id, desc, cents}] jsonb array they used to be. Dropped and
+-- recreated with its parent for the same reason — the schedule is derived and
+-- republished within seconds of the app being opened.
+drop table if exists notification_schedule_items;
+create table notification_schedule_items (
+  household_id uuid not null,
+  for_date date not null,
+  kind text not null,
+  occurrence_id text not null default '',
+  seq int not null,
+  entry_id text,
+  description text not null default '',
+  cents numeric(14,2) not null default 0,
+  primary key (household_id, for_date, kind, occurrence_id, seq),
+  foreign key (household_id, for_date, kind, occurrence_id)
+    references notification_schedule (household_id, for_date, kind, occurrence_id) on delete cascade
+);
 
 -- Delivery ledger. The cron runs hourly (it has to, to hit every timezone's
 -- chosen hour), so this is what stops a device being notified twice for the
@@ -475,6 +639,9 @@ alter table budget_targets enable row level security;
 alter table templates enable row level security;
 alter table completed_occurrences enable row level security;
 alter table goals enable row level security;
+alter table debts enable row level security;
+alter table activity_log enable row level security;
+alter table entry_override_history enable row level security;
 alter table holidays enable row level security;
 alter table holiday_years enable row level security;
 alter table household_settings enable row level security;
@@ -602,6 +769,18 @@ drop policy if exists "member read goals" on goals;
 create policy "member read goals" on goals
   for select using (is_household_member(household_id));
 
+drop policy if exists "member read debts" on debts;
+create policy "member read debts" on debts
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read activity_log" on activity_log;
+create policy "member read activity_log" on activity_log
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read entry_override_history" on entry_override_history;
+create policy "member read entry_override_history" on entry_override_history
+  for select using (is_household_member(household_id));
+
 drop policy if exists "member read holidays" on holidays;
 create policy "member read holidays" on holidays
   for select using (is_household_member(household_id));
@@ -723,6 +902,37 @@ exception when others then
   return null;
 end $$;
 
+-- The keys of a `{ id: true }` map, as a sorted array — the set those maps
+-- always were. false, 0, "" and null are all "not in the set", because the
+-- client reads these for truthiness only and the Customize dialog writes an
+-- explicit false when you un-hide a panel.
+-- A uuid, or null when the text isn't one. `by` on an activity record is the
+-- member who made the change and is absent in a household of one.
+create or replace function cf_uuid(t text)
+returns uuid language plpgsql immutable as $$
+begin
+  return t::uuid;
+exception when others then
+  return null;
+end $$;
+
+create or replace function cf_truthy_keys(j jsonb)
+returns text[] language sql immutable as $$
+  select coalesce((
+    select array_agg(k order by k)
+    from jsonb_each(case when jsonb_typeof(j) = 'object' then j else '{}'::jsonb end) x(k, v)
+    where jsonb_typeof(v) <> 'null'
+      and v not in ('false'::jsonb, '0'::jsonb, '""'::jsonb)
+  ), '{}'::text[]);
+$$;
+
+-- The inverse: a set of ids back into the `{ id: true }` map the client works
+-- in. An empty set is an empty object, never null.
+create or replace function cf_keys_true(a text[])
+returns jsonb language sql immutable as $$
+  select coalesce((select jsonb_object_agg(k, true) from unnest(coalesce(a, '{}')) k), '{}'::jsonb);
+$$;
+
 create or replace function cf_text_array(j jsonb)
 returns text[] language sql immutable as $$
   select coalesce(
@@ -769,6 +979,7 @@ returns text[] language sql immutable as $$
     'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
     'completed', 'debtData', 'deletedCopyIds', 'holidays',
+    'budgetColOrder', 'debtExtra', 'debtSimExcluded',
     'currency', 'locale', 'holidayRegion', 'activity', 'accounts'
   ]::text[];
 $$;
@@ -945,7 +1156,7 @@ begin
   if jsonb_typeof(d->'overridesByYr') = 'object' then
     insert into entry_overrides (household_id, year, occurrence_id, description,
                                  amount, day, month, actual_amount, skipped,
-                                 notes, saved_at, updated_by, history)
+                                 notes, saved_at, updated_by)
     select hid,
            cf_int(y.key, null),
            o.key,
@@ -958,9 +1169,7 @@ begin
            o.value->>'notes',
            cf_ts(o.value->>'_savedAt'),
            case when (o.value->>'_by') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-                then (o.value->>'_by')::uuid end,
-           coalesce(case when jsonb_typeof(o.value->'_history') = 'array'
-                         then o.value->'_history' end, '[]'::jsonb)
+                then (o.value->>'_by')::uuid end
     from jsonb_each(d->'overridesByYr') y(key, value),
          jsonb_each(case when jsonb_typeof(y.value) = 'object'
                          then y.value else '{}'::jsonb end) o(key, value)
@@ -974,15 +1183,56 @@ begin
       skipped = excluded.skipped,
       notes = excluded.notes,
       saved_at = excluded.saved_at,
-      updated_by = excluded.updated_by,
-      history = excluded.history
+      updated_by = excluded.updated_by
     where (entry_overrides.description, entry_overrides.amount, entry_overrides.day,
            entry_overrides.month, entry_overrides.actual_amount, entry_overrides.skipped,
-           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.updated_by, entry_overrides.history)
+           entry_overrides.notes, entry_overrides.saved_at, entry_overrides.updated_by)
       is distinct from
           (excluded.description, excluded.amount, excluded.day,
            excluded.month, excluded.actual_amount, excluded.skipped,
-           excluded.notes, excluded.saved_at, excluded.updated_by, excluded.history);
+           excluded.notes, excluded.saved_at, excluded.updated_by);
+
+    -- The edit history of each override, as rows. Replaced wholesale per
+    -- override: the client sends the list it wants kept (capped at ten), so a
+    -- record that has fallen off the front is a record that goes.
+    insert into entry_override_history (household_id, year, occurrence_id, seq, ts, by_user,
+      prev_description, prev_amount, prev_day, prev_month, prev_actual_amount,
+      prev_skipped, prev_notes, prev_saved_at, prev_by)
+    select hid, cf_int(y.key, null), o.key, h.ord,
+           cf_ts(h.value->>'ts'),
+           cf_uuid(h.value->>'by'),
+           h.value->'prev'->>'desc',
+           cf_num(h.value->'prev'->>'amount'),
+           cf_int(h.value->'prev'->>'day'),
+           cf_int(h.value->'prev'->>'month'),
+           cf_num(h.value->'prev'->>'actualAmount'),
+           cf_bool(h.value->'prev'->>'skipped'),
+           h.value->'prev'->>'notes',
+           cf_ts(h.value->'prev'->>'_savedAt'),
+           cf_uuid(h.value->'prev'->>'_by')
+    from jsonb_each(d->'overridesByYr') y(key, value),
+         jsonb_each(case when jsonb_typeof(y.value) = 'object' then y.value else '{}'::jsonb end) o(key, value),
+         jsonb_array_elements(case when jsonb_typeof(o.value->'_history') = 'array'
+                                   then o.value->'_history' else '[]'::jsonb end) with ordinality h(value, ord)
+    where cf_int(y.key, null) is not null
+    on conflict (household_id, year, occurrence_id, seq) do update set
+      ts = excluded.ts, by_user = excluded.by_user,
+      prev_description = excluded.prev_description, prev_amount = excluded.prev_amount,
+      prev_day = excluded.prev_day, prev_month = excluded.prev_month,
+      prev_actual_amount = excluded.prev_actual_amount, prev_skipped = excluded.prev_skipped,
+      prev_notes = excluded.prev_notes, prev_saved_at = excluded.prev_saved_at,
+      prev_by = excluded.prev_by;
+
+    delete from entry_override_history hh
+    where hh.household_id = hid
+      and not exists (
+        select 1
+        from jsonb_each(d->'overridesByYr') y(key, value),
+             jsonb_each(case when jsonb_typeof(y.value) = 'object' then y.value else '{}'::jsonb end) o(key, value),
+             jsonb_array_elements(case when jsonb_typeof(o.value->'_history') = 'array'
+                                       then o.value->'_history' else '[]'::jsonb end) with ordinality h(value, ord)
+        where cf_int(y.key, null) = hh.year and o.key = hh.occurrence_id and h.ord = hh.seq
+      );
 
     delete from entry_overrides v
     where v.household_id = hid
@@ -1202,6 +1452,67 @@ begin
       );
   end if;
 
+  -- activity log ----------------------------------------------------------
+  -- Replaced wholesale, like every other list here: the client sends the log
+  -- it wants the household to have (newest first, capped), so a record it has
+  -- dropped off the end is a record that goes.
+  if jsonb_typeof(d->'activity') = 'array' then
+    insert into activity_log (household_id, id, at, by_user, kind, what)
+    select hid,
+           cf_id(a.value->>'id'),
+           cf_ts(a.value->>'at'),
+           cf_uuid(a.value->>'by'),
+           a.value->>'kind',
+           a.value->>'what'
+    from jsonb_array_elements(d->'activity') a(value)
+    where cf_id(a.value->>'id') is not null
+    on conflict (household_id, id) do update set
+      at = excluded.at, by_user = excluded.by_user,
+      kind = excluded.kind, what = excluded.what
+    where (activity_log.at, activity_log.by_user, activity_log.kind, activity_log.what)
+      is distinct from (excluded.at, excluded.by_user, excluded.kind, excluded.what);
+
+    delete from activity_log l
+    where l.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements(d->'activity') x(value)
+        where cf_id(x.value->>'id') = l.id
+      );
+  end if;
+
+  -- debts ---------------------------------------------------------------------
+  -- Keyed by the client's own map key rather than a generated id, so the
+  -- object it sent and the object it gets back are the same object. Nulls are
+  -- stored as nulls: cf_num('') is null, which is how "cleared" survives as
+  -- something other than zero.
+  if jsonb_typeof(d->'debtData') = 'object' then
+    insert into debts (household_id, key, sort_order, label, balance, rate, payment, hidden)
+    select hid,
+           x.key,
+           x.ord,
+           nullif(x.value->>'label', ''),
+           cf_num(x.value->>'balance'),
+           cf_num(x.value->>'rate'),
+           cf_num(x.value->>'payment'),
+           case when x.value ? 'hidden' then (x.value->>'hidden')::boolean end
+    from jsonb_each(d->'debtData') with ordinality x(key, value, ord)
+    where jsonb_typeof(x.value) = 'object'
+    on conflict (household_id, key) do update set
+      sort_order = excluded.sort_order,
+      label = excluded.label,
+      balance = excluded.balance,
+      rate = excluded.rate,
+      payment = excluded.payment,
+      hidden = excluded.hidden
+    where (debts.sort_order, debts.label, debts.balance, debts.rate, debts.payment, debts.hidden)
+      is distinct from
+          (excluded.sort_order, excluded.label, excluded.balance, excluded.rate, excluded.payment, excluded.hidden);
+
+    delete from debts t
+    where t.household_id = hid
+      and not exists (select 1 from jsonb_each(d->'debtData') y(key, value) where y.key = t.key);
+  end if;
+
   -- statutory holidays -----------------------------------------------------
   -- Wire shape: { "2026": { "2026-07-01": { name, optional, source }, ... } }.
   -- A year present with an empty object is a household that deleted every
@@ -1260,9 +1571,17 @@ begin
   insert into household_settings as s
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
-     reg_filter_status, dash_hidden, dash_order, currency, locale, holiday_region,
-     debt_data, deleted_copy_ids, activity,
-     rollover, schema_version, updated_at, updated_by)
+     reg_filter_status, dash_order, currency, locale, holiday_region,
+     budget_col_order, debt_extra, debt_sim_excluded,
+     dash_hidden_ids, deleted_copy_id_list, rollover_categories,
+     -- debt_data is not in this list: a debt is a row in `debts` now. The
+     -- column keeps its default on a new household and whatever it last held
+     -- on an existing one, as the pre-migration backup.
+     -- deleted_copy_ids / dash_hidden / rollover / activity are not here
+     -- either: the text[] columns above and the activity_log table replaced
+     -- them, and the old columns keep whatever they last held as the
+     -- pre-migration backup.
+     schema_version, updated_at, updated_by)
   values
     (hid,
      cf_int(d->>'activeYear'),
@@ -1275,18 +1594,18 @@ begin
      cf_text_array(d->'regFilterCats'),
      cf_text_array(d->'regFilterScheds'),
      cf_text_array(d->'regFilterStatus'),
-     case when jsonb_typeof(d->'dashHidden') = 'object' then d->'dashHidden' else '{}'::jsonb end,
      cf_text_array(d->'dashOrder'),
      d->>'currency',
      d->>'locale',
      d->>'holidayRegion',
-     case when jsonb_typeof(d->'debtData') = 'object' then d->'debtData' else '{}'::jsonb end,
-     case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
-     case when jsonb_typeof(d->'activity') = 'array' then d->'activity' else '[]'::jsonb end,
+     cf_text_array(d->'budgetColOrder'),
+     d->>'debtExtra',
+     cf_text_array(d->'debtSimExcluded'),
+     cf_truthy_keys(d->'dashHidden'),
+     cf_truthy_keys(d->'deletedCopyIds'),
      -- budgetTargets._rollover is a per-category flag, not a per-month target,
      -- so it has no row in budget_targets to live in and is kept here.
-     case when jsonb_typeof(d->'budgetTargets'->'_rollover') = 'object'
-          then d->'budgetTargets'->'_rollover' else '{}'::jsonb end,
+     cf_truthy_keys(d->'budgetTargets'->'_rollover'),
      cf_int(d->>'schemaVersion'),
      now(),
      auth.uid())
@@ -1305,15 +1624,17 @@ begin
      reg_filter_cats = case when d ? 'regFilterCats' then excluded.reg_filter_cats else s.reg_filter_cats end,
      reg_filter_scheds = case when d ? 'regFilterScheds' then excluded.reg_filter_scheds else s.reg_filter_scheds end,
      reg_filter_status = case when d ? 'regFilterStatus' then excluded.reg_filter_status else s.reg_filter_status end,
-     dash_hidden = case when d ? 'dashHidden' then excluded.dash_hidden else s.dash_hidden end,
+     dash_hidden_ids = case when d ? 'dashHidden' then excluded.dash_hidden_ids else s.dash_hidden_ids end,
      dash_order = case when d ? 'dashOrder' then excluded.dash_order else s.dash_order end,
      currency = case when d ? 'currency' then excluded.currency else s.currency end,
      locale = case when d ? 'locale' then excluded.locale else s.locale end,
      holiday_region = case when d ? 'holidayRegion' then excluded.holiday_region else s.holiday_region end,
-     debt_data = case when d ? 'debtData' then excluded.debt_data else s.debt_data end,
-     deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
-     activity = case when d ? 'activity' then excluded.activity else s.activity end,
-     rollover = case when d ? 'budgetTargets' then excluded.rollover else s.rollover end,
+     budget_col_order = case when d ? 'budgetColOrder' then excluded.budget_col_order else s.budget_col_order end,
+     debt_extra = case when d ? 'debtExtra' then excluded.debt_extra else s.debt_extra end,
+     debt_sim_excluded = case when d ? 'debtSimExcluded' then excluded.debt_sim_excluded else s.debt_sim_excluded end,
+     -- debt_data is deliberately absent here: see the insert list above.
+     deleted_copy_id_list = case when d ? 'deletedCopyIds' then excluded.deleted_copy_id_list else s.deleted_copy_id_list end,
+     rollover_categories = case when d ? 'budgetTargets' then excluded.rollover_categories else s.rollover_categories end,
      schema_version = case when d ? 'schemaVersion' then excluded.schema_version else s.schema_version end,
      updated_at = now(),
      updated_by = excluded.updated_by;
@@ -1471,7 +1792,29 @@ begin
                    'skipped', case when v.skipped then true end,
                    'notes', v.notes,
                    '_savedAt', v.saved_at
-                 )) || jsonb_build_object('_history', v.history)) as ovs
+                 )) || jsonb_build_object('_history', coalesce((
+                   -- strip_nulls on the record too, not just on `prev`: a
+                   -- change made in a household of one has no author, and it
+                   -- has to come back without a `by` rather than with a null.
+                   select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+                     'ts', hh.ts,
+                     'by', hh.by_user,
+                     'prev', jsonb_strip_nulls(jsonb_build_object(
+                       'desc', hh.prev_description,
+                       'amount', hh.prev_amount,
+                       'day', hh.prev_day,
+                       'month', hh.prev_month,
+                       'actualAmount', hh.prev_actual_amount,
+                       'skipped', hh.prev_skipped,
+                       'notes', hh.prev_notes,
+                       '_savedAt', hh.prev_saved_at,
+                       '_by', hh.prev_by
+                     ))
+                   )) order by hh.seq)
+                   from entry_override_history hh
+                   where hh.household_id = v.household_id
+                     and hh.year = v.year and hh.occurrence_id = v.occurrence_id
+                 ), '[]'::jsonb))) as ovs
         from entry_overrides v where v.household_id = hid
         group by v.year
       ) w), '{}'::jsonb),
@@ -1502,8 +1845,8 @@ begin
       ) w), '{}'::jsonb)
       -- The per-category rollover flags ride inside budgetTargets under a
       -- reserved key, alongside the "YYYY:M" ones.
-      || case when (select s2.rollover from household_settings s2 where s2.household_id = hid) <> '{}'::jsonb
-              then jsonb_build_object('_rollover', (select s2.rollover from household_settings s2 where s2.household_id = hid))
+      || case when coalesce(array_length((select s2.rollover_categories from household_settings s2 where s2.household_id = hid), 1), 0) > 0
+              then jsonb_build_object('_rollover', (select cf_keys_true(s2.rollover_categories) from household_settings s2 where s2.household_id = hid))
               else '{}'::jsonb end,
     'templates', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -1566,14 +1909,46 @@ begin
       'regFilterCats', to_jsonb(s.reg_filter_cats),
       'regFilterScheds', to_jsonb(s.reg_filter_scheds),
       'regFilterStatus', to_jsonb(s.reg_filter_status),
-      'dashHidden', s.dash_hidden,
+      'dashHidden', cf_keys_true(s.dash_hidden_ids),
       'dashOrder', to_jsonb(s.dash_order),
       'currency', s.currency,
       'locale', s.locale,
       'holidayRegion', s.holiday_region,
-      'activity', coalesce(s.activity, '[]'::jsonb),
-      'debtData', s.debt_data,
-      'deletedCopyIds', s.deleted_copy_ids,
+      'budgetColOrder', to_jsonb(s.budget_col_order),
+      -- coalesced, not left null: load_household strips nulls out of the
+      -- payload, and a stripped key is a key the client never sees — which
+      -- schema-test.sql rightly calls "accepts but never emits". '100' is the
+      -- same default the client starts from, so a household that has never
+      -- touched the slider reads the same either way.
+      'debtExtra', coalesce(s.debt_extra, '100'),
+      'debtSimExcluded', to_jsonb(s.debt_sim_excluded),
+      -- Newest first, the order the client keeps it in and the order the
+      -- Activity page reads. jsonb_strip_nulls so a record logged by a
+      -- household of one comes back without a `by` it never had.
+      'activity', coalesce((
+        select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+          'id', cf_id_json(l.id),
+          'at', l.at,
+          'by', l.by_user,
+          'kind', l.kind,
+          'what', l.what
+        )) order by l.at desc nulls last, l.id desc)
+        from activity_log l where l.household_id = hid), '[]'::jsonb),
+      -- Rebuilt from the debts table, not read back out of the legacy jsonb
+      -- column beside it. jsonb_strip_nulls is what makes the round trip
+      -- exact: a debt saved with only a balance and a rate comes back with
+      -- only a balance and a rate, rather than gaining an empty label and a
+      -- null payment it never had.
+      'debtData', coalesce((
+        select jsonb_object_agg(t.key, jsonb_strip_nulls(jsonb_build_object(
+          'label', t.label,
+          'balance', t.balance,
+          'rate', t.rate,
+          'payment', t.payment,
+          'hidden', t.hidden
+        )))
+        from debts t where t.household_id = hid), '{}'::jsonb),
+      'deletedCopyIds', cf_keys_true(s.deleted_copy_id_list),
       'schemaVersion', s.schema_version,
       'savedAt', s.updated_at
     ))
@@ -1692,7 +2067,7 @@ declare
   n int;
 begin
   delete from notification_schedule where household_id = hid;
-  insert into notification_schedule (household_id, for_date, kind, occurrence_id, title, body, items, url)
+  insert into notification_schedule (household_id, for_date, kind, occurrence_id, title, body, url)
   select
     hid,
     cf_date(r->>'for_date'),
@@ -1700,7 +2075,6 @@ begin
     coalesce(r->>'occurrence_id', ''),
     coalesce(r->>'title', 'CashFlow'),
     coalesce(r->>'body', ''),
-    case when jsonb_typeof(r->'items') = 'array' then r->'items' else '[]'::jsonb end,
     coalesce(nullif(r->>'url', ''), './')
   from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) as r
   where cf_date(r->>'for_date') is not null
@@ -1709,6 +2083,25 @@ begin
   -- against a duplicate slipping through and aborting the whole publish.
   on conflict (household_id, for_date, kind, occurrence_id) do nothing;
   get diagnostics n = row_count;
+
+  -- The bills inside each digest, as rows. Only those whose parent row
+  -- actually landed above — the on-conflict-do-nothing means a duplicate in
+  -- the input has no schedule row to hang off.
+  insert into notification_schedule_items
+    (household_id, for_date, kind, occurrence_id, seq, entry_id, description, cents)
+  select hid, cf_date(r->>'for_date'), r->>'kind', coalesce(r->>'occurrence_id', ''),
+         i.ord, i.value->>'id', coalesce(i.value->>'desc', ''),
+         coalesce(cf_num(i.value->>'cents'), 0)
+  from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) as r
+  cross join lateral jsonb_array_elements(
+    case when jsonb_typeof(r->'items') = 'array' then r->'items' else '[]'::jsonb end
+  ) with ordinality i(value, ord)
+  where exists (
+    select 1 from notification_schedule ns
+    where ns.household_id = hid and ns.for_date = cf_date(r->>'for_date')
+      and ns.kind = r->>'kind' and ns.occurrence_id = coalesce(r->>'occurrence_id', ''))
+  on conflict (household_id, for_date, kind, occurrence_id, seq) do nothing;
+
   return n;
 end $$;
 
@@ -1882,6 +2275,95 @@ begin
     raise notice 'No households needed migration (already migrated or no legacy data).';
   else
     raise notice 'Migration complete: % household(s) migrated. The legacy household_data table was kept as a backup.', migrated;
+  end if;
+end $$;
+
+-- Unpack each override's edit history out of entry_overrides.history into
+-- rows. The nested `_history` inside each `prev` is dropped: it was a copy of
+-- the same log one step earlier, which is what made the column grow with the
+-- square of the edits.
+do $$
+begin
+  if not exists (select 1 from cf_migrations where name = 'override_history_blob_to_rows') then
+    insert into entry_override_history (household_id, year, occurrence_id, seq, ts, by_user,
+      prev_description, prev_amount, prev_day, prev_month, prev_actual_amount,
+      prev_skipped, prev_notes, prev_saved_at, prev_by)
+    select v.household_id, v.year, v.occurrence_id, h.ord,
+           cf_ts(h.value->>'ts'),
+           cf_uuid(h.value->>'by'),
+           h.value->'prev'->>'desc',
+           cf_num(h.value->'prev'->>'amount'),
+           cf_int(h.value->'prev'->>'day'),
+           cf_int(h.value->'prev'->>'month'),
+           cf_num(h.value->'prev'->>'actualAmount'),
+           cf_bool(h.value->'prev'->>'skipped'),
+           h.value->'prev'->>'notes',
+           cf_ts(h.value->'prev'->>'_savedAt'),
+           cf_uuid(h.value->'prev'->>'_by')
+    from entry_overrides v
+    cross join lateral jsonb_array_elements(v.history) with ordinality h(value, ord)
+    where jsonb_typeof(v.history) = 'array'
+    on conflict (household_id, year, occurrence_id, seq) do nothing;
+    insert into cf_migrations (name) values ('override_history_blob_to_rows');
+    raise notice 'overrides: edit history unpacked out of entry_overrides.history into rows.';
+  end if;
+end $$;
+
+-- Unpack the activity log out of household_settings.activity into rows. Down
+-- here rather than beside the column it replaces because it needs cf_id, cf_ts
+-- and cf_uuid, and those are defined further down this file than the table
+-- definitions are.
+do $$
+begin
+  if not exists (select 1 from cf_migrations where name = 'activity_blob_to_rows') then
+    insert into activity_log (household_id, id, at, by_user, kind, what)
+    select s.household_id,
+           cf_id(a.value->>'id'),
+           cf_ts(a.value->>'at'),
+           cf_uuid(a.value->>'by'),
+           a.value->>'kind',
+           a.value->>'what'
+    from household_settings s
+    cross join lateral jsonb_array_elements(s.activity) a(value)
+    where jsonb_typeof(s.activity) = 'array'
+      and cf_id(a.value->>'id') is not null
+    on conflict (household_id, id) do nothing;
+    insert into cf_migrations (name) values ('activity_blob_to_rows');
+    raise notice 'activity: the log was unpacked out of household_settings.activity into activity_log.';
+  end if;
+end $$;
+
+-- Unpack the legacy debt_data blob into the debts table, once per household.
+--
+-- Gated on debts_migrated_at rather than on "the household has no debt rows",
+-- because this file is the documented upgrade procedure and gets re-run: a
+-- household that has since deleted its last debt would otherwise have it
+-- handed back every time. The blob itself is left alone as the backup.
+do $$
+declare moved int := 0;
+begin
+  insert into debts (household_id, key, sort_order, label, balance, rate, payment, hidden)
+  select s.household_id,
+         x.key,
+         x.ord,
+         nullif(x.value->>'label', ''),
+         cf_num(x.value->>'balance'),
+         cf_num(x.value->>'rate'),
+         cf_num(x.value->>'payment'),
+         case when x.value ? 'hidden' then (x.value->>'hidden')::boolean end
+  from household_settings s
+  cross join lateral jsonb_each(s.debt_data) with ordinality x(key, value, ord)
+  where s.debts_migrated_at is null
+    and jsonb_typeof(s.debt_data) = 'object'
+    and jsonb_typeof(x.value) = 'object'
+  on conflict (household_id, key) do nothing;
+  get diagnostics moved = row_count;
+
+  update household_settings set debts_migrated_at = now() where debts_migrated_at is null;
+  if moved = 0 then
+    raise notice 'debts: nothing to unpack (already migrated, or no legacy debt data).';
+  else
+    raise notice 'debts: unpacked % debt(s) out of the legacy blob into the debts table.', moved;
   end if;
 end $$;
 

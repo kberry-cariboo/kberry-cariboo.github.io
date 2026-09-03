@@ -71,18 +71,24 @@
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
   }, setDeletedCopyIds = () => {
   }, planSub = "debt", setPlanSub = () => {
+  // The two inputs to the payoff simulation. Household data, not this
+  // device's: they decide the debt-free date and the total interest this
+  // screen reports, so two people looking at the same household have to be
+  // looking at the same numbers.
+  }, debtExtra = "100", setDebtExtra = () => {
+  }, debtSimExcluded = [], setDebtSimExcluded = () => {
   } }) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
     const goalsFiltered = gq ? activeGoals.filter((g) => (g.name || "").toLowerCase().includes(gq)) : activeGoals;
     const { logActivity } = useContext(HouseholdContext);
-    const [debtExtra, setDebtExtra] = useLS("cf_debt_extra", "100");
+
     // Which payoff order is on screen. Device-local: it is a reading
     // preference, not a decision the household has made.
     const [stratPick, setStratPick] = useLS("cf_debt_strategy", "avalanche");
     const [showDebtPicker, setShowDebtPicker] = useState(false);
-    const [debtSimExcluded, setDebtSimExcluded] = useLS("cf_debt_sim_excluded", []);
+
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });

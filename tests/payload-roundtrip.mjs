@@ -112,8 +112,19 @@ const payload = {
   ],
   overridesByYr: {
     2026: {
+      // Two previous values, oldest first — rows in entry_override_history
+      // now. The first has no author (a household of one) and only an amount;
+      // the second is a fuller snapshot. Neither carries the nested `_history`
+      // the client used to spread into `prev`, which is the one thing the
+      // normalization deliberately does not keep.
       'e-expense-2026-2-1': { amount: 170000, notes: 'rent went up', _savedAt: '2026-03-01T10:00:00.000Z',
-        _by: UID },
+        _by: UID,
+        _history: [
+          { ts: '2026-02-01T09:00:00.000Z', prev: { amount: 165000 } },
+          { ts: '2026-02-15T09:30:00.000Z', by: UID,
+            prev: { desc: 'Rent', amount: 167500, notes: 'first increase',
+                    _savedAt: '2026-02-01T09:00:00.000Z', _by: UID } },
+        ] },
       'e-expense-2026-3-1': { skipped: true },
       'e-expense-2026-4-1': { actualAmount: 171050 },
       'e-expense-2026-5-1': { day: 3, month: 6 },
@@ -131,7 +142,29 @@ const payload = {
                    _rollover: { Food: true } },
   templates: [{ desc: 'Gym', type: 'expense', amount: 5500, category: 'Personal', repeats: true,
                 recurEvery: 1, recurUnit: 'month', recurDays: [], notes: 'tpl' }],
-  debtData: { Car_loan: { balance: 1200000, rate: 5.9, hidden: false } },
+  // Three shapes, because a debt is a row in `debts` now and the columns are
+  // nullable so that "not filled in yet" survives as something other than
+  // zero: one fully filled in, one with a payment and no balance (the state
+  // the tracker renders as "payments found, no balances yet"), and one hidden.
+  // A record must come back as exactly the fields it was saved with — no
+  // empty label, no null payment it never had.
+  // The activity log — rows in activity_log now, not a jsonb array. Newest
+  // first, which is the order the client keeps and the Activity page reads.
+  // One record has no `by`, which is what a household of one logs, and it has
+  // to come back without the key rather than with a null.
+  activity: [
+    { id: 'a2', at: '2026-08-01T10:05:00.000Z', by: UID, kind: 'entry', what: 'Added Rent — -$1,650.00' },
+    { id: 'a1', at: '2026-08-01T10:00:00.000Z', kind: 'goal', what: 'Added the goal Roof' },
+  ],
+  // Three settings that used to be the device's alone.
+  budgetColOrder: ['category', 'desc', 'income', 'expense', 'balance'],
+  debtExtra: '250',
+  debtSimExcluded: ['manual_visa'],
+  debtData: {
+    Car_loan: { balance: 1200000, rate: 5.9, hidden: false },
+    manual_visa: { label: 'Visa', balance: 450000, rate: 19.99, payment: 30000, hidden: false },
+    manual_partial: { label: 'Line of credit', payment: 25000 },
+  },
   deletedCopyIds: { 'e-old': true },
   holidays: { 2026: { '2026-07-01': { name: 'Canada Day', optional: false, source: 'computed' } } },
   dashHidden: { charts: true },
@@ -181,8 +214,67 @@ for (const [occ, ov] of Object.entries(payload.overridesByYr[2026])) {
 for (const k of ['completed', 'goals', 'categories', 'categoryColors', 'yearConfigs', 'budgetTargets',
                  'templates', 'debtData', 'deletedCopyIds', 'holidays', 'dashHidden', 'dashOrder',
                  'colOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus',
-                 'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon']) {
+                 'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon',
+                 'budgetColOrder', 'debtExtra', 'debtSimExcluded', 'activity']) {
   check(k, payload[k], back[k]);
+}
+
+// The round trip above would pass just as well if debtData were still a jsonb
+// blob — it is the same bytes in and out either way. What makes it normalized
+// is that the figures are rows with typed columns, so check that directly, and
+// check that the legacy column it used to live in is no longer the thing being
+// written.
+{
+  const rows = psql(`select count(*) from debts where household_id='${HID}';`);
+  if (rows !== '3') issues.push({ label: 'debts table', sent: '3 rows', got: rows + ' rows' });
+  const visa = psql(`select label || '|' || balance || '|' || rate || '|' || payment
+                     from debts where household_id='${HID}' and key='manual_visa';`);
+  if (visa !== 'Visa|450000.00|19.990000|30000.00') {
+    issues.push({ label: 'debts columns are typed', sent: 'Visa|450000.00|19.990000|30000.00', got: visa });
+  }
+  // The partly-filled one keeps its blanks as nulls rather than zeros: a debt
+  // with a $0 balance and a debt with no balance yet are different states.
+  const partial = psql(`select coalesce(balance::text,'NULL') || '|' || coalesce(hidden::text,'NULL')
+                        from debts where household_id='${HID}' and key='manual_partial';`);
+  if (partial !== 'NULL|NULL') issues.push({ label: 'unfilled debt fields stay null', sent: 'NULL|NULL', got: partial });
+  // The legacy blobs, while they are still there. supabase/drop-legacy-json.sql
+  // removes them once a deploy has proved the migration, and after that these
+  // checks have nothing to look at — which is the success case, not a skip
+  // worth failing over.
+  const hasCol = (t, c) => psql(`select count(*) from information_schema.columns
+                                 where table_schema='public' and table_name='${t}' and column_name='${c}';`) === '1';
+  if (hasCol('household_settings', 'debt_data')) {
+    const blobs = psql(`select activity::text || ' ' || dash_hidden::text || ' ' || deleted_copy_ids::text
+                             || ' ' || rollover::text || ' ' || debt_data::text
+                        from household_settings where household_id='${HID}';`);
+    if (blobs !== '[] {} {} {} {}') {
+      issues.push({ label: 'the legacy settings blobs are no longer written', sent: '[] {} {} {} {}', got: blobs });
+    }
+  }
+  if (hasCol('entry_overrides', 'history')) {
+    const histBlob = psql(`select history::text from entry_overrides where household_id='${HID}' and occurrence_id='e-expense-2026-2-1';`);
+    if (histBlob !== '[]') issues.push({ label: 'the legacy history blob is no longer written', sent: '[]', got: histBlob });
+  }
+  // Whatever the legacy columns are doing, there must be no jsonb column
+  // anywhere that the app actually writes.
+  const liveJson = psql(`select coalesce(string_agg(table_name || '.' || column_name, ', ' order by table_name), '(none)')
+                         from information_schema.columns
+                         where table_schema = 'public' and data_type = 'jsonb'
+                           and (table_name, column_name) not in (
+                             ('household_data','data'), ('household_settings','activity'),
+                             ('household_settings','debt_data'), ('household_settings','dash_hidden'),
+                             ('household_settings','deleted_copy_ids'), ('household_settings','rollover'),
+                             ('entry_overrides','history'));`);
+  if (liveJson !== '(none)') {
+    issues.push({ label: 'a live column stores JSON', sent: '(none)', got: liveJson });
+  }
+  const acts = psql(`select count(*) from activity_log where household_id='${HID}';`);
+  if (acts !== '2') issues.push({ label: 'activity_log rows', sent: '2', got: acts });
+  const solo = psql(`select coalesce(by_user::text,'NULL') from activity_log where household_id='${HID}' and id='a1';`);
+  if (solo !== 'NULL') issues.push({ label: 'an activity record with no author stores null', sent: 'NULL', got: solo });
+  const sets = psql(`select array_to_string(dash_hidden_ids,',') || '|' || array_to_string(deleted_copy_id_list,',') || '|' || array_to_string(rollover_categories,',')
+                     from household_settings where household_id='${HID}';`);
+  if (!/\|/.test(sets)) issues.push({ label: 'the id sets are text[] columns', sent: 'arrays', got: sets });
 }
 
 // households first: household_settings and household_members hang off it, and

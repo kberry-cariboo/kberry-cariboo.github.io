@@ -334,6 +334,52 @@ longer ride along inside every sync payload. (Legacy entry-level receipts are
 re-keyed onto the entry's start-date occurrence by the migration.) All reads/writes go through the
 `load_household`/`save_household` RPCs, which keep each save atomic.
 
+What is *not* synced is a short and deliberate list: the browser-held AI key (a
+personal credential, never in the household payload and never in a backup),
+the per-device notification and app-lock settings, the AI report caches, and
+where you happen to be looking — the month, the lens, the account filter, the
+scenario sandbox, which payoff order is highlighted. Everything the household
+*owns* is in `HOUSEHOLD_FIELDS`, and `tests/payload-fields.mjs` fails if that
+table and `cf_payload_keys()` in the schema disagree.
+
+A synced field must have exactly one piece of state. `useLS` is per-hook
+`useState` over a localStorage key, so a second `useLS` on a key that
+`useHouseholdState` already owns is a second copy the payload never sees
+change — which is what the Budget grid's column order and the payoff
+simulator's extra payment were before they moved into the table.
+
+**Nothing is stored as JSON.** Every value in the database is a column or a
+row — including the ones that looked like documents. The activity log is
+`activity_log`, one row per record. Each occurrence override's edit history is
+`entry_override_history`, one row per previous value (which also ended a
+quadratic-growth bug: every history element used to carry a spread of the whole
+override *including its own history*, so each edit stored the last edit's log
+inside itself). The three `{ id: true }` maps — hidden dashboard panels,
+deleted-copy tombstones, per-category rollover flags — are `text[]` columns
+beside the `col_order` and `reg_filter_*` arrays that were always shaped that
+way. The bills itemised inside a digest notification are
+`notification_schedule_items`.
+
+The old columns are kept through one deploy as the pre-migration backup, and
+nothing reads or writes them. **`supabase/drop-legacy-json.sql` removes them**,
+and refuses to run if any household still has something in a blob with nothing
+in its new home. It is a separate file on purpose: every statement in it is
+irreversible, so it is yours to run once a deploy has proved the migration.
+
+Debts are rows in `debts`, keyed by the client's own map key, with the balance,
+the interest rate and the monthly payment as typed columns. They were the last
+thing the household owns that was still a JSONB blob (`household_settings.debt_data`)
+— untyped, unqueryable, and holding the figures as *strings* of cents beside
+`numeric(14,2)` columns carrying the same unit everywhere else. Every column is
+nullable on purpose: the tracker distinguishes "not filled in yet" from zero (a
+debt with a payment and no balance is the state it renders as "payments found,
+no balances yet"), and `load_household` strips nulls back out, so a record
+round-trips as exactly the fields it was saved with. The old column is kept as
+the pre-migration backup and is no longer written; a one-shot backfill guarded
+by `household_settings.debts_migrated_at` unpacks it, and the marker rather
+than "this household has no debt rows" is what stops a re-run of `schema.sql`
+handing back a debt the user has since deleted.
+
 Statutory holidays (which decide when payroll landing on a closed day is
 actually deposited) are rows too: one per date in `holidays`, plus a
 `holiday_years` row per year the household has taken over from the built-in
