@@ -137,6 +137,10 @@ const payload = {
   // the tracker renders as "payments found, no balances yet"), and one hidden.
   // A record must come back as exactly the fields it was saved with — no
   // empty label, no null payment it never had.
+  // Three settings that used to be the device's alone.
+  budgetColOrder: ['category', 'desc', 'income', 'expense', 'balance'],
+  debtExtra: '250',
+  debtSimExcluded: ['manual_visa'],
   debtData: {
     Car_loan: { balance: 1200000, rate: 5.9, hidden: false },
     manual_visa: { label: 'Visa', balance: 450000, rate: 19.99, payment: 30000, hidden: false },
@@ -191,7 +195,8 @@ for (const [occ, ov] of Object.entries(payload.overridesByYr[2026])) {
 for (const k of ['completed', 'goals', 'categories', 'categoryColors', 'yearConfigs', 'budgetTargets',
                  'templates', 'debtData', 'deletedCopyIds', 'holidays', 'dashHidden', 'dashOrder',
                  'colOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus',
-                 'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon']) {
+                 'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon',
+                 'budgetColOrder', 'debtExtra', 'debtSimExcluded']) {
   check(k, payload[k], back[k]);
 }
 

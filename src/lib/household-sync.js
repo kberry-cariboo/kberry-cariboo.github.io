@@ -100,6 +100,26 @@
     // silently reset every existing user's saved filters, locally and in any
     // synced household, on upgrade. Only the in-code bindings in App.js were
     // renamed to the "entries" wording used everywhere else.
+    // The Budget grid's column order, beside the Entries grid's `colOrder`
+    // above. It was the device's alone while its sibling was the household's,
+    // which is not a distinction anyone would have designed on purpose — you
+    // reorder the columns of one grid and it follows you to your phone, you
+    // reorder the other and it doesn't.
+    { key: "budgetColOrder", storage: "cf_budget_col_order", initial: () => DEFAULT_BUDGET_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v);
+    } },
+    // The two inputs to the payoff simulation. Not reading preferences: they
+    // change the debt-free date, the total interest and the payoff order the
+    // Payoff screen reports, so with them on the device two people looking at
+    // the same household got different answers to "when are we out of debt".
+    // The debts themselves have always been household data; what you are
+    // planning to do about them is the same kind of thing.
+    //
+    // Which of avalanche and snowball is *highlighted* stays device-local, and
+    // that is the line: the comparison is the household's, the pane you happen
+    // to be reading is yours.
+    { key: "debtExtra", storage: "cf_debt_extra", initial: () => "100", kind: "truthy", backup: true },
+    { key: "debtSimExcluded", storage: "cf_debt_sim_excluded", initial: () => [], kind: "array", backup: true },
     { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
     { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
     { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },

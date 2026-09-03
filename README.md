@@ -334,6 +334,20 @@ longer ride along inside every sync payload. (Legacy entry-level receipts are
 re-keyed onto the entry's start-date occurrence by the migration.) All reads/writes go through the
 `load_household`/`save_household` RPCs, which keep each save atomic.
 
+What is *not* synced is a short and deliberate list: the browser-held AI key (a
+personal credential, never in the household payload and never in a backup),
+the per-device notification and app-lock settings, the AI report caches, and
+where you happen to be looking — the month, the lens, the account filter, the
+scenario sandbox, which payoff order is highlighted. Everything the household
+*owns* is in `HOUSEHOLD_FIELDS`, and `tests/payload-fields.mjs` fails if that
+table and `cf_payload_keys()` in the schema disagree.
+
+A synced field must have exactly one piece of state. `useLS` is per-hook
+`useState` over a localStorage key, so a second `useLS` on a key that
+`useHouseholdState` already owns is a second copy the payload never sees
+change — which is what the Budget grid's column order and the payoff
+simulator's extra payment were before they moved into the table.
+
 Debts are rows in `debts`, keyed by the client's own map key, with the balance,
 the interest rate and the monthly payment as typed columns. They were the last
 thing the household owns that was still a JSONB blob (`household_settings.debt_data`)

@@ -387,6 +387,16 @@ alter table household_settings add column if not exists rollover jsonb not null 
 -- deleted its last one.
 alter table household_settings add column if not exists debts_migrated_at timestamptz;
 
+-- Three settings that used to sit on the device only. budget_col_order is the
+-- Budget grid's column order, beside col_order for the Entries grid, which was
+-- always the household's; debt_extra and debt_sim_excluded are the two inputs
+-- to the payoff simulation, and they decide the debt-free date and the total
+-- interest the Payoff screen reports, so on the device they meant two people
+-- could read different answers off the same household.
+alter table household_settings add column if not exists budget_col_order text[] not null default '{}';
+alter table household_settings add column if not exists debt_extra text;
+alter table household_settings add column if not exists debt_sim_excluded text[] not null default '{}';
+
 -- Client row ids are text, not bigint -----------------------------------------
 --
 -- These columns started as bigint because the app minted ids with Date.now().
@@ -811,6 +821,7 @@ returns text[] language sql immutable as $$
     'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
     'completed', 'debtData', 'deletedCopyIds', 'holidays',
+    'budgetColOrder', 'debtExtra', 'debtSimExcluded',
     'currency', 'locale', 'holidayRegion', 'activity', 'accounts'
   ]::text[];
 $$;
@@ -1336,6 +1347,7 @@ begin
     (household_id, active_year, alert_threshold, dark_mode, forecast_horizon,
      ai_api_key, col_order, reg_filter, reg_filter_cats, reg_filter_scheds,
      reg_filter_status, dash_hidden, dash_order, currency, locale, holiday_region,
+     budget_col_order, debt_extra, debt_sim_excluded,
      -- debt_data is not in this list: a debt is a row in `debts` now. The
      -- column keeps its default on a new household and whatever it last held
      -- on an existing one, as the pre-migration backup.
@@ -1358,6 +1370,9 @@ begin
      d->>'currency',
      d->>'locale',
      d->>'holidayRegion',
+     cf_text_array(d->'budgetColOrder'),
+     d->>'debtExtra',
+     cf_text_array(d->'debtSimExcluded'),
      case when jsonb_typeof(d->'deletedCopyIds') = 'object' then d->'deletedCopyIds' else '{}'::jsonb end,
      case when jsonb_typeof(d->'activity') = 'array' then d->'activity' else '[]'::jsonb end,
      -- budgetTargets._rollover is a per-category flag, not a per-month target,
@@ -1387,6 +1402,9 @@ begin
      currency = case when d ? 'currency' then excluded.currency else s.currency end,
      locale = case when d ? 'locale' then excluded.locale else s.locale end,
      holiday_region = case when d ? 'holidayRegion' then excluded.holiday_region else s.holiday_region end,
+     budget_col_order = case when d ? 'budgetColOrder' then excluded.budget_col_order else s.budget_col_order end,
+     debt_extra = case when d ? 'debtExtra' then excluded.debt_extra else s.debt_extra end,
+     debt_sim_excluded = case when d ? 'debtSimExcluded' then excluded.debt_sim_excluded else s.debt_sim_excluded end,
      -- debt_data is deliberately absent here: see the insert list above.
      deleted_copy_ids = case when d ? 'deletedCopyIds' then excluded.deleted_copy_ids else s.deleted_copy_ids end,
      activity = case when d ? 'activity' then excluded.activity else s.activity end,
@@ -1648,6 +1666,14 @@ begin
       'currency', s.currency,
       'locale', s.locale,
       'holidayRegion', s.holiday_region,
+      'budgetColOrder', to_jsonb(s.budget_col_order),
+      -- coalesced, not left null: load_household strips nulls out of the
+      -- payload, and a stripped key is a key the client never sees — which
+      -- schema-test.sql rightly calls "accepts but never emits". '100' is the
+      -- same default the client starts from, so a household that has never
+      -- touched the slider reads the same either way.
+      'debtExtra', coalesce(s.debt_extra, '100'),
+      'debtSimExcluded', to_jsonb(s.debt_sim_excluded),
       'activity', coalesce(s.activity, '[]'::jsonb),
       -- Rebuilt from the debts table, not read back out of the legacy jsonb
       -- column beside it. jsonb_strip_nulls is what makes the round trip
