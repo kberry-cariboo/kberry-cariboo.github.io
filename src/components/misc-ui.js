@@ -261,7 +261,8 @@
         /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
         /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" },
           sections.length, " sections"),
-        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev", "aria-hidden": "true" }, "\u2304")),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev" },
+          /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))),
       open && /* @__PURE__ */ React.createElement("div", {
         className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section"
       },

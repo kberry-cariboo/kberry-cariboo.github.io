@@ -1115,7 +1115,17 @@
           font-weight:600;cursor:pointer;text-align:left;box-shadow:var(--shadowSm);}
         .section-nav-here{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .section-nav-count{flex-shrink:0;font-size:11px;font-weight:400;color:var(--textLt);}
-        .section-nav-chev{flex-shrink:0;font-size:15px;line-height:1;color:var(--textMid);}
+        /* Same disclosure well as the month summary's on the budget list: this
+           was the other bare ⌄ arrowhead — hairline at 15px, off the row's
+           optical centre. It opens a sheet rather than expanding in place, so
+           unlike that one it has no open state to rotate into and keeps
+           pointing down. */
+        .section-nav-chev{flex-shrink:0;display:inline-flex;align-items:center;
+          justify-content:center;width:26px;height:26px;border-radius:50%;
+          color:var(--textLt);background:var(--stripe);
+          transition:background 0.15s ease,color 0.15s ease;}
+        .section-nav-btn:hover .section-nav-chev{background:var(--accentLt);color:var(--text);}
+        @media(prefers-reduced-motion:reduce){.section-nav-chev{transition:none;}}
         .section-nav-list{display:flex;flex-direction:column;}
         .section-nav-item{display:flex;align-items:center;min-height:44px;padding:11px 2px;
           border:none;border-top:1px solid var(--stripe);background:none;color:var(--text);
@@ -10433,7 +10443,8 @@ const RUNWAY_DAYS = 90;
         /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
         /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" },
           sections.length, " sections"),
-        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev", "aria-hidden": "true" }, "\u2304")),
+        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev" },
+          /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))),
       open && /* @__PURE__ */ React.createElement("div", {
         className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section"
       },
