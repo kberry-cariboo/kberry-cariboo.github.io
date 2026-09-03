@@ -114,6 +114,12 @@ that all reduce to "there is no data" — an empty forecast, no ledger rows, no
 second curve. That is the signal to roll the fixture year forward, not a defect
 in the app.
 
+The 90-day forecast is what runs out first, and it runs out before the year
+does: a sweep across the 2026 fixture is clean through `2026-12-20` and reports
+four of those "there is no data" failures at `2026-12-31`. So the fixture has
+to be rolled into 2027 some time in December 2026 — before the wall clock gets
+there and CI goes red on a household that simply ended.
+
 That is not everything CI runs. Six more suites go with it, and two of them
 need a database:
 

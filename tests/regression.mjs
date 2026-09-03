@@ -148,9 +148,12 @@ if (FAKE_TODAY) console.log('CF_FAKE_TODAY: every page thinks today is ' + FAKE_
 // tests that need data the shared fixture doesn't carry (a mid-horizon expense
 // big enough to dip the forecast, a few savings goals). Everything else takes
 // the fixture as it is.
-async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x) => x } = {}) {
+// `viewport` overrides the phone/desktop default, for the handful of tests that
+// have to be run at a width neither of them is — a touch device wider than a
+// phone, where a one-line control no longer wraps its way over the 44px floor.
+async function ctxPage({ touch = false, dark = false, loggedIn = true, stub = (x) => x, viewport = null } = {}) {
   const ctx = await browser.newContext({
-    viewport: touch ? { width: 393, height: 852 } : { width: 1440, height: 900 },
+    viewport: viewport || (touch ? { width: 393, height: 852 } : { width: 1440, height: 900 }),
     hasTouch: touch, isMobile: touch, colorScheme: dark ? 'dark' : 'light',
   });
   const page = await ctx.newPage();
@@ -2245,6 +2248,88 @@ await test('plan: debts are flat rows, and the strategies are one comparison', a
   await ctx.close();
 });
 
+// Two screens answer "how much interest is ahead of you" about the same debts,
+// and they answered it differently: the tracker's tile multiplied the payment
+// by the term (`pmt * m - bal`), which charges a full final payment against a
+// balance that is almost never a full payment by then. One debt of $4,000 at
+// 19.9% paying $300 read $800 on the tracker and $558.33 on the payoff screen.
+// The figure is the whole point of the screen, so the two have to agree.
+await test('plan: the interest the tracker reports is the interest the payoff screen simulates', async () => {
+  const debt = (t) => t.replace('goals: [],', 'goals: [], debtData: '
+    + JSON.stringify({ manual_1: { label: 'Card A', balance: 400000, rate: 19.9, payment: 30000 } }) + ',');
+  const { ctx, page } = await ctxPage({ stub: debt });
+  await page.goto(BASE + '#/plan/debt', { waitUntil: 'load' });
+  await page.waitForTimeout(1400);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  const money = (s, label) => {
+    const m = s.match(new RegExp(label + '[^$]*\\$([\\d,]+\\.\\d\\d)'));
+    if (!m) throw new Error('no figure found for "' + label + '"');
+    return Number(m[1].replace(/,/g, ''));
+  };
+  const tracker = money(await page.locator('main').innerText(), 'TOTAL INTEREST REMAINING');
+  // Amortised by hand: $4,000 at 19.9% paying $300 clears in 16 months, the
+  // last of them a $58.32 payment rather than a $300 one.
+  if (Math.abs(tracker - 558.33) > 0.02) throw new Error('the tracker reports $' + tracker + ' of interest, not $558.33');
+
+  await page.goto(BASE + '#/plan/strategy', { waitUntil: 'load' });
+  await page.waitForTimeout(1600);
+  const strat = await page.locator('main').innerText();
+  // The strategy screen prints interest under an extra payment, and separately
+  // how much less that is than paying the minimums. The two together are the
+  // same minimums-only figure the tracker is reporting.
+  const withExtra = money(strat, 'Total interest');
+  const saved = money(strat, 'Interest vs minimums');
+  if (Math.abs((withExtra + saved) - tracker) > 0.02) {
+    throw new Error('the two screens disagree: tracker $' + tracker
+      + ' vs payoff $' + (withExtra + saved) + ' at the same minimums');
+  }
+  await ctx.close();
+});
+
+// Every dismissible overlay in the app closes on Escape — except the four on
+// Plan, which had no handler at all. The goal form, the funding form, the debt
+// form and the debt picker all open over what you were reading, and the only
+// way out was to find Cancel with a pointer. That is a keyboard user with no
+// exit, and an external keyboard on a tablet with none either.
+await test('plan: every dialog on the screen closes on Escape', async () => {
+  const debt = (t) => t.replace('goals: [],', 'goals: '
+    + JSON.stringify([{ id: 'g1', name: 'Emergency fund', target: 1000000, saved: 420000, monthly: 50000, targetDate: '2027-06-01' }])
+    + ', debtData: ' + JSON.stringify({
+      manual_1: { label: 'Card A', balance: 400000, rate: 19.9, payment: 30000 },
+      manual_2: { label: 'Card B', balance: 150000, rate: 11.5, payment: 12000 },
+    }) + ',');
+  const stuck = [];
+  const { ctx, page } = await ctxPage({ stub: debt });
+  const escapes = async (route, open, label) => {
+    await page.goto(BASE + route, { waitUntil: 'load' });
+    await page.waitForTimeout(1400);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await open();
+    await page.waitForTimeout(600);
+    const opened = await page.locator('.modal-overlay').count();
+    if (!opened) { stuck.push(label + ' never opened'); return; }
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    if (await page.locator('.modal-overlay').count() >= opened) stuck.push(label + ' ignored Escape');
+  };
+  // "+ Add Goal" while the list is empty, "+ Add" in the populated list's
+  // toolbar — and this fixture has a goal in it.
+  await escapes('#/plan/goals', () => page.getByRole('button', { name: /^\+ Add( Goal)?$/ }).first().click(), 'the goal form');
+  await escapes('#/plan/goals', async () => {
+    // The row kebab, as it renders — the phone and desktop rows both put one
+    // in the markup and CSS hides one of them, so take the visible one.
+    await page.locator('main .row-menu-btn').locator('visible=true').first().click();
+    await page.waitForTimeout(400);
+    await page.locator('.ctx-menu-item', { hasText: 'Add funds' }).click();
+  }, 'the funding form');
+  await escapes('#/plan/debt', () => page.getByRole('button', { name: '+ Add', exact: true }).click(), 'the debt form');
+  await escapes('#/plan/strategy', () => page.getByRole('button', { name: 'Change', exact: true }).first().click(), 'the debt picker');
+  await ctx.close();
+  if (stuck.length) throw new Error(stuck.join('; '));
+});
+
 // The balance alerts themselves had no test at all — which is how the page
 // could list sixty rows for one dip without anything objecting, and how
 // replacing the whole thing left the suite green. What it lists is now the
@@ -3608,7 +3693,12 @@ await test('forecast: a balance curve marks the low point and the alert threshol
   // the low point is genuinely ahead rather than being today's opening balance
   // (which the chart deliberately does not mark — a low on day one is just
   // today's balance, and a marker on it draws a line down the y axis).
-  const when = new Date(); when.setDate(when.getDate() + 20);
+  // Twenty days after the day the *page* believes in, not the day the runner
+  // is having. Read off the wall clock, this expense landed twenty days after
+  // the real today and therefore in the past whenever the sweep pushed the
+  // page's clock forward — no dip ahead, no low point, and a failure the test
+  // had manufactured for itself. (CF_FAKE_TODAY=2026-10-20 found it.)
+  const when = new Date(FAKE_TODAY || Date.now()); when.setDate(when.getDate() + 20);
   const roof = JSON.stringify([{ id: 9901, desc: 'Roof repair', type: 'expense', amount: 3800000,
     category: 'Housing', repeats: false, recurUnit: 'month', recurEvery: 1,
     startDate: when.toISOString().slice(0, 10), notes: '' }]);
@@ -4641,56 +4731,67 @@ await test('activity: budget years and accounts are recorded too', async () => {
 // actually renders at 393px, across every view — the defects were spread
 // thinly over many screens rather than concentrated in one.
 await test('phone: every control is big enough to hit', async () => {
-  const { ctx, page } = await ctxPage({ touch: true, stub: (t) => t
+  const stub = (t) => t
     .replace('goals: [],', 'goals: ' + JSON.stringify([
       { id: 'g1', name: 'Emergency fund', target: 1000000, saved: 420000, monthly: 50000, targetDate: '2027-06-01' },
     ]) + ', accounts: ' + JSON.stringify([
       { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
       { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
-    ]) + ',') });
+    ]) + ',');
   const small = [];
-  for (const [route, label] of [['#/today', 'Today'], ['#/flow/list', 'Monthly'],
-    ['#/envelopes', 'BvA'], ['#/flow/curve', 'Forecast'], ['#/flow/entries', 'Entries'],
-    ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals'], ['#/you', 'You']]) {
-    await page.goto(BASE + route, { waitUntil: 'load' });
-    await page.waitForTimeout(1200);
-    const nudge = page.getByRole('button', { name: 'Remind me later' });
-    if (await nudge.count() > 0) await nudge.click().catch(() => {});
-    await page.waitForTimeout(250);
-    const found = await page.evaluate(() => {
-      // A tap target is the border box grown by any absolutely-positioned
-      // pseudo-element hanging outside it — the padded-halo pattern the app
-      // uses to keep a control visually small without shrinking its hit area.
-      const halo = (el) => {
-        let dx = 0, dy = 0;
-        for (const pe of ['::after', '::before']) {
-          const s = getComputedStyle(el, pe);
-          if (s.content === 'none' || s.position !== 'absolute') continue;
-          const px = (v) => (v.endsWith('px') ? -parseFloat(v) : 0);
-          dx = Math.max(dx, px(s.left) + px(s.right));
-          dy = Math.max(dy, px(s.top) + px(s.bottom));
-        }
-        return [Math.max(0, dx), Math.max(0, dy)];
-      };
-      const out = [];
-      document.querySelectorAll('main button, main a[href], main select, .cf-bottomnav button').forEach((el) => {
-        const cs = getComputedStyle(el);
-        if (cs.display === 'none' || cs.visibility === 'hidden' || !el.getClientRects().length) return;
-        // A link inside a sentence is exempt (WCAG 2.5.5) and a halo there
-        // would cover the field under it — and worse, a 44px inline-block in a
-        // paragraph stretches the leading of every line it touches.
-        if (['link-primary', 'ai-settings-link', 'strat-suggest-btn']
-          .some((c) => el.classList.contains(c))) return;
-        const r = el.getBoundingClientRect();
-        const [hx, hy] = halo(el);
-        const w = Math.round(r.width + hx), h = Math.round(r.height + hy);
-        if (w < 44 || h < 44) out.push((el.className || el.tagName) + ' ' + w + 'x' + h);
+  // Two touch viewports, not one. A phone is narrow enough that a control
+  // carrying a sentence wraps onto a second line and clears 44px by accident —
+  // which is how the Alerts centre shipped its findings at 32px and how the
+  // collapsed notice stack shipped at 42px before them. Rotate the same phone,
+  // or hand it to an iPad in portrait, and the sentence fits on one line and
+  // the control is under the floor. The tablet width is where that shows.
+  for (const [vpLabel, viewport] of [['phone', { width: 393, height: 852 }],
+    ['tablet', { width: 768, height: 1024 }]]) {
+    const { ctx, page } = await ctxPage({ touch: true, stub, viewport });
+    for (const [route, label] of [['#/today', 'Today'], ['#/flow/list', 'Monthly'],
+      ['#/envelopes', 'BvA'], ['#/flow/curve', 'Forecast'], ['#/flow/entries', 'Entries'],
+      ['#/plan/debt', 'Debt'], ['#/plan/goals', 'Goals'], ['#/alerts', 'Alerts'],
+      ['#/you', 'You']]) {
+      await page.goto(BASE + route, { waitUntil: 'load' });
+      await page.waitForTimeout(1200);
+      const nudge = page.getByRole('button', { name: 'Remind me later' });
+      if (await nudge.count() > 0) await nudge.click().catch(() => {});
+      await page.waitForTimeout(250);
+      const found = await page.evaluate(() => {
+        // A tap target is the border box grown by any absolutely-positioned
+        // pseudo-element hanging outside it — the padded-halo pattern the app
+        // uses to keep a control visually small without shrinking its hit area.
+        const halo = (el) => {
+          let dx = 0, dy = 0;
+          for (const pe of ['::after', '::before']) {
+            const s = getComputedStyle(el, pe);
+            if (s.content === 'none' || s.position !== 'absolute') continue;
+            const px = (v) => (v.endsWith('px') ? -parseFloat(v) : 0);
+            dx = Math.max(dx, px(s.left) + px(s.right));
+            dy = Math.max(dy, px(s.top) + px(s.bottom));
+          }
+          return [Math.max(0, dx), Math.max(0, dy)];
+        };
+        const out = [];
+        document.querySelectorAll('main button, main a[href], main select, .cf-bottomnav button').forEach((el) => {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || !el.getClientRects().length) return;
+          // A link inside a sentence is exempt (WCAG 2.5.5) and a halo there
+          // would cover the field under it — and worse, a 44px inline-block in a
+          // paragraph stretches the leading of every line it touches.
+          if (['link-primary', 'ai-settings-link', 'strat-suggest-btn']
+            .some((c) => el.classList.contains(c))) return;
+          const r = el.getBoundingClientRect();
+          const [hx, hy] = halo(el);
+          const w = Math.round(r.width + hx), h = Math.round(r.height + hy);
+          if (w < 44 || h < 44) out.push((el.className || el.tagName) + ' ' + w + 'x' + h);
+        });
+        return out;
       });
-      return out;
-    });
-    found.forEach((f) => small.push(label + ': ' + f));
+      found.forEach((f) => small.push(vpLabel + ' ' + label + ': ' + f));
+    }
+    await ctx.close();
   }
-  await ctx.close();
   if (small.length) throw new Error(small.length + ' controls under 44px — ' + small.slice(0, 4).join('; '));
 });
 

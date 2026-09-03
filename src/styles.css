@@ -1834,6 +1834,15 @@
              household has more than one thing to say at a time, which is why
              nothing had caught it. */
           .notice-summary{min-height:44px;}
+          /* Each finding in the Alerts centre is a button that navigates to
+             the screen owning it, and .notice--sm's 8px padding around 12px
+             text comes out at 32px. It went unnoticed for the same reason
+             .notice-summary did — on a narrow phone the sentence wraps onto a
+             second line and the button clears 44px by accident. Give it a
+             wide enough touch device (an iPad in portrait, or any phone
+             rotated) and the sentence fits on one line, and the target the
+             whole screen is for is the smallest thing on it. */
+          .alerts-finding{min-height:44px;}
           .ctx-menu-item--touch{min-height:48px;}
           /* WCAG 2.5.5 exempts a link inside a sentence, and the exemption is
              load-bearing here rather than a technicality: a 44px inline-block
