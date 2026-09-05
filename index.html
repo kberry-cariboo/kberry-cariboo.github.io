@@ -1693,7 +1693,6 @@
         .runway-bar{display:flex;align-items:flex-end;height:30px;border-radius:7px;overflow:hidden;
           border:1px solid var(--border);background:var(--bgCard);}
         .runway-seg{display:block;flex:1 1 0;min-width:0;height:100%;}
-        .runway-bar-track{position:relative;border-radius:7px;background:var(--stripe);overflow:hidden;}
         .runway-scale{display:flex;justify-content:space-between;margin-top:6px;
           font-size:11px;color:var(--textLt);}
         .runway-note{margin-top:8px;font-size:12.5px;color:var(--textMid);}
@@ -7351,7 +7350,8 @@ const RUNWAY_DAYS = 90;
     goal: "Goal",
     debt: "Debt",
     year: "Year",
-    account: "Account"
+    account: "Account",
+    category: "Category"
   };
   function parseTabHash() {
     let raw = "";
@@ -16195,19 +16195,70 @@ Fill every field of the response schema. Rules:
         setCategoryColors(prevColors);
       });
     };
+    // A category's name is not a label sitting beside the data, it is the key
+    // the data is filed under: an entry, a template and a budget target all
+    // name their category as a string, and so does the per-category rollover
+    // flag. Renaming only the list left every one of them pointing at a name
+    // that no longer existed — the entries kept the old category, Budget vs
+    // Actual grew a row for a category the list did not have, the target you
+    // had set was stranded under the old name while the new one started from
+    // nothing, and opening one of those entries offered a dropdown its own
+    // category was missing from. The rename has to reach all of it, and
+    // because it now touches the entries it is worth being able to take back,
+    // like removing one is.
     const saveEdit = () => {
       const v = editVal.trim();
       if (!v || editIdx === null) return;
       const oldName = categories[editIdx];
+      const renamed = oldName !== v;
+      // Adding a category refuses a name already in the list; renaming to one
+      // did not, which left two rows with the same name — and, now that a
+      // rename carries the entries and targets with it, would have written
+      // this category's target over the other one's on the way past. Same
+      // guard, same wording.
+      if (renamed && categories.some((c, i) => i !== editIdx && c.toLowerCase() === v.toLowerCase())) {
+        setCatMsg(`"${v}" already exists.`);
+        return;
+      }
+      const prevCats = categories, prevColors = categoryColors;
+      const prevEntries = entries, prevTemplates = templates, prevTargets = budgetTargets;
       setCategories((p) => p.map((c, i) => i === editIdx ? v : c));
       setCategoryColors((p) => {
         const n = __spreadValues({}, p);
         const color = editColor !== null ? editColor : n[oldName];
-        if (oldName !== v) delete n[oldName];
+        if (renamed) delete n[oldName];
         if (color) n[v] = color;
         else delete n[v];
         return n;
       });
+      if (renamed) {
+        setEntries((p) => p.map((e) => e.category === oldName ? __spreadProps(__spreadValues({}, e), { category: v }) : e));
+        setTemplates((p) => (Array.isArray(p) ? p : []).map((t) => t.category === oldName ? __spreadProps(__spreadValues({}, t), { category: v }) : t));
+        // Targets are keyed "YYYY:M" -> { category: cents }, plus the reserved
+        // _rollover map of category -> true. Both are keyed by the name.
+        setBudgetTargets((p) => {
+          const next = {};
+          let touched = false;
+          for (const k of Object.keys(p || {})) {
+            const m = p[k];
+            if (!m || typeof m !== "object" || !(oldName in m)) { next[k] = m; continue; }
+            const copy = __spreadValues({}, m);
+            copy[v] = copy[oldName];
+            delete copy[oldName];
+            next[k] = copy;
+            touched = true;
+          }
+          return touched ? next : p;
+        });
+        logActivity("category", `Renamed the category ${oldName} to ${v}`);
+        pushUndo(`Category "${oldName}" renamed`, () => {
+          setCategories(prevCats);
+          setCategoryColors(prevColors);
+          setEntries(prevEntries);
+          setTemplates(prevTemplates);
+          setBudgetTargets(prevTargets);
+        });
+      }
       setEditIdx(null);
       setEditVal("");
       setEditColor(null);
@@ -16924,7 +16975,23 @@ Fill every field of the response schema. Rules:
         confirmLabel: "Reset Everything",
         onConfirm: () => {
           try {
-            Object.keys(localStorage).filter((k) => k.startsWith("cf_")).forEach((k) => localStorage.removeItem(k));
+            // Everything cf_ *except* what belongs to this device rather than
+            // to the household. The sweep used to take those too, and none of
+            // them come back from Supabase: the browser-held Anthropic key
+            // (the AI features then stop working with no explanation), the
+            // WebAuthn credential (biometric unlock silently unenrols), the
+            // notification hour and app-lock timeout, and the remembered
+            // sign-in email. The dialog promises to clear the cached copy of
+            // the household and reload it from the cloud, and that is now all
+            // it does.
+            const keep = (k) => k.startsWith("cf_webauthn_") || [
+              "cf_ai_key", "cf_lock_timeout", "cf_lock_on_launch",
+              "cf_notify_enabled", "cf_notify_hour", "cf_saved_email",
+              "cf_last_backup", "cf_coach_swipe"
+            ].includes(k);
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith("cf_") && !keep(k))
+              .forEach((k) => localStorage.removeItem(k));
           } catch (e) {
             // Storage can throw outright in private/partitioned modes.
             // Nothing here is essential to the current interaction, so a

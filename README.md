@@ -134,6 +134,32 @@ their own fixtures and pin their own clocks, so they do not move with
 `FIXTURE_YEAR`, and the shared household's paydays land differently in a
 different year.
 
+### What the browser suite covers
+
+`tests/regression.mjs` is the named suite: one test per behaviour, each saying
+in its own name what it is protecting. When adding a feature, add a test that
+drives it the way a person would — through the controls, not through the state
+behind them.
+
+The list of what to cover is not a matter of taste: the Help page in
+`src/components/help.js` *is* the app's statement of what it does, and a feature
+described there with no test behind it is a gap. That is how ten of them were
+found at once — templates, duplicating an entry, the schedule picker, "Ends on",
+rollover, resetting an occurrence, the PDF button, "Reset Targets to Actuals",
+receipts and renaming a category, none of which any test had ever driven. One of
+the ten was broken.
+
+Two selector traps are worth knowing before writing a new one, because each has
+cost an hour:
+
+- `input[type=text]` matches nothing here. The attribute is absent and `text`
+  is only the DOM default, so use the class (`input.settings-input`) or the
+  role.
+- A class like `.row-menu-btn` matches the phone *and* desktop copies of a row,
+  one of which is `display:none` at any width. `.first()` therefore hits an
+  element that cannot be clicked. Prefer the accessible name — the app labels
+  these properly (`Edit Utilities budget target`) — or `.locator('visible=true')`.
+
 ### The layout sweep
 
 `tests/regression.mjs` goes where a test author thought to send it.

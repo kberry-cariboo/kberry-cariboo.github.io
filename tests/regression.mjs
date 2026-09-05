@@ -4904,6 +4904,598 @@ await test('the year you are looking at says so when it is not this one', async 
   if (now.stale) throw new Error('the notice fires on a household whose year is current: ' + now.stale);
 });
 
+// ── Features the suite above never visited ──────────────────────────────────
+//
+// Everything from here down was found by walking the Help page's own list of
+// what the app does and asking which of it any test had ever driven. Templates,
+// duplicating an entry, the schedule picker, "Ends on", rollover, resetting an
+// occurrence, the PDF button, "Reset Targets to Actuals", receipts and renaming
+// a category: ten features, no coverage between them. One of them was broken.
+
+const openAddEntry = async (page) => {
+  await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+  await page.locator('#ef-desc').waitFor(V);
+};
+const settled = async (page, ms = 1500) => {
+  await page.waitForTimeout(ms);
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.first().click().catch(() => {});
+  await page.waitForTimeout(250);
+};
+
+await test('templates: one saved from the entry form is offered on the next entry', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await openAddEntry(page);
+  await page.locator('#ef-desc').fill('Template Source');
+  await page.locator('#ef-amount').fill('42.50');
+  await page.locator('#ef-category').selectOption({ label: 'Utilities' });
+  await page.locator('.ef-save-template').click();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(800);
+  await openAddEntry(page);
+  const picker = page.locator('.modal-card').getByText(/Templates/).first();
+  if (await picker.count() === 0) throw new Error('no Templates picker after saving one');
+  await picker.click();
+  await page.waitForTimeout(500);
+  const shown = await page.locator('.modal-card').innerText();
+  if (!/Template Source/.test(shown)) throw new Error('the saved template is not listed');
+  await ctx.close();
+});
+
+await test('templates: applying one fills the form with its values', async () => {
+  const tpl = (t) => t.replace('templates: [],', 'templates: ' + JSON.stringify([
+    { desc: 'Quarterly water', type: 'expense', amount: 9800, category: 'Utilities',
+      repeats: true, recurUnit: 'month', recurEvery: 3 },
+  ]) + ',');
+  const { ctx, page } = await ctxPage({ stub: tpl });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await openAddEntry(page);
+  await page.locator('.modal-card').getByText(/Templates/).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('.modal-card').getByText('Quarterly water').first().click();
+  await page.waitForTimeout(600);
+  const desc = await page.locator('#ef-desc').inputValue();
+  const amt = await page.locator('#ef-amount').inputValue();
+  const cat = await page.locator('#ef-category').inputValue();
+  if (desc !== 'Quarterly water') throw new Error('description not applied: "' + desc + '"');
+  // Stored in cents, entered and shown in dollars.
+  if (Number(String(amt).replace(/[^\d.]/g, '')) !== 98) throw new Error('amount not applied as dollars: "' + amt + '"');
+  if (cat !== 'Utilities') throw new Error('category not applied: "' + cat + '"');
+  await ctx.close();
+});
+
+await test('entries: duplicating one leaves two', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const row = page.locator('tr.entries-tr').filter({ hasText: 'Internet' }).first();
+  await row.hover();
+  await row.locator('.row-menu-btn').click();
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-menu-item', { hasText: 'Duplicate' }).click();
+  await page.waitForTimeout(800);
+  const n = await page.locator('tr.entries-tr').filter({ hasText: 'Internet' }).count();
+  if (n < 2) throw new Error('duplicate produced ' + n + ' row(s)');
+  await ctx.close();
+});
+
+// The AI features are off without a key, and a control that is off for a
+// reason has to say the reason — otherwise it reads as broken.
+await test('entries: describing an entry in words is disabled without a key, and says why', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await openAddEntry(page);
+  const fill = page.getByRole('button', { name: /Fill in/ });
+  if (await fill.count() === 0) throw new Error('no "Fill in" control on the form');
+  if (await fill.isEnabled()) throw new Error('it is enabled with no API key configured');
+  const why = await fill.getAttribute('title');
+  if (!/API key|ai-proxy/i.test(why || '')) throw new Error('disabled, with no reason given: ' + why);
+  await ctx.close();
+});
+
+// The recurrence *maths* is covered by the in-page self-tests. What was not
+// covered is the path a person actually takes to it: the picker on the form.
+await test('entries: every schedule the form offers saves and reads back', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await openAddEntry(page);
+  await page.locator('.modal-card .cf-switch').first().click();
+  await page.waitForTimeout(400);
+  const units = await page.locator('#ef-recur-unit').evaluate((el) => [...el.options].map((o) => o.value));
+  if (units.length < 5) throw new Error('only ' + units.length + ' schedules offered: ' + units.join(','));
+  await page.getByRole('button', { name: /Cancel/ }).click();
+  await page.waitForTimeout(400);
+  const bad = [];
+  for (const u of units) {
+    await openAddEntry(page);
+    await page.locator('#ef-desc').fill('Sched ' + u);
+    await page.locator('#ef-amount').fill('10');
+    await page.locator('#ef-category').selectOption({ label: 'Utilities' });
+    await page.locator('.modal-card .cf-switch').first().click();
+    await page.waitForTimeout(300);
+    await page.locator('#ef-recur-unit').selectOption(u);
+    await page.waitForTimeout(300);
+    await page.getByRole('button', { name: 'Save Entry' }).click();
+    await page.waitForTimeout(700);
+    const stored = await page.evaluate((d) => (JSON.parse(localStorage.getItem('cf_entries') || '[]'))
+      .find((e) => e.desc === d), 'Sched ' + u);
+    if (!stored) { bad.push(u + ': not saved'); continue; }
+    if (stored.recurUnit !== u) bad.push(u + ': stored as ' + stored.recurUnit);
+    if (stored.repeats !== true) bad.push(u + ': not marked repeating');
+  }
+  if (bad.length) throw new Error(bad.join('; '));
+  await ctx.close();
+});
+
+await test('entries: an entry with an end date stops after it', async () => {
+  const ends = (t) => t.replace('const payload = {', `entries.push({ id: 9910, desc: 'Ends In June',
+    type: 'expense', amount: 5000, category: 'Utilities', repeats: true, recurUnit: 'month',
+    recurEvery: 1, startDate: '${FIXTURE_YEAR}-01-20', recurEnd: '${FIXTURE_YEAR}-06-20', notes: '' });
+    const payload = {`);
+  const { ctx, page } = await ctxPage({ stub: ends });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  await page.getByRole('button', { name: /^Jun$/ }).click();
+  await page.waitForTimeout(700);
+  if (!/Ends In June/.test(await page.locator('main').innerText())) throw new Error('missing from the month it ends in');
+  await page.getByRole('button', { name: /^Jul$/ }).click();
+  await page.waitForTimeout(700);
+  if (/Ends In June/.test(await page.locator('main').innerText())) throw new Error('still listed after its end date');
+  await ctx.close();
+});
+
+await test('envelopes: a category can be set to carry its unspent budget forward', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await settled(page);
+  await page.getByRole('button', { name: 'Edit Utilities budget target' }).click();
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-menu-item', { hasText: /Edit target/i }).first().click();
+  await page.waitForTimeout(600);
+  const ro = page.locator('.rollover-label input');
+  if (await ro.count() === 0) throw new Error('the target dialog offers no rollover checkbox');
+  await ro.check();
+  await page.locator('.modal-overlay').getByRole('button', { name: /^Save Target$/ }).click();
+  await page.waitForTimeout(800);
+  const flags = await page.evaluate(() => (JSON.parse(localStorage.getItem('cf_budgtargets') || '{}'))._rollover || null);
+  if (!flags || !flags.Utilities) throw new Error('rollover was not recorded: ' + JSON.stringify(flags));
+  await ctx.close();
+});
+
+await test('budget: an edited occurrence can be reset to what the schedule says', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  await page.locator('tr.budget-event-tr').filter({ hasText: 'Rent' }).first().click();
+  await page.locator('.modal-card').waitFor(V);
+  await page.locator('.modal-card input').filter({ hasNot: page.locator('[type=checkbox]') }).nth(1).fill('1999');
+  await page.locator('.modal-card').getByRole('button', { name: /^Save$/ }).last().click();
+  await page.waitForTimeout(800);
+  if (!/1,999/.test(await page.locator('main').innerText())) throw new Error('the occurrence edit did not take');
+  await page.locator('tr.budget-event-tr').filter({ hasText: 'Rent' }).first().click();
+  await page.locator('.modal-card').waitFor(V);
+  await page.locator('.modal-card').getByRole('button', { name: /Reset/i }).first().click();
+  await page.waitForTimeout(900);
+  const after = await page.locator('main').innerText();
+  if (/1,999/.test(after)) throw new Error('reset left the edited amount in place');
+  if (!/1,650/.test(after)) throw new Error('reset did not restore the scheduled amount');
+  await ctx.close();
+});
+
+// There is nothing to catch downstream of window.print() in a headless
+// browser, so the assertion is that the button reaches it at all. What the
+// printed page looks like is the print-stylesheet test further up.
+await test('flow: the PDF button hands the page to the browser to print', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  await page.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+  await page.getByRole('button', { name: 'PDF', exact: true }).first().click();
+  await page.waitForTimeout(700);
+  if (!await page.evaluate(() => window.__printed)) throw new Error('the PDF button did not call window.print()');
+  await ctx.close();
+});
+
+await test('settings: "Reset Targets to Actuals" rewrites the targets and leaves the entries', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/reset', { waitUntil: 'load' });
+  await settled(page);
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_budgtargets') || '{}'));
+  await page.getByRole('button', { name: /Reset Targets to Actuals/i }).click();
+  await page.waitForTimeout(500);
+  const confirm = page.getByRole('button', { name: /^Reset|^Confirm|^Yes/i }).last();
+  if (await confirm.count() > 0) await confirm.click().catch(() => {});
+  await page.waitForTimeout(1000);
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_budgtargets') || '{}'));
+  if (JSON.stringify(before) === JSON.stringify(after)) throw new Error('the targets are unchanged');
+  if (await page.evaluate(() => (JSON.parse(localStorage.getItem('cf_entries') || '[]')).length) === 0) {
+    throw new Error('it also removed the entries');
+  }
+  await ctx.close();
+});
+
+await test('receipts: one attached to an occurrence is flagged in the ledger and opens', async () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const withReceipt = (t) => t.replace('overridesByYr: {},',
+    `overridesByYr: { ${FIXTURE_YEAR}: { '4-${FIXTURE_YEAR}-8-1': { amount: 165000, attachment: '${PNG}' } } },`);
+  const { ctx, page } = await ctxPage({ stub: withReceipt });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  if (await page.locator('.attach-indicator').count() === 0) throw new Error('a receipt is not indicated in the ledger');
+  await page.locator('tr.budget-event-tr').filter({ hasText: 'Rent' }).first().click();
+  await page.locator('.modal-card').waitFor(V);
+  const img = page.locator('.modal-card img');
+  if (await img.count() === 0) throw new Error('the occurrence editor shows no receipt thumbnail');
+  await img.first().click();
+  await page.waitForTimeout(600);
+  if (await page.locator('.receipt-lightbox, .modal-overlay img').count() === 0) throw new Error('the receipt does not open');
+  await ctx.close();
+});
+
+// A category's name is the key its data is filed under, not a label beside it.
+// Renaming used to move the list and leave everything else behind: the entries
+// kept the old category, Budget vs Actual grew a row for a category the list no
+// longer had, and the target you had set was stranded under the old name.
+await test('settings: renaming a category takes its entries and targets with it', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
+  await settled(page);
+  await page.locator('.cat-row', { hasText: 'Utilities' }).first().click();
+  await page.waitForTimeout(500);
+  // Not `input[type=text]`: the attribute is absent and text is the default.
+  const field = page.locator('main input.settings-input').locator('visible=true').first();
+  await field.fill('Hydro & Gas');
+  // A rename commits on Enter or Save, never on blur.
+  await page.locator('main').getByRole('button', { name: 'Save', exact: true }).first().click();
+  await page.waitForTimeout(1000);
+
+  const st = await page.evaluate(() => ({
+    cats: JSON.parse(localStorage.getItem('cf_categories') || '[]'),
+    old: (JSON.parse(localStorage.getItem('cf_entries') || '[]')).filter((e) => e.category === 'Utilities').length,
+    moved: (JSON.parse(localStorage.getItem('cf_entries') || '[]')).filter((e) => e.category === 'Hydro & Gas').length,
+    targets: JSON.parse(localStorage.getItem('cf_budgtargets') || '{}'),
+  }));
+  if (!st.cats.includes('Hydro & Gas')) throw new Error('the category list did not take the new name');
+  if (st.old) throw new Error(st.old + ' entries still point at the old name');
+  if (!st.moved) throw new Error('no entry moved to the new name');
+  const months = Object.keys(st.targets).filter((k) => /^\d{4}:\d+$/.test(k));
+  if (months.some((k) => 'Utilities' in (st.targets[k] || {}))) throw new Error('a budget target is stranded under the old name');
+  if (!months.some((k) => 'Hydro & Gas' in (st.targets[k] || {}))) throw new Error('no budget target moved to the new name');
+
+  // Budget vs Actual groups by the entry's category, so a stranded entry shows
+  // up there as a category the list does not have.
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  const bva = await page.locator('main').innerText();
+  if (/Utilities/.test(bva)) throw new Error('Budget vs Actual still lists the old category');
+  if (!/Hydro & Gas/.test(bva)) throw new Error('Budget vs Actual does not list the new one');
+
+  // And because it now moves the entries, it is worth being able to take back.
+  await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
+  await page.waitForTimeout(1000);
+  const undo = page.getByRole('button', { name: /Undo/i }).first();
+  if (await undo.count() === 0) throw new Error('a rename that moves entries offers no undo');
+  await ctx.close();
+});
+
+// Adding a category refuses a name already in the list. Renaming to one did
+// not — which left two rows with the same name, and once a rename carries the
+// targets with it would have written one category's target over the other's.
+await test('settings: a category cannot be renamed onto a name already in the list', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
+  await settled(page);
+  const targetOf = (cat) => page.evaluate((c) => {
+    const t = JSON.parse(localStorage.getItem('cf_budgtargets') || '{}');
+    const month = Object.keys(t).find((k) => /^\d{4}:\d+$/.test(k) && c in (t[k] || {}));
+    return month ? t[month][c] : null;
+  }, cat);
+  const housingBefore = await targetOf('Housing');
+  if (!housingBefore) throw new Error('the fixture has no Housing target to protect');
+
+  await page.locator('.cat-row', { hasText: 'Utilities' }).first().click();
+  await page.waitForTimeout(500);
+  await page.locator('main input.settings-input').locator('visible=true').first().fill('Housing');
+  await page.locator('main').getByRole('button', { name: 'Save', exact: true }).first().click();
+  await page.waitForTimeout(900);
+
+  if (!/already exists/.test(await page.locator('main').innerText())) {
+    throw new Error('renaming onto an existing name was accepted without a word');
+  }
+  if (await targetOf('Housing') !== housingBefore) throw new Error("Housing's target was overwritten");
+  if (!await targetOf('Utilities')) throw new Error("Utilities' target was moved despite the refusal");
+  await ctx.close();
+});
+
+// ── Edge cases and the shapes of bad input ──────────────────────────────────
+
+const countEntries = (page) => page.evaluate(() => (JSON.parse(localStorage.getItem('cf_entries') || '[]')).length);
+
+await test('entry form: an empty save is refused, and the form says which field', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const before = await countEntries(page);
+  await openAddEntry(page);
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(600);
+  if (await countEntries(page) !== before) throw new Error('an empty entry was saved');
+  if (await page.locator('#ef-desc').count() === 0) throw new Error('the form closed on an invalid save');
+  if (await page.locator('.field-error-text').count() === 0) throw new Error('nothing says which field is wrong');
+  await ctx.close();
+});
+
+// An amount is a magnitude here; which way it moves the balance is the *type*.
+// A negative one would be an expense that pays you.
+await test('entry form: a negative or zero amount is refused', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const before = await countEntries(page);
+  for (const amount of ['-50', '0']) {
+    await openAddEntry(page);
+    await page.locator('#ef-desc').fill('Bad amount ' + amount);
+    await page.locator('#ef-amount').fill(amount);
+    await page.locator('#ef-category').selectOption({ label: 'Housing' });
+    await page.getByRole('button', { name: 'Save Entry' }).click();
+    await page.waitForTimeout(700);
+    if (await countEntries(page) !== before) throw new Error('an amount of ' + amount + ' was accepted');
+    await page.getByRole('button', { name: /Cancel/ }).click();
+    await page.waitForTimeout(300);
+  }
+  await ctx.close();
+});
+
+await test('entries: a description far longer than its column does not push the page sideways', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await openAddEntry(page);
+  await page.locator('#ef-desc').fill('X'.repeat(300));
+  await page.locator('#ef-amount').fill('12');
+  await page.locator('#ef-category').selectOption({ label: 'Housing' });
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(900);
+  for (const route of ['#/flow/entries', '#/flow/list', '#/today']) {
+    await page.goto(BASE + route, { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    const slop = await page.evaluate(() => {
+      const sc = document.querySelector('.app-scroll');
+      return sc ? sc.scrollWidth - sc.clientWidth : 0;
+    });
+    if (slop > 1) throw new Error(route + ' scrolls sideways by ' + slop + 'px on a 300-character description');
+  }
+  await ctx.close();
+});
+
+// A transfer into the account it is leaving is not a transfer. The destination
+// list is built without the source in it, so the state is unreachable rather
+// than merely rejected — which is the better way to make it impossible.
+await test('transfers: the destination list never offers the account the money is leaving', async () => {
+  const accts = (t) => t.replace('goals: [],', 'goals: [], accounts: ' + JSON.stringify([
+    { id: 'acct-main', name: 'Chequing', kind: 'chequing' },
+    { id: 'acct-sav', name: 'Savings', kind: 'savings', opening: 500000 },
+  ]) + ',');
+  const { ctx, page } = await ctxPage({ stub: accts });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await openAddEntry(page);
+  await page.locator('#ef-type').selectOption('transfer');
+  await page.waitForTimeout(500);
+  for (const from of ['acct-main', 'acct-sav']) {
+    await page.locator('#ef-account').selectOption(from);
+    await page.waitForTimeout(400);
+    const to = await page.locator('#ef-to-account').evaluate((el) => [...el.options].map((o) => o.value));
+    if (to.includes(from)) throw new Error('with ' + from + ' as the source it is still offered as the destination');
+    if (to.length < 2) throw new Error('no destination offered at all for ' + from);
+  }
+  await ctx.close();
+});
+
+await test('search: the amount operators narrow the list', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const all = await page.locator('tr.entries-tr').count();
+  await page.locator('#global-search').fill('>1000');
+  await page.waitForTimeout(700);
+  const big = await page.locator('tr.entries-tr').count();
+  if (big === 0) throw new Error('">1000" matched nothing');
+  if (big >= all) throw new Error('">1000" did not narrow ' + all + ' rows');
+  if (/\$80\.00/.test(await page.locator('main').innerText())) throw new Error('">1000" still shows an $80 row');
+  await page.locator('#global-search').fill('');
+  await ctx.close();
+});
+
+await test('years: a household can start its year in the red', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
+  await settled(page);
+  const input = page.locator('main input').locator('visible=true').first();
+  await input.fill('-2500');
+  await input.blur();
+  await page.waitForTimeout(900);
+  const stored = await page.evaluate(() => (JSON.parse(localStorage.getItem('cf_years') || '[]'))[0]);
+  if (!stored) throw new Error('no year config stored');
+  if (!(stored.openingBalance < 0)) throw new Error('a negative opening balance was not kept: ' + stored.openingBalance);
+  await ctx.close();
+});
+
+// A bank's export is not always clean. A row the parser cannot read must be
+// shown as unread rather than dropped quietly or guessed at.
+await test('CSV import: an unreadable row is reported and left out, and the rest import', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  await page.getByRole('button', { name: /Import CSV/i }).click();
+  await page.waitForTimeout(600);
+  await page.locator('input[type=file]').first().setInputFiles({
+    name: 'bad.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Description,Amount\nnot-a-date,Broken Row,abc\n2026-07-10,Good Row,25.00\n'),
+  });
+  await page.waitForTimeout(1000);
+  const sels = page.locator('.modal-card select');
+  await sels.nth(0).selectOption('Date');
+  await sels.nth(1).selectOption('Description');
+  await sels.nth(2).selectOption('Amount');
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: /Preview/ }).click();
+  await page.waitForTimeout(1200);
+  const preview = (await page.locator('.modal-card').innerText()).replace(/\s+/g, ' ');
+  if (!/1 of 2 rows/.test(preview)) throw new Error('the count does not say one of two rows: ' + preview.slice(0, 160));
+  if (!/Couldn't parse this row/.test(preview)) throw new Error('the unreadable row is not called out');
+  await page.getByRole('button', { name: /Import 1 entry/ }).click();
+  await page.waitForTimeout(1200);
+  const got = await page.evaluate(() => (JSON.parse(localStorage.getItem('cf_entries') || '[]'))
+    .filter((e) => /Row$/.test(e.desc)).map((e) => e.desc + '=' + e.amount));
+  if (got.length !== 1 || got[0] !== 'Good Row=2500') throw new Error('imported: ' + JSON.stringify(got));
+  await ctx.close();
+});
+
+await test('budget: an occurrence can be moved to another month', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  // Pinned to a month rather than starting from today's: the assertion is that
+  // the occurrence leaves one month and lands in another, which needs both
+  // months named rather than "the one we happen to be in".
+  await page.getByRole('button', { name: /^Mar$/ }).click();
+  await page.waitForTimeout(600);
+  if (!/Rent/.test(await page.locator('main').innerText())) throw new Error('no Rent in March to move');
+  await page.locator('tr.budget-event-tr').filter({ hasText: 'Rent' }).first().click();
+  await page.locator('.modal-card').waitFor(V);
+  await page.locator('#oem-month').selectOption('9');
+  await page.locator('#oem-day').fill('17');
+  await page.locator('.modal-card').getByRole('button', { name: /^Save$/ }).last().click();
+  await page.waitForTimeout(1000);
+  if (/Rent/.test(await page.locator('main').innerText())) throw new Error('the moved occurrence is still in March');
+  await page.getByRole('button', { name: /^Oct$/ }).click();
+  await page.waitForTimeout(900);
+  if (!/Rent/.test(await page.locator('main').innerText())) throw new Error('it did not arrive in October');
+  const ov = await page.evaluate((yr) => {
+    const y = (JSON.parse(localStorage.getItem('cf_overrides') || '{}'))[String(yr)] || {};
+    return Object.values(y)[0] || null;
+  }, FIXTURE_YEAR);
+  if (!ov || ov.month !== 9 || ov.day !== 17) throw new Error('the move was not recorded: ' + JSON.stringify(ov));
+  await ctx.close();
+});
+
+// The last thing on the Help page's list with no test behind it. It needs two
+// budget years to mean anything, which is why the shared fixture — one year —
+// never exercised it.
+await test('budget: the year-over-year comparison lines this year up against last', async () => {
+  const twoYears = (t) => t
+    .replace(`yearConfigs: [{ year: ${FIXTURE_YEAR}, openingBalance: 1250000 }]`,
+      `yearConfigs: [{ year: ${FIXTURE_YEAR - 1}, openingBalance: 900000 }, `
+      + `{ year: ${FIXTURE_YEAR}, openingBalance: 1250000 }]`)
+    // Something that runs through both years, so the two columns have
+    // something to compare rather than reporting an empty prior year.
+    .replace('const payload = {', `entries.push({ id: 9920, desc: 'Long Running Rent', type: 'expense',
+      amount: 140000, category: 'Housing', repeats: true, recurUnit: 'month', recurEvery: 1,
+      startDate: '${FIXTURE_YEAR - 1}-01-05', notes: '' }); const payload = {`);
+  const { ctx, page } = await ctxPage({ stub: twoYears });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  const toggle = page.getByRole('button', { name: new RegExp('Compare ' + (FIXTURE_YEAR - 1)) });
+  if (await toggle.count() === 0) throw new Error('no year-over-year toggle with a previous year configured');
+  if (await toggle.first().getAttribute('aria-pressed') !== 'false') throw new Error('it starts switched on');
+  await toggle.first().click();
+  await page.waitForTimeout(900);
+  if (await toggle.first().getAttribute('aria-pressed') !== 'true') throw new Error('the toggle did not turn on');
+
+  const card = page.locator('.yoy-card');
+  if (await card.count() === 0) throw new Error('no comparison appeared');
+  const text = (await card.innerText()).replace(/\s+/g, ' ');
+  for (const want of [String(FIXTURE_YEAR), String(FIXTURE_YEAR - 1), 'Long Running Rent']) {
+    if (!text.includes(want)) throw new Error('the comparison does not mention ' + want + ': ' + text.slice(0, 200));
+  }
+  // An entry that only exists this year has nothing to compare against, and
+  // the table says so rather than showing it as a change from zero.
+  if (!/NEW/.test(text)) throw new Error('an entry with no counterpart last year is not marked: ' + text.slice(0, 200));
+  await ctx.close();
+});
+
+await test('keyboard: the arrow keys step through the budget months', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  const month = () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('cf_budgetMonth')); } catch { return null; } });
+  // Land on a known month first. The arrows clamp at either end of the year,
+  // so starting from "whatever month it is today" makes this test fail every
+  // December for a reason that has nothing to do with the arrows.
+  await page.getByRole('button', { name: /^Mar$/ }).click();
+  await page.waitForTimeout(500);
+  const start = await month();
+  if (start !== 2) throw new Error('clicking Mar did not select March: ' + start);
+  // Clicking a month pill leaves focus on it, and the pill strip is a roving
+  // tab group that swallows the arrows to move focus between pills. That is
+  // deliberate — one press should not both move focus and change the month —
+  // so step off the strip before testing the global shortcut.
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(500);
+  if (await month() !== start + 1) throw new Error('→ did not move forward a month from ' + start);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(500);
+  if (await month() !== start) throw new Error('← did not come back');
+  await ctx.close();
+});
+
+// "Reset Local Cache" is a repair tool: it drops this device's copy of the
+// household and pulls it again from Supabase. It used to sweep every cf_ key,
+// which took things that are the *device's* and that no reload can bring back
+// — the browser-held Anthropic key (the AI features then quietly stop working),
+// the WebAuthn credential (biometric unlock silently unenrols), the
+// notification hour, the app-lock timeout and the remembered sign-in email.
+// None of that is named in the dialog, and none of it is cached household data.
+await test('settings: resetting the local cache keeps what belongs to the device', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/danger', { waitUntil: 'load' });
+  await settled(page);
+  // Seeded through the page rather than an init script: the reset ends in a
+  // reload, and an init script would run again and put them straight back —
+  // which is how this looked like it passed the first time it was written.
+  await page.evaluate(() => {
+    localStorage.setItem('cf_ai_key', JSON.stringify('sk-ant-test'));
+    localStorage.setItem('cf_webauthn_u-demo', 'credential-blob');
+    localStorage.setItem('cf_saved_email', 'demo@example.invalid');
+    // A sentinel in the household cache. If the reset does its job this is
+    // gone and the fixture's own entries are back, fetched fresh.
+    localStorage.setItem('cf_entries', JSON.stringify([{ id: 'sentinel', desc: 'Stale Cached Entry',
+      type: 'expense', amount: 100, category: 'Housing', repeats: false, recurUnit: 'month',
+      recurEvery: 1, startDate: '2026-01-01', notes: '' }]));
+  });
+
+  await page.getByRole('button', { name: /Reset Local Cache/ }).click();
+  await page.waitForTimeout(500);
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'load', timeout: 15000 }).catch(() => {}),
+    page.getByRole('button', { name: /Reset Everything/ }).click(),
+  ]);
+  await page.waitForTimeout(2500);
+
+  const after = await page.evaluate(() => ({
+    ai: localStorage.getItem('cf_ai_key'),
+    webauthn: localStorage.getItem('cf_webauthn_u-demo'),
+    email: localStorage.getItem('cf_saved_email'),
+    entries: (JSON.parse(localStorage.getItem('cf_entries') || '[]')).map((e) => e.id),
+  }));
+  const lost = Object.entries({ ai: after.ai, webauthn: after.webauthn, email: after.email })
+    .filter(([, v]) => v == null).map(([k]) => k);
+  if (lost.length) throw new Error("the reset took this device's own settings: " + lost.join(', '));
+  // And it still does the job it exists for: the stale cache is gone and the
+  // household came back from the cloud.
+  if (after.entries.includes('sentinel')) throw new Error('the stale cached entry survived the reset');
+  if (!after.entries.length) throw new Error('nothing was re-fetched after the reset');
+  await ctx.close();
+});
+
 await browser.close();
 server.close();
 

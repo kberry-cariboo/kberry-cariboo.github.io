@@ -705,7 +705,8 @@ const RUNWAY_DAYS = 90;
     goal: "Goal",
     debt: "Debt",
     year: "Year",
-    account: "Account"
+    account: "Account",
+    category: "Category"
   };
   function parseTabHash() {
     let raw = "";
