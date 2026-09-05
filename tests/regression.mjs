@@ -131,7 +131,12 @@ let lastPage = null;
 // screenshot a failure leaves behind — hence the slug rather than the old
 // first-word (i.e. the test code) filename.
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70);
+// One argument narrows the run to the tests whose name contains it, so a
+// one-line fix does not cost a full 160-test pass. No argument runs everything,
+// which is what CI does.
+const ONLY = process.argv[2] || '';
 async function test(name, fn) {
+  if (ONLY && !name.toLowerCase().includes(ONLY.toLowerCase())) return;
   const errBefore = pageErrors.length;
   try {
     await fn();
@@ -5496,6 +5501,94 @@ await test('settings: resetting the local cache keeps what belongs to the device
   await ctx.close();
 });
 
+// Rollover ("envelope carry") is the one number on Budget vs Actual that is
+// not read straight out of the targets table: for an opted-in category, every
+// earlier month's unspent target this year is added to this month's, floored
+// at zero. Nothing tested it, so the whole carry loop could have been deleted
+// without a failure.
+await test('budget: an envelope category carries its unspent target forward', async () => {
+  // Utilities is budgeted 290/month and costs 280/month (Hydro & gas 185 +
+  // Internet 95), so it banks 10 a month. By March two months have banked:
+  // the target reads 310, and the row says so rather than silently inflating.
+  const optIn = (t) => t.replace('const session =', "budgetTargets._rollover = { Utilities: true };\n  const session =");
+  const { ctx, page } = await ctxPage({ stub: optIn });
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await settled(page);
+  await page.getByRole('button', { name: /^Mar$/ }).click();
+  await page.waitForTimeout(600);
+  const row = page.locator('.bva-row', { hasText: 'Utilities' }).first();
+  await row.waitFor();
+  const target = (await row.locator('.bva-target').innerText()).replace(/[^0-9.]/g, '');
+  if (target !== '310.00') throw new Error('March Utilities target is ' + target + ', not 310.00 (290 + two months of 10 carried)');
+  const note = await row.locator('.carry-note').innerText();
+  if (!/\$?20\.00/.test(note)) throw new Error('the row does not say what was carried: ' + JSON.stringify(note));
+  // A category that never opted in must not carry — otherwise "rollover" is
+  // just a label on behaviour every category already had.
+  const food = page.locator('.bva-row', { hasText: 'Food' }).first();
+  if (await food.locator('.carry-note').count() > 0) throw new Error('Food carried a balance without being opted in');
+  // January is the first month, so there is nothing behind it to carry.
+  await page.getByRole('button', { name: /^Jan$/ }).click();
+  await page.waitForTimeout(500);
+  const janTarget = (await page.locator('.bva-row', { hasText: 'Utilities' }).first().locator('.bva-target').innerText()).replace(/[^0-9.]/g, '');
+  if (janTarget !== '290.00') throw new Error('January Utilities target is ' + janTarget + ', not the plain 290.00');
+  await ctx.close();
+});
+
+// "Upcoming — Next 7 Days" shows at most six rows. The count beside the
+// heading used to be that shown length, so a busy week read "6 events" while
+// hiding the rest — on the one card whose job is that nothing surprises you.
+await test('dashboard: the next-7-days count is the real total, not the six it shows', async () => {
+  const now = FAKE_TODAY || new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // Eight one-offs across the coming week, so the list must truncate whatever
+  // the shared household happens to have due at the time the suite runs.
+  const extra = [];
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + (i % 7));
+    extra.push({ id: 9100 + i, desc: 'QA upcoming ' + i, type: 'expense', amount: 1100 + i,
+      category: 'Personal', repeats: false, startDate: iso(d), notes: '' });
+  }
+  const busyWeek = (t) => t.replace('const session =',
+    'entries.push(...' + JSON.stringify(extra) + ');\n  const session =');
+  const { ctx, page } = await ctxPage({ stub: busyWeek });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const card = page.locator('.upcoming-header-row').first();
+  await card.waitFor();
+  const claimed = parseInt((await page.locator('.upcoming-count').first().innerText()).replace(/\D/g, ''), 10);
+  const shown = await page.locator('.upcoming-desktop-row').count();
+  if (shown !== 6) throw new Error('the card shows ' + shown + ' rows, not the six it caps at');
+  if (claimed <= shown) throw new Error('the heading says "' + claimed + ' events" while ' + shown + ' rows are shown and at least 8 are due');
+  const more = await page.locator('.upcoming-more-note').innerText();
+  const hidden = parseInt((more.match(/\+\s*(\d+)\s+more/) || [])[1], 10);
+  if (hidden !== claimed - shown) throw new Error('the footer accounts for ' + hidden + ' hidden events, but ' + (claimed - shown) + ' are missing from the card');
+  await ctx.close();
+});
+
+// The four headline numbers each carry a sparkline of the year's shape. They
+// are drawn from `summaries`, so a tile whose sparkline is missing or flat
+// means the tile is reading a different year than the number beside it.
+await test('dashboard: each headline number has a sparkline of the twelve months behind it', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const tiles = page.locator('.kpi-tile');
+  const n = await tiles.count();
+  if (n !== 4) throw new Error('expected four headline tiles, found ' + n);
+  for (let i = 0; i < n; i++) {
+    const label = (await tiles.nth(i).locator('.lbl').innerText()).trim();
+    const svg = tiles.nth(i).locator('svg.sparkline-svg');
+    if (await svg.count() === 0) throw new Error('"' + label + '" has no sparkline');
+    const d = await svg.locator('path').last().getAttribute('d');
+    const pts = (d || '').trim().split(/\s+/);
+    if (pts.length !== 12) throw new Error('"' + label + '" plots ' + pts.length + ' points, not the twelve months');
+    const ys = pts.map((p) => parseFloat(p.split(',')[1]));
+    if (new Set(ys.map((y) => y.toFixed(1))).size < 2) throw new Error('"' + label + '" draws a flat line — it is not reading the monthly figures');
+  }
+  await ctx.close();
+});
+
 await browser.close();
 server.close();
 
@@ -5505,7 +5598,7 @@ for (const r of results) {
   console.log((r.ok ? 'PASS ' : 'FAIL ') + r.name + (r.detail ? '  → ' + r.detail : ''));
   r.ok ? pass++ : fail++;
 }
-console.log(`\n${pass}/${results.length} passed, ${fail} failed`);
+console.log(`\n${pass}/${results.length} passed, ${fail} failed` + (ONLY ? ` (filtered on "${ONLY}")` : ''));
 // Repeat the failures under the count: on a full run the PASS lines scroll the
 // interesting ones off the top of a CI log, and "1 failed" on its own says
 // nothing about what broke.
