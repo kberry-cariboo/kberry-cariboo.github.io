@@ -5589,6 +5589,217 @@ await test('dashboard: each headline number has a sparkline of the twelve months
   await ctx.close();
 });
 
+// The second coverage sweep came off the app itself rather than the Help page:
+// every named, visible control on every route at both widths, minus every name
+// any test mentions. Sixty were left. Most were navigation the layout sweep
+// already walks; these are the ones with behaviour behind them.
+
+// Customize is how a household decides what Today is. Only its Escape key was
+// tested — not that unticking a panel takes it off the page, and not that the
+// choice survives, which is the part that is a household field and syncs.
+await test('dashboard: unticking a panel in Customize takes it off Today, and re-ticking brings it back', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  if (await page.locator('.kpi-tile').count() !== 4) throw new Error('the KPI tiles are not on Today to begin with');
+  await page.getByRole('button', { name: /Customize/ }).first().click();
+  await page.locator('.customize-list').waitFor();
+  const row = page.locator('.customize-item', { hasText: 'KPI tiles' }).first();
+  await row.locator('input[type=checkbox]').uncheck();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.waitForTimeout(700);
+  if (await page.locator('.kpi-tile').count() !== 0) throw new Error('the tiles are still on the page after being unticked');
+  // The choice is a household field, so what makes it stick is that it is
+  // written and then synced. This asserts the write; that the field reaches
+  // Supabase is tests/payload-fields.mjs and the cloud-sync suite. A reload
+  // cannot show it here — the stub answers every load_household with the same
+  // fixed payload, so a reload restores the fixture, not the household.
+  const hidden = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('cf_dash_hidden')); } catch { return null; } });
+  if (!hidden || hidden.kpis !== true) throw new Error('the choice was not written to cf_dash_hidden: ' + JSON.stringify(hidden));
+  // And it is a choice, not a one-way door.
+  await page.getByRole('button', { name: /Customize/ }).first().click();
+  await page.locator('.customize-list').waitFor();
+  await page.locator('.customize-item', { hasText: 'KPI tiles' }).first().locator('input[type=checkbox]').check();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.waitForTimeout(700);
+  if (await page.locator('.kpi-tile').count() !== 4) throw new Error('re-ticking did not bring the tiles back');
+  await ctx.close();
+});
+
+await test('dashboard: Customize reorders the panels, and the order is what Today renders', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  await page.getByRole('button', { name: /Customize/ }).first().click();
+  await page.locator('.customize-list').waitFor();
+  const labels = () => page.locator('.customize-item .customize-label').allInnerTexts();
+  const before = await labels();
+  // The second panel moved above the first: the one move whose result cannot
+  // be confused with the default order.
+  await page.locator('.customize-item').nth(1).getByRole('button', { name: 'Move up' }).click();
+  await page.waitForTimeout(400);
+  const after = await labels();
+  if (after[0] !== before[1] || after[1] !== before[0]) {
+    throw new Error('Move up did not swap the first two: ' + JSON.stringify(before.slice(0, 2)) + ' -> ' + JSON.stringify(after.slice(0, 2)));
+  }
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.waitForTimeout(600);
+  const order = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('cf_dash_order')); } catch { return null; } });
+  if (!Array.isArray(order) || order[0] !== 'balanceToday') {
+    throw new Error('cf_dash_order does not lead with the panel that was moved up: ' + JSON.stringify(order && order.slice(0, 3)));
+  }
+  // Reopening reads the stored order back rather than the default one. (Not a
+  // reload: the stub answers every load with the same fixture — see the test
+  // above.)
+  await page.getByRole('button', { name: /Customize/ }).first().click();
+  await page.locator('.customize-list').waitFor();
+  const reopened = await labels();
+  if (reopened[0] !== after[0]) throw new Error('reopening Customize shows ' + reopened[0] + ' on top again, not the panel that was moved up');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await ctx.close();
+});
+
+// Selecting rows and acting on all of them at once writes `completed`, which
+// is a household field. Nothing drove it.
+await test('flow: selecting every row and marking the month paid marks all of them, and clearing lets go', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  const paidCount = () => page.evaluate(() => {
+    try { return Object.values(JSON.parse(localStorage.getItem('cf_completed') || '{}')).filter(Boolean).length; } catch { return -1; }
+  });
+  const before = await paidCount();
+  const rows = await page.locator('tr.budget-tr, .ledger-row').count();
+  await page.locator('[aria-label="Select all rows"]').first().click();
+  await page.waitForTimeout(400);
+  const markPaid = page.getByRole('button', { name: /Mark paid/ }).first();
+  if (await markPaid.count() === 0) throw new Error('selecting every row offers no bulk action');
+  await markPaid.click();
+  await page.waitForTimeout(800);
+  const after = await paidCount();
+  if (after <= before) throw new Error('marking the month paid marked nothing (' + before + ' -> ' + after + ')');
+  if (rows > 0 && after - before < 2) throw new Error('a bulk action over ' + rows + ' rows marked only ' + (after - before));
+  // Clearing the selection puts the bulk bar away without undoing the work.
+  const clear = page.getByRole('button', { name: 'Clear selection' }).first();
+  if (await clear.count() > 0) {
+    await clear.click();
+    await page.waitForTimeout(500);
+    if (await page.getByRole('button', { name: /Mark paid/ }).count() > 0) throw new Error('the bulk bar is still up after clearing the selection');
+    if (await paidCount() !== after) throw new Error('clearing the selection unmarked what was just marked');
+  }
+  await ctx.close();
+});
+
+await test('flow: the month arrows either side of the strip step a month at a time', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  const month = () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('cf_budgetMonth')); } catch { return null; } });
+  // June: far enough from either end that both arrows have somewhere to go in
+  // any month of the year the suite is run in.
+  await page.getByRole('button', { name: /^Jun$/ }).click();
+  await page.waitForTimeout(500);
+  if (await month() !== 5) throw new Error('clicking Jun did not select June');
+  await page.getByRole('button', { name: 'Next month' }).first().click();
+  await page.waitForTimeout(500);
+  if (await month() !== 6) throw new Error('"Next month" did not move to July');
+  await page.getByRole('button', { name: 'Previous month' }).first().click();
+  await page.waitForTimeout(500);
+  if (await month() !== 5) throw new Error('"Previous month" did not come back to June');
+  await ctx.close();
+});
+
+// The first thing a keyboard reaches on every page, and the one control whose
+// whole job is to be invisible until it is needed — so nothing would ever
+// notice it silently pointing at an id that no longer exists.
+await test('a11y: the skip link is first to the keyboard and lands on the main content', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  // Blurring is not enough: something on Today takes focus on desktop, and a
+  // blur leaves the sequential-focus starting point where that element was, so
+  // the first Tab resumes from the middle of the page. Focusing the body moves
+  // the starting point to the top, which is where a keyboard user arriving on
+  // the page actually starts.
+  await page.evaluate(() => {
+    document.body.setAttribute('tabindex', '-1');
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  });
+  await page.keyboard.press('Tab');
+  const first = await page.evaluate(() => (document.activeElement.innerText || '').trim());
+  if (!/skip to content/i.test(first)) throw new Error('the first tab stop is "' + first + '", not the skip link');
+  const href = await page.evaluate(() => document.activeElement.getAttribute('href'));
+  const target = await page.evaluate((h) => !!document.querySelector(h), href);
+  if (!target) throw new Error('the skip link points at ' + href + ', which is not on the page');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  const landed = await page.evaluate((h) => {
+    const el = document.querySelector(h);
+    return !!el && (document.activeElement === el || el.contains(document.activeElement));
+  }, href);
+  if (!landed) throw new Error('following the skip link did not move focus into ' + href);
+  // "#main-content" is not a route, and this app routes on the hash. The router
+  // ignores it by design and leaves it in the address bar — but it used to
+  // ignore it by claiming its guard, which then swallowed the *next* real tab
+  // change's hash write and left the URL stuck. So: the view does not move, and
+  // the next navigation still writes its own route.
+  if (!await page.locator('.kpi-tile').count()) throw new Error('following the skip link navigated away from Today');
+  await page.getByRole('button', { name: 'Plan', exact: true }).first().click();
+  await page.waitForTimeout(700);
+  const hash = await page.evaluate(() => location.hash);
+  if (!/^#\/plan/.test(hash)) throw new Error('after the skip link, the next navigation left the URL on ' + hash);
+  await ctx.close();
+});
+
+await test('years: making another year the active one switches what every page is showing', async () => {
+  const { ctx, page } = await ctxPage({ stub: spansYearEnd });
+  await page.goto(BASE + '#/you/years', { waitUntil: 'load' });
+  await settled(page);
+  const rows = page.locator('main').getByText(String(FIXTURE_YEAR + 1), { exact: true });
+  if (await rows.count() === 0) throw new Error('the second budget year is not listed');
+  // The year in use says "Active"; every other year offers "Switch". Clicking
+  // the badge on the year you are already in would be a no-op, so the switch
+  // is the button that has to work.
+  const switchBtn = page.getByRole('button', { name: /^Switch$/ });
+  if (await switchBtn.count() === 0) throw new Error('no year offers to become the active one');
+  await switchBtn.last().click();
+  await page.waitForTimeout(800);
+  const year = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('cf_activeYear')); } catch { return null; } });
+  if (year !== FIXTURE_YEAR + 1) throw new Error('the active year is still ' + year);
+  const pressed = await page.evaluate((y) => {
+    const b = document.querySelector(`[aria-label="Budget year ${y}"]`);
+    return b ? b.getAttribute('aria-pressed') : 'no pill';
+  }, FIXTURE_YEAR + 1);
+  if (pressed !== 'true') throw new Error('the year pill in the header does not show the new year as current: ' + pressed);
+  await ctx.close();
+});
+
+await test('entries on a phone: the type pills narrow the list to income or to expenses', async () => {
+  const { ctx, page } = await ctxPage({ touch: true });
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const names = async () => (await page.locator('.row-menu-btn').evaluateAll(
+    (els) => els.filter((e) => e.getClientRects().length).map((e) => (e.getAttribute('aria-label') || '').replace(/ actions$/, ''))));
+  const all = await names();
+  if (all.length < 5) throw new Error('the entries list is too short to filter meaningfully: ' + all.length);
+  await page.getByRole('button', { name: 'Income', exact: true }).first().click();
+  await page.waitForTimeout(600);
+  const income = await names();
+  if (income.length === 0 || income.length >= all.length) throw new Error('"Income" did not narrow the list (' + all.length + ' -> ' + income.length + ')');
+  if (income.some((n) => /^Rent$/.test(n))) throw new Error('"Income" still lists Rent, which is an expense');
+  if (!income.some((n) => /Salary/.test(n))) throw new Error('"Income" dropped the salary');
+  await page.getByRole('button', { name: 'Expenses', exact: true }).first().click();
+  await page.waitForTimeout(600);
+  const expenses = await names();
+  if (expenses.some((n) => /Salary/.test(n))) throw new Error('"Expenses" still lists the salary');
+  if (!expenses.some((n) => /^Rent$/.test(n))) throw new Error('"Expenses" dropped the rent');
+  await page.getByRole('button', { name: 'All Types', exact: true }).first().click();
+  await page.waitForTimeout(600);
+  if ((await names()).length !== all.length) throw new Error('"All Types" did not put every entry back');
+  await ctx.close();
+});
+
 await browser.close();
 server.close();
 
