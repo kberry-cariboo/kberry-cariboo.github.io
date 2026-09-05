@@ -1532,6 +1532,7 @@
         .upcoming-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
         .upcoming-hdr-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
         .upcoming-count{font-size:11px;color:var(--textLt);}
+        .upcoming-more-note{margin-top:10px;font-size:11px;color:var(--textLt);text-align:center;}
         .upcoming-list{display:flex;flex-direction:column;gap:8px;}
         .upcoming-desktop-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap;}
         .upcoming-desktop-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;}
@@ -1665,7 +1666,6 @@
         .runway-bar{display:flex;align-items:flex-end;height:30px;border-radius:7px;overflow:hidden;
           border:1px solid var(--border);background:var(--bgCard);}
         .runway-seg{display:block;flex:1 1 0;min-width:0;height:100%;}
-        .runway-bar-track{position:relative;border-radius:7px;background:var(--stripe);overflow:hidden;}
         .runway-scale{display:flex;justify-content:space-between;margin-top:6px;
           font-size:11px;color:var(--textLt);}
         .runway-note{margin-top:8px;font-size:12.5px;color:var(--textMid);}

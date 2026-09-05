@@ -134,6 +134,57 @@ their own fixtures and pin their own clocks, so they do not move with
 `FIXTURE_YEAR`, and the shared household's paydays land differently in a
 different year.
 
+### What the browser suite covers
+
+`tests/regression.mjs` is the named suite: one test per behaviour, each saying
+in its own name what it is protecting. When adding a feature, add a test that
+drives it the way a person would — through the controls, not through the state
+behind them.
+
+The list of what to cover is not a matter of taste: the Help page in
+`src/components/help.js` *is* the app's statement of what it does, and a feature
+described there with no test behind it is a gap. That is how ten of them were
+found at once — templates, duplicating an entry, the schedule picker, "Ends on",
+rollover, resetting an occurrence, the PDF button, "Reset Targets to Actuals",
+receipts and renaming a category, none of which any test had ever driven. One of
+the ten was broken.
+
+A second sweep, from the other direction, catches what the Help page does not
+name: enumerate every named, visible control on every route at both widths, drop
+the ones whose names are built from the household's own data (a row's
+description, a calendar day), and subtract every name any test mentions. Sixty
+were left, most of them navigation the layout sweep already walks; six had
+behaviour behind them — Customize, bulk select, the month arrows, the skip link,
+the active-year switch and the phone's type pills — and none had a test. The two
+sweeps disagree about what they find, which is the point of running both.
+
+`node tests/regression.mjs <substring>` runs only the tests whose name contains
+it. The whole suite is a hundred and sixty-seven browser tests and about twenty
+minutes, so a one-line fix should not cost a full pass. No argument runs
+everything, which is what CI does, and the count line says when a run was
+filtered so a narrowed run cannot be read as a green one.
+
+Four traps are worth knowing before writing a new test, because each has cost
+an hour:
+
+- `input[type=text]` matches nothing here. The attribute is absent and `text`
+  is only the DOM default, so use the class (`input.settings-input`) or the
+  role.
+- A class like `.row-menu-btn` matches the phone *and* desktop copies of a row,
+  one of which is `display:none` at any width. `.first()` therefore hits an
+  element that cannot be clicked. Prefer the accessible name — the app labels
+  these properly (`Edit Utilities budget target`) — or `.locator('visible=true')`.
+- Blurring does not get you to the top of the page. Something on Today takes
+  focus on desktop, and a blur leaves the sequential-focus starting point where
+  that element was, so the first `Tab` resumes from the middle. Focus the body
+  (`tabindex="-1"`, `.focus()`, remove the attribute) to move the starting point
+  back.
+- Nothing a household owns survives `page.reload()` in this suite. The stub
+  answers every `load_household` with the same fixed payload, so a reload
+  restores the fixture, not what the test just changed. Assert the write, and
+  leave "it reaches Supabase" to `tests/payload-fields.mjs` and the cloud-sync
+  suite.
+
 ### The layout sweep
 
 `tests/regression.mjs` goes where a test author thought to send it.
