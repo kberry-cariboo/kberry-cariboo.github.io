@@ -115,8 +115,8 @@ jobs:
       # against the new version before you do — see README, "Making a change".
       - name: Install Playwright
         run: |
-          npm install -g playwright@1.62.1
-          npx playwright@1.62.1 install --with-deps chromium
+          npm install -g playwright@1.63.0
+          npx playwright@1.63.0 install --with-deps chromium
 
       # Needs neither a browser nor a database: it reads HOUSEHOLD_FIELDS out of
       # src/lib/household-sync.js and cf_payload_keys() out of

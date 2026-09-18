@@ -249,7 +249,7 @@ CF_TEST_PG=1 node tests/sync-sql.mjs
 ```
 
 Playwright is resolved from a local install, `PLAYWRIGHT_LIB`, or the global
-npm root. **CI pins the version** (`playwright@1.62.1` in
+npm root. **CI pins the version** (`playwright@1.63.0` in
 `.github/workflows/build.yml`); it used to install whatever npm had published
 that morning, which is how a suite passing locally on 1.56.1 threw on the
 runner when `page.accessibility` was removed upstream. Your global install can
@@ -258,7 +258,7 @@ browser test fails in CI and not here — run the suite against the pinned one:
 
 ```bash
 mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@1.62.1
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@1.63.0
 cd -   # back to the repo
 PLAYWRIGHT_LIB=/tmp/pw/node_modules/playwright/index.mjs \
   CHROMIUM_PATH=/opt/pw-browsers/chromium node tests/regression.mjs
@@ -310,8 +310,8 @@ where those files came from. What's in there now:
 
 | file | package | version |
 | --- | --- | --- |
-| `react-bundle.js` | `react` + `react-dom` | 19.2.8 |
-| `supabase-client.js` | `@supabase/supabase-js` | 2.112.4 |
+| `react-bundle.js` | `react` + `react-dom` | 19.3.0 |
+| `supabase-client.js` | `@supabase/supabase-js` | 2.116.0 |
 | `mini-recharts.js` | — | hand-written, no upstream |
 
 Keep that table current when you regenerate one — a minified bundle is a poor
