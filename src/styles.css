@@ -1636,17 +1636,94 @@
            dropped; the columns just stop reserving desktop padding, which is
            enough to land all four inside 320px. */
         .yoyd-inline-amts{display:none;}
+        .yoyd-bridge-row--compact{display:none;}
+        .yoyd-table-wrap{margin-top:0;}
+        .yoyd-showall-row{display:flex;justify-content:center;margin-top:10px;}
+        .yoyd-done-row{display:flex;justify-content:flex-end;margin-top:18px;}
+        /* A long comparison outruns the sheet, and the way out was at the far
+           end of it. Sticky, so Done is on screen from the first row.
+           Deliberately not .oem-footer-row: that one hangs on a negative
+           bottom margin, which is right for a form whose last field carries
+           its own margin and wrong here — it overlapped the Net surplus row,
+           the one line the whole sheet is arithmetic towards. This reserves
+           its own height in the flow instead, so nothing is ever underneath
+           it at the end of the scroll. */
+        @media(pointer:coarse){
+          .yoyd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
+            border-top:1px solid var(--border);
+            margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+          .yoy-detail-card{padding-bottom:0!important;}
+        }
+        .yoyd-tr--other td{color:var(--textMid);font-style:italic;}
+        .yoyd-tr--other .yoyd-name{font-style:normal;}
+        /* Fixed layout: the widths come from here, not from the longest
+           description in the household. The name column takes what is left,
+           and its cell ellipsizes rather than widening the table — which is
+           what used to push the Effect column out of the sheet. Percentages
+           rather than pixels so the same four columns work in a 600px sheet
+           and a 360px one. */
+        .yoy-detail-card .yoy-table{table-layout:fixed;width:100%;min-width:0;}
+        .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:8px 8px;}
+        .yoyd-col-name{width:auto;}
+        .yoyd-col-year{width:20%;}
+        .yoyd-col-effect{width:21%;}
+        /* The name is the only thing allowed to be cut short. An ellipsised
+           description is still a description; an ellipsised "$11,200.…" is a
+           number the reader cannot use, and this sheet exists to be checked
+           with mental arithmetic. So the money columns are sized to hold a
+           six-figure household outright and are left to overflow rather than
+           truncate beyond that, and the name column absorbs the difference. */
+        .yoy-detail-card .yoy-td-desc{max-width:none;}
+        .yoy-detail-card .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+        .yoy-detail-card .yoy-num{overflow:visible;white-space:nowrap;}
         @media(max-width:560px){
           .yoy-detail-card{padding:20px 16px;}
-          .yoy-detail-card .yoy-table{min-width:0;}
-          .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:8px 6px;}
-          .yoy-detail-card .yoy-td-desc{max-width:none;}
-          /* The two year columns become a line under the name — see the
-             comment on .yoyd-inline-amts in dashboard.js. Nothing is dropped,
-             it is the same two figures in less width. */
+          .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:8px 0;}
+          /* The reflow. Each row stops being four columns and becomes a
+             two-column grid: everything about the line on the left, its effect
+             on the right. `minmax(0,1fr)` is what makes it safe — the name
+             column is allowed to shrink to nothing and ellipsize, so the
+             effect column, sized to its own content, can never be pushed off
+             the screen the way the table's fourth column was. The two year
+             columns fold into the line under the name; nothing is dropped.
+             The roles in dashboard.js are what keep this a table to a screen
+             reader once its display changes. */
+          .yoy-detail-card .yoy-table,
+          .yoy-detail-card .yoy-table thead,
+          .yoy-detail-card .yoy-table tbody,
+          .yoy-detail-card .yoy-table tfoot{display:block;}
+          .yoy-detail-card colgroup{display:none;}
+          .yoy-detail-card .yoy-tr,
+          .yoy-detail-card .yoy-foot,
+          .yoy-detail-card .thead-row{display:grid;grid-template-columns:minmax(0,1fr) auto;
+            align-items:center;column-gap:10px;padding:8px 10px;}
+          .yoy-detail-card .thead-row th{padding:0;}
+          .yoy-detail-card .yoy-tr td,.yoy-detail-card .yoy-foot td{padding:0;border:none;}
           .yoyd-year-col{display:none;}
           .yoyd-inline-amts{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
-          .yoyd-child-td{padding-left:18px!important;}
+          .yoy-detail-card .yoy-td-desc{white-space:normal;}
+          .yoy-detail-card .yoyd-effect-td{text-align:right;}
+          .yoyd-child-td{padding-left:16px!important;}
+          /* The bar sat behind the figure, in a cell as wide as the sheet. In
+             a two-column grid that cell is only as wide as its number, so the
+             same bar reads as a tick rather than a magnitude. Anchored to the
+             row instead: its inline width is a percentage, so against the row
+             it becomes a full-width scale again, on its own line underneath.
+             The row reserves the height for it. */
+          .yoy-detail-card .yoy-tr{position:relative;padding-bottom:16px;}
+          /* The cell ellipsizes its figure, which means it also clips a child
+             trying to escape it — and the bar is now anchored to the row, not
+             the cell. It has to be let out. */
+          .yoy-detail-card .yoyd-effect-td{overflow:visible;position:static;}
+          /* max-width, because the inline width is a percentage of the row's
+             padding box and the bar is inset from its left edge — 100% plus a
+             10px offset is 10px of horizontal scroll on the widest row. */
+          .yoy-detail-card .yoyd-fill{top:auto;right:auto;left:10px;bottom:6px;height:3px;
+            border-radius:2px;max-width:calc(100% - 20px);}
+          .yoyd-bridge-row--compact{display:flex;}
+          .yoyd-bridge-row--wide{display:none;}
+          .yoyd-bridge-row{padding:9px 12px;}
+          .yoyd-intro{font-size:11px;margin-bottom:12px;}
         }
         @media (pointer:coarse){
           /* The cell's own 9px padding leaves the button ~25px tall. The halo
