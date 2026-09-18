@@ -170,12 +170,17 @@
     // year's open rows into a fresh comparison is a small, avoidable lie about
     // what you are looking at.
     const [yoyOpenRows, setYoyOpenRows] = useState({});
+    // Whether the list is showing every mover or the biggest few with the rest
+    // rolled up. Reset with the rows, for the same reason.
+    const [yoyShowAll, setYoyShowAll] = useState(false);
     const openYoyDetail = (year) => {
       setYoyOpenRows({});
+      setYoyShowAll(false);
       setYoyDetailYear(year);
     };
     const closeYoyDetail = () => {
       setYoyOpenRows({});
+      setYoyShowAll(false);
       setYoyDetailYear(null);
     };
     // Same bargain as Customize above: Escape closes it. It is a reading
@@ -400,10 +405,34 @@
         });
       });
       rows.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.name.localeCompare(b.name));
+      // A busy year moves twenty-five categories, and twenty-five rows is
+      // sixteen hundred pixels of scrolling on a phone before the way out.
+      // The eight biggest answer the question; the rest go into one row that
+      // carries their total, so the list still sums to the cell exactly — the
+      // whole property this sheet is built on. Everything is one tap away,
+      // and nothing is ever dropped.
+      const TOP_N = 8;
+      const shown = rows.slice(0, TOP_N);
+      const rest = rows.slice(TOP_N);
+      const restEffect = rest.reduce((a, r) => a + r.effect, 0);
+      const rolled = rest.length ? [...shown, {
+        kind: "other",
+        name: `All other movements`,
+        restCount: rest.length,
+        prev: rest.reduce((a, r) => a + r.prev, 0),
+        cur: rest.reduce((a, r) => a + r.cur, 0),
+        change: rest.reduce((a, r) => a + r.change, 0),
+        effect: roundMoney(restEffect),
+        children: []
+      }] : shown;
       return {
         cur,
         prev,
         rows,
+        rolled,
+        restCount: rest.length,
+        // Scaled to the largest single mover either way, so collapsing and
+        // expanding does not resize every bar under the reader.
         peak: rows.length ? Math.abs(rows[0].effect) : 0,
         incomeEffect: roundMoney(cur.income - prev.income),
         // Signed the way it lands on the surplus, like every row: expenses up
@@ -1018,7 +1047,18 @@
         // surplus. Four rows that add up in front of the reader, so the big
         // number at the bottom is arrived at rather than asserted.
         /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge" },
-          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row" },
+          // The opening and closing surplus, on one line. It replaces the two
+          // full rows below at narrow widths, where the bridge cost 212px
+          // before the reader reached a single driver — half the height, the
+          // same two numbers, and the two effect rows in between still add up
+          // between them.
+          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--compact" },
+            /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" }, "Net surplus"),
+            /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt" },
+              `${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`
+            )
+          ),
+          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--wide" },
             /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" }, `${yoyDetail.prev.year} net surplus`),
             /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt" }, fmt(yoyDetail.prev.surplus, true))
           ),
@@ -1032,7 +1072,7 @@
             ),
             /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt " + (r.effect > 0 ? "yoy-delta-pos" : r.effect < 0 ? "yoy-delta-neg" : "") }, fmt(r.effect, true))
           )),
-          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--total" },
+          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--total yoyd-bridge-row--wide" },
             /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" }, `${yoyDetail.cur.year} net surplus`),
             /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt" }, fmt(yoyDetail.cur.surplus, true))
           )
@@ -1044,23 +1084,52 @@
             text: "Effect is what that line did to the net surplus, and the list is sorted by it, biggest first. Income lifts the surplus, so earning more is a gain; spending does the opposite, so a category you spent less on is a gain too — which is why an expense's Effect carries the opposite sign to the direction it moved in. Every line adds up to the change in the table you came from, with nothing left out. A ▸ opens the entries behind a category."
           })
         ),
-        yoyDetail.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "yoyd-none" }, `Nothing moved. Every income source and expense category came to the same total in ${yoyDetail.cur.year} as in ${yoyDetail.prev.year}.`) : /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": `Lines that moved between ${yoyDetail.prev.year} and ${yoyDetail.cur.year}` },
-          /* @__PURE__ */ React.createElement("table", { className: "forecast-table yoy-table" },
-            /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" },
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-desc" }, "Line"),
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col" }, yoyDetail.prev.year),
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col" }, yoyDetail.cur.year),
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, "Effect")
+        yoyDetail.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "yoyd-none" }, `Nothing moved. Every income source and expense category came to the same total in ${yoyDetail.cur.year} as in ${yoyDetail.prev.year}.`) : /* @__PURE__ */ React.createElement("div", {
+          // Not .hscroll. That wrapper exists to give a too-wide table its own
+          // scrollport, and it brought a max-height with it — so the sheet
+          // scrolled, and the table scrolled inside it, and the sticky Done
+          // bar covered whatever the inner scroll happened to be showing. The
+          // table is fixed-layout now and never outruns its width, so there is
+          // nothing to scroll horizontally and no reason for a second
+          // scrollport: the sheet is the only thing that scrolls. Without
+          // scrolling there is nothing for tabIndex to do either.
+          className: "yoyd-table-wrap"
+        },
+          // A real table, and a fixed one. Auto layout sizes columns from
+          // their content, so `max-width` on a cell is a suggestion it is free
+          // to ignore: eleven movers with a long description wanted 581px of
+          // the 552px this sheet has, and the Effect column — the one the
+          // reader opened this for — was what went over the edge. Fixed layout
+          // takes the widths from the colgroup below instead, so a long name
+          // ellipsizes inside its cell rather than pushing the money out of
+          // the sheet, at every width and for any household.
+          //
+          // The roles are redundant while this is a table and are the point at
+          // narrow widths, where the CSS reflows it to a grid: changing an
+          // element's display drops the implicit table semantics from the
+          // accessibility tree, and these put them back.
+          /* @__PURE__ */ React.createElement("table", { className: "forecast-table yoy-table", role: "table" },
+            /* @__PURE__ */ React.createElement("colgroup", null,
+              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-name" }),
+              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-year" }),
+              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-year" }),
+              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-effect" })
+            ),
+            /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row", role: "row" },
+              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-desc", role: "columnheader" }, "Line"),
+              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col", role: "columnheader" }, yoyDetail.prev.year),
+              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col", role: "columnheader" }, yoyDetail.cur.year),
+              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num", role: "columnheader" }, "Effect")
             )),
-            /* @__PURE__ */ React.createElement("tbody", null, yoyDetail.rows.map((r) => {
+            /* @__PURE__ */ React.createElement("tbody", null, (yoyShowAll ? yoyDetail.rows : yoyDetail.rolled).map((r) => {
               const rowKey = r.kind + "|" + r.name;
               const open = !!yoyOpenRows[rowKey];
-              const kids = r.children || [];
+              const kids = r.kind === "other" ? [] : r.children || [];
               return /* @__PURE__ */ React.createElement(React.Fragment, { key: rowKey },
                 /* @__PURE__ */ React.createElement(
                   "tr",
-                  { className: "yoy-tr" },
-                  /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc" },
+                  { className: "yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : ""), role: "row" },
+                  /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", role: "cell" },
                     /* @__PURE__ */ React.createElement("div", { className: "yoyd-name-row" },
                       kids.length ? /* @__PURE__ */ React.createElement("button", {
                         type: "button",
@@ -1070,10 +1139,10 @@
                         onClick: () => setYoyOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [rowKey]: !prev[rowKey] }))
                       }, open ? "\u25BE" : "\u25B8") : /* @__PURE__ */ React.createElement("span", { className: "yoyd-expand-spacer", "aria-hidden": "true" }),
                       /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: r.name }, r.name),
-                      r.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
-                      r.cur === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Gone")
+                      r.kind !== "other" && r.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
+                      r.kind !== "other" && r.cur === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Gone")
                     ),
-                    /* @__PURE__ */ React.createElement("span", { className: "yoyd-kind" }, r.kind === "income" ? "Income" : "Expense", kids.length ? ` \u00b7 ${kids.length} moved` : ""),
+                    /* @__PURE__ */ React.createElement("span", { className: "yoyd-kind" }, r.kind === "other" ? `${r.restCount} smaller lines` : r.kind === "income" ? "Income" : "Expense", kids.length ? ` \u00b7 ${kids.length} moved` : ""),
                     // The two year columns, folded into the name cell. A phone
                     // is 361px of usable sheet and the four columns want 421 —
                     // and the one that would have gone over the edge is Effect,
@@ -1081,9 +1150,9 @@
                     // anything wider, where the columns themselves show.
                     /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-inline-amts" }, `${fmt(r.prev)} \u2192 ${fmt(r.cur)}`)
                   ),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col" }, fmt(r.prev)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col" }, fmt(r.cur)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-effect-td " + (r.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg") },
+                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(r.prev)),
+                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(r.cur)),
+                  /* @__PURE__ */ React.createElement("td", { role: "cell", className: "cf-text-mono-13 yoy-num yoyd-effect-td " + (r.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg") },
                     // A bar rather than a fifth number: the figure beside it
                     // already says how much, and what a reader wants from a
                     // sorted list is how far its top outruns the rest. Drawn
@@ -1100,8 +1169,8 @@
                 ),
                 open && kids.map((k) => /* @__PURE__ */ React.createElement(
                   "tr",
-                  { key: rowKey + "|" + k.name, className: "yoy-tr yoyd-child-tr" },
-                  /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc yoyd-child-td" },
+                  { key: rowKey + "|" + k.name, className: "yoy-tr yoyd-child-tr", role: "row" },
+                  /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc yoyd-child-td", role: "cell" },
                     /* @__PURE__ */ React.createElement("div", { className: "yoyd-name-row" },
                       /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: k.name }, k.name),
                       k.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
@@ -1109,24 +1178,34 @@
                     ),
                     /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-inline-amts" }, `${fmt(k.prev)} \u2192 ${fmt(k.cur)}`)
                   ),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col" }, fmt(k.prev)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col" }, fmt(k.cur)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + (k.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg") }, fmt(k.effect, true))
+                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(k.prev)),
+                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(k.cur)),
+                  /* @__PURE__ */ React.createElement("td", { role: "cell", className: "cf-text-mono-13 yoy-num yoyd-effect-td " + (k.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg") }, /* @__PURE__ */ React.createElement("span", { className: "yoyd-effect-val" }, fmt(k.effect, true)))
                 ))
               );
             })),
-            /* @__PURE__ */ React.createElement("tfoot", null, /* @__PURE__ */ React.createElement("tr", { className: "yoy-foot" },
-              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc" }, "Net surplus",
+            /* @__PURE__ */ React.createElement("tfoot", null, /* @__PURE__ */ React.createElement("tr", { className: "yoy-foot", role: "row" },
+              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", role: "cell" }, "Net surplus",
                 /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-inline-amts" }, `${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`)
               ),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col" }, fmt(yoyDetail.prev.surplus, true)),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col" }, fmt(yoyDetail.cur.surplus, true)),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + (yoyDetail.delta > 0 ? "yoy-delta-pos" : yoyDetail.delta < 0 ? "yoy-delta-neg" : ""), "data-yoyd-total": true }, fmt(yoyDetail.delta, true))
+              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(yoyDetail.prev.surplus, true)),
+              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(yoyDetail.cur.surplus, true)),
+              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + (yoyDetail.delta > 0 ? "yoy-delta-pos" : yoyDetail.delta < 0 ? "yoy-delta-neg" : ""), "data-yoyd-total": true, role: "cell" }, /* @__PURE__ */ React.createElement("span", { className: "yoyd-effect-val" }, fmt(yoyDetail.delta, true)))
             ))
           )
         ),
+        yoyDetail.restCount > 0 && /* @__PURE__ */ React.createElement("div", { className: "yoyd-showall-row" }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "cf-btn cf-btn--secondary cf-btn--sm",
+            "aria-expanded": yoyShowAll ? "true" : "false",
+            onClick: () => setYoyShowAll((v) => !v)
+          },
+          yoyShowAll ? `Show the ${yoyDetail.rolled.length - 1} biggest` : `Show all ${yoyDetail.rows.length} lines`
+        )),
         yoyDetail.hasTransfers && /* @__PURE__ */ React.createElement("div", { className: "yoyd-foot-note" }, "One of these years has transfers in it. A transfer is neither income nor an expense, so it moves the balance without touching the net surplus above — which is why none appear here."),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" }, /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("div", { className: "yoyd-done-row" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: closeYoyDetail,

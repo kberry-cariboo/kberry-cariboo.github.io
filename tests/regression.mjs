@@ -5711,6 +5711,9 @@ await test('dashboard: the year-over-year change opens onto the lines that drove
 
   const { groups, foot } = await read();
   if (groups.length < 3) throw new Error(`only ${groups.length} drivers listed for a year that moved`);
+  // The list is capped and the remainder rolled into one row, so what is on
+  // screen still has to sum to the cell — that is the whole point of rolling
+  // up rather than truncating. Both states are checked below.
   const summed = groups.reduce((a, g) => a + g.effect, 0);
   if (summed !== foot || foot !== cellTotal) {
     throw new Error(`the drivers do not reconcile: rows ${summed}, the modal's own total ${foot}, the cell it came from ${cellTotal}`);
@@ -5743,6 +5746,85 @@ await test('dashboard: the year-over-year change opens onto the lines that drove
   if (await page.locator('.yoyd-child-tr').count() !== 0) throw new Error('reopening the breakdown still has a category expanded');
   await ctx.close();
 });
+
+// Twice now this sheet has been shipped with the Effect column — the figure
+// the whole thing is built to show — pushed off the right edge: once on a
+// phone, once on a desktop with a long description in the household. Both
+// times it rendered fine against the sparse fixture and broke against a real
+// one, so this drives a household with eleven movers and a forty-character
+// description, and asserts the property rather than the appearance: nothing
+// in the sheet may overflow it sideways, at any width.
+//
+// It also pins the roll-up's arithmetic in both states. Collapsed, the eight
+// biggest plus "All other movements" must sum to the cell; expanded, all
+// eleven must sum to the same figure. A cap that did not carry its remainder
+// would pass the first and fail the second.
+const busyYear = JSON.stringify([
+  { id: 911, desc: 'Consulting retainer — Northwind Logistics', type: 'income', amount: 140000, category: 'Income', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-05-01`, recurEnd: `${FIXTURE_YEAR}-12-01`, notes: '' },
+  { id: 912, desc: 'Daycare', type: 'expense', amount: 90000, category: 'Childcare', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-02-01`, recurEnd: `${FIXTURE_YEAR}-11-01`, notes: '' },
+  { id: 913, desc: 'Home insurance premium', type: 'expense', amount: 18500, category: 'Insurance', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-03-01`, recurEnd: `${FIXTURE_YEAR}-08-01`, notes: '' },
+  { id: 914, desc: 'Vet bills', type: 'expense', amount: 24000, category: 'Farm / Animals', repeats: true, recurUnit: 'month', recurEvery: 3, startDate: `${FIXTURE_YEAR}-02-11`, notes: '' },
+  { id: 915, desc: 'Roof repair', type: 'expense', amount: 650000, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-08-03`, notes: '' },
+  { id: 916, desc: 'New laptop', type: 'expense', amount: 240000, category: 'Subscriptions', repeats: false, startDate: `${FIXTURE_YEAR}-10-03`, notes: '' },
+  { id: 917, desc: 'Transit pass', type: 'expense', amount: 14500, category: 'Transportation', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-01-02`, recurEnd: `${FIXTURE_YEAR}-07-02`, notes: '' }
+]);
+for (const [label, opts] of [['on a phone', { touch: true }], ['on a desktop', {}]]) {
+  await test(`dashboard: a busy year's breakdown fits the sheet ${label}, and the roll-up still adds up`, async () => {
+    const { ctx, page } = await ctxPage(Object.assign({
+      stub: (t) => spansYearEnd(t.replace('const payload = {', `entries.push(...${busyYear}); const payload = {`))
+    }, opts));
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
+    await settled(page);
+    const drill = page.locator('.yoy-drill-btn').first();
+    const cellTotal = Math.round(parseFloat((await drill.innerText()).replace(/[^0-9.-]/g, '')) * 100);
+    await drill.click();
+    await page.locator('.yoy-detail-card').waitFor();
+
+    // Nothing in the sheet may stick out of it, and the sheet may not stick
+    // out of the window. Measured rather than eyeballed, because the two
+    // times this broke it looked plausible in a screenshot of the sparse
+    // fixture.
+    const over = await page.evaluate(() => {
+      const card = document.querySelector('.yoy-detail-card');
+      const cr = card.getBoundingClientRect();
+      const out = [];
+      if (Math.round(cr.right) > document.documentElement.clientWidth) out.push('the sheet itself');
+      card.querySelectorAll('*').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width && (r.right > cr.right + 1 || r.left < cr.left - 1)) {
+          out.push(`${el.className || el.tagName} (${Math.round(r.left)}\u2013${Math.round(r.right)} vs sheet ${Math.round(cr.left)}\u2013${Math.round(cr.right)})`);
+        }
+      });
+      return { out: out.slice(0, 4), scroll: card.scrollWidth - card.clientWidth };
+    });
+    if (over.out.length) throw new Error(`the breakdown overflows its sheet ${label}: ` + over.out.join('; '));
+    if (over.scroll > 0) throw new Error(`the breakdown scrolls sideways ${label} by ${over.scroll}px`);
+
+    // No figure may be truncated. An ellipsised description is still a
+    // description; an ellipsised "$11,200.…" is a number nobody can check the
+    // arithmetic with, and checking the arithmetic is what this sheet is for.
+    const cut = await page.evaluate(() => [...document.querySelectorAll('.yoy-detail-card .yoy-num')]
+      .filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).textOverflow === 'ellipsis')
+      .map((el) => el.innerText.trim()).slice(0, 3));
+    if (cut.length) throw new Error('money is being truncated: ' + cut.join(', '));
+
+    const sum = () => page.evaluate(() => {
+      const num = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+      const rows = [...document.querySelectorAll('.yoy-detail-card tbody tr:not(.yoyd-child-tr)')];
+      return { n: rows.length, total: rows.reduce((a, tr) => a + num(tr.querySelector('td:last-child').innerText), 0) };
+    });
+    const collapsed = await sum();
+    if (collapsed.total !== cellTotal) throw new Error(`collapsed, ${collapsed.n} rows come to ${collapsed.total}, the cell says ${cellTotal}`);
+    const showAll = page.getByRole('button', { name: /Show all \d+ lines/ });
+    if (await showAll.count() === 0) throw new Error('a year with more movers than the cap offers no way to see them all');
+    await showAll.click();
+    await page.waitForTimeout(300);
+    const expanded = await sum();
+    if (expanded.n <= collapsed.n) throw new Error(`"Show all" listed ${expanded.n} rows, no more than the ${collapsed.n} already shown`);
+    if (expanded.total !== cellTotal) throw new Error(`expanded, ${expanded.n} rows come to ${expanded.total}, the cell says ${cellTotal}`);
+    await ctx.close();
+  });
+}
 
 // Selecting rows and acting on all of them at once writes `completed`, which
 // is a household field. Nothing drove it.
