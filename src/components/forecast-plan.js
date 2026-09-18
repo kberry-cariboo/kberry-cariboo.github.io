@@ -296,11 +296,22 @@
         // occurrence is worth on its own — see catMtdById.
         const mtd = catMtdById[ev.id] != null ? catMtdById[ev.id] : ev.amount;
         const pct = Math.round(mtd / target * 100);
-        if (pct <= 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, "\u2713"));
-        const color = pct <= 120 ? "var(--amberInk)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, pct, "%"));
+        // The overage, not the ratio. A column headed "vs Target" that shows a
+        // figure only once the target is passed is asked exactly one question
+        // — how far past — and "107%" makes the reader subtract to answer it,
+        // on a screen full of other numbers where a stray 107 reads as an
+        // amount. The Help page has always described this as "over its
+        // monthly target here, and by how much"; the cell was the one place
+        // that disagreed.
+        //
+        // Derived from the rounded ratio so the ✓ boundary is exactly where it
+        // was: 100.4% of target still rounds to 100 and still reads ✓.
+        const over = pct - 100;
+        if (over <= 0) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, "\u2713"));
+        const color = over <= 20 ? "var(--amberInk)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target, ${fmt(mtd - target)} over` }, "+", over, "%"));
       })());
-    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
+    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far past its month\u2019s budget target this occurrence leaves its category. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "+1\u201320%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "more than +20%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);

@@ -182,7 +182,7 @@
         { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [
           ["✓", "The category is still inside its target for the month at this point."],
-          ["A percentage", "The category is over its monthly target here, and by how much. Amber to 120%, red beyond it."],
+          ["A percentage", "The category is over its monthly target here, and by how much: +7% means the month\u2019s spending in that category has passed the target by seven per cent. Amber to +20%, red beyond it."],
           ["—", "Money coming in, or no target set for that category — nothing to compare against."]
         ] },
         { p: "This is about your own budget targets, not about whether the bill will arrive. An unbudgeted category is not a problem — it just means the forecast can't check that row for you." }

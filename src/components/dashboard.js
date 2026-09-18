@@ -1131,13 +1131,20 @@
                   { className: "yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : ""), role: "row" },
                   /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", role: "cell" },
                     /* @__PURE__ */ React.createElement("div", { className: "yoyd-name-row" },
+                      // The triangle hangs in a gutter the cell reserves for
+                      // it, rather than sitting in the flow with an empty
+                      // spacer on the rows that have none. In the flow it
+                      // indented only the name, leaving the kind and the two
+                      // amounts under it starting 18px further left — so each
+                      // row had two left edges, and the rows with a triangle
+                      // made the mismatch obvious.
                       kids.length ? /* @__PURE__ */ React.createElement("button", {
                         type: "button",
                         className: "yoyd-expand",
                         "aria-expanded": open ? "true" : "false",
                         "aria-label": `${open ? "Hide" : "Show"} the entries behind ${r.name}`,
                         onClick: () => setYoyOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [rowKey]: !prev[rowKey] }))
-                      }, open ? "\u25BE" : "\u25B8") : /* @__PURE__ */ React.createElement("span", { className: "yoyd-expand-spacer", "aria-hidden": "true" }),
+                      }, open ? "\u25BE" : "\u25B8") : null,
                       /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: r.name }, r.name),
                       r.kind !== "other" && r.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
                       r.kind !== "other" && r.cur === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Gone")

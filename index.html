@@ -1633,20 +1633,24 @@
         .yoyd-none{font-size:12px;color:var(--textMid);background:var(--stripe);
           border:1px dashed var(--border);border-radius:10px;padding:14px;line-height:1.5;}
         .yoyd-name-row{display:flex;align-items:center;gap:0;}
-        /* The disclosure triangle, and the same width of nothing on the rows
-           that have none — so every name in the column starts at the same x
-           and the list still scans as a list. */
-        .yoyd-expand{background:none;border:none;padding:0;margin:0 6px 0 0;cursor:pointer;
-          color:var(--textLt);font-size:11px;line-height:1;width:12px;flex-shrink:0;
-          position:relative;text-align:left;}
+        /* The disclosure triangle lives in a gutter the name cell reserves on
+           every row, open or not, and is positioned into it rather than
+           taking part in the flow. That is what keeps a row's lines on one
+           left edge: the name, the kind beneath it and the two amounts
+           beneath that all start at the same x, with the triangle outside
+           them. Centred on the name's own line, not on the cell, so it points
+           at the thing it opens. */
+        .yoyd-name-row{position:relative;}
+        .yoyd-expand{position:absolute;left:-18px;top:50%;transform:translateY(-50%);
+          background:none;border:none;padding:0;margin:0;cursor:pointer;
+          color:var(--textLt);font-size:11px;line-height:1;width:12px;text-align:left;}
         .yoyd-expand:hover{color:var(--text);}
         .yoyd-expand:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px;}
-        .yoyd-expand-spacer{width:12px;margin-right:6px;flex-shrink:0;}
         .yoyd-child-tr{background:var(--stripe);}
         .yoyd-child-tr td{font-size:12px;color:var(--textMid);}
         /* Indented past the parent's triangle, so the nesting is visible
            without a second column spent on it. */
-        .yoyd-child-td{padding-left:32px!important;}
+        .yoyd-child-td{padding-left:44px!important;}
         .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .yoyd-kind{font-size:10px;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;}
         /* Relative magnitude, drawn behind the figure it scales. Right-aligned
@@ -1680,7 +1684,7 @@
           .yoyd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
             border-top:1px solid var(--border);
             margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
-          .yoy-detail-card{padding-bottom:0!important;}
+          .modal-card.yoy-detail-card{padding-bottom:0!important;}
         }
         .yoyd-tr--other td{color:var(--textMid);font-style:italic;}
         .yoyd-tr--other .yoyd-name{font-style:normal;}
@@ -1701,12 +1705,13 @@
            with mental arithmetic. So the money columns are sized to hold a
            six-figure household outright and are left to overflow rather than
            truncate beyond that, and the name column absorbs the difference. */
-        .yoy-detail-card .yoy-td-desc{max-width:none;}
+        .yoy-detail-card .yoy-table td.yoy-td-desc{max-width:none;padding-left:26px;overflow:visible;}
         .yoy-detail-card .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
         .yoy-detail-card .yoy-num{overflow:visible;white-space:nowrap;}
         @media(max-width:560px){
           .yoy-detail-card{padding:20px 16px;}
           .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:8px 0;}
+          .yoy-detail-card .yoy-table td.yoy-td-desc{padding-left:18px;}
           /* The reflow. Each row stops being four columns and becomes a
              two-column grid: everything about the line on the left, its effect
              on the right. `minmax(0,1fr)` is what makes it safe — the name
@@ -1731,7 +1736,7 @@
           .yoyd-inline-amts{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
           .yoy-detail-card .yoy-td-desc{white-space:normal;}
           .yoy-detail-card .yoyd-effect-td{text-align:right;}
-          .yoyd-child-td{padding-left:16px!important;}
+          .yoyd-child-td{padding-left:34px!important;}
           /* The bar sat behind the figure, in a cell as wide as the sheet. In
              a two-column grid that cell is only as wide as its number, so the
              same bar reads as a tick rather than a magnitude. Anchored to the
@@ -12765,11 +12770,22 @@ const RUNWAY_DAYS = 90;
         // occurrence is worth on its own — see catMtdById.
         const mtd = catMtdById[ev.id] != null ? catMtdById[ev.id] : ev.amount;
         const pct = Math.round(mtd / target * 100);
-        if (pct <= 100) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, "\u2713"));
-        const color = pct <= 120 ? "var(--amberInk)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, pct, "%"));
+        // The overage, not the ratio. A column headed "vs Target" that shows a
+        // figure only once the target is passed is asked exactly one question
+        // — how far past — and "107%" makes the reader subtract to answer it,
+        // on a screen full of other numbers where a stray 107 reads as an
+        // amount. The Help page has always described this as "over its
+        // monthly target here, and by how much"; the cell was the one place
+        // that disagreed.
+        //
+        // Derived from the rounded ratio so the ✓ boundary is exactly where it
+        // was: 100.4% of target still rounds to 100 and still reads ✓.
+        const over = pct - 100;
+        if (over <= 0) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, "\u2713"));
+        const color = over <= 20 ? "var(--amberInk)" : "var(--red)";
+        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target, ${fmt(mtd - target)} over` }, "+", over, "%"));
       })());
-    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far this occurrence leaves its category\u2019s spending against that month\u2019s budget target. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "101\u2013120%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "over 120%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
+    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far past its month\u2019s budget target this occurrence leaves its category. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "+1\u201320%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "more than +20%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
   }
   function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
@@ -15605,13 +15621,20 @@ Fill every field of the response schema. Rules:
                   { className: "yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : ""), role: "row" },
                   /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", role: "cell" },
                     /* @__PURE__ */ React.createElement("div", { className: "yoyd-name-row" },
+                      // The triangle hangs in a gutter the cell reserves for
+                      // it, rather than sitting in the flow with an empty
+                      // spacer on the rows that have none. In the flow it
+                      // indented only the name, leaving the kind and the two
+                      // amounts under it starting 18px further left — so each
+                      // row had two left edges, and the rows with a triangle
+                      // made the mismatch obvious.
                       kids.length ? /* @__PURE__ */ React.createElement("button", {
                         type: "button",
                         className: "yoyd-expand",
                         "aria-expanded": open ? "true" : "false",
                         "aria-label": `${open ? "Hide" : "Show"} the entries behind ${r.name}`,
                         onClick: () => setYoyOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [rowKey]: !prev[rowKey] }))
-                      }, open ? "\u25BE" : "\u25B8") : /* @__PURE__ */ React.createElement("span", { className: "yoyd-expand-spacer", "aria-hidden": "true" }),
+                      }, open ? "\u25BE" : "\u25B8") : null,
                       /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: r.name }, r.name),
                       r.kind !== "other" && r.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
                       r.kind !== "other" && r.cur === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Gone")
@@ -15982,7 +16005,7 @@ Fill every field of the response schema. Rules:
         { p: "It reads the whole month, not the single row: for each occurrence it adds up everything spent in that category that month up to and including this one, then compares the running figure against the month's target. So the second grocery run of the month is judged on where it leaves the month, not on whether $260 sits under the $560 target on its own." },
         { defs: [
           ["✓", "The category is still inside its target for the month at this point."],
-          ["A percentage", "The category is over its monthly target here, and by how much. Amber to 120%, red beyond it."],
+          ["A percentage", "The category is over its monthly target here, and by how much: +7% means the month\u2019s spending in that category has passed the target by seven per cent. Amber to +20%, red beyond it."],
           ["—", "Money coming in, or no target set for that category — nothing to compare against."]
         ] },
         { p: "This is about your own budget targets, not about whether the bill will arrive. An unbudgeted category is not a problem — it just means the forecast can't check that row for you." }
