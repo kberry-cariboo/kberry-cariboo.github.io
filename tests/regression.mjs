@@ -5659,6 +5659,91 @@ await test('dashboard: Customize reorders the panels, and the order is what Toda
   await ctx.close();
 });
 
+// The "vs Prior Year" column used to be a dead end: one number, and no way to
+// ask what was behind it. The claim the drill-down makes is arithmetic — the
+// drivers it lists add up to that number, and a category's entries add up to
+// the category — so that is what this drives, at both levels and against the
+// cell it was opened from. A breakdown that does not reconcile sends a reader
+// hunting for money that was never missing.
+//
+// The household needs a category where two entries moved, or the second level
+// has nothing to open: the shared fixture's movers are one apiece. A Personal
+// expense that stops in June gives Personal a second mover beside the summer
+// holiday that only ever happens once.
+const skiPass = JSON.stringify([{
+  id: 901, desc: 'Ski pass', type: 'expense', amount: 12000, category: 'Personal',
+  repeats: true, recurUnit: 'month', recurEvery: 1,
+  startDate: `${FIXTURE_YEAR}-01-07`, recurEnd: `${FIXTURE_YEAR}-06-07`, notes: ''
+}]);
+await test('dashboard: the year-over-year change opens onto the lines that drove it, and they add up', async () => {
+  const { ctx, page } = await ctxPage({
+    stub: (t) => spansYearEnd(t.replace('const payload = {', `entries.push(...${skiPass}); const payload = {`))
+  });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  // fmt() writes negatives as a leading minus, never parentheses, so the
+  // stripped string is already signed.
+  const cents = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+
+  const drill = page.locator('.yoy-drill-btn');
+  if (await drill.count() !== 1) throw new Error(`two budget years give ${await drill.count()} openable changes, expected 1`);
+  // The cell's visible text is a bare amount; the button has to say what it
+  // opens and which two years it is about, or it is "+$8,525.00" to a reader
+  // who cannot see the row it sits in.
+  const label = await drill.getAttribute('aria-label');
+  if (!new RegExp(`from ${FIXTURE_YEAR} to ${FIXTURE_YEAR + 1}`).test(label || '')) {
+    throw new Error('the change does not name its two years to a screen reader: ' + label);
+  }
+  const cellTotal = cents(await drill.innerText());
+  await drill.click();
+  await page.locator('.yoy-detail-card').waitFor();
+
+  const read = () => page.evaluate(() => {
+    const num = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+    const effect = (tr) => num(tr.querySelector('td:last-child').innerText);
+    const groups = [];
+    document.querySelectorAll('.yoy-detail-card tbody tr').forEach((tr) => {
+      if (tr.classList.contains('yoyd-child-tr')) groups[groups.length - 1].kids.push(effect(tr));
+      else groups.push({ name: tr.querySelector('.yoyd-name').innerText.trim(), effect: effect(tr), kids: [] });
+    });
+    return { groups, foot: num(document.querySelector('[data-yoyd-total]').innerText) };
+  });
+
+  const { groups, foot } = await read();
+  if (groups.length < 3) throw new Error(`only ${groups.length} drivers listed for a year that moved`);
+  const summed = groups.reduce((a, g) => a + g.effect, 0);
+  if (summed !== foot || foot !== cellTotal) {
+    throw new Error(`the drivers do not reconcile: rows ${summed}, the modal's own total ${foot}, the cell it came from ${cellTotal}`);
+  }
+  // Biggest effect first — the whole point of the list is that its top is
+  // where the year went.
+  const mags = groups.map((g) => Math.abs(g.effect));
+  if (mags.some((m, i) => i > 0 && m > mags[i - 1])) throw new Error('the drivers are not sorted by what they did: ' + mags.join(', '));
+
+  // Second level: the entries inside a category, which must add up to it.
+  const expanders = page.locator('.yoyd-expand');
+  if (await expanders.count() === 0) throw new Error('no category offers the entries behind it');
+  await expanders.first().click();
+  await page.waitForTimeout(300);
+  const opened = (await read()).groups.filter((g) => g.kids.length);
+  if (opened.length !== 1) throw new Error(`expanding one category opened ${opened.length}`);
+  const [g] = opened;
+  if (g.kids.length < 2) throw new Error(`${g.name} opened onto ${g.kids.length} entry — a triangle onto a copy of the row above it`);
+  const kidSum = g.kids.reduce((a, b) => a + b, 0);
+  if (kidSum !== g.effect) throw new Error(`${g.name}'s entries come to ${kidSum}, the category says ${g.effect}`);
+
+  // Escape closes it, like every other dialog here.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if (await page.locator('.yoy-detail-card').count() !== 0) throw new Error('Escape left the breakdown open');
+  // And it does not remember which rows were open: a fresh comparison opens
+  // collapsed rather than carrying the last one's disclosure state.
+  await drill.click();
+  await page.locator('.yoy-detail-card').waitFor();
+  if (await page.locator('.yoyd-child-tr').count() !== 0) throw new Error('reopening the breakdown still has a category expanded');
+  await ctx.close();
+});
+
 // Selecting rows and acting on all of them at once writes `completed`, which
 // is a household field. Nothing drove it.
 await test('flow: selecting every row and marking the month paid marks all of them, and clearing lets go', async () => {
