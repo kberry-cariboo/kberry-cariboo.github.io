@@ -5766,7 +5766,12 @@ const busyYear = JSON.stringify([
   { id: 914, desc: 'Vet bills', type: 'expense', amount: 24000, category: 'Farm / Animals', repeats: true, recurUnit: 'month', recurEvery: 3, startDate: `${FIXTURE_YEAR}-02-11`, notes: '' },
   { id: 915, desc: 'Roof repair', type: 'expense', amount: 650000, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-08-03`, notes: '' },
   { id: 916, desc: 'New laptop', type: 'expense', amount: 240000, category: 'Subscriptions', repeats: false, startDate: `${FIXTURE_YEAR}-10-03`, notes: '' },
-  { id: 917, desc: 'Transit pass', type: 'expense', amount: 14500, category: 'Transportation', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-01-02`, recurEnd: `${FIXTURE_YEAR}-07-02`, notes: '' }
+  { id: 917, desc: 'Transit pass', type: 'expense', amount: 14500, category: 'Transportation', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-01-02`, recurEnd: `${FIXTURE_YEAR}-07-02`, notes: '' },
+  // A second mover inside Insurance, so one category has a disclosure
+  // triangle. Without it the tap-target check below has nothing to measure
+  // and passes by finding nothing — which is how it first went green against
+  // the very clip it exists to catch.
+  { id: 918, desc: 'Umbrella policy', type: 'expense', amount: 4200, category: 'Insurance', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-04-01`, recurEnd: `${FIXTURE_YEAR}-10-01`, notes: '' }
 ]);
 for (const [label, opts] of [['on a phone', { touch: true }], ['on a desktop', {}]]) {
   await test(`dashboard: a busy year's breakdown fits the sheet ${label}, and the roll-up still adds up`, async () => {
@@ -5800,6 +5805,24 @@ for (const [label, opts] of [['on a phone', { touch: true }], ['on a desktop', {
     if (over.out.length) throw new Error(`the breakdown overflows its sheet ${label}: ` + over.out.join('; '));
     if (over.scroll > 0) throw new Error(`the breakdown scrolls sideways ${label} by ${over.scroll}px`);
 
+    // Every line in a row shares one left edge. The disclosure triangle used
+    // to sit in the flow with an empty spacer beside the rows that had none,
+    // which lined the names up but left the kind and the amounts beneath them
+    // starting 18px further left — two left edges per row, and the rows with
+    // a triangle made it obvious. It hangs in a gutter now.
+    const edges = await page.evaluate(() => {
+      const xs = { name: new Set(), meta: new Set() };
+      document.querySelectorAll('.yoy-detail-card tbody tr:not(.yoyd-child-tr)').forEach((tr) => {
+        const n = tr.querySelector('.yoyd-name'), k = tr.querySelector('.yoyd-kind');
+        if (n) xs.name.add(Math.round(n.getBoundingClientRect().left));
+        if (k) xs.meta.add(Math.round(k.getBoundingClientRect().left));
+      });
+      return { name: [...xs.name], meta: [...xs.meta] };
+    });
+    if (edges.name.length !== 1) throw new Error('names start at ' + edges.name.length + ' different x: ' + edges.name.join(', '));
+    if (edges.meta.length !== 1) throw new Error('the line under each name starts at ' + edges.meta.length + ' different x: ' + edges.meta.join(', '));
+    if (edges.name[0] !== edges.meta[0]) throw new Error(`a row's two lines do not share a left edge: name at ${edges.name[0]}, the line under it at ${edges.meta[0]}`);
+
     // No figure may be truncated. An ellipsised description is still a
     // description; an ellipsised "$11,200.…" is a number nobody can check the
     // arithmetic with, and checking the arithmetic is what this sheet is for.
@@ -5813,6 +5836,35 @@ for (const [label, opts] of [['on a phone', { touch: true }], ['on a desktop', {
       const rows = [...document.querySelectorAll('.yoy-detail-card tbody tr:not(.yoyd-child-tr)')];
       return { n: rows.length, total: rows.reduce((a, tr) => a + num(tr.querySelector('td:last-child').innerText), 0) };
     });
+    // The disclosure triangle is 12px and clears the 44px floor on a padded
+    // halo. Measured through every clipping ancestor rather than off its own
+    // ::after: moving it into the gutter put it inside a cell that clipped,
+    // and the halo went from 46x45 to 29x30 with nothing about the element
+    // itself saying so.
+    const expander = page.locator('.yoyd-expand').first();
+    if (await expander.count() === 0) throw new Error('no category in this household offers a disclosure triangle, so the tap target below is unmeasured');
+    if (opts.touch) {
+      // Into view first: the clipping ancestors include the scrolling sheet,
+      // so measuring a row that is still below the fold intersects the halo
+      // with nothing and reports a negative height.
+      await expander.scrollIntoViewIfNeeded();
+      const tap = await expander.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const inset = Math.abs(parseFloat(getComputedStyle(el, '::after').top) || 0);
+        const halo = { left: r.left - inset, right: r.right + inset, top: r.top - inset, bottom: r.bottom + inset };
+        for (let n = el.parentElement; n; n = n.parentElement) {
+          const cs = getComputedStyle(n);
+          if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+            const b = n.getBoundingClientRect();
+            halo.left = Math.max(halo.left, b.left); halo.right = Math.min(halo.right, b.right);
+            halo.top = Math.max(halo.top, b.top); halo.bottom = Math.min(halo.bottom, b.bottom);
+          }
+        }
+        return { w: Math.round(halo.right - halo.left), h: Math.round(halo.bottom - halo.top) };
+      });
+      if (tap.w < 44 || tap.h < 44) throw new Error(`the disclosure triangle is ${tap.w}x${tap.h} to a thumb, under the 44px floor`);
+    }
+
     const collapsed = await sum();
     if (collapsed.total !== cellTotal) throw new Error(`collapsed, ${collapsed.n} rows come to ${collapsed.total}, the cell says ${cellTotal}`);
     const showAll = page.getByRole('button', { name: /Show all \d+ lines/ });

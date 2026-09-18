@@ -1605,20 +1605,24 @@
         .yoyd-none{font-size:12px;color:var(--textMid);background:var(--stripe);
           border:1px dashed var(--border);border-radius:10px;padding:14px;line-height:1.5;}
         .yoyd-name-row{display:flex;align-items:center;gap:0;}
-        /* The disclosure triangle, and the same width of nothing on the rows
-           that have none — so every name in the column starts at the same x
-           and the list still scans as a list. */
-        .yoyd-expand{background:none;border:none;padding:0;margin:0 6px 0 0;cursor:pointer;
-          color:var(--textLt);font-size:11px;line-height:1;width:12px;flex-shrink:0;
-          position:relative;text-align:left;}
+        /* The disclosure triangle lives in a gutter the name cell reserves on
+           every row, open or not, and is positioned into it rather than
+           taking part in the flow. That is what keeps a row's lines on one
+           left edge: the name, the kind beneath it and the two amounts
+           beneath that all start at the same x, with the triangle outside
+           them. Centred on the name's own line, not on the cell, so it points
+           at the thing it opens. */
+        .yoyd-name-row{position:relative;}
+        .yoyd-expand{position:absolute;left:-18px;top:50%;transform:translateY(-50%);
+          background:none;border:none;padding:0;margin:0;cursor:pointer;
+          color:var(--textLt);font-size:11px;line-height:1;width:12px;text-align:left;}
         .yoyd-expand:hover{color:var(--text);}
         .yoyd-expand:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px;}
-        .yoyd-expand-spacer{width:12px;margin-right:6px;flex-shrink:0;}
         .yoyd-child-tr{background:var(--stripe);}
         .yoyd-child-tr td{font-size:12px;color:var(--textMid);}
         /* Indented past the parent's triangle, so the nesting is visible
            without a second column spent on it. */
-        .yoyd-child-td{padding-left:32px!important;}
+        .yoyd-child-td{padding-left:44px!important;}
         .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .yoyd-kind{font-size:10px;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;}
         /* Relative magnitude, drawn behind the figure it scales. Right-aligned
@@ -1652,7 +1656,7 @@
           .yoyd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
             border-top:1px solid var(--border);
             margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
-          .yoy-detail-card{padding-bottom:0!important;}
+          .modal-card.yoy-detail-card{padding-bottom:0!important;}
         }
         .yoyd-tr--other td{color:var(--textMid);font-style:italic;}
         .yoyd-tr--other .yoyd-name{font-style:normal;}
@@ -1673,12 +1677,13 @@
            with mental arithmetic. So the money columns are sized to hold a
            six-figure household outright and are left to overflow rather than
            truncate beyond that, and the name column absorbs the difference. */
-        .yoy-detail-card .yoy-td-desc{max-width:none;}
+        .yoy-detail-card .yoy-table td.yoy-td-desc{max-width:none;padding-left:26px;overflow:visible;}
         .yoy-detail-card .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
         .yoy-detail-card .yoy-num{overflow:visible;white-space:nowrap;}
         @media(max-width:560px){
           .yoy-detail-card{padding:20px 16px;}
           .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:8px 0;}
+          .yoy-detail-card .yoy-table td.yoy-td-desc{padding-left:18px;}
           /* The reflow. Each row stops being four columns and becomes a
              two-column grid: everything about the line on the left, its effect
              on the right. `minmax(0,1fr)` is what makes it safe — the name
@@ -1703,7 +1708,7 @@
           .yoyd-inline-amts{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
           .yoy-detail-card .yoy-td-desc{white-space:normal;}
           .yoy-detail-card .yoyd-effect-td{text-align:right;}
-          .yoyd-child-td{padding-left:16px!important;}
+          .yoyd-child-td{padding-left:34px!important;}
           /* The bar sat behind the figure, in a cell as wide as the sheet. In
              a two-column grid that cell is only as wide as its number, so the
              same bar reads as a tick rather than a magnitude. Anchored to the
