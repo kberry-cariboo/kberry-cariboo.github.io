@@ -3689,6 +3689,60 @@ await test('forecast: a balance curve marks the low point and the alert threshol
 
 // A rolling window cut into pages stops rolling the moment you have to press
 // Next, and the run-up to the low point is as likely to straddle a break as not.
+// The Help page describes this column and nothing drove it, which is how it
+// spent its life printing a ratio where the docs promised a variance: "107%"
+// for a category seven per cent past its target. The test pins the reading
+// rather than the number, by deriving what the cell should say from the two
+// figures its own tooltip quotes — so it holds whatever the fixture's targets
+// happen to be, and a slip back to the ratio shows up as 118 where 18 belongs.
+await test('forecast: "vs Target" shows how far past the target, not what fraction of it', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
+  // Not settled(): it is declared below this point in the file, and the
+  // neighbouring forecast tests wait the same way.
+  await page.waitForTimeout(1600);
+  const cells = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.forecast-tr').forEach((tr) => {
+      const tds = tr.querySelectorAll('td');
+      const span = tds[tds.length - 1].querySelector('span');
+      if (span) out.push({ text: span.innerText.trim(), title: span.title || '' });
+    });
+    return out;
+  });
+  if (!cells.length) throw new Error('the forecast ledger rendered no vs Target cells');
+  const money = (t) => Math.round(parseFloat(t.replace(/[^0-9.]/g, '')) * 100);
+  const over = cells.filter((c) => /%$/.test(c.text));
+  if (!over.length) throw new Error('no row in the fixture is over its target, so the percentage is unexercised');
+  over.forEach((c) => {
+    // "Transportation in Sep: $400.00 of the $340.00 target, $60.00 over"
+    const m = c.title.match(/: (\$[\d,.]+) of the (\$[\d,.]+) target/);
+    if (!m) throw new Error('a vs Target cell does not say what it compared: ' + JSON.stringify(c));
+    const spent = money(m[1]), target = money(m[2]);
+    const expected = Math.round(spent / target * 100) - 100;
+    if (c.text !== `+${expected}%`) {
+      throw new Error(`${m[1]} against a ${m[2]} target should read +${expected}%, the overage \u2014 the cell says ${c.text}`);
+    }
+    if (expected <= 0) throw new Error('a cell within its target prints a percentage instead of a tick: ' + c.text);
+  });
+  // Under target is a tick, not a negative percentage: the figure appears only
+  // when there is something to act on.
+  const ticks = cells.filter((c) => c.text === '\u2713');
+  if (!ticks.length) throw new Error('no row in the fixture is within its target');
+  ticks.forEach((c) => {
+    const m = c.title.match(/: (\$[\d,.]+) of the (\$[\d,.]+) target/);
+    if (m && Math.round(money(m[1]) / money(m[2]) * 100) > 100) {
+      throw new Error(`a row over its target shows a tick: ${c.title}`);
+    }
+  });
+  // The legend has to describe the same scale the cells are printing on.
+  const legend = await page.locator('.forecast-legend').innerText();
+  if (!/\+1\u201320%/.test(legend) || !/more than \+20%/.test(legend)) {
+    throw new Error('the legend still describes the old ratio scale: ' + legend);
+  }
+  await ctx.close();
+});
+
 await test('forecast: the ledger scrolls rather than paginating', async () => {
   const { ctx, page } = await ctxPage({ stub: spansYearEnd });
   await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
