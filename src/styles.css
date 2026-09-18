@@ -1576,6 +1576,85 @@
         .dash-year-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
         .dash-year-label{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);}
         .yoy-empty-wrap{background:var(--stripe);border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;}
+        /* The "vs Prior Year" cell is a button now. It keeps the cell's own
+           colour (green or red, set inline from the sign) rather than taking
+           a link colour of its own — the sign is the thing being read, and a
+           column of blue would lose it. The caret and the hover underline are
+           what say it opens something. */
+        .yoy-drill-btn{background:none;border:none;padding:2px 4px;margin:-2px -4px;
+          font:inherit;color:inherit;cursor:pointer;border-radius:5px;
+          display:inline-flex;align-items:center;gap:3px;position:relative;}
+        .yoy-drill-btn:hover{background:var(--stripe);text-decoration:underline;}
+        .yoy-drill-btn:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .yoy-drill-caret{font-size:14px;line-height:1;opacity:0.55;}
+        .yoy-drill-btn:hover .yoy-drill-caret{opacity:1;}
+        .yoy-drill-hint{font-size:11px;color:var(--textLt);padding:10px 2px 0;}
+        .yoy-detail-card{padding:24px;width:min(600px,calc(100vw - 32px));max-height:88vh;overflow-y:auto;}
+        .yoyd-intro{font-size:12px;color:var(--textMid);line-height:1.5;margin-bottom:14px;}
+        .yoyd-bridge{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+        .yoyd-bridge-row{display:flex;align-items:baseline;justify-content:space-between;
+          gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);}
+        .yoyd-bridge-row:last-child{border-bottom:none;}
+        .yoyd-bridge-row--step{background:var(--stripe);}
+        .yoyd-bridge-row--total{border-top:2px solid var(--border);}
+        .yoyd-bridge-lbl{font-size:13px;color:var(--text);font-weight:600;
+          display:flex;flex-direction:column;gap:2px;min-width:0;}
+        .yoyd-bridge-from{font-size:11px;color:var(--textLt);font-weight:400;white-space:nowrap;}
+        .yoyd-bridge-amt{font-weight:700;white-space:nowrap;}
+        .yoyd-sub{display:flex;align-items:center;gap:6px;margin:18px 0 8px;}
+        .yoyd-none{font-size:12px;color:var(--textMid);background:var(--stripe);
+          border:1px dashed var(--border);border-radius:10px;padding:14px;line-height:1.5;}
+        .yoyd-name-row{display:flex;align-items:center;gap:0;}
+        /* The disclosure triangle, and the same width of nothing on the rows
+           that have none — so every name in the column starts at the same x
+           and the list still scans as a list. */
+        .yoyd-expand{background:none;border:none;padding:0;margin:0 6px 0 0;cursor:pointer;
+          color:var(--textLt);font-size:11px;line-height:1;width:12px;flex-shrink:0;
+          position:relative;text-align:left;}
+        .yoyd-expand:hover{color:var(--text);}
+        .yoyd-expand:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px;}
+        .yoyd-expand-spacer{width:12px;margin-right:6px;flex-shrink:0;}
+        .yoyd-child-tr{background:var(--stripe);}
+        .yoyd-child-tr td{font-size:12px;color:var(--textMid);}
+        /* Indented past the parent's triangle, so the nesting is visible
+           without a second column spent on it. */
+        .yoyd-child-td{padding-left:32px!important;}
+        .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .yoyd-kind{font-size:10px;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;}
+        /* Relative magnitude, drawn behind the figure it scales. Right-aligned
+           like the number, so the bars grow leftwards off a shared edge and
+           can be compared straight down the column. */
+        .yoyd-effect-td{position:relative;}
+        .yoyd-fill{position:absolute;right:4px;top:5px;bottom:5px;border-radius:3px;z-index:0;}
+        .yoyd-fill--pos{background:rgba(39,174,115,0.16);}
+        .yoyd-fill--neg{background:rgba(232,93,74,0.16);}
+        .yoyd-effect-val{position:relative;z-index:1;}
+        .yoyd-foot-note{font-size:11px;color:var(--textLt);line-height:1.5;margin-top:12px;}
+        /* On a phone the sheet is the screen width, and .yoy-table's 420px
+           floor pushed Effect — the one column the reader opened this for —
+           off the right edge behind a horizontal scroll. Nothing here is
+           dropped; the columns just stop reserving desktop padding, which is
+           enough to land all four inside 320px. */
+        .yoyd-inline-amts{display:none;}
+        @media(max-width:560px){
+          .yoy-detail-card{padding:20px 16px;}
+          .yoy-detail-card .yoy-table{min-width:0;}
+          .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:8px 6px;}
+          .yoy-detail-card .yoy-td-desc{max-width:none;}
+          /* The two year columns become a line under the name — see the
+             comment on .yoyd-inline-amts in dashboard.js. Nothing is dropped,
+             it is the same two figures in less width. */
+          .yoyd-year-col{display:none;}
+          .yoyd-inline-amts{display:block;font-size:11px;color:var(--textLt);margin-top:2px;}
+          .yoyd-child-td{padding-left:18px!important;}
+        }
+        @media (pointer:coarse){
+          /* The cell's own 9px padding leaves the button ~25px tall. The halo
+             is the .cf-checkbtn treatment: a transparent ::after that grows
+             the hit area without growing the number. */
+          .yoy-drill-btn::after{content:'';position:absolute;inset:-12px;}
+          .yoyd-expand::after{content:'';position:absolute;inset:-17px;}
+        }
         .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;}
         /* .card-flat is padding:0 so the table runs to the card's edges; the
            header it now carries has to put its own padding back. */

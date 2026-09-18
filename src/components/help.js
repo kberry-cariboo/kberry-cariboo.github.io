@@ -201,7 +201,8 @@
           ["Annual income, expenses, surplus and lowest balance", "The year as four numbers, each with a sparkline of its shape across the months."],
           ["What changed", "A written comparison of this month against last, generated on demand when AI access is configured."],
           ["Charts", "Running balance, surplus or shortfall by month, income against expenses, top expense categories, income sources, and budget against actual for the year."],
-          ["Monthly summary and year-over-year", "The twelve-month table, exportable to CSV or PDF, and a comparison against your other budget years once you have more than one."]
+          ["Monthly summary and year-over-year", "The twelve-month table, exportable to CSV or PDF, and a comparison against your other budget years once you have more than one."],
+          ["What drove a year-over-year change", "In the Annual Comparison table, the figure in the vs Prior Year column opens. It breaks the change in net surplus into the two sides it came from \u2014 income and expenses \u2014 and then into every income source and expense category that moved, largest effect first. The lines add up to the figure exactly. A \u25b8 beside a category opens the entries inside it."]
         ] },
         { p: "Customize (top left) shows, hides and reorders each widget individually. Your layout is part of your data, so it syncs across your devices." },
         { p: "When a projected balance drops below your alert threshold, a banner appears at the top of the Today and Flow tabs; View alerts opens the full list, and Dismiss hides the banner until tomorrow." }
