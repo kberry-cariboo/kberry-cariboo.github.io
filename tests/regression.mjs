@@ -5369,6 +5369,103 @@ await test('transfers: the destination list never offers the account the money i
   await ctx.close();
 });
 
+// Two features the Help page names that nothing had ever driven, found by
+// re-running the coverage sweep the README describes: every term the Help page
+// defines, minus every term the suites mention.
+//
+// Yearly recurrence is the one that matters. Every balance in the app comes out
+// of expandEntries, and "year" is a branch of it with its own arithmetic —
+// (year - startYear) % every, and a day clamped to the month's length — that no
+// test has ever executed. A bug here does not look like a bug: an annual
+// insurance premium silently becoming twelve monthly ones is a plausible-looking
+// ledger that is wrong by a factor of twelve.
+await test('entries: a yearly entry happens once a year, on its own date', async () => {
+  const Y = FIXTURE_YEAR;
+  const yearly = [
+    // Every year, on a day that exists in every month — the plain case.
+    { id: 9501, desc: 'QA annual premium', type: 'expense', amount: 84000, category: 'Insurance',
+      repeats: true, recurUnit: 'year', recurEvery: 1, startDate: `${Y}-03-15`, notes: '' },
+    // Every second year, starting the year before the fixture's: it falls in
+    // this one, and its twin below does not.
+    { id: 9502, desc: 'QA biennial', type: 'expense', amount: 12000, category: 'Personal',
+      repeats: true, recurUnit: 'year', recurEvery: 2, startDate: `${Y - 2}-06-10`, notes: '' },
+    { id: 9503, desc: 'QA offbeat biennial', type: 'expense', amount: 12000, category: 'Personal',
+      repeats: true, recurUnit: 'year', recurEvery: 2, startDate: `${Y - 1}-06-10`, notes: '' },
+    // 29 February in a non-leap year has to clamp rather than skip or spill
+    // into March.
+    { id: 9504, desc: 'QA leap day', type: 'expense', amount: 5000, category: 'Personal',
+      repeats: true, recurUnit: 'year', recurEvery: 1, startDate: '2024-02-29', notes: '' }
+  ];
+  const { ctx, page } = await ctxPage({
+    stub: (t) => t.replace('const payload = {', `entries.length = 0; entries.push(...${JSON.stringify(yearly)}); const payload = {`)
+  });
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+
+  // Walk the year by its month pills, not the Next arrow: the arrow disables
+  // at December, so stepping forward from whatever month today happens to be
+  // never reaches the earlier half of the year.
+  const pills = page.locator('.month-pill');
+  if (await pills.count() !== 12) throw new Error(`${await pills.count()} month pills, expected 12`);
+  const seen = {};
+  for (let i = 0; i < 12; i++) {
+    await pills.nth(i).click();
+    // Wait for the pill to actually be the active one rather than guessing at
+    // a timeout: a fixed wait raced the re-render and silently read the
+    // previous month's rows, which made every assertion below vacuous — the
+    // test passed just as happily with the recurrence gate torn out.
+    await page.waitForFunction(
+      (idx) => (document.querySelectorAll('.month-pill')[idx] || {}).dataset?.active === 'true', i, { timeout: 5000 });
+    const rows = await page.locator('.budget-event-tr, .budget-card-row').allInnerTexts();
+    ['QA annual premium', 'QA biennial', 'QA offbeat biennial', 'QA leap day'].forEach((d) => {
+      if (rows.some((r) => r.includes(d))) (seen[d] = seen[d] || []).push(i);
+    });
+  }
+  const perMonth = seen;
+
+  // Once, in March, on the 15th.
+  const premier = perMonth['QA annual premium'] || [];
+  if (premier.length !== 1) throw new Error(`a yearly entry occurred ${premier.length} times in ${Y}, in month indexes ${premier.join(',') || '(none)'}`);
+  if (premier[0] !== 2) throw new Error(`the yearly entry landed in month index ${premier[0]}, not March`);
+  // every: 2 counted from the start year — two years back lands on this one,
+  // one year back does not.
+  const bi = (perMonth['QA biennial'] || []).length;
+  const off = (perMonth['QA offbeat biennial'] || []).length;
+  if (bi !== 1) throw new Error(`an every-2-years entry started in ${Y - 2} occurred ${bi} times in ${Y}`);
+  if (off !== 0) throw new Error(`an every-2-years entry started in ${Y - 1} occurred ${off} times in ${Y}, which is an off year for it`);
+  // 29 February clamps into February rather than skipping the year or spilling
+  // into March.
+  const leap = perMonth['QA leap day'] || [];
+  if (leap.length !== 1 || leap[0] !== 1) throw new Error(`a 29 February entry landed in month indexes ${leap.join(',') || '(none)'} of ${Y}`);
+  await ctx.close();
+});
+
+// The other half of the search feature. Help: "On Entries and on Plan it
+// filters the list you are looking at. Anywhere else it jumps to the Budget
+// month that matches." Three tests drive the filtering half, all of them on
+// Entries; nothing had ever driven the jump.
+await test('search: from the Budget grid it jumps to the month that matches', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+  await settled(page);
+  const monthLabel = async () => (await page.locator('.month-pill.is-active, .month-pill[aria-current="true"]').first().innerText().catch(() => '')) ||
+    (await page.locator('[aria-label="Next month"]').first().evaluate((el) => {
+      const row = el.closest('div');
+      return row ? row.innerText.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
+    }).catch(() => ''));
+  const before = await monthLabel();
+  // The fixture's summer holiday is a one-off in July — a month the grid does
+  // not open on, so a jump is the only way to be looking at it.
+  await page.locator('#global-search').fill('Summer vacation');
+  await page.waitForTimeout(900);
+  const rows = await page.locator('.budget-event-tr, .budget-card-row').allInnerTexts();
+  if (!rows.some((r) => r.includes('Summer vacation'))) {
+    throw new Error('searching from the Budget grid did not land on the month holding the match; still showing ' + (await monthLabel() || before));
+  }
+  await page.locator('#global-search').fill('');
+  await ctx.close();
+});
+
 await test('search: the amount operators narrow the list', async () => {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
