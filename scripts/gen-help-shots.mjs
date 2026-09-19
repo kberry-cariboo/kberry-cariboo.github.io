@@ -46,10 +46,15 @@ const BASE = `http://127.0.0.1:${PORT}/index.html`;
 // The regression suite's fixture household, reused rather than reinvented: one
 // set of fictional data to keep current, and the screenshots then show the same
 // figures the tests assert on.
-const suite = readFileSync(join(ROOT, 'tests/regression.mjs'), 'utf8');
-const { mkStub } = await import('data:text/javascript,' + encodeURIComponent(
-  suite.slice(suite.indexOf('const E = (id, desc'), suite.indexOf('const exe =')) + '\nexport { mkStub };'
-));
+//
+// Imported, not sliced out of the suite's source. This used to cut the text
+// between 'const E = (id, desc' and 'const exe =' out of tests/regression.mjs
+// and eval it as a data: URL — which stopped working the moment the fixture
+// moved into its own module and that first marker left regression.mjs.
+// indexOf returned -1, the slice quietly became the wrong span of the file,
+// and the script died on an export that was not there. A module that exports
+// mkStub can simply be imported.
+const { mkStub } = await import(new URL('../tests/household-fixture.mjs', import.meta.url).href);
 
 // Retina: the Help page renders these at half their pixel width, so text in a
 // screenshot stays as sharp as the text around it.
@@ -83,7 +88,7 @@ const SHOTS = [
   { name: 'dashboard-kpis', hash: '#/today', at: '.kpi-grid-4' },
   { name: 'dashboard-upcoming', hash: '#/today', at: '.cf-card',
     prepare: async (page) => { await page.getByText('UPCOMING', { exact: false }).first().scrollIntoViewIfNeeded(); },
-    pick: (page) => page.locator('.cf-card', { hasText: 'UPCOMING' }).first(), maxHeight: 260 },
+    pick: (page) => page.locator('.cf-card', { hasText: 'UPCOMING' }).first(), maxHeight: 320 },
   { name: 'plan-goals', hash: '#/plan/goals', at: '.cf-card' },
   { name: 'settings-backup', hash: '#/you/backup', at: '#sec-backup' },
 ];

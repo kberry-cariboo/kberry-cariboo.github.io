@@ -193,11 +193,11 @@
       title: "Today",
       blocks: [
         { p: "Today answers “am I all right?” at a glance, and every number on it is drawn from the same projection as the Budget tab." },
-        { shot: ["dashboard-upcoming", "Upcoming \u2014 next 7 days. The circle beside each row ticks it off; ticked rows drop out of this list."] },
+        { shot: ["dashboard-upcoming", "Upcoming \u2014 next 7. The circle beside each row ticks it off; a ticked row drops out and the next one moves up."] },
         { shot: ["dashboard-kpis", "The year as four numbers, each with a sparkline of its shape across the months."] },
         { defs: [
           ["Balance today · Next low point · Due rest of month", "The three tiles across the top: where you are now, the lowest balance coming up and how far away it is, and what is still to be paid this month."],
-          ["Upcoming — next 7 days", "Everything scheduled in the next week with its balance after, and a circle to tick each one off."],
+          ["Upcoming — next 7", "The next seven things still outstanding, each with the balance it leaves behind, and a circle to tick it off. Seven things rather than seven days: a quiet week would otherwise leave the card nearly empty, and a busy one would hide the tail of it behind a footnote. Ticking one off drops it and brings the next one up, and the heading says how far ahead the seven reach. It reads every budget year, so a run that crosses into January still shows the January half."],
           ["Annual income, expenses, surplus and lowest balance", "The year as four numbers, each with a sparkline of its shape across the months."],
           ["What changed", "A written comparison of this month against last, generated on demand when AI access is configured."],
           ["Charts", "Running balance, surplus or shortfall by month, income against expenses, top expense categories, income sources, and budget against actual for the year."],
