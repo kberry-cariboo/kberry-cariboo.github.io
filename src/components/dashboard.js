@@ -114,7 +114,7 @@
       ) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Compare ", MONTHS[thisMonth], " with ", MONTHS[delta.prevMonth], " and have Claude pick out what moved.")
     );
   }
-  function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
+  function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, viewFlows = null, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {
@@ -529,7 +529,7 @@
       { id: "balanceToday", label: "Balance today", size: "third" },
       { id: "nextLow", label: "Next low point", size: "third" },
       { id: "dueMonth", label: "Due rest of month", size: "third" },
-      { id: "upcoming", label: "Upcoming this week", size: "full" },
+      { id: "upcoming", label: "Upcoming \u2014 next 7", size: "full" },
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
@@ -625,17 +625,42 @@
       })()),
       upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = startOfToday();
-        const in7 = new Date(today);
-        in7.setDate(today.getDate() + 7);
-        // The card shows the first six so it stays a glance. The count beside
-        // the header used to be that *shown* length, so a week with nine things
-        // due read "6 events" and the other three were nowhere — on a card
-        // whose whole job is "nothing is about to surprise you". The count is
-        // the real total now, and a footer says what is not on the card.
-        const dueThisWeek = flow.filter((ev) => ev.date >= today && ev.date <= in7 && !completed[ev.id]).sort((a, b) => a.date - b.date);
-        const upcoming = dueThisWeek.slice(0, 6);
+        // The next seven things still outstanding — a count of items, not a
+        // window of days. It used to be "everything due in the next seven
+        // days, capped at six", which made the card a hostage to the shape of
+        // the week: a quiet stretch showed two rows and looked broken, and a
+        // busy one hid the tail behind a footnote. Neither is what the card is
+        // for. Seven things, always, however far ahead they reach.
+        //
+        // Read across every budget year rather than the active one. That was
+        // already wrong for a week straddling New Year — seven days from the
+        // 28th of December end on the 4th of January, and filtering a single
+        // year's events by that range left the January half not missing from
+        // the card but missing from the array the card filters, with the
+        // count agreeing so nothing on screen contradicted anything else. It
+        // matters more now: the seventh item ahead crosses into next year
+        // routinely, not just at New Year.
+        //
+        // viewFlows is keyed by year and already carries the account view the
+        // rest of the page is in, and each year's opening balance carries from
+        // the last, so a row on 2 January still shows a balance that follows
+        // on from 31 December.
+        const byYear = viewFlows || { [activeYear]: flow };
+        const ahead = Object.keys(byYear).reduce((acc, y) => acc.concat(byYear[y] || []), [])
+          .filter((ev) => ev.date >= today && !completed[ev.id])
+          .sort((a, b) => a.date - b.date);
+        const upcoming = ahead.slice(0, 7);
         if (upcoming.length === 0) return null;
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-hdr-label" }, "Upcoming \u2014 Next 7 Days"), /* @__PURE__ */ React.createElement("span", { className: "upcoming-count" }, dueThisWeek.length, " event", dueThisWeek.length !== 1 ? "s" : "")), /* @__PURE__ */ React.createElement("div", { className: "upcoming-list" }, upcoming.map((ev) => {
+        const lastShown = upcoming[upcoming.length - 1].date;
+        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-hdr-label" }, "Upcoming \u2014 Next 7"), /* @__PURE__ */ React.createElement("span", { className: "upcoming-count" },
+          // How far ahead those seven reach. A bare "7 events" beside a
+          // heading that says Next 7 tells the reader nothing they cannot
+          // already see; the date they run out to is the thing they cannot.
+          // When fewer than seven remain, that is the more useful fact.
+          upcoming.length < 7
+            ? `${upcoming.length} left this year`
+            : `through ${lastShown.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+        )), /* @__PURE__ */ React.createElement("div", { className: "upcoming-list" }, upcoming.map((ev) => {
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const signed = signedAmount(ev);
@@ -681,7 +706,7 @@
           } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
             color: balColor
           } }, fmt(ev.balance)))), barDiv);
-        })), dueThisWeek.length > upcoming.length && /* @__PURE__ */ React.createElement("div", { className: "upcoming-more-note" }, "+ ", dueThisWeek.length - upcoming.length, " more in the next 7 days \u2014 open the ledger to see them"));
+        })), ahead.length > upcoming.length && /* @__PURE__ */ React.createElement("div", { className: "upcoming-more-note" }, "Ticking one off brings the next one up \u2014 the ledger has the rest."));
       })()),
       monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
       kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),

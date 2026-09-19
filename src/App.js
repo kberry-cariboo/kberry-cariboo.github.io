@@ -1662,6 +1662,11 @@
         flow: activeFlow,
         openBal: activeOpenBal,
         yearFlows,
+        // Every budget year, in whatever account view the page is in. Today's
+        // "next 7 days" needs it: a week that starts in December ends in
+        // January, and activeFlow is one year, so the January half was simply
+        // not in the array to be found.
+        viewFlows,
         yearConfigs: sortedConfigs,
         alertThreshold: alertThresh,
         activeYear,

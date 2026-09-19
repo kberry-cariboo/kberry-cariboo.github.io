@@ -32,7 +32,7 @@
     },
     "dashboard-upcoming": {
       "w": 917,
-      "h": 260
+      "h": 318
     },
     "plan-goals": {
       "w": 917,

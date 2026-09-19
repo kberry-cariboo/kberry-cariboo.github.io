@@ -159,7 +159,7 @@ the active-year switch and the phone's type pills — and none had a test. The t
 sweeps disagree about what they find, which is the point of running both.
 
 `node tests/regression.mjs <substring>` runs only the tests whose name contains
-it. The whole suite is a hundred and seventy-one browser tests and about twenty
+it. The whole suite is a hundred and seventy-two browser tests and about twenty
 minutes, so a one-line fix should not cost a full pass. No argument runs
 everything, which is what CI does, and the count line says when a run was
 filtered so a narrowed run cannot be read as a green one.

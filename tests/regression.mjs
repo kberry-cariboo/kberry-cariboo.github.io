@@ -5591,32 +5591,93 @@ await test('budget: an envelope category carries its unspent target forward', as
 // "Upcoming — Next 7 Days" shows at most six rows. The count beside the
 // heading used to be that shown length, so a busy week read "6 events" while
 // hiding the rest — on the one card whose job is that nothing surprises you.
-await test('dashboard: the next-7-days count is the real total, not the six it shows', async () => {
-  const now = FAKE_TODAY || new Date();
-  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  // Eight one-offs across the coming week, so the list must truncate whatever
-  // the shared household happens to have due at the time the suite runs.
-  const extra = [];
-  for (let i = 0; i < 8; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + (i % 7));
-    extra.push({ id: 9100 + i, desc: 'QA upcoming ' + i, type: 'expense', amount: 1100 + i,
-      category: 'Personal', repeats: false, startDate: iso(d), notes: '' });
-  }
-  const busyWeek = (t) => t.replace('const session =',
-    'entries.push(...' + JSON.stringify(extra) + ');\n  const session =');
-  const { ctx, page } = await ctxPage({ stub: busyWeek });
+// Seven days from the 28th of December end on the 4th of January, and the card
+// used to filter a single budget year's events by that range — so the January
+// half of the week was not missing from the card, it was missing from the array
+// the card filters. Four things due read "2 events", count and all.
+//
+// Pins its own clock rather than following the sweep: the whole point is a
+// specific week, the one that straddles New Year.
+await test('dashboard: a week that straddles New Year shows both halves of it', async () => {
+  const Y = FIXTURE_YEAR;
+  const week = [
+    { id: 9301, desc: 'QA gym', type: 'expense', amount: 5500, category: 'Personal', startDate: `${Y}-12-29` },
+    { id: 9302, desc: 'QA hydro', type: 'expense', amount: 18500, category: 'Utilities', startDate: `${Y}-12-30` },
+    { id: 9303, desc: 'QA rent', type: 'expense', amount: 165000, category: 'Housing', startDate: `${Y}-01-02` },
+    { id: 9304, desc: 'QA insurance', type: 'expense', amount: 21000, category: 'Insurance', startDate: `${Y}-01-03` }
+  ].map((e) => ({ repeats: true, recurUnit: 'month', recurEvery: 1, notes: '', ...e }));
+  const { ctx, page } = await ctxPage({
+    stub: (t) => spansYearEnd(t.replace('const payload = {', `entries.length = 0; entries.push(...${JSON.stringify(week)}); const payload = {`))
+  });
+  await page.clock.setFixedTime(new Date(`${Y}-12-28T12:00:00`));
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
   await settled(page);
-  const card = page.locator('.upcoming-header-row').first();
-  await card.waitFor();
-  const claimed = parseInt((await page.locator('.upcoming-count').first().innerText()).replace(/\D/g, ''), 10);
-  const shown = await page.locator('.upcoming-desktop-row').count();
-  if (shown !== 6) throw new Error('the card shows ' + shown + ' rows, not the six it caps at');
-  if (claimed <= shown) throw new Error('the heading says "' + claimed + ' events" while ' + shown + ' rows are shown and at least 8 are due');
-  const more = await page.locator('.upcoming-more-note').innerText();
-  const hidden = parseInt((more.match(/\+\s*(\d+)\s+more/) || [])[1], 10);
-  if (hidden !== claimed - shown) throw new Error('the footer accounts for ' + hidden + ' hidden events, but ' + (claimed - shown) + ' are missing from the card');
+  await page.locator('.upcoming-header-row').first().waitFor();
+  const rows = await page.locator('.upcoming-desktop-row').allInnerTexts();
+  const text = rows.join(' | ');
+  const missing = ['QA gym', 'QA hydro', 'QA rent', 'QA insurance'].filter((d) => !text.includes(d));
+  if (missing.length) {
+    throw new Error(`the week of 28 Dec is missing ${missing.join(', ')} \u2014 everything after 31 December fell outside the year the card reads`);
+  }
+  // The count has to agree with the window, not with one year of it. Both
+  // being wrong together is how this hid: nothing on the card contradicted
+  // anything else on the card.
+  // Both halves of the turn of the year are on the card, in order, with
+  // December before January rather than the year restarting the sort.
+  const idx = (d) => rows.findIndex((r) => r.includes(d));
+  const seq = ['QA gym', 'QA hydro', 'QA rent', 'QA insurance'].map(idx);
+  if (seq.join(',') !== '0,1,2,3') throw new Error('the turn of the year is out of order: ' + seq.join(','));
+  // The January rows carry a balance that follows on from December rather than
+  // restarting at the new year's opening figure.
+  const jan = rows.find((r) => /Jan 2/.test(r));
+  if (!jan || !/\$/.test(jan)) throw new Error('the 2 January row shows no balance: ' + jan);
+  await ctx.close();
+});
+
+// The card is seven things, not seven days. It used to be a window capped at
+// six, which made it a hostage to the shape of the week — a quiet stretch
+// showed two rows on a card whose job is "nothing is about to surprise you",
+// and that is what the report was. So: always seven when seven are left, in
+// date order, with anything ticked off absent and the next one moved up.
+await test('dashboard: Upcoming shows the next seven outstanding, whatever the week looks like', async () => {
+  const now = FAKE_TODAY || new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // A deliberately lopsided month: two things this week, then a gap, then a
+  // cluster. Under the old window the card would have shown the two and
+  // looked broken.
+  const extra = [];
+  [1, 2, 20, 21, 22, 23, 24, 25, 26].forEach((offset, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + offset);
+    extra.push({ id: 9400 + i, desc: 'QA ahead ' + i, type: 'expense', amount: 1100 + i,
+      category: 'Personal', repeats: false, startDate: iso(d), notes: '' });
+  });
+  const lopsided = (t) => t.replace('const payload = {',
+    `entries.length = 0; entries.push(...${JSON.stringify(extra)}); const payload = {`);
+  const { ctx, page } = await ctxPage({ stub: lopsided });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  await page.locator('.upcoming-header-row').first().waitFor();
+
+  const rowText = () => page.locator('.upcoming-desktop-row').allInnerTexts();
+  const before = await rowText();
+  if (before.length !== 7) throw new Error(`the card shows ${before.length} rows for a household with nine things still ahead`);
+  // In date order, and the two near ones first — the gap in the middle of the
+  // month must not reorder anything or drop the far cluster.
+  const order = before.map((r) => (r.match(/QA ahead (\d+)/) || [])[1]).join(',');
+  if (order !== '0,1,2,3,4,5,6') throw new Error('the seven are not the seven soonest, in order: ' + order);
+  // The heading says how far ahead they reach rather than repeating the count.
+  const head = await page.locator('.upcoming-count').first().innerText();
+  if (!/through /.test(head)) throw new Error('the heading does not say how far the seven reach: ' + head);
+
+  // Ticking one off drops it and brings the eighth up, which is the whole
+  // reason this is a count and not a window.
+  await page.locator('.upcoming-desktop-row .paid-btn').first().click();
+  await page.waitForTimeout(600);
+  const after = await rowText();
+  if (after.length !== 7) throw new Error(`after ticking one off the card shows ${after.length} rows, not seven`);
+  if (after.some((r) => /QA ahead 0\b/.test(r))) throw new Error('the row that was ticked off is still on the card');
+  if (!after.some((r) => /QA ahead 7\b/.test(r))) throw new Error('ticking one off did not bring the next one up');
   await ctx.close();
 });
 
