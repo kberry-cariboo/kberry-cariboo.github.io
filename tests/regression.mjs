@@ -2521,15 +2521,27 @@ await test('every notice comes through one stack, collapsed when there is more t
   if (!box.length) throw new Error('no notices in the stack to compare');
   if (new Set(box).size !== 1) throw new Error('notices disagree on shape: ' + [...new Set(box)].join(' vs '));
 
-  // And the dip is stated once outside the stack. The Next-low-point tile
+  // And the dip is *announced* once outside the stack. The Next-low-point tile
   // keeps it — that is a figure you read, not a notice you dismiss — but the
   // two banners that both announced it are what this guards against.
+  //
+  // The Upcoming list is discounted, because a running balance that happens to
+  // equal the low point is not a second announcement of it: the card shows the
+  // balance after every row it lists, and one of those rows is the dip. That
+  // began to matter when the card became the next seven outstanding rather
+  // than a seven-day window — it now routinely reaches the dip. Counting raw
+  // occurrences of the figure would make this test fail every time the card
+  // reaches further ahead, which is not what it is protecting.
   const outside = await page.evaluate(() => {
     const m = document.querySelector('main').cloneNode(true);
-    m.querySelectorAll('.notice-stack').forEach((n) => n.remove());
+    m.querySelectorAll('.notice-stack,.upcoming-list').forEach((n) => n.remove());
     return ((m.innerText || '').match(/-\$14,155\.00/g) || []).length;
   });
-  if (outside > 1) throw new Error('the dip figure appears ' + outside + ' times outside the notice stack');
+  if (outside !== 1) {
+    throw new Error(outside === 0
+      ? 'the dip is stated nowhere outside the stack — the Next-low-point tile has lost it'
+      : 'the dip figure is announced ' + outside + ' times outside the notice stack');
+  }
   await ctx.close();
 });
 
