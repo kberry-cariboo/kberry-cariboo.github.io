@@ -213,7 +213,8 @@
           ["What drove a year-over-year change", "In the Annual Comparison table, the figure in the vs Prior Year column opens. It breaks the change in net surplus into the two sides it came from \u2014 income and expenses \u2014 and then into the biggest movers, largest effect first, with the rest gathered into one \u201cAll other movements\u201d line so the figures still add up to the change exactly; Show all lists every one. A \u25b8 beside a category opens the entries inside it."]
         ] },
         { p: "Customize (top left) shows, hides and reorders each widget individually. Your layout is part of your data, so it syncs across your devices." },
-        { p: "When a projected balance drops below your alert threshold, a banner appears at the top of the Today and Flow tabs; View alerts opens the full list, and Dismiss hides the banner until tomorrow." }
+        { p: "When a projected balance drops below your alert threshold, a banner appears at the top of the Today and Flow tabs; View alerts opens the full list, and Dismiss hides the banner until tomorrow." },
+        { p: "The alerts list also carries what changed in your spending: how the month compares with your recent average, and any category spending unlike its own recent self. A category has to be outside the range it has actually occupied over those months before it is mentioned \u2014 a bill that lands twice in some months and three times in others is not news, and neither is an ordinary month that only looks low because one holiday sits in the average behind it. None of this needs AI access." }
       ]
     },
     {
@@ -233,7 +234,8 @@
         { p: "Nothing is estimated. A value is whatever you last typed in, and the date beside it records when you confirmed it; anything left untouched for more than a year is flagged as such rather than quietly counted as current. There is no growth rate and no history, because a figure grown forward by an assumed rate looks like a measurement and is a guess." },
         { sub: "Savings goals" },
         { shot: ["plan-goals", "A savings goal: progress, the date it is reached at the current monthly figure, and whether that clears a target date you set."] },
-        { p: "A goal is a target amount, what you have saved so far, and what you put aside each month. The app works out the date you reach it, says whether you are on track for a target date you set, and tells you the monthly figure that would get you there if you aren't. A goal can also add its payout to the budget as a one-time expense on the target date, so a planned purchase shows up in the forecast." }
+        { p: "A goal is a target amount, what you have saved so far, and what you put aside each month. The app works out the date you reach it, says whether you are on track for a target date you set, and tells you the monthly figure that would get you there if you aren't. A goal can also add its payout to the budget as a one-time expense on the target date, so a planned purchase shows up in the forecast." },
+        { p: "A goal can repeat, which is what makes it a sinking fund rather than a one-off: insurance every August, the vehicle inspection every two years, something quarterly. When the target date arrives the money is spent and the goal starts again for the next one \u2014 the date moves on, the monthly contribution carries on rather than stopping dead, and a payout is written into the forecast for the new date. Anything saved over the target carries into the next cycle, because it is your money. An app left unopened for two years catches up every missed cycle at once and lands on a date that is still ahead." },
       ]
     },
     {
@@ -271,6 +273,7 @@
         ] },
         { sub: "Household" },
         { p: "Lists the people in your household and creates invite codes for new ones. A family member signs in, enters the code, and shares the same budget." },
+        { p: "A member can be made view-only. They keep seeing the whole budget \u2014 every entry, every figure, every report \u2014 and stop being able to change any of it. The app says so at the top of the page, and the refusal is enforced by the database rather than by hiding buttons, so it holds however the app is reached. Only the household owner can set it, and the owner cannot be made view-only." },
         { sub: "Templates" },
         { p: "The entry templates you have saved, with a Remove button for each." },
         { sub: "Activity" },

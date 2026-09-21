@@ -5978,6 +5978,110 @@ const nwRead = async (page) => page.evaluate(() => {
            rows: document.querySelectorAll('.nw-asset-row').length };
 });
 
+// The month-level insight names one driver. These name each category that is
+// spending unlike itself, which is the case a single driver cannot cover: a
+// month can look ordinary in total while two categories have both moved.
+//
+// Groceries (entry 5) runs biweekly at $260, so Food averages a little over
+// $560 a month. One September occurrence is overridden to $2,000, which is
+// far enough out to be worth saying and nothing like a rounding wobble.
+const ANOMALY_OVERRIDES = JSON.stringify({ 2026: { '5-2026-8-13': { actualAmount: 200000 } } });
+const withAnomaly = (stub) => stub.replace('overridesByYr: {}', 'overridesByYr: ' + ANOMALY_OVERRIDES);
+
+await test('alerts: a category spending unlike itself is reported, with what it is being judged against', async () => {
+  const { ctx, page } = await ctxPage({ stub: withAnomaly });
+  await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
+  await settled(page);
+  const body = (await page.locator('.alerts-page').innerText()).replace(/\s+/g, ' ');
+  if (!/Food/.test(body)) throw new Error('no finding names the category that moved: ' + body.slice(0, 400));
+  if (!/average/i.test(body)) throw new Error('the finding does not say what it is comparing against: ' + body.slice(0, 400));
+  await ctx.close();
+});
+
+await test('alerts: an ordinary month raises no category findings', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/alerts', { waitUntil: 'load' });
+  await settled(page);
+  const body = (await page.evaluate(() => [...document.querySelectorAll('.alerts-finding')]
+    .map((e) => e.innerText.replace(/\s+/g, ' ')).join(' | '))) || '';
+  // The fixture spends the same every month, so nothing is unlike itself.
+  if (/above its \d+-month average|below its \d+-month average/.test(body)) {
+    throw new Error('a steady household was told a category is unusual: ' + body);
+  }
+  await ctx.close();
+});
+
+// A repeating goal is a sinking fund: insurance every August, tax every
+// quarter. The app could express one cycle and not the next — the date passed,
+// the contribution entry ended with it, and the whole thing had to be made
+// again by hand at the one moment nobody is thinking about next year.
+//
+// Seeded past its date, so opening the app is what rolls it.
+const DUE_GOAL = JSON.stringify([{
+  id: 'g-ins', name: 'Car insurance', target: 120000, saved: 120000, monthly: 10000,
+  targetDate: '2026-03-01', repeatMonths: 12, entryId: null, payoutEntryId: null,
+}]);
+const withDueGoal = (stub) => stub.replace('goals: []', 'goals: ' + DUE_GOAL);
+
+await test('goals: a repeating fund rolls itself to the next cycle', async () => {
+  const { ctx, page } = await ctxPage({ stub: withDueGoal });
+  await page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await settled(page);
+  const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  if (!/Car insurance/.test(body)) throw new Error('the goal is gone: ' + body.slice(0, 300));
+  // March 2026 has passed, so the fund is now saving for March 2027.
+  if (/2026-03-01|Mar 1, 2026/.test(body)) {
+    throw new Error('the goal is still pointed at the date that has gone: ' + body.slice(0, 300));
+  }
+  if (!/2027/.test(body)) throw new Error('no next cycle date on the page: ' + body.slice(0, 300));
+  await ctx.close();
+});
+
+await test('goals: a goal that does not repeat is left where it is', async () => {
+  const once = JSON.stringify([{
+    id: 'g-roof', name: 'New roof', target: 500000, saved: 100000, monthly: 25000,
+    targetDate: '2026-03-01', repeatMonths: 0, entryId: null, payoutEntryId: null,
+  }]);
+  const { ctx, page } = await ctxPage({ stub: (stub) => stub.replace('goals: []', 'goals: ' + once) });
+  await page.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await settled(page);
+  const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  if (/2027/.test(body)) throw new Error('a one-shot goal was rolled forward: ' + body.slice(0, 300));
+  await ctx.close();
+});
+
+await test('net worth: Today carries the figure, and says so plainly when there is none', async () => {
+  // Seeded: the headline on Today must agree with the page it links to.
+  const { ctx, page } = await ctxPage({ stub: withAssets });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const tile = page.locator('.glance-tile').filter({ hasText: 'Net worth' });
+  if (await tile.count() === 0) throw new Error('no net worth tile on Today');
+  const shown = (await tile.first().innerText()).replace(/\s+/g, ' ');
+  if (!/\$[\d,]+/.test(shown)) throw new Error('the tile shows no figure: ' + shown);
+  // The same arithmetic as Plan, not a second version of it.
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  const onPage = (await page.locator('.nw-total').innerText()).replace(/\s+/g, ' ').trim();
+  if (!shown.includes(onPage)) {
+    throw new Error(`Today says "${shown}" but Plan says "${onPage}"`);
+  }
+  await ctx.close();
+});
+
+await test('net worth: with nothing owned, the tile does not claim a total of zero', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const tile = page.locator('.glance-tile').filter({ hasText: 'Net worth' });
+  const shown = (await tile.first().innerText()).replace(/\s+/g, ' ');
+  // The fixture has no assets and no debts. A household that has recorded
+  // nothing has an unknown net worth, not a net worth of nothing.
+  if (/\$0\.00/.test(shown)) throw new Error('the tile reports $0.00 with nothing recorded: ' + shown);
+  if (!/Nothing recorded/i.test(shown)) throw new Error('no empty state on the tile: ' + shown);
+  await ctx.close();
+});
+
 await test('net worth: the page adds up — what you own, plus cash, less what you owe', async () => {
   const { ctx, page } = await ctxPage({ stub: withAssets });
   await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });

@@ -328,6 +328,15 @@
       if (error) throw error;
       await refreshMembership(session.user.id);
     }, [household, session, refreshMembership]);
+    // View-only is a role, not a second flag, so a member has one status rather
+    // than two that can contradict each other. The same owner-only policy that
+    // governs disabling governs this.
+    const setMemberRole = useCallback(async (userId, role) => {
+      if (!supabaseClient || !household || !session) return;
+      const { error } = await supabaseClient.from("household_members").update({ role }).eq("household_id", household.id).eq("user_id", userId);
+      if (error) throw error;
+      await refreshMembership(session.user.id);
+    }, [household, session, refreshMembership]);
     const updateMyName = useCallback(async (fullName) => {
       if (!supabaseClient || !household || !session) return;
       const { error } = await supabaseClient.from("household_members").update({ full_name: fullName }).eq("household_id", household.id).eq("user_id", session.user.id);
@@ -360,6 +369,7 @@
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      setMemberRole,
       updateMemberName,
       updateMyName,
       signOut

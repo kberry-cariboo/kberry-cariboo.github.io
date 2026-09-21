@@ -219,9 +219,14 @@ create table if not exists goals (
   target_date date,
   entry_id text,                            -- linked "monthly contribution" entry
   payout_entry_id text,                     -- linked "payout" expense entry
+  -- 0 for a goal that happens once, which is every goal that predates this
+  -- column. A sinking fund says how often it comes round: 12 for insurance
+  -- once a year, 3 for something quarterly.
+  repeat_months int not null default 0,
   created_at timestamptz,
   primary key (household_id, id)
 );
+alter table goals add column if not exists repeat_months int not null default 0;
 
 -- One row per tracked debt. This was a jsonb blob on household_settings while
 -- every other thing the household owns — entries, accounts, goals, templates,
@@ -696,6 +701,28 @@ as $$
   select exists(
     select 1 from household_members m
     where m.household_id = hid and m.user_id = auth.uid() and m.role = 'owner' and not m.disabled
+  );
+$$;
+
+-- A member who may change things. 'viewer' is the read-only role: they load
+-- the household exactly as anyone else does — every policy that governs
+-- reading still asks is_household_member — and every path that writes asks
+-- this instead.
+--
+-- Deliberately a role value rather than a flag, so a member has one status
+-- rather than two that can disagree. Anything that is not 'viewer' can write,
+-- which means a household from before this existed carries on unchanged.
+create or replace function is_household_writer(hid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists(
+    select 1 from household_members m
+    where m.household_id = hid and m.user_id = auth.uid()
+      and m.role is distinct from 'viewer' and not m.disabled
   );
 $$;
 
@@ -1473,7 +1500,7 @@ begin
   -- goals ---------------------------------------------------------------------
   if jsonb_typeof(d->'goals') = 'array' then
     insert into goals (household_id, id, sort_order, name, target, saved, monthly,
-                       target_date, entry_id, payout_entry_id, created_at)
+                       target_date, entry_id, payout_entry_id, repeat_months, created_at)
     select hid,
            cf_id(g.value->>'id'),
            g.ord,
@@ -1484,6 +1511,7 @@ begin
            cf_date(g.value->>'targetDate'),
            cf_id(g.value->>'entryId'),
            cf_id(g.value->>'payoutEntryId'),
+           coalesce((g.value->>'repeatMonths')::int, 0),
            cf_ts(g.value->>'createdAt')
     from jsonb_array_elements(d->'goals') with ordinality g(value, ord)
     where cf_id(g.value->>'id') is not null
@@ -1496,12 +1524,13 @@ begin
       target_date = excluded.target_date,
       entry_id = excluded.entry_id,
       payout_entry_id = excluded.payout_entry_id,
+      repeat_months = excluded.repeat_months,
       created_at = excluded.created_at
     where (goals.sort_order, goals.name, goals.target, goals.saved, goals.monthly,
-           goals.target_date, goals.entry_id, goals.payout_entry_id, goals.created_at)
+           goals.target_date, goals.entry_id, goals.payout_entry_id, goals.repeat_months, goals.created_at)
       is distinct from
           (excluded.sort_order, excluded.name, excluded.target, excluded.saved, excluded.monthly,
-           excluded.target_date, excluded.entry_id, excluded.payout_entry_id, excluded.created_at);
+           excluded.target_date, excluded.entry_id, excluded.payout_entry_id, excluded.repeat_months, excluded.created_at);
 
     delete from goals g
     where g.household_id = hid
@@ -1749,8 +1778,16 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare hid uuid;
 begin
-  perform cf_apply_household_payload(cf_my_household(), p_data);
+  hid := cf_my_household();
+  -- The one place a view-only member is stopped. Reading is untouched: they
+  -- load the same household everyone else does, and see all of it.
+  if not is_household_writer(hid) then
+    raise exception 'This account has view-only access to the household.'
+      using errcode = '42501';
+  end if;
+  perform cf_apply_household_payload(hid, p_data);
 end $$;
 
 -- Conflict-aware save (round-8 audit AR2): p_expected_saved_at is the
@@ -1774,6 +1811,13 @@ declare
   current_saved_at timestamptz;
   new_saved_at timestamptz;
 begin
+  -- Same gate as the unchecked save. Placed in both rather than in
+  -- cf_apply_household_payload, because the legacy-blob migration calls that
+  -- one directly and has no auth.uid() to be a writer with.
+  if not is_household_writer(hid) then
+    raise exception 'This account has view-only access to the household.'
+      using errcode = '42501';
+  end if;
   select updated_at into current_saved_at
   from household_settings where household_id = hid for update;
 
@@ -1944,6 +1988,7 @@ begin
         'targetDate', coalesce(to_char(g.target_date, 'YYYY-MM-DD'), ''),
         'entryId', cf_id_json(g.entry_id),
         'payoutEntryId', cf_id_json(g.payout_entry_id),
+        'repeatMonths', g.repeat_months,
         'createdAt', g.created_at
       ) order by g.sort_order, g.id)
       from goals g where g.household_id = hid), '[]'::jsonb),
@@ -2049,6 +2094,10 @@ as $$
 declare
   hid uuid := cf_my_household();
 begin
+  if not is_household_writer(cf_my_household()) then
+    raise exception 'This account has view-only access to the household.'
+      using errcode = '42501';
+  end if;
   if p_owner_key is null or p_owner_key !~ '^override:' then
     raise exception 'Invalid receipt owner key: receipts are per-occurrence (override:<year>:<occurrenceId>).';
   end if;
@@ -2065,6 +2114,10 @@ security definer
 set search_path = public
 as $$
 begin
+  if not is_household_writer(cf_my_household()) then
+    raise exception 'This account has view-only access to the household.'
+      using errcode = '42501';
+  end if;
   delete from receipts where household_id = cf_my_household() and owner_key = p_owner_key;
 end $$;
 

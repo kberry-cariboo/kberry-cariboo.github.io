@@ -362,6 +362,7 @@
   }, aiApiKey = "", setAiApiKey, sbConfigured = true, houseStatus = "idle", houseMsg = "", houseUnsaved = false, houseSave = () => {
   }, houseLoad = () => {
   }, household = null, members = [], createInvite = () => {
+  }, setMemberRole = () => {
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
   }, holidays = {}, setHolidays = () => {
@@ -1032,7 +1033,7 @@
             if (e.key === "Escape") setEditMemberId(null);
           }
         }
-      ) : /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { className: "you-tag" }, "(You)")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, m.role === "owner" ? "Owner" : "Member", m.disabled ? " \u00b7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      ) : /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { className: "you-tag" }, "(You)")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, m.role === "owner" ? "Owner" : m.role === "viewer" ? "View-only" : "Member", m.disabled ? " \u00b7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => saveMemberName(m.user_id),
@@ -1073,6 +1074,23 @@
           className: (m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger") + " cf-btn--xs"
         },
         m.disabled ? "Enable" : "Disable"
+      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && m.role !== "owner" && /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: async () => {
+            setMemberMsg("");
+            try {
+              await setMemberRole(m.user_id, m.role === "viewer" ? "member" : "viewer");
+            } catch (e) {
+              setMemberMsg(e.message || "Only the household owner can do this.");
+            }
+          },
+          title: m.role === "viewer"
+            ? "Let this person change the budget again"
+            : "This person keeps seeing everything, and stops being able to change it",
+          className: "cf-btn cf-btn--secondary cf-btn--xs"
+        },
+        m.role === "viewer" ? "Allow changes" : "Make view-only"
       )));
     }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
       "button",
