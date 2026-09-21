@@ -1050,6 +1050,10 @@
             setTab("flow");
             setFlowSub("entries");
             break;
+          case "e":
+          case "E":
+            setTab("envelopes");
+            break;
           case "p":
           case "P":
             setTab("plan");
