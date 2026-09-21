@@ -118,6 +118,7 @@
   }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {
+  }, overridesByYr = {}, applyDriftFix = () => {
   }, setEntries = () => {
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
   }, dashOrder = [], setDashOrder = () => {
@@ -530,6 +531,7 @@
       { id: "nextLow", label: "Next low point", size: "third" },
       { id: "dueMonth", label: "Due rest of month", size: "third" },
       { id: "upcoming", label: "Upcoming \u2014 next 7", size: "full" },
+      { id: "drift", label: "Bills that have drifted", size: "full" },
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
@@ -538,7 +540,7 @@
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
       { id: "topCatsChart", label: "Top expense categories", size: "narrow" },
       { id: "incomeSources", label: "Income sources", size: "half" },
-      { id: "bvaYear", label: "Budget vs Actual (year)", size: "half" },
+      { id: "bvaYear", label: "Envelopes (year)", size: "half" },
       { id: "debtSnap", label: "Debt snapshot", size: "full" },
       { id: "summary", label: "Monthly summary table", size: "full" },
       { id: "yoy", label: "Year-over-Year comparison", size: "full" }
@@ -557,6 +559,15 @@
     // the alert threshold, red overdrawn). Eleven of the fourteen balance
     // readouts already did this; the three that painted a healthy balance
     // green made the genuinely alarming ones harder to pick out.
+    // What each recurring bill actually costs, against what its entry still
+    // says. The evidence is the actuals already recorded on occurrences — see
+    // src/lib/drift.js for when this is allowed to speak, which is the whole
+    // design problem: a variable bill that swings either side of its planned
+    // figure has not drifted, and saying so would make the panel noise.
+    const driftFindings = useMemo(
+      () => findAmountDrift(entries, overridesByYr, { asOf: todayStr() }),
+      [entries, overridesByYr]
+    );
     const WIDGET_RENDER = {
       runway: () => runway && /* @__PURE__ */ React.createElement(Card, { className: "runway-card" },
         /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Next 90 days"),
@@ -603,6 +614,33 @@
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
       } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
       dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { className: "glance-value c-text" }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
+      drift: () => driftFindings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
+        /* @__PURE__ */ React.createElement(SectionTitle, {
+          help: "A recurring entry says what you expect to pay. When the amounts you have actually recorded against it keep landing somewhere else, every projection past today is using the wrong figure \u2014 these are the ones far enough out, for long enough, to be worth correcting."
+        }, "Bills that have drifted"),
+        /* @__PURE__ */ React.createElement("div", { className: "drift-list" }, driftFindings.slice(0, 5).map((d) => /* @__PURE__ */ React.createElement("div", { key: d.entryId, className: "drift-row" },
+          /* @__PURE__ */ React.createElement("div", { className: "drift-row-main" },
+            /* @__PURE__ */ React.createElement("div", { className: "drift-desc" }, d.desc),
+            /* @__PURE__ */ React.createElement("div", { className: "hint" },
+              "Entry says ", fmt(d.planned), " \u00b7 last ", d.samples,
+              d.samples === 1 ? " payment" : " payments",
+              " ranged ", fmt(d.low), "\u2013", fmt(d.high))),
+          /* @__PURE__ */ React.createElement("div", { className: "drift-row-figure" },
+            /* @__PURE__ */ React.createElement("div", {
+              className: "drift-suggested",
+              // Direction is the news, so it carries the colour: a bill that
+              // has risen is the one that makes the forecast optimistic.
+              style: { color: d.direction === "up" ? "var(--red)" : "var(--greenDk)" }
+            }, d.direction === "up" ? "\u2191 " : "\u2193 ", fmt(d.suggested)),
+            /* @__PURE__ */ React.createElement("div", { className: "hint" },
+              (d.delta > 0 ? "+" : "\u2212"), fmt(Math.abs(d.delta)), " a time")),
+          /* @__PURE__ */ React.createElement("button", {
+            className: "cf-btn cf-btn--secondary cf-btn--compact",
+            onClick: () => applyDriftFix(d),
+            "aria-label": `Update ${d.desc} to ${fmt(d.suggested)}`
+          }, "Update")))),
+        driftFindings.length > 5 && /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" },
+          "and ", driftFindings.length - 5, " more")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = startOfToday();
         const horizon = new Date(today);

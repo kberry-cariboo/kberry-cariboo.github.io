@@ -65,7 +65,8 @@
           /* @__PURE__ */ React.createElement("span", { className: "strat-order-name" }, n)))));
   };
 
-  function PlanView({ flow, openBal, entries = [], setEntries = () => {
+  function PlanView({ flow, openBal, assets = [], setAssets = () => {
+  }, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
@@ -92,6 +93,8 @@
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
+    const [showAssetForm, setShowAssetForm] = useState(false);
+    const [assetForm, setAssetForm] = useState(null);
     const [showGoalForm, setShowGoalForm] = useState(false);
     const [goalForm, setGoalForm] = useState(null);
     const [goalErrors, setGoalErrors] = useState({});
@@ -713,7 +716,119 @@
         });
       };
       const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, planSub === "strategy" && (() => {
+      // ── Net worth ────────────────────────────────────────────────────────
+      // Two thirds of this the app already knew: debts carry balances, and the
+      // projection knows what is in the accounts today. Assets were the
+      // missing third, and without them the one number people mean by "how am
+      // I doing overall" could not be formed at all.
+      //
+      // Nothing here is estimated. A value is whatever was last typed in, and
+      // the date beside it says when — a house valuation grown forward by some
+      // assumed rate would look like a measurement and be a guess.
+      const nwCash = getCurrentBalance(flow, openBal, activeYear);
+      const nw = netWorthSummary({ assets, debtData, cash: nwCash, asOf: todayStr() });
+      const blankAsset = { id: null, name: "", kind: "property", value: "", asOf: todayStr(), note: "" };
+      const saveAssetForm = () => {
+        const name = ((assetForm && assetForm.name) || "").trim();
+        if (!name) return;
+        const valN = parseFloat(assetForm.value);
+        const row = {
+          name,
+          kind: assetForm.kind || "other",
+          value: Number.isFinite(valN) ? dollarsToCents(valN) : 0,
+          asOf: assetForm.asOf || todayStr(),
+          note: (assetForm.note || "").trim()
+        };
+        if (assetForm.id) {
+          setAssets((prev) => prev.map((a) => a.id === assetForm.id ? __spreadValues(__spreadValues({}, a), row) : a));
+          logActivity("asset", `Updated the asset ${name}`);
+        } else {
+          setAssets((prev) => [...prev, __spreadValues({ id: genId(), createdAt: (/* @__PURE__ */ new Date()).toISOString() }, row)]);
+          logActivity("asset", `Added the asset ${name}`);
+        }
+        setShowAssetForm(false);
+      };
+      const removeAsset = (a) => {
+        setAssets((prev) => prev.filter((x) => x.id !== a.id));
+        logActivity("asset", `Removed the asset ${a.name}`);
+        toast(`"${a.name}" removed.`);
+      };
+      const assetField = (id, label, input) => /* @__PURE__ */ React.createElement("div", null,
+        /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: id }, label), input);
+      const netWorthView = /* @__PURE__ */ React.createElement(Card, { className: "mb-20" + (planSub === "networth" ? "" : " cf-hidden") },
+        /* @__PURE__ */ React.createElement(SectionTitle, {
+          help: "What you own, plus what is in your accounts today, less what you owe. Asset values are whatever you last entered — nothing is estimated or grown for you, and the date beside each one says when you last confirmed it."
+        }, "Net worth"),
+        /* @__PURE__ */ React.createElement("div", { className: "nw-total", "data-tone": nw.total < 0 ? "bad" : "good" }, fmt(nw.total, true)),
+        /* @__PURE__ */ React.createElement("div", { className: "nw-parts" },
+          [["Assets", nw.assets], ["In accounts", nw.cash], ["Debts", -nw.debts]].map((pair) =>
+            /* @__PURE__ */ React.createElement("div", { key: pair[0], className: "nw-part" },
+              /* @__PURE__ */ React.createElement("div", { className: "lbl" }, pair[0]),
+              /* @__PURE__ */ React.createElement("div", { className: "nw-part-amt" }, fmt(pair[1], true))))),
+        nw.stale.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mt-12", "data-tone": "warn", role: "status" },
+          nw.stale.length === 1
+            ? `${nw.stale[0].name} was last confirmed over a year ago.`
+            : `${nw.stale.length} assets were last confirmed over a year ago.`),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mt-16 mb-8" },
+          /* @__PURE__ */ React.createElement("h3", { className: "cf-section-title-text" }, "What you own"),
+          /* @__PURE__ */ React.createElement("button", {
+            className: "cf-btn cf-btn--secondary cf-btn--compact",
+            onClick: () => { setAssetForm(blankAsset); setShowAssetForm(true); }
+          }, "+ Add asset")),
+        assets.length === 0
+          ? /* @__PURE__ */ React.createElement("div", { className: "hint" }, "Nothing recorded yet. Add the house, the car, an investment account — anything you would count if you were adding up what you are worth.")
+          : /* @__PURE__ */ React.createElement("div", { className: "nw-asset-list" }, assets.map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "nw-asset-row" },
+              /* @__PURE__ */ React.createElement("div", { className: "nw-asset-main" },
+                /* @__PURE__ */ React.createElement("div", { className: "nw-asset-name" }, a.name),
+                /* @__PURE__ */ React.createElement("div", { className: "hint" }, assetKindLabel(a.kind),
+                  a.asOf ? " · as of " + humanShortDate(a.asOf) : "",
+                  a.note ? " · " + a.note : "")),
+              /* @__PURE__ */ React.createElement("div", { className: "nw-asset-amt" }, fmt(a.value)),
+              /* @__PURE__ */ React.createElement("button", {
+                className: "link-btn-sm",
+                onClick: () => { setAssetForm(__spreadProps(__spreadValues({}, a), { value: String(centsToDollars(a.value || 0)) })); setShowAssetForm(true); },
+                "aria-label": `Edit ${a.name}`
+              }, "Edit"),
+              /* @__PURE__ */ React.createElement("button", {
+                className: "link-btn-sm", onClick: () => removeAsset(a), "aria-label": `Remove ${a.name}`
+              }, "Remove")))));
+      const assetFormModal = planSub === "networth" && showAssetForm && assetForm && /* @__PURE__ */ React.createElement("div",
+        { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Asset form" },
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowAssetForm(false) }),
+          /* @__PURE__ */ React.createElement(SectionTitle, null, assetForm.id ? "Edit asset" : "Add asset"),
+          assetField("asset-name", "Name", /* @__PURE__ */ React.createElement("input", {
+            id: "asset-name", autoFocus: autoFocusOnDesktop(), placeholder: "e.g. House",
+            value: assetForm.name, className: "field-input",
+            onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { name: e.target.value })),
+            onKeyDown: (e) => e.key === "Enter" && saveAssetForm()
+          })),
+          /* @__PURE__ */ React.createElement("div", { className: "grid-2-12 mt-12" },
+            assetField("asset-kind", "Kind", /* @__PURE__ */ React.createElement("select", {
+              id: "asset-kind", value: assetForm.kind, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { kind: e.target.value }))
+            }, ASSET_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label)))),
+            assetField("asset-value", "Value", /* @__PURE__ */ React.createElement("input", {
+              id: "asset-value", inputMode: "decimal", placeholder: "0.00",
+              value: assetForm.value, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { value: e.target.value })),
+              onKeyDown: (e) => e.key === "Enter" && saveAssetForm()
+            }))),
+          /* @__PURE__ */ React.createElement("div", { className: "grid-2-12 mt-12" },
+            assetField("asset-asof", "Value confirmed on", /* @__PURE__ */ React.createElement("input", {
+              id: "asset-asof", type: "date", value: assetForm.asOf, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { asOf: e.target.value }))
+            })),
+            assetField("asset-note", "Note", /* @__PURE__ */ React.createElement("input", {
+              id: "asset-note", placeholder: "optional", value: assetForm.note, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { note: e.target.value })),
+              onKeyDown: (e) => e.key === "Enter" && saveAssetForm()
+            }))),
+          /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-16", style: { justifyContent: "flex-end" } },
+            /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: () => setShowAssetForm(false) }, "Cancel"),
+            /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", onClick: saveAssetForm }, "Save"))));
+
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, netWorthView, assetFormModal, planSub === "strategy" && (() => {
         const simDebtsAll = allRows.map((row) => {
           var _a, _b;
           return {

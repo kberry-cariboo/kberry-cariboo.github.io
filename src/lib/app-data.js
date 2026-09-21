@@ -581,7 +581,7 @@ const RUNWAY_DAYS = 90;
   // resolves rather than silently falling back to Monthly; BudgetView forwards
   // it to calendar, the view that replaced it.
   const ROUTE_FLOW_SUBS = ["list", "calendar", "curve", "entries"];
-  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt", "insights"];
+  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt", "networth", "insights"];
   // Settings is a directory of pages rather than one long scroll, so each of
   // them needs a route: the back button has to work, and a link to "where you
   // change the alert threshold" has to be a link.
@@ -630,6 +630,7 @@ const RUNWAY_DAYS = 90;
     "plan/debt": "Plan \u00b7 Debts",
     "plan/strategy": "Plan \u00b7 Payoff",
     "plan/goals": "Plan \u00b7 Goals",
+    "plan/networth": "Plan \u00b7 Net worth",
     "plan/insights": "Plan \u00b7 Insights"
   };
   function viewName(tab, flowSub, planSub) {
@@ -704,6 +705,7 @@ const RUNWAY_DAYS = 90;
     target: "Target",
     goal: "Goal",
     debt: "Debt",
+    asset: "Asset",
     year: "Year",
     account: "Account",
     category: "Category"

@@ -190,6 +190,24 @@ create table if not exists completed_occurrences (
   primary key (household_id, occurrence_id)
 );
 
+-- What the household owns, for the net worth figure. A flat record on
+-- purpose: a name, a kind, a value and the date that value was last
+-- confirmed. No growth rate and no history — a figure typed in March is a
+-- figure from March, and `as_of` is what lets the app say so instead of
+-- presenting a stale guess as a measurement.
+create table if not exists assets (
+  household_id uuid not null references households(id) on delete cascade,
+  id text not null,                         -- client-generated, opaque (see cf_id)
+  sort_order int not null default 0,
+  name text not null default '',
+  kind text not null default 'other',
+  value numeric(14,2) not null default 0,
+  as_of date,
+  note text not null default '',
+  created_at timestamptz,
+  primary key (household_id, id)
+);
+
 create table if not exists goals (
   household_id uuid not null references households(id) on delete cascade,
   id text not null,                         -- client-generated, opaque (see cf_id)
@@ -638,6 +656,7 @@ alter table year_configs enable row level security;
 alter table budget_targets enable row level security;
 alter table templates enable row level security;
 alter table completed_occurrences enable row level security;
+alter table assets enable row level security;
 alter table goals enable row level security;
 alter table debts enable row level security;
 alter table activity_log enable row level security;
@@ -763,6 +782,10 @@ create policy "member read templates" on templates
 
 drop policy if exists "member read completed_occurrences" on completed_occurrences;
 create policy "member read completed_occurrences" on completed_occurrences
+  for select using (is_household_member(household_id));
+
+drop policy if exists "member read assets" on assets;
+create policy "member read assets" on assets
   for select using (is_household_member(household_id));
 
 drop policy if exists "member read goals" on goals;
@@ -980,7 +1003,7 @@ returns text[] language sql immutable as $$
     'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
     'completed', 'debtData', 'deletedCopyIds', 'holidays',
     'budgetColOrder', 'debtExtra', 'debtSimExcluded',
-    'currency', 'locale', 'holidayRegion', 'activity', 'accounts'
+    'currency', 'locale', 'holidayRegion', 'activity', 'accounts', 'assets'
   ]::text[];
 $$;
 
@@ -1408,6 +1431,42 @@ begin
       and not exists (
         select 1 from jsonb_each(d->'completed') c(key, value)
         where c.key = co.occurrence_id and c.value <> 'false'::jsonb and c.value <> 'null'::jsonb
+      );
+  end if;
+
+  -- assets --------------------------------------------------------------------
+  if jsonb_typeof(d->'assets') = 'array' then
+    insert into assets (household_id, id, sort_order, name, kind, value, as_of, note, created_at)
+    select hid,
+           cf_id(a.value->>'id'),
+           a.ord,
+           coalesce(a.value->>'name', ''),
+           coalesce(nullif(a.value->>'kind', ''), 'other'),
+           coalesce(cf_num(a.value->>'value'), 0),
+           cf_date(a.value->>'asOf'),
+           coalesce(a.value->>'note', ''),
+           cf_ts(a.value->>'createdAt')
+    from jsonb_array_elements(d->'assets') with ordinality a(value, ord)
+    where cf_id(a.value->>'id') is not null
+    on conflict (household_id, id) do update set
+      sort_order = excluded.sort_order,
+      name = excluded.name,
+      kind = excluded.kind,
+      value = excluded.value,
+      as_of = excluded.as_of,
+      note = excluded.note,
+      created_at = excluded.created_at
+    where (assets.sort_order, assets.name, assets.kind, assets.value,
+           assets.as_of, assets.note, assets.created_at)
+      is distinct from
+          (excluded.sort_order, excluded.name, excluded.kind, excluded.value,
+           excluded.as_of, excluded.note, excluded.created_at);
+
+    delete from assets a
+    where a.household_id = hid
+      and not exists (
+        select 1 from jsonb_array_elements(d->'assets') x(value)
+        where cf_id(x.value->>'id') = a.id
       );
   end if;
 
@@ -1864,6 +1923,17 @@ begin
     'completed', coalesce((
       select jsonb_object_agg(co.occurrence_id, to_jsonb(true))
       from completed_occurrences co where co.household_id = hid), '{}'::jsonb),
+    'assets', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', cf_id_json(a.id),
+        'name', a.name,
+        'kind', a.kind,
+        'value', a.value,
+        'asOf', coalesce(to_char(a.as_of, 'YYYY-MM-DD'), ''),
+        'note', a.note,
+        'createdAt', a.created_at
+      ) order by a.sort_order, a.id)
+      from assets a where a.household_id = hid), '[]'::jsonb),
     'goals', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', cf_id_json(g.id),

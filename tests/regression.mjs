@@ -253,7 +253,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   await test('budget vs actual: rows show spent against budget and flag overspend', async () => {
     await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
-    await page.getByText('Budget vs Actual', { exact: false }).first().waitFor(V);
+    await page.getByText('Envelopes', { exact: false }).first().waitFor(V);
     await page.getByText('over', { exact: false }).first().waitFor(V);
   });
 
@@ -1303,6 +1303,10 @@ await test('help keeps its section index, and settings no longer needs one', asy
     const n = document.querySelector('.section-nav');
     return { present: !!n, h: n ? Math.round(n.getBoundingClientRect().height) : 0,
       label: n ? n.innerText.replace(/\s+/g, ' ') : null,
+      // Derived, not a literal: the bar's job is to count the sections that
+      // are there, and hard-coding the number turns every new section into a
+      // failing test about something else.
+      sections: document.querySelectorAll('.cf-card[id^="help-"]').length,
       // The strip and the bar are the same index twice; on a phone only one
       // of them should be paying for space.
       strips: [...document.querySelectorAll('.settings-quicklinks')]
@@ -1311,7 +1315,9 @@ await test('help keeps its section index, and settings no longer needs one', asy
   if (!top.present) throw new Error('#/help: no sticky section bar');
   if (top.h > 80) throw new Error('#/help: the bar is ' + top.h + 'px');
   if (top.strips) throw new Error('#/help: the index strip is still shown alongside the bar');
-  if (!/10 sections/.test(top.label)) throw new Error('#/help: bar says "' + top.label + '", expected 10 sections');
+  if (!new RegExp(top.sections + ' sections').test(top.label)) {
+    throw new Error('#/help: bar says "' + top.label + '", but the page has ' + top.sections + ' sections');
+  }
   // It stays put, and it renames itself as you go.
   await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
     sc.scrollTop = sc.scrollHeight * 0.6; });
@@ -1329,10 +1335,11 @@ await test('help keeps its section index, and settings no longer needs one', asy
   await page.waitForTimeout(600);
   const sheet = await page.evaluate(() => ({
     items: document.querySelectorAll('.section-nav-item').length,
+    sections: document.querySelectorAll('.cf-card[id^="help-"]').length,
     marked: document.querySelectorAll('.section-nav-item[aria-current]').length,
     minH: Math.min(...[...document.querySelectorAll('.section-nav-item')]
       .map((e) => Math.round(e.getBoundingClientRect().height))) }));
-  if (sheet.items !== 10) throw new Error('the jump sheet lists ' + sheet.items + ' sections');
+  if (sheet.items !== sheet.sections) throw new Error('the jump sheet lists ' + sheet.items + ' of the page\'s ' + sheet.sections + ' sections');
   if (sheet.marked !== 1) throw new Error(sheet.marked + ' sections marked as current');
   if (sheet.minH < 44) throw new Error('jump rows are ' + sheet.minH + 'px');
   const before = await page.evaluate(() => document.querySelector('.app-scroll').scrollTop);
@@ -5793,6 +5800,144 @@ await test('dashboard: Upcoming shows the next seven outstanding, whatever the w
 // The four headline numbers each carry a sparkline of the year's shape. They
 // are drawn from `summaries`, so a tile whose sparkline is missing or flat
 // means the tile is reading a different year than the number beside it.
+// A recurring entry records what you expect to pay; the actuals recorded
+// against its occurrences record what it really cost. Nothing in the app used
+// to read one against the other, so a bill that had quietly risen kept every
+// projection past today too optimistic. The logic and its thresholds are
+// covered in tests/drift.mjs — what is checked here is that the panel reads
+// real app state, and that accepting a suggestion edits the entry.
+//
+// The fixture carries no overrides, so the drift is seeded for this test
+// alone rather than added to the shared fixture, where it would move every
+// total in every other suite. Hydro & gas (entry 7) is $185 a month on the
+// 12th; three months at ~$240 is a rise worth reporting.
+// Net worth is the one figure the app could not form before: it knew the debts
+// and it knew what was in the accounts, but there was nowhere to record the
+// house. The arithmetic is covered in tests/networth.mjs; what matters here is
+// that the page adds up on screen, and that adding an asset moves it.
+//
+// Seeded per test rather than added to the shared fixture, which carries no
+// assets — the empty state is a case worth keeping.
+const NW_ASSETS = JSON.stringify([
+  { id: 'a-house', name: 'House', kind: 'property', value: 65000000, asOf: '2026-09-01', note: '' },
+  { id: 'a-truck', name: 'Truck', kind: 'vehicle', value: 2800000, asOf: '2026-09-01', note: '' },
+]);
+const withAssets = (stub) => stub.replace('goals: []', 'goals: [], assets: ' + NW_ASSETS);
+// The figures on the page, as cents.
+const nwRead = async (page) => page.evaluate(() => {
+  const cents = (el) => {
+    const t = (el ? el.textContent : '').replace(/[^0-9.\-]/g, '');
+    return t ? Math.round(parseFloat(t) * 100) : null;
+  };
+  const parts = [...document.querySelectorAll('.nw-part')].map((p) => ({
+    label: (p.querySelector('.lbl') || {}).textContent,
+    amt: cents(p.querySelector('.nw-part-amt')),
+  }));
+  return { total: cents(document.querySelector('.nw-total')), parts,
+           rows: document.querySelectorAll('.nw-asset-row').length };
+});
+
+await test('net worth: the page adds up — what you own, plus cash, less what you owe', async () => {
+  const { ctx, page } = await ctxPage({ stub: withAssets });
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  const nw = await nwRead(page);
+  if (nw.rows !== 2) throw new Error('expected two assets listed, found ' + nw.rows);
+  if (nw.parts.length !== 3) throw new Error('expected three parts, found ' + JSON.stringify(nw.parts));
+  const [owned, cash, owed] = nw.parts.map((p) => p.amt);
+  if (owned !== 67800000) throw new Error('assets total is ' + owned + ', not the 678,000 seeded');
+  // The invariant, rather than a number copied from the fixture: whatever the
+  // projection says is in the accounts, the headline is the three parts summed.
+  if (nw.total !== owned + cash + owed) {
+    throw new Error(`the headline ${nw.total} is not ${owned} + ${cash} + ${owed}`);
+  }
+  await ctx.close();
+});
+
+await test('net worth: adding an asset moves the figure', async () => {
+  const { ctx, page } = await ctxPage({ stub: withAssets });
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  const before = await nwRead(page);
+  await page.getByRole('button', { name: /Add asset/i }).click();
+  await page.waitForTimeout(400);
+  await page.locator('#asset-name').fill('Pension');
+  await page.locator('#asset-value').fill('1250.50');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.waitForTimeout(700);
+  const after = await nwRead(page);
+  if (after.rows !== before.rows + 1) throw new Error('the asset was not added to the list');
+  if (after.total !== before.total + 125050) {
+    throw new Error(`net worth moved from ${before.total} to ${after.total}, not by the 1,250.50 added`);
+  }
+  await ctx.close();
+});
+
+await test('net worth: with nothing recorded it invites you to start, rather than showing a total of nothing', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  if (await page.locator('.nw-asset-row').count() !== 0) throw new Error('assets listed with none recorded');
+  const body = await page.locator('body').innerText();
+  if (!/Nothing recorded yet/i.test(body)) throw new Error('no empty state on the net worth page');
+  await ctx.close();
+});
+
+const DRIFT_OVERRIDES = JSON.stringify({
+  2026: {
+    '7-2026-0-12': { actualAmount: 24000 },
+    '7-2026-1-12': { actualAmount: 24500 },
+    '7-2026-2-12': { actualAmount: 23800 },
+  },
+});
+const withDrift = (stub) => stub.replace('overridesByYr: {}', 'overridesByYr: ' + DRIFT_OVERRIDES);
+
+await test('dashboard: a bill whose actuals have drifted is reported with the figure it settled at', async () => {
+  const { ctx, page } = await ctxPage({ stub: withDrift });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const row = page.locator('.drift-row').filter({ hasText: 'Hydro' });
+  if (await row.count() === 0) throw new Error('the drifted-bills panel does not list Hydro & gas');
+  const text = (await row.first().innerText()).replace(/\s+/g, ' ');
+  // The median of 240.00 / 245.00 / 238.00, not the mean, and not the planned
+  // figure it is replacing.
+  if (!/240\.00/.test(text)) throw new Error('the row does not offer the settled figure: ' + text);
+  if (!/185\.00/.test(text)) throw new Error('the row does not say what the entry currently claims: ' + text);
+  await ctx.close();
+});
+
+await test('dashboard: accepting a drifted bill updates the entry it names', async () => {
+  const { ctx, page } = await ctxPage({ stub: withDrift });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  await page.locator('.drift-row').filter({ hasText: 'Hydro' }).locator('button').click();
+  await page.waitForTimeout(900);
+  // The row is gone, which is the whole point: the bill has been corrected.
+  // It is worth asserting rather than assuming, because the edit path splits
+  // the entry — the old definition keeps the months already paid, and it is
+  // the one holding the actuals the suggestion was read from.
+  if (await page.locator('.drift-row').filter({ hasText: 'Hydro' }).count() !== 0) {
+    throw new Error('the bill is still listed as drifted after being corrected');
+  }
+  // And the money moved: the entry carries the settled figure from here on.
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const listed = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  if (!/Hydro & gas/.test(listed)) throw new Error('Hydro & gas vanished from Entries after the update');
+  if (!/240\.00/.test(listed)) throw new Error('no entry carries the corrected amount: ' + listed.slice(0, 300));
+  await ctx.close();
+});
+
+await test('dashboard: with nothing recorded against a bill, the drifted panel stays away', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  if (await page.locator('.drift-row').count() !== 0) {
+    throw new Error('the drifted-bills panel appeared with no actuals recorded anywhere');
+  }
+  await ctx.close();
+});
+
 await test('dashboard: each headline number has a sparkline of the twelve months behind it', async () => {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });
