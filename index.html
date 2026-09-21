@@ -1559,6 +1559,29 @@
         /* Drifted bills. Three columns on a desktop — what it is, what it
            should be, and the button — collapsing to a stack on a phone, where
            the figure earns the room more than the alignment does. */
+        /* Net worth. The total is the headline; the three parts under it are
+           the arithmetic, so they read as one row that adds up rather than as
+           three unrelated tiles. */
+        .nw-total{font-family:var(--font-mono);font-weight:700;font-size:34px;line-height:1.1;
+          margin:4px 0 14px;}
+        .nw-total[data-tone="bad"]{color:var(--red);}
+        .nw-parts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+          padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+        .nw-part-amt{font-family:var(--font-mono);font-weight:600;font-size:15px;margin-top:2px;}
+        .nw-asset-list{display:flex;flex-direction:column;gap:2px;}
+        .nw-asset-row{display:flex;align-items:center;gap:12px;padding:10px 0;
+          border-bottom:1px solid var(--border);}
+        .nw-asset-row:last-child{border-bottom:none;}
+        .nw-asset-main{flex:1;min-width:0;}
+        .nw-asset-name{font-weight:600;font-size:14px;margin-bottom:2px;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .nw-asset-amt{font-family:var(--font-mono);font-weight:600;font-size:14px;flex-shrink:0;}
+        @media (max-width:640px){
+          .nw-total{font-size:28px;}
+          .nw-parts{grid-template-columns:1fr;gap:8px;}
+          .nw-asset-row{flex-wrap:wrap;gap:8px;}
+          .nw-asset-main{flex:1 1 100%;}
+        }
         .drift-list{display:flex;flex-direction:column;gap:2px;}
         .drift-row{display:flex;align-items:center;gap:14px;padding:10px 0;
           border-bottom:1px solid var(--border);}
@@ -5038,6 +5061,100 @@ document.addEventListener('DOMContentLoaded',function(){
       .filter(Boolean)
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
   }
+  // Net worth: what you own, less what you owe.
+  //
+  // The app already knew two thirds of this and never said it. Debts carry
+  // balances (Plan → Debts), and the projection knows what is in the accounts
+  // on any given day — but there was nowhere to record the house, the car or
+  // the RRSP, so the one number people actually mean by "how am I doing" could
+  // not be formed.
+  //
+  // An asset is deliberately a flat record rather than anything cleverer: a
+  // name, a kind, a value and the date that value was last confirmed. No
+  // growth rates, no valuations, no history. A figure you typed in March is a
+  // figure from March, and the honest thing is to say so rather than to
+  // project it forward and present a guess as a measurement.
+  //
+  // Pure functions over plain data. Money is integer cents, as everywhere.
+
+  const ASSET_KINDS = [
+    { id: "property", label: "Property" },
+    { id: "vehicle", label: "Vehicle" },
+    { id: "investment", label: "Investments" },
+    { id: "savings", label: "Savings" },
+    { id: "other", label: "Other" }
+  ];
+  const ASSET_KIND_IDS = ASSET_KINDS.map((k) => k.id);
+  const assetKindLabel = (id) => {
+    const k = ASSET_KINDS.find((x) => x.id === id);
+    return k ? k.label : "Other";
+  };
+  // Values arrive from a form and from the sync, so they can be a string, a
+  // number, or missing. Anything that is not a finite number is nothing —
+  // never NaN, which would poison every total it touches.
+  const assetValueOf = (a) => {
+    const n = typeof a === "number" ? a : parseFloat(a && a.value);
+    return Number.isFinite(n) ? n : 0;
+  };
+  function assetsTotal(assets) {
+    return (Array.isArray(assets) ? assets : []).reduce((s, a) => s + assetValueOf(a), 0);
+  }
+  // Debts are stored keyed by id, with balances as cents in a string, and a
+  // `hidden` flag for the ones auto-detected from entries that the user has
+  // said are not debts. A hidden debt is not counted here for the same reason
+  // it is not simulated: the user has said it is not one.
+  function debtsTotal(debtData) {
+    return Object.keys(debtData || {}).reduce((s, key) => {
+      const d = debtData[key] || {};
+      if (d.hidden) return s;
+      const bal = parseFloat(d.balance);
+      return Number.isFinite(bal) && bal > 0 ? s + bal : s;
+    }, 0);
+  }
+  // An asset nobody has touched in a long time is not wrong, but the total it
+  // feeds should not be presented as current without saying when it was last
+  // confirmed. A year is the threshold: annual is about how often people
+  // actually revisit a house or a pension valuation.
+  const ASSET_STALE_DAYS = 365;
+  function staleAssets(assets, asOf, staleDays = ASSET_STALE_DAYS) {
+    if (!asOf) return [];
+    const now = parseDate(asOf);
+    if (!now) return [];
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() - staleDays);
+    const cutoffStr = localDateStr(cutoff);
+    return (Array.isArray(assets) ? assets : []).filter((a) => a && a.asOf && a.asOf < cutoffStr);
+  }
+  // The whole picture, in one pass.
+  //
+  // `cash` is the projected balance across the accounts as of today, which the
+  // app is already computing for Today's "Balance today" tile — passed in
+  // rather than recomputed, so the two can never disagree. It is signed: a
+  // household running below zero has less than nothing in the bank, and net
+  // worth should say so.
+  function netWorthSummary({ assets = [], debtData = {}, cash = 0, asOf = "", staleDays = ASSET_STALE_DAYS } = {}) {
+    const owned = assetsTotal(assets);
+    const owed = debtsTotal(debtData);
+    const cashCents = Number.isFinite(cash) ? cash : 0;
+    const byKind = ASSET_KIND_IDS.map((id) => {
+      const rows = (Array.isArray(assets) ? assets : []).filter((a) => (a && a.kind) === id
+        || (id === "other" && a && !ASSET_KIND_IDS.includes(a.kind)));
+      return { kind: id, label: assetKindLabel(id), total: assetsTotal(rows), count: rows.length };
+    }).filter((k) => k.count > 0);
+    return {
+      assets: owned,
+      debts: owed,
+      cash: cashCents,
+      // What you own — the things plus the money — less what you owe.
+      total: owned + cashCents - owed,
+      byKind,
+      stale: staleAssets(assets, asOf, staleDays),
+      // Nothing recorded at all is a different state from a net worth of zero,
+      // and the UI needs to tell them apart to know whether to show an empty
+      // state or a figure.
+      empty: (Array.isArray(assets) ? assets : []).length === 0 && owed === 0
+    };
+  }
   // ── Rolling one budget year forward into the next ────────────────────────
   //
   // Three doors lead here — Settings "+ Add <year>", Settings "Copy → <year>",
@@ -5876,6 +5993,10 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     }, kind: "value", backup: true },
     { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
+    // What the household owns, for the net worth figure. Debts are already
+    // known (debtData) and the projection already knows what is in the
+    // accounts; this is the third part, and the only one nothing could infer.
+    { key: "assets", storage: "cf_assets", initial: () => [], kind: "array", backup: true },
     { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true },
     { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
     { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
@@ -7542,7 +7663,7 @@ const RUNWAY_DAYS = 90;
   // resolves rather than silently falling back to Monthly; BudgetView forwards
   // it to calendar, the view that replaced it.
   const ROUTE_FLOW_SUBS = ["list", "calendar", "curve", "entries"];
-  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt", "insights"];
+  const ROUTE_PLAN_SUBS = ["goals", "strategy", "debt", "networth", "insights"];
   // Settings is a directory of pages rather than one long scroll, so each of
   // them needs a route: the back button has to work, and a link to "where you
   // change the alert threshold" has to be a link.
@@ -7591,6 +7712,7 @@ const RUNWAY_DAYS = 90;
     "plan/debt": "Plan \u00b7 Debts",
     "plan/strategy": "Plan \u00b7 Payoff",
     "plan/goals": "Plan \u00b7 Goals",
+    "plan/networth": "Plan \u00b7 Net worth",
     "plan/insights": "Plan \u00b7 Insights"
   };
   function viewName(tab, flowSub, planSub) {
@@ -7665,6 +7787,7 @@ const RUNWAY_DAYS = 90;
     target: "Target",
     goal: "Goal",
     debt: "Debt",
+    asset: "Asset",
     year: "Year",
     account: "Account",
     category: "Category"
@@ -13643,7 +13766,8 @@ Fill every field of the response schema. Rules:
           /* @__PURE__ */ React.createElement("span", { className: "strat-order-name" }, n)))));
   };
 
-  function PlanView({ flow, openBal, entries = [], setEntries = () => {
+  function PlanView({ flow, openBal, assets = [], setAssets = () => {
+  }, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {
   }, globalSearch = "", yearConfigs = [], setActiveYear = () => {
@@ -13670,6 +13794,8 @@ Fill every field of the response schema. Rules:
     const [debtCtx, setDebtCtx] = useState(null);
     const [showDebtForm, setShowDebtForm] = useState(false);
     const [debtFormData, setDebtFormData] = useState({ label: "", balance: "", rate: "", payment: "", editKey: null });
+    const [showAssetForm, setShowAssetForm] = useState(false);
+    const [assetForm, setAssetForm] = useState(null);
     const [showGoalForm, setShowGoalForm] = useState(false);
     const [goalForm, setGoalForm] = useState(null);
     const [goalErrors, setGoalErrors] = useState({});
@@ -14291,7 +14417,119 @@ Fill every field of the response schema. Rules:
         });
       };
       const hiddenCount = Object.values(debtData).filter((v) => v.hidden).length;
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, planSub === "strategy" && (() => {
+      // ── Net worth ────────────────────────────────────────────────────────
+      // Two thirds of this the app already knew: debts carry balances, and the
+      // projection knows what is in the accounts today. Assets were the
+      // missing third, and without them the one number people mean by "how am
+      // I doing overall" could not be formed at all.
+      //
+      // Nothing here is estimated. A value is whatever was last typed in, and
+      // the date beside it says when — a house valuation grown forward by some
+      // assumed rate would look like a measurement and be a guess.
+      const nwCash = getCurrentBalance(flow, openBal, activeYear);
+      const nw = netWorthSummary({ assets, debtData, cash: nwCash, asOf: todayStr() });
+      const blankAsset = { id: null, name: "", kind: "property", value: "", asOf: todayStr(), note: "" };
+      const saveAssetForm = () => {
+        const name = ((assetForm && assetForm.name) || "").trim();
+        if (!name) return;
+        const valN = parseFloat(assetForm.value);
+        const row = {
+          name,
+          kind: assetForm.kind || "other",
+          value: Number.isFinite(valN) ? dollarsToCents(valN) : 0,
+          asOf: assetForm.asOf || todayStr(),
+          note: (assetForm.note || "").trim()
+        };
+        if (assetForm.id) {
+          setAssets((prev) => prev.map((a) => a.id === assetForm.id ? __spreadValues(__spreadValues({}, a), row) : a));
+          logActivity("asset", `Updated the asset ${name}`);
+        } else {
+          setAssets((prev) => [...prev, __spreadValues({ id: genId(), createdAt: (/* @__PURE__ */ new Date()).toISOString() }, row)]);
+          logActivity("asset", `Added the asset ${name}`);
+        }
+        setShowAssetForm(false);
+      };
+      const removeAsset = (a) => {
+        setAssets((prev) => prev.filter((x) => x.id !== a.id));
+        logActivity("asset", `Removed the asset ${a.name}`);
+        toast(`"${a.name}" removed.`);
+      };
+      const assetField = (id, label, input) => /* @__PURE__ */ React.createElement("div", null,
+        /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: id }, label), input);
+      const netWorthView = /* @__PURE__ */ React.createElement(Card, { className: "mb-20" + (planSub === "networth" ? "" : " cf-hidden") },
+        /* @__PURE__ */ React.createElement(SectionTitle, {
+          help: "What you own, plus what is in your accounts today, less what you owe. Asset values are whatever you last entered — nothing is estimated or grown for you, and the date beside each one says when you last confirmed it."
+        }, "Net worth"),
+        /* @__PURE__ */ React.createElement("div", { className: "nw-total", "data-tone": nw.total < 0 ? "bad" : "good" }, fmt(nw.total, true)),
+        /* @__PURE__ */ React.createElement("div", { className: "nw-parts" },
+          [["Assets", nw.assets], ["In accounts", nw.cash], ["Debts", -nw.debts]].map((pair) =>
+            /* @__PURE__ */ React.createElement("div", { key: pair[0], className: "nw-part" },
+              /* @__PURE__ */ React.createElement("div", { className: "lbl" }, pair[0]),
+              /* @__PURE__ */ React.createElement("div", { className: "nw-part-amt" }, fmt(pair[1], true))))),
+        nw.stale.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mt-12", "data-tone": "warn", role: "status" },
+          nw.stale.length === 1
+            ? `${nw.stale[0].name} was last confirmed over a year ago.`
+            : `${nw.stale.length} assets were last confirmed over a year ago.`),
+        /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mt-16 mb-8" },
+          /* @__PURE__ */ React.createElement("h3", { className: "cf-section-title-text" }, "What you own"),
+          /* @__PURE__ */ React.createElement("button", {
+            className: "cf-btn cf-btn--secondary cf-btn--compact",
+            onClick: () => { setAssetForm(blankAsset); setShowAssetForm(true); }
+          }, "+ Add asset")),
+        assets.length === 0
+          ? /* @__PURE__ */ React.createElement("div", { className: "hint" }, "Nothing recorded yet. Add the house, the car, an investment account — anything you would count if you were adding up what you are worth.")
+          : /* @__PURE__ */ React.createElement("div", { className: "nw-asset-list" }, assets.map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "nw-asset-row" },
+              /* @__PURE__ */ React.createElement("div", { className: "nw-asset-main" },
+                /* @__PURE__ */ React.createElement("div", { className: "nw-asset-name" }, a.name),
+                /* @__PURE__ */ React.createElement("div", { className: "hint" }, assetKindLabel(a.kind),
+                  a.asOf ? " · as of " + humanShortDate(a.asOf) : "",
+                  a.note ? " · " + a.note : "")),
+              /* @__PURE__ */ React.createElement("div", { className: "nw-asset-amt" }, fmt(a.value)),
+              /* @__PURE__ */ React.createElement("button", {
+                className: "link-btn-sm",
+                onClick: () => { setAssetForm(__spreadProps(__spreadValues({}, a), { value: String(centsToDollars(a.value || 0)) })); setShowAssetForm(true); },
+                "aria-label": `Edit ${a.name}`
+              }, "Edit"),
+              /* @__PURE__ */ React.createElement("button", {
+                className: "link-btn-sm", onClick: () => removeAsset(a), "aria-label": `Remove ${a.name}`
+              }, "Remove")))));
+      const assetFormModal = planSub === "networth" && showAssetForm && assetForm && /* @__PURE__ */ React.createElement("div",
+        { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Asset form" },
+        /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" },
+          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowAssetForm(false) }),
+          /* @__PURE__ */ React.createElement(SectionTitle, null, assetForm.id ? "Edit asset" : "Add asset"),
+          assetField("asset-name", "Name", /* @__PURE__ */ React.createElement("input", {
+            id: "asset-name", autoFocus: autoFocusOnDesktop(), placeholder: "e.g. House",
+            value: assetForm.name, className: "field-input",
+            onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { name: e.target.value })),
+            onKeyDown: (e) => e.key === "Enter" && saveAssetForm()
+          })),
+          /* @__PURE__ */ React.createElement("div", { className: "grid-2-12 mt-12" },
+            assetField("asset-kind", "Kind", /* @__PURE__ */ React.createElement("select", {
+              id: "asset-kind", value: assetForm.kind, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { kind: e.target.value }))
+            }, ASSET_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label)))),
+            assetField("asset-value", "Value", /* @__PURE__ */ React.createElement("input", {
+              id: "asset-value", inputMode: "decimal", placeholder: "0.00",
+              value: assetForm.value, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { value: e.target.value })),
+              onKeyDown: (e) => e.key === "Enter" && saveAssetForm()
+            }))),
+          /* @__PURE__ */ React.createElement("div", { className: "grid-2-12 mt-12" },
+            assetField("asset-asof", "Value confirmed on", /* @__PURE__ */ React.createElement("input", {
+              id: "asset-asof", type: "date", value: assetForm.asOf, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { asOf: e.target.value }))
+            })),
+            assetField("asset-note", "Note", /* @__PURE__ */ React.createElement("input", {
+              id: "asset-note", placeholder: "optional", value: assetForm.note, className: "field-input",
+              onChange: (e) => setAssetForm((p) => __spreadProps(__spreadValues({}, p), { note: e.target.value })),
+              onKeyDown: (e) => e.key === "Enter" && saveAssetForm()
+            }))),
+          /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-16", style: { justifyContent: "flex-end" } },
+            /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: () => setShowAssetForm(false) }, "Cancel"),
+            /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary", onClick: saveAssetForm }, "Save"))));
+
+      return /* @__PURE__ */ React.createElement(React.Fragment, null, netWorthView, assetFormModal, planSub === "strategy" && (() => {
         const simDebtsAll = allRows.map((row) => {
           var _a, _b;
           return {
@@ -16129,7 +16367,7 @@ Fill every field of the response schema. Rules:
         { sub: "7. Back up, and restore" },
         { p: "Export a backup before anything you are unsure about. The app reminds you every 30 days." },
         { steps: [
-          ["You \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, categories, holidays and receipt photos."],
+          ["You \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, assets, categories, holidays and receipt photos."],
           ["Keep it somewhere that isn't this device", "That is the point of it."],
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
@@ -16268,6 +16506,9 @@ Fill every field of the response schema. Rules:
           ["Snowball", "Smallest balance first. Clears individual debts sooner, which some people find easier to stick to."]
         ] },
         { p: "Both simulations assume you keep paying the same total every month: when one debt clears, its payment rolls into the next one. Extra $/month adds to that total, and the chips above the chart include or exclude individual debts, so you can see what one of them is costing you. Only debts with both a balance and a payment can be simulated." },
+        { sub: "Net worth" },
+        { p: "What you own, plus what is in your accounts today, less what you owe. The debts are the ones already on this tab and the cash is the same projected balance Today shows, so the only thing to enter is what you own \u2014 the house, the car, an investment account, anything you would count if you were adding up what you are worth." },
+        { p: "Nothing is estimated. A value is whatever you last typed in, and the date beside it records when you confirmed it; anything left untouched for more than a year is flagged as such rather than quietly counted as current. There is no growth rate and no history, because a figure grown forward by an assumed rate looks like a measurement and is a guess." },
         { sub: "Savings goals" },
         { shot: ["plan-goals", "A savings goal: progress, the date it is reached at the current monthly figure, and whether that clears a target date you set."] },
         { p: "A goal is a target amount, what you have saved so far, and what you put aside each month. The app works out the date you reach it, says whether you are on track for a target date you set, and tells you the monthly figure that would get you there if you aren't. A goal can also add its payout to the budget as a one-time expense on the target date, so a planned purchase shows up in the forecast." }
@@ -18947,6 +19188,7 @@ Fill every field of the response schema. Rules:
       { id: "goals", label: "Goals", icon: "target" },
       { id: "debt", label: "Debts", icon: "credit-card" },
       { id: "strategy", label: "Payoff", icon: "mountain" },
+      { id: "networth", label: "Net worth", icon: "banknote" },
       { id: "insights", label: "Insights", icon: "sparkle" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
@@ -19141,6 +19383,7 @@ Fill every field of the response schema. Rules:
       alertThreshold: alertThresh,
       darkMode,
       forecastHorizon,
+      assets,
       goals,
       dashHidden,
       dashOrder,
@@ -19176,6 +19419,7 @@ Fill every field of the response schema. Rules:
       alertThreshold: setAlertThresh,
       darkMode: setDarkMode,
       forecastHorizon: setForecastHorizon,
+      assets: setAssets,
       goals: setGoals,
       dashHidden: setDashHidden,
       dashOrder: setDashOrder,
@@ -20777,6 +21021,8 @@ Fill every field of the response schema. Rules:
         openBal: activeOpenBal,
         entries,
         setEntries,
+        assets,
+        setAssets,
         goals,
         setGoals,
         categories,

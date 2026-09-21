@@ -1531,6 +1531,29 @@
         /* Drifted bills. Three columns on a desktop — what it is, what it
            should be, and the button — collapsing to a stack on a phone, where
            the figure earns the room more than the alignment does. */
+        /* Net worth. The total is the headline; the three parts under it are
+           the arithmetic, so they read as one row that adds up rather than as
+           three unrelated tiles. */
+        .nw-total{font-family:var(--font-mono);font-weight:700;font-size:34px;line-height:1.1;
+          margin:4px 0 14px;}
+        .nw-total[data-tone="bad"]{color:var(--red);}
+        .nw-parts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+          padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+        .nw-part-amt{font-family:var(--font-mono);font-weight:600;font-size:15px;margin-top:2px;}
+        .nw-asset-list{display:flex;flex-direction:column;gap:2px;}
+        .nw-asset-row{display:flex;align-items:center;gap:12px;padding:10px 0;
+          border-bottom:1px solid var(--border);}
+        .nw-asset-row:last-child{border-bottom:none;}
+        .nw-asset-main{flex:1;min-width:0;}
+        .nw-asset-name{font-weight:600;font-size:14px;margin-bottom:2px;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .nw-asset-amt{font-family:var(--font-mono);font-weight:600;font-size:14px;flex-shrink:0;}
+        @media (max-width:640px){
+          .nw-total{font-size:28px;}
+          .nw-parts{grid-template-columns:1fr;gap:8px;}
+          .nw-asset-row{flex-wrap:wrap;gap:8px;}
+          .nw-asset-main{flex:1 1 100%;}
+        }
         .drift-list{display:flex;flex-direction:column;gap:2px;}
         .drift-row{display:flex;align-items:center;gap:14px;padding:10px 0;
           border-bottom:1px solid var(--border);}

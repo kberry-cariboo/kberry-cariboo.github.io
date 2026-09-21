@@ -133,7 +133,7 @@ check('the route tables are still readable from app-data.js',
 
 // ── Plan sub-destinations ────────────────────────────────────────────────────
 {
-  const label = { goals: 'goal', strategy: 'strategy', debt: 'Debt', insights: 'Insights' };
+  const label = { goals: 'goal', strategy: 'strategy', debt: 'Debt', networth: 'Net worth', insights: 'Insights' };
   const unnamed = planSubs.filter((f) => label[f] && !new RegExp(label[f], 'i').test(prose));
   check('every Plan destination is named in the Help prose', unnamed.length === 0, J(unnamed));
 }

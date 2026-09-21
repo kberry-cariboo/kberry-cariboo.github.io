@@ -1100,6 +1100,7 @@
       { id: "goals", label: "Goals", icon: "target" },
       { id: "debt", label: "Debts", icon: "credit-card" },
       { id: "strategy", label: "Payoff", icon: "mountain" },
+      { id: "networth", label: "Net worth", icon: "banknote" },
       { id: "insights", label: "Insights", icon: "sparkle" }
     ];
     return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(

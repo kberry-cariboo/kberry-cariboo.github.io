@@ -149,6 +149,12 @@ jobs:
       - name: Check the schedule engine
         run: node tests/dates.mjs
 
+      # Browser-free: drives src/lib/networth.js directly. Values arrive from a
+      # form and from the cloud, so they can be strings, missing or nonsense,
+      # and one bad row must not turn a household's net worth into NaN.
+      - name: Check the net worth arithmetic
+        run: node tests/networth.mjs
+
       # Browser-free: drives src/lib/drift.js directly. The feature is a
       # judgement about when to speak — the silent cases (a variable bill, a
       # few dollars on a mortgage, an entry that has already ended) are what

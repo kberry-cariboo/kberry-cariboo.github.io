@@ -132,6 +132,12 @@ const payload = {
     },
   },
   completed: { 'e-expense-2026-0-1': true, 'e-income-2026-0-15': true },
+  // Every asset field, including an empty asOf and a kind the schema does not
+  // know: both have to survive the trip rather than being normalised away.
+  assets: [{ id: 'a-house', name: 'House', kind: 'property', value: 65000000,
+             asOf: '2026-09-01', note: 'BC assessment', createdAt: '2026-01-02T00:00:00.000Z' },
+           { id: 'a-odd', name: 'Something else', kind: 'crypto', value: 125050,
+             asOf: '', note: '', createdAt: '2026-01-02T00:00:00.000Z' }],
   goals: [{ id: 'g-roof', name: 'New roof', target: 500000, saved: 125000, monthly: 25000,
             targetDate: '2027-06-01', entryId: 'e-expense', payoutEntryId: null,
             createdAt: '2026-01-02T00:00:00.000Z' }],
@@ -211,7 +217,7 @@ for (const [occ, ov] of Object.entries(payload.overridesByYr[2026])) {
   if (!g) { issues.push({ label: `override ${occ}`, sent: show(ov), got: '(DROPPED ENTIRELY)' }); continue; }
   for (const k of Object.keys(ov)) check(`override ${occ}.${k}`, ov[k], g[k]);
 }
-for (const k of ['completed', 'goals', 'categories', 'categoryColors', 'yearConfigs', 'budgetTargets',
+for (const k of ['completed', 'assets', 'goals', 'categories', 'categoryColors', 'yearConfigs', 'budgetTargets',
                  'templates', 'debtData', 'deletedCopyIds', 'holidays', 'dashHidden', 'dashOrder',
                  'colOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus',
                  'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon',

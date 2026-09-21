@@ -5811,6 +5811,78 @@ await test('dashboard: Upcoming shows the next seven outstanding, whatever the w
 // alone rather than added to the shared fixture, where it would move every
 // total in every other suite. Hydro & gas (entry 7) is $185 a month on the
 // 12th; three months at ~$240 is a rise worth reporting.
+// Net worth is the one figure the app could not form before: it knew the debts
+// and it knew what was in the accounts, but there was nowhere to record the
+// house. The arithmetic is covered in tests/networth.mjs; what matters here is
+// that the page adds up on screen, and that adding an asset moves it.
+//
+// Seeded per test rather than added to the shared fixture, which carries no
+// assets — the empty state is a case worth keeping.
+const NW_ASSETS = JSON.stringify([
+  { id: 'a-house', name: 'House', kind: 'property', value: 65000000, asOf: '2026-09-01', note: '' },
+  { id: 'a-truck', name: 'Truck', kind: 'vehicle', value: 2800000, asOf: '2026-09-01', note: '' },
+]);
+const withAssets = (stub) => stub.replace('goals: []', 'goals: [], assets: ' + NW_ASSETS);
+// The figures on the page, as cents.
+const nwRead = async (page) => page.evaluate(() => {
+  const cents = (el) => {
+    const t = (el ? el.textContent : '').replace(/[^0-9.\-]/g, '');
+    return t ? Math.round(parseFloat(t) * 100) : null;
+  };
+  const parts = [...document.querySelectorAll('.nw-part')].map((p) => ({
+    label: (p.querySelector('.lbl') || {}).textContent,
+    amt: cents(p.querySelector('.nw-part-amt')),
+  }));
+  return { total: cents(document.querySelector('.nw-total')), parts,
+           rows: document.querySelectorAll('.nw-asset-row').length };
+});
+
+await test('net worth: the page adds up — what you own, plus cash, less what you owe', async () => {
+  const { ctx, page } = await ctxPage({ stub: withAssets });
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  const nw = await nwRead(page);
+  if (nw.rows !== 2) throw new Error('expected two assets listed, found ' + nw.rows);
+  if (nw.parts.length !== 3) throw new Error('expected three parts, found ' + JSON.stringify(nw.parts));
+  const [owned, cash, owed] = nw.parts.map((p) => p.amt);
+  if (owned !== 67800000) throw new Error('assets total is ' + owned + ', not the 678,000 seeded');
+  // The invariant, rather than a number copied from the fixture: whatever the
+  // projection says is in the accounts, the headline is the three parts summed.
+  if (nw.total !== owned + cash + owed) {
+    throw new Error(`the headline ${nw.total} is not ${owned} + ${cash} + ${owed}`);
+  }
+  await ctx.close();
+});
+
+await test('net worth: adding an asset moves the figure', async () => {
+  const { ctx, page } = await ctxPage({ stub: withAssets });
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  const before = await nwRead(page);
+  await page.getByRole('button', { name: /Add asset/i }).click();
+  await page.waitForTimeout(400);
+  await page.locator('#asset-name').fill('Pension');
+  await page.locator('#asset-value').fill('1250.50');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.waitForTimeout(700);
+  const after = await nwRead(page);
+  if (after.rows !== before.rows + 1) throw new Error('the asset was not added to the list');
+  if (after.total !== before.total + 125050) {
+    throw new Error(`net worth moved from ${before.total} to ${after.total}, not by the 1,250.50 added`);
+  }
+  await ctx.close();
+});
+
+await test('net worth: with nothing recorded it invites you to start, rather than showing a total of nothing', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/plan/networth', { waitUntil: 'load' });
+  await settled(page);
+  if (await page.locator('.nw-asset-row').count() !== 0) throw new Error('assets listed with none recorded');
+  const body = await page.locator('body').innerText();
+  if (!/Nothing recorded yet/i.test(body)) throw new Error('no empty state on the net worth page');
+  await ctx.close();
+});
+
 const DRIFT_OVERRIDES = JSON.stringify({
   2026: {
     '7-2026-0-12': { actualAmount: 24000 },

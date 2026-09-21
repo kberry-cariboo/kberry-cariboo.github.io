@@ -89,7 +89,7 @@
         { sub: "7. Back up, and restore" },
         { p: "Export a backup before anything you are unsure about. The app reminds you every 30 days." },
         { steps: [
-          ["You \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, categories, holidays and receipt photos."],
+          ["You \u2192 Data Backup & Restore \u2192 Export Backup", "Saves a dated CashFlow_Backup_YYYY-MM-DD.json holding everything the app stores for your household \u2014 entries, per-date edits, targets, goals, debts, assets, categories, holidays and receipt photos."],
           ["Keep it somewhere that isn't this device", "That is the point of it."],
           ["To restore, choose Import Backup", "Pick the file, read what the confirmation says, and confirm."]
         ] },
@@ -228,6 +228,9 @@
           ["Snowball", "Smallest balance first. Clears individual debts sooner, which some people find easier to stick to."]
         ] },
         { p: "Both simulations assume you keep paying the same total every month: when one debt clears, its payment rolls into the next one. Extra $/month adds to that total, and the chips above the chart include or exclude individual debts, so you can see what one of them is costing you. Only debts with both a balance and a payment can be simulated." },
+        { sub: "Net worth" },
+        { p: "What you own, plus what is in your accounts today, less what you owe. The debts are the ones already on this tab and the cash is the same projected balance Today shows, so the only thing to enter is what you own \u2014 the house, the car, an investment account, anything you would count if you were adding up what you are worth." },
+        { p: "Nothing is estimated. A value is whatever you last typed in, and the date beside it records when you confirmed it; anything left untouched for more than a year is flagged as such rather than quietly counted as current. There is no growth rate and no history, because a figure grown forward by an assumed rate looks like a measurement and is a guess." },
         { sub: "Savings goals" },
         { shot: ["plan-goals", "A savings goal: progress, the date it is reached at the current monthly figure, and whether that clears a target date you set."] },
         { p: "A goal is a target amount, what you have saved so far, and what you put aside each month. The app works out the date you reach it, says whether you are on track for a target date you set, and tells you the monthly figure that would get you there if you aren't. A goal can also add its payout to the budget as a one-time expense on the target date, so a planned purchase shows up in the forecast." }

@@ -87,6 +87,10 @@
       }
     }, kind: "value", backup: true },
     { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
+    // What the household owns, for the net worth figure. Debts are already
+    // known (debtData) and the projection already knows what is in the
+    // accounts; this is the third part, and the only one nothing could infer.
+    { key: "assets", storage: "cf_assets", initial: () => [], kind: "array", backup: true },
     { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true },
     { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
     { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
