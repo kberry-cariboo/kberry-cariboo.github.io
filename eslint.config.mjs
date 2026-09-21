@@ -34,7 +34,7 @@ const browserGlobals = {
   requestAnimationFrame: "readonly", cancelAnimationFrame: "readonly",
   MutationObserver: "readonly", IntersectionObserver: "readonly",
   ResizeObserver: "readonly", btoa: "readonly", atob: "readonly",
-  performance: "readonly", structuredClone: "readonly",
+  performance: "readonly", structuredClone: "readonly", getComputedStyle: "readonly",
   queueMicrotask: "readonly", globalThis: "readonly", self: "readonly",
   React: "readonly", ReactDOM: "readonly", Recharts: "readonly"
 };
