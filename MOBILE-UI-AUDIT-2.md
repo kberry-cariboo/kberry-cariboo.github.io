@@ -215,10 +215,27 @@ Recorded so the next pass does not re-litigate it.
 | 13 routes | No heading-level jumps, no icon-only button without an accessible name |
 | All sheets | Within viewport, max-height capped, primary action reachable, focus trapped |
 | 4 widths × 2 themes | No horizontal overflow, no touch target under 24px |
-| Text at 200% (WCAG 1.4.4) | 5 routes at a 32px root: no sideways scroll, nothing lost, nothing under the nav |
+| Text at 200% (WCAG 1.4.4) | 5 routes at a 32px root: no sideways scroll, nothing lost, nothing under the nav — **but see the correction below** |
 | `prefers-reduced-motion` | Zero elements still transition or animate |
 | Contrast, both themes | Zero text nodes below AA after the fixes |
 | Accessibility tree | Four landmarks per view, one `h1`, no unnamed interactive node, nothing focusable hidden from AT |
+
+### Correction — the 200% check was measuring nothing
+
+The row above is wrong, and was wrong when it was written. Every `font-size`
+in `src/styles.css` was `px` — 391 of them, with no `rem` anywhere and every
+`em` used only for `letter-spacing`. Setting the root to 32px therefore
+changed no text on the page at all. "No sideways scroll, nothing lost" was
+true and meaningless: the page had ignored the instruction, and the audit
+recorded the absence of damage as a pass.
+
+The units are `rem` now, and `tests/regression.mjs` carries the check in a
+form that can fail: it sets the root explicitly to 16px and then to 32px,
+asserts the text actually grew by close to the factor asked for, *and then*
+looks for overflow — at desktop and phone widths. Run against the stylesheet
+as it was, it reports x1.03 and fails.
+
+Absence of overflow is only evidence once the text has moved.
 
 ---
 

@@ -149,6 +149,13 @@ jobs:
       - name: Check the schedule engine
         run: node tests/dates.mjs
 
+      # Browser-free: the palette is declared twice — in src/styles.css, which
+      # is what the app paints with, and in app-data.js, which chipDot() needs
+      # as real colours to compute a readable ink against. Neither can derive
+      # from the other, and a drift between them is silent.
+      - name: Check the theme tokens agree
+        run: node tests/theme-tokens.mjs
+
       # Browser-free: drives src/lib/networth.js directly. Values arrive from a
       # form and from the cloud, so they can be strings, missing or nonsense,
       # and one bad row must not turn a household's net worth into NaN.

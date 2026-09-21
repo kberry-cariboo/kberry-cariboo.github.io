@@ -954,6 +954,122 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
 }
 
 // ── Desktop, dark theme spot-checks ─────────────────────────────────────────────
+// The two surfaces the stylesheet cannot reach on its own: the body colour
+// behind the scroll container, which is what an overscroll pull reveals, and
+// the theme-color meta the browser paints its own chrome from. Both were
+// pinned to the splash's deep pine — correct-looking in light, where the
+// header happens to be that colour, and wrong in dark, where the chrome is
+// near-black. Neither is visible without pulling the page or leaving it.
+for (const dark of [false, true]) {
+  await test(`chrome colours follow the ${dark ? 'dark' : 'light'} theme`, async () => {
+    const { ctx, page } = await ctxPage({ dark });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const r = await page.evaluate(() => {
+      // Resolve the tokens the same way the browser resolves the real thing,
+      // so hex and rgb() notation cannot make an equal pair look unequal.
+      // Normalise every value the same way: put the literal colour on a fresh
+      // element and read it back, so #14413A and rgb(20, 65, 58) compare equal.
+      // Reading the token text first, rather than assigning var() to the
+      // probe, avoids re-using one element for two var() assignments — which
+      // silently resolved to transparent on the second.
+      // Read every token string up front. getComputedStyle returns a live
+      // object, and normalise() appends and removes an element between reads —
+      // enough to make a later getPropertyValue come back empty, which reads
+      // as "the token is missing" when it is merely no longer being looked at.
+      const rootStyle = getComputedStyle(document.documentElement);
+      const rawBg = rootStyle.getPropertyValue('--bg').trim();
+      const rawHeader = rootStyle.getPropertyValue('--headerBg').trim();
+
+      const normalise = (literal) => {
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.visibility = 'hidden';
+        el.style.backgroundColor = literal;
+        document.body.appendChild(el);
+        const out = getComputedStyle(el).backgroundColor;
+        el.remove();
+        return out;
+      };
+      const wantBg = normalise(rawBg);
+      const wantHeader = normalise(rawHeader);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const metaResolved = normalise((meta && meta.getAttribute('content')) || '');
+      return { body: getComputedStyle(document.body).backgroundColor,
+               wantBg, wantHeader, metaResolved, rawBg, rawHeader,
+               theme: document.documentElement.dataset.theme };
+    });
+    // Before comparing anything: the tokens have to exist. An unparseable
+    // stylesheet leaves every custom property empty, every colour resolves to
+    // transparent, and transparent equals transparent — which is how a broken
+    // light palette passed this test's body check while painting nothing.
+    if (!r.rawBg || !r.rawHeader) {
+      throw new Error(`the theme tokens are not resolving (--bg ${JSON.stringify(r.rawBg)}, `
+        + `--headerBg ${JSON.stringify(r.rawHeader)}) — the stylesheet is not being applied`);
+    }
+    if (r.theme !== (dark ? 'dark' : 'light')) {
+      throw new Error(`data-theme is "${r.theme}" for a ${dark ? 'dark' : 'light'} session`);
+    }
+    if (r.body !== r.wantBg) {
+      throw new Error(`body paints ${r.body}, but --bg is ${r.wantBg} — an overscroll pull shows the wrong colour`);
+    }
+    if (r.metaResolved !== r.wantHeader) {
+      throw new Error(`theme-color resolves to ${r.metaResolved}, but --headerBg (${r.rawHeader}) is ${r.wantHeader}`);
+    }
+    await ctx.close();
+  });
+}
+
+// Today's widgets are laid out by slot, not by viewport: a "third" tile is
+// 368px wide on a 1440px screen and a "narrow" chart is 442px. Every mobile
+// affordance in the stylesheet is keyed to a 768px *viewport*, so none of them
+// can ever apply to a widget — a card narrower than a phone is styled as
+// desktop, and the page around it is wide enough that no page-level overflow
+// check would notice.
+//
+// Nothing is cramped today: measured across both widths, no widget overflows
+// its own card and no label is actually truncated. This keeps it that way,
+// which is the cheap half of the problem. The expensive half — giving each
+// slot a container context so components can respond to their own width —
+// buys nothing until a widget arrives that needs it, and costs the layout
+// containment that container-type implies.
+await test('dashboard: no widget is cramped by the slot it sits in', async () => {
+  const problems = [];
+  for (const vw of [1440, 1280]) {
+    const { ctx, page } = await ctxPage({ viewport: { width: vw, height: 900 } });
+    await page.goto(BASE + '#/today', { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    const cards = await page.evaluate(() => {
+      const out = [];
+      for (const c of document.querySelectorAll('main .chart-grid > *, main .glance-grid > *')) {
+        const b = c.getBoundingClientRect();
+        if (!b.width) continue;
+        // Not "is anything outside the card" — a grid item has min-width:auto,
+        // so an oversized child widens the card instead of escaping it, and
+        // that check could never fire. The hazard is the card outgrowing the
+        // grid that holds it, which is what a too-wide widget actually does.
+        const gb = c.parentElement.getBoundingClientRect();
+        const over = (b.right > gb.right + 1 || b.left < gb.left - 1)
+          ? [Math.round(b.width) + 'px card in a ' + Math.round(gb.width) + 'px grid']
+          : [];
+        const clipped = [...c.querySelectorAll('*')]
+          .filter((e) => getComputedStyle(e).textOverflow === 'ellipsis'
+            && e.scrollWidth > e.clientWidth + 1 && (e.textContent || '').trim())
+          .map((e) => (e.textContent || '').trim().slice(0, 20));
+        out.push({ w: Math.round(b.width), over: over.slice(0, 3), clipped: clipped.slice(0, 3) });
+      }
+      return out;
+    });
+    if (!cards.length) problems.push(`${vw}px: found no widgets to measure`);
+    for (const c of cards) {
+      if (c.over.length) problems.push(`${vw}px: a ${c.w}px widget has content outside it — ${c.over.join(', ')}`);
+      if (c.clipped.length) problems.push(`${vw}px: a ${c.w}px widget truncates — ${c.clipped.join(', ')}`);
+    }
+    await ctx.close();
+  }
+  if (problems.length) throw new Error(problems.join('\n  '));
+});
+
 await test('dark mode: the active month pill stays visibly styled', async () => {
   const { ctx, page } = await ctxPage({ dark: true });
   await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
@@ -1220,8 +1336,31 @@ await test('text scaling: the layout holds at 200%', async () => {
   for (const hash of ['#/today', '#/flow/list', '#/envelopes', '#/plan/debt', '#/you']) {
     await page.goto(BASE + hash, { waitUntil: 'load' });
     await page.waitForTimeout(900);
+    // A spread of real text at the ordinary root, to compare against. The
+    // baseline is set explicitly because routing here is by hash: goto() does
+    // not reload the document, so the 32px left by the previous route is
+    // still in force and a growth check would be comparing 32px with 32px.
+    const typeSample = () => page.evaluate(() => [...document.querySelectorAll('main *')]
+      .filter((e) => !e.children.length && (e.textContent || '').trim().length > 2)
+      .slice(0, 40).map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    await page.evaluate(() => { document.documentElement.style.fontSize = '16px'; });
+    await page.waitForTimeout(250);
+    const baseSizes = await typeSample();
     await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
     await page.waitForTimeout(600);
+    // The half of 1.4.4 that is easy to pass by accident. Every font-size in
+    // this stylesheet used to be px, so the root below changed nothing and the
+    // checks that follow reported "no damage" on a page that had ignored the
+    // instruction entirely. Absence of overflow only means something once the
+    // text has actually moved.
+    const bigSizes = await typeSample();
+    if (baseSizes.length && bigSizes.length) {
+      const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+      const ratio = avg(bigSizes) / avg(baseSizes);
+      if (ratio < 1.8) {
+        problems.push(`${hash} ignores the root size (x${ratio.toFixed(2)} at 200%)`);
+      }
+    }
     const r = await page.evaluate(() => {
       const sc = document.querySelector('.app-scroll');
       const vw = sc.clientWidth;
@@ -1242,7 +1381,9 @@ await test('text scaling: the layout holds at 200%', async () => {
           n = n.parentElement;
         }
         return true;
-      }).map((e) => e.textContent.trim().slice(0, 18));
+      }).map((e) => e.textContent.trim().slice(0, 18)
+        + ' [' + e.tagName.toLowerCase() + '.' + ((e.className || '').toString().split(' ')[0] || '?')
+        + ' in .' + ((e.parentElement && (e.parentElement.className || '').toString().split(' ')[0]) || '?') + ']');
       const nav = document.querySelector('.cf-bottomnav');
       const nb = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
       return { slop: Math.max(sc.scrollWidth - sc.clientWidth,

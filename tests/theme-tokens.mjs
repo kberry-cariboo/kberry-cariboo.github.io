@@ -1,0 +1,174 @@
+// Two declarations of one palette, which have to agree.
+//
+// The colours live in src/styles.css now: :root carries the light set, and
+// :root[data-theme="dark"] carries the dark one. That is what the app paints
+// with, and moving it there is what let the print rules override a token by
+// ordinary cascade instead of !important on every line.
+//
+// src/lib/app-data.js still holds LIGHT and DARK as plain objects, for the one
+// job CSS cannot do: chipDot() computes a readable ink for a category chip
+// against the surface behind it, and readableInk() needs a real colour, not a
+// var() it cannot resolve. So the mirror stays, and this is the join.
+//
+// It exists because the failure is silent. A token edited in the stylesheet
+// and not in the mirror does not throw, does not look wrong on the page, and
+// shows up only as a category dot whose contrast was computed against a
+// surface that has not existed since the edit.
+//
+// Deliberately needs no browser: it reads both files as text.
+//
+//   node tests/theme-tokens.mjs
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (p) => readFileSync(join(ROOT, p), 'utf8');
+
+const results = [];
+const check = (name, ok, detail = '') => {
+  results.push({ name, ok });
+  console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : '\n  ↳ ' + detail));
+};
+
+// ── The JavaScript mirror ────────────────────────────────────────────────────
+// Both are plain object literals of string values, closed by a brace at the
+// declaration's own indentation.
+const appData = read('src/lib/app-data.js');
+const jsPalette = (name) => {
+  const i = appData.indexOf(`const ${name} = {`);
+  if (i < 0) throw new Error(`${name} not found in app-data.js — has it been renamed?`);
+  const open = appData.indexOf('{', i);
+  const end = appData.indexOf('\n  };', open);
+  if (end < 0) throw new Error(`${name} does not close where expected`);
+  return new Function('return ' + appData.slice(open, end + 4))();
+};
+const LIGHT = jsPalette('LIGHT');
+const DARK = jsPalette('DARK');
+
+// ── The stylesheet ───────────────────────────────────────────────────────────
+const css = read('src/styles.css');
+// Slice a selector's own block, not the first closing brace after it — a
+// nested @media would end it early and the test would silently read half a
+// palette.
+const blockAt = (src, i) => {
+  let depth = 0;
+  for (let j = src.indexOf('{', i); j < src.length; j++) {
+    if (src[j] === '{') depth++;
+    else if (src[j] === '}' && --depth === 0) return src.slice(i, j);
+  }
+  throw new Error('unterminated block at ' + i);
+};
+// Every block for this selector, unioned. A selector legitimately appears more
+// than once — :root carries the fonts near the top and the palette below it —
+// and reading only the first one would have reported the whole palette missing
+// while the stylesheet was perfectly correct. Which is what it did.
+const tokensIn = (selector) => {
+  const out = {};
+  // Print deliberately redeclares the palette; that is an override, not a
+  // declaration of what the app paints with.
+  const printAt = css.indexOf('@media print{');
+  const scope = printAt < 0 ? css : css.slice(0, printAt);
+  let from = 0, found = 0;
+  for (;;) {
+    const i = scope.indexOf(selector + '{', from);
+    if (i < 0) break;
+    found++;
+    for (const m of blockAt(scope, i).matchAll(/--([A-Za-z][\w-]*)\s*:\s*([^;]+);/g)) {
+      out[m[1]] = m[2].trim();
+    }
+    from = i + selector.length;
+  }
+  if (!found) throw new Error(`no ${selector} block in styles.css`);
+  return out;
+};
+// The light set sits alongside the font and gutter variables in :root, so only
+// the keys the palette declares are compared.
+const cssLight = tokensIn(':root');
+const cssDark = tokensIn(':root[data-theme="dark"]');
+
+check('both palettes are readable from their files',
+  Object.keys(LIGHT).length > 0 && Object.keys(cssLight).length > 0 && Object.keys(cssDark).length > 0,
+  JSON.stringify({ js: Object.keys(LIGHT).length, cssLight: Object.keys(cssLight).length, cssDark: Object.keys(cssDark).length }));
+
+// ── Light ────────────────────────────────────────────────────────────────────
+{
+  const missing = Object.keys(LIGHT).filter((k) => cssLight[k] === undefined);
+  check('every light token in the mirror is declared in :root',
+    missing.length === 0, 'missing from styles.css: ' + missing.join(', '));
+  const differs = Object.keys(LIGHT)
+    .filter((k) => cssLight[k] !== undefined && cssLight[k] !== LIGHT[k])
+    .map((k) => `--${k}: css ${cssLight[k]} vs js ${LIGHT[k]}`);
+  check('every light token has the same value in both',
+    differs.length === 0, differs.join('\n     '));
+}
+
+// ── Dark ─────────────────────────────────────────────────────────────────────
+{
+  // A token identical in both themes is declared once, in :root, and inherited
+  // — repeating it under [data-theme="dark"] would be noise. So the dark block
+  // is expected to carry exactly the keys whose value actually changes.
+  const shouldDiffer = Object.keys(DARK).filter((k) => DARK[k] !== LIGHT[k]);
+  const sameInBoth = Object.keys(DARK).filter((k) => DARK[k] === LIGHT[k]);
+
+  const missing = shouldDiffer.filter((k) => cssDark[k] === undefined);
+  check('every dark token that differs from light is declared under [data-theme="dark"]',
+    missing.length === 0, 'missing: ' + missing.join(', '));
+
+  const differs = shouldDiffer
+    .filter((k) => cssDark[k] !== undefined && cssDark[k] !== DARK[k])
+    .map((k) => `--${k}: css ${cssDark[k]} vs js ${DARK[k]}`);
+  check('every dark token has the same value in both',
+    differs.length === 0, differs.join('\n     '));
+
+  const redundant = sameInBoth.filter((k) => cssDark[k] !== undefined);
+  check('a token the two themes share is not repeated in the dark block',
+    redundant.length === 0, 'repeated needlessly: ' + redundant.join(', '));
+}
+
+// ── Neither side has tokens the other has never heard of ─────────────────────
+{
+  const strays = Object.keys(cssDark).filter((k) => DARK[k] === undefined);
+  check('the dark block declares nothing the mirror does not know about',
+    strays.length === 0, 'in css only: ' + strays.join(', '));
+}
+
+// ── The print override ───────────────────────────────────────────────────────
+{
+  // A stored dark preference sets [data-theme="dark"], which outranks a bare
+  // :root. If the print rules forget that selector the tokens quietly keep
+  // their dark values and the page prints white on near-black.
+  const printAt = css.indexOf('@media print{');
+  const printCss = printAt < 0 ? '' : css.slice(printAt);
+  check('the print rules override the dark selector, not just :root',
+    /:root\s*,\s*:root\[data-theme="dark"\]\s*\{/.test(printCss),
+    'the print block must match [data-theme="dark"] or a dark session prints dark');
+  // The reason this file exists at all: those rules needed !important on every
+  // token while the live values were inline styles on <html>.
+  const printTokens = printCss.slice(0, printCss.indexOf('}'));
+  check('the print tokens no longer need !important',
+    !printTokens.includes('!important'), printTokens.slice(0, 200));
+}
+
+// ── The boot splash ──────────────────────────────────────────────────────────
+{
+  // The splash paints before React exists, so its colours used to be written
+  // into the shell by hand. body kept that hardcoded value for the whole
+  // session — .app-scroll paints over it, so what was left showing was the
+  // overscroll band, deep pine under a cream page and a lighter green under a
+  // near-black one. Both wrong, and neither visible without pulling the page.
+  const shell = read('index.template.html');
+  const bootStyle = shell.slice(shell.indexOf('<style>'), shell.indexOf('</style>'));
+  const hexes = [...bootStyle.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0]);
+  check('the boot styles name no colour of their own',
+    hexes.length === 0,
+    'hardcoded in the shell, so it cannot follow the theme: ' + hexes.join(', '));
+  check('the splash and the page take their colours from the tokens',
+    /#boot\{[^}]*background:var\(--headerBg\)/s.test(bootStyle)
+      && /body\{[^}]*background:var\(--bg\)/.test(bootStyle),
+    bootStyle.slice(0, 260));
+}
+
+const failed = results.filter((r) => !r.ok).length;
+console.log(`\n${results.length - failed}/${results.length} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);
