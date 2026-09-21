@@ -70,11 +70,11 @@
 
         { sub: "5. Set a budget target and watch it" },
         { steps: [
-          ["Open Budget \u2192 Budget vs Actual", "Every category you use is listed with what is scheduled against it this month."],
+          ["Open Envelopes", "Every category you use is listed with what is scheduled against it this month."],
           ["Set a target from the row menu", "The bar fills as spending approaches it, and turns red once it goes past."],
           ["Turn on rollover for categories that vary", "Anything you didn't spend earlier in the year is added to this month's target \u2014 envelope-style, so a quiet month funds a heavy one instead of being lost."]
         ] },
-        { shot: ["bva", "Budget vs Actual. The Total row at the bottom carries the same over-or-under note as each category."] },
+        { shot: ["bva", "Envelopes. The Total row at the bottom carries the same over-or-under note as each category."] },
         { p: "Targets are what the Forecast's “vs Target” column judges each row against, so setting a few makes the forecast more useful as well." },
 
         { sub: "6. Roll into next year" },
@@ -159,7 +159,6 @@
         { defs: [
           ["List", "The month as a ledger: opening balance, every occurrence in date order split into 1–14 and 15–31, a marker on today, and the balance after each row. The totals bar stays pinned at the bottom. Select rows with the checkboxes for bulk actions, and export the month to CSV or PDF."],
           ["Calendar", "The same month laid out as a month: bills on the day they fall, the balance carried to the end of each day, and any day that drops below your alert threshold tinted — which is what makes the week where four bills land together visible at a glance. Pick a day to open what is on it. On a phone each day shows a dot per event and the same tint, and the day you pick opens below the grid."],
-          ["Envelopes", "What you planned against what is scheduled, per category. Set a target from the row menu; the bar and the amounts turn red once spending passes it."],
           ["Curve", "A rolling 30, 60 or 90 days from today, across year boundaries. The chart at the top draws the balance day by day, with the low point and your alert threshold marked; the list below it is every event behind that line. Turn on \u201cWhat if\u2026\u201d to drop a recurring entry or put a different amount on it and see the second curve that would result \u2014 nothing there changes your budget, and it stays on the device you try it on."],
           ["Entries", "The master list of entry definitions. Filter by type, category, schedule, status or date range, sort any column, and search descriptions, notes, categories and amounts. Tick rows to move several to another category at once, or delete them together — both offer a single undo for the whole selection."]
         ] },
@@ -169,8 +168,6 @@
         { p: "There is one opening balance, set per budget year under You \u2192 Budget Years. Each account after the first says how much of it is sitting there, and the first account takes the remainder \u2014 so the shares always add up to the one figure you set, and saying \u201cmy savings opened with $10,000\u201d moves $10,000 of the household\u2019s opening balance into savings rather than conjuring it." },
         { p: "A transfer can now name a second account, which makes it one entry and two movements: out of the first, into the second. Each account\u2019s balance changes and the household\u2019s total does not, which is what a transfer between your own accounts actually does. A transfer with no destination keeps its old meaning \u2014 money leaving or arriving from outside the accounts you track." },
         { p: "Removing an account never removes money: the entries filed under it move back to your first account, unchanged." },
-        { sub: "Rollover targets" },
-        { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." },
         { sub: "Searching" },
         { p: "There is one search, in the header on a desktop and above the list on a phone — the same box either way, and its placeholder names what it will search. On Entries and on Plan it filters the list you are looking at. Anywhere else it jumps to the Budget month that matches, so typing a payee finds the month it falls in." },
         { sub: "Dates and amounts" },
@@ -186,6 +183,16 @@
           ["—", "Money coming in, or no target set for that category — nothing to compare against."]
         ] },
         { p: "This is about your own budget targets, not about whether the bill will arrive. An unbudgeted category is not a problem — it just means the forecast can't check that row for you." }
+      ]
+    },
+    {
+      id: "help-envelopes",
+      title: "Envelopes",
+      blocks: [
+        { p: "What you planned against what is scheduled, per category. Set a target from the row menu; the bar fills as spending approaches it, and the bar and the amounts turn red once it goes past. The Total row at the bottom carries the same over-or-under note as each category." },
+        { p: "It is a destination of its own rather than a Flow lens because it is not a view of the timeline. Flow answers what happens on which date; Envelopes answers whether a category is still inside the figure you set for the month. The month strip and the year pills work the same way here." },
+        { sub: "Rollover targets" },
+        { p: "A category target can roll over. With rollover on, anything you didn't spend against that category earlier in the year is added to this month's target — envelope-style budgeting, so a quiet month funds a heavy one instead of being lost." }
       ]
     },
     {
