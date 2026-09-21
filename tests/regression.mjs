@@ -253,7 +253,7 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   await test('budget vs actual: rows show spent against budget and flag overspend', async () => {
     await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
-    await page.getByText('Budget vs Actual', { exact: false }).first().waitFor(V);
+    await page.getByText('Envelopes', { exact: false }).first().waitFor(V);
     await page.getByText('over', { exact: false }).first().waitFor(V);
   });
 
@@ -1303,6 +1303,10 @@ await test('help keeps its section index, and settings no longer needs one', asy
     const n = document.querySelector('.section-nav');
     return { present: !!n, h: n ? Math.round(n.getBoundingClientRect().height) : 0,
       label: n ? n.innerText.replace(/\s+/g, ' ') : null,
+      // Derived, not a literal: the bar's job is to count the sections that
+      // are there, and hard-coding the number turns every new section into a
+      // failing test about something else.
+      sections: document.querySelectorAll('.cf-card[id^="help-"]').length,
       // The strip and the bar are the same index twice; on a phone only one
       // of them should be paying for space.
       strips: [...document.querySelectorAll('.settings-quicklinks')]
@@ -1311,7 +1315,9 @@ await test('help keeps its section index, and settings no longer needs one', asy
   if (!top.present) throw new Error('#/help: no sticky section bar');
   if (top.h > 80) throw new Error('#/help: the bar is ' + top.h + 'px');
   if (top.strips) throw new Error('#/help: the index strip is still shown alongside the bar');
-  if (!/11 sections/.test(top.label)) throw new Error('#/help: bar says "' + top.label + '", expected 11 sections');
+  if (!new RegExp(top.sections + ' sections').test(top.label)) {
+    throw new Error('#/help: bar says "' + top.label + '", but the page has ' + top.sections + ' sections');
+  }
   // It stays put, and it renames itself as you go.
   await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
     sc.scrollTop = sc.scrollHeight * 0.6; });
@@ -1329,10 +1335,11 @@ await test('help keeps its section index, and settings no longer needs one', asy
   await page.waitForTimeout(600);
   const sheet = await page.evaluate(() => ({
     items: document.querySelectorAll('.section-nav-item').length,
+    sections: document.querySelectorAll('.cf-card[id^="help-"]').length,
     marked: document.querySelectorAll('.section-nav-item[aria-current]').length,
     minH: Math.min(...[...document.querySelectorAll('.section-nav-item')]
       .map((e) => Math.round(e.getBoundingClientRect().height))) }));
-  if (sheet.items !== 10) throw new Error('the jump sheet lists ' + sheet.items + ' sections');
+  if (sheet.items !== sheet.sections) throw new Error('the jump sheet lists ' + sheet.items + ' of the page\'s ' + sheet.sections + ' sections');
   if (sheet.marked !== 1) throw new Error(sheet.marked + ' sections marked as current');
   if (sheet.minH < 44) throw new Error('jump rows are ' + sheet.minH + 'px');
   const before = await page.evaluate(() => document.querySelector('.app-scroll').scrollTop);

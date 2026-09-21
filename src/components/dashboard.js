@@ -538,7 +538,7 @@
       { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
       { id: "topCatsChart", label: "Top expense categories", size: "narrow" },
       { id: "incomeSources", label: "Income sources", size: "half" },
-      { id: "bvaYear", label: "Budget vs Actual (year)", size: "half" },
+      { id: "bvaYear", label: "Envelopes (year)", size: "half" },
       { id: "debtSnap", label: "Debt snapshot", size: "full" },
       { id: "summary", label: "Monthly summary table", size: "full" },
       { id: "yoy", label: "Year-over-Year comparison", size: "full" }

@@ -1040,7 +1040,7 @@
         const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
         return /* @__PURE__ */ React.createElement(Card, { className: "bva-card" }, /* @__PURE__ */ React.createElement("div", { className: "bva-header-row", style: {
           marginBottom: 12
-        } }, /* @__PURE__ */ React.createElement("span", { className: "bva-header-label" }, "Budget vs Actual \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement(
+        } }, /* @__PURE__ */ React.createElement("span", { className: "bva-header-label" }, "Envelopes \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
