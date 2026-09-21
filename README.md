@@ -253,6 +253,17 @@ psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
 psql -v ON_ERROR_STOP=1 -f supabase/schema-test.sql
 CF_TEST_PG=1 node tests/payload-roundtrip.mjs
 psql -v ON_ERROR_STOP=1 -f tests/viewer-role.sql   # view-only members
+psql -v ON_ERROR_STOP=1 -f tests/invite-flow.sql  # inviting someone in
+
+# The invite code comes from pgcrypto's gen_random_bytes. A bare Postgres puts
+# pgcrypto in public; Supabase already has it in `extensions`, and "create
+# extension if not exists" will not move it. create_invite() therefore has to
+# name both schemas on its search_path — and this suite only proves that if it
+# is run against the Supabase layout too:
+#   createdb cf_supabase_layout
+#   psql -d cf_supabase_layout -c 'create schema extensions;
+#     create extension pgcrypto with schema extensions;'
+#   ...then the auth shim, schema.sql and invite-flow.sql against that database.
 CF_TEST_PG=1 node tests/sync-sql.mjs
 ```
 

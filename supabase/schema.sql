@@ -2267,7 +2267,15 @@ create or replace function create_invite()
 returns text
 language plpgsql
 security definer
-set search_path = public
+-- `extensions` is on the path because that is where Supabase installs
+-- pgcrypto, and gen_random_bytes below comes from it. `create extension if
+-- not exists pgcrypto` at the top of this file does not move an extension
+-- that is already installed somewhere else, so on a Supabase project the
+-- extension exists, the function compiles, and the call fails at run time
+-- with "function gen_random_bytes(integer) does not exist" — the invite
+-- button simply never produces a code. Both orders are listed so this works
+-- on a bare Postgres, where the extension lands in public, as well.
+set search_path = public, extensions
 as $$
 declare
   hid uuid;
