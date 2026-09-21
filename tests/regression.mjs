@@ -1311,7 +1311,7 @@ await test('help keeps its section index, and settings no longer needs one', asy
   if (!top.present) throw new Error('#/help: no sticky section bar');
   if (top.h > 80) throw new Error('#/help: the bar is ' + top.h + 'px');
   if (top.strips) throw new Error('#/help: the index strip is still shown alongside the bar');
-  if (!/10 sections/.test(top.label)) throw new Error('#/help: bar says "' + top.label + '", expected 10 sections');
+  if (!/11 sections/.test(top.label)) throw new Error('#/help: bar says "' + top.label + '", expected 11 sections');
   // It stays put, and it renames itself as you go.
   await page.evaluate(() => { const sc = document.querySelector('.app-scroll');
     sc.scrollTop = sc.scrollHeight * 0.6; });
