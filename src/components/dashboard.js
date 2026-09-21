@@ -122,7 +122,7 @@
   }, setEntries = () => {
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
   }, dashOrder = [], setDashOrder = () => {
-  }, debtData = {} }) {
+  }, debtData = {}, assets = [] }) {
     var _a;
     const isMobile = useIsMobile();
     const [showCustomize, setShowCustomize] = useState(false);
@@ -534,6 +534,7 @@
       { id: "drift", label: "Bills that have drifted", size: "full" },
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
+      { id: "netWorth", label: "Net worth", size: "third" },
       { id: "kpis", label: "KPI tiles", size: "full" },
       { id: "balanceChart", label: "Balance chart", size: "half" },
       { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
@@ -641,6 +642,29 @@
           }, "Update")))),
         driftFindings.length > 5 && /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" },
           "and ", driftFindings.length - 5, " more")),
+      netWorth: () => {
+        const nw = netWorthSummary({
+          assets, debtData, cash: getCurrentBalance(flow, openBal, activeYear), asOf: todayStr()
+        });
+        // Nothing recorded is not a net worth of zero. A tile reading "$0.00"
+        // would be a claim about the household rather than an absence of one,
+        // so the empty state says what to do instead.
+        return /* @__PURE__ */ React.createElement(GlanceTile, { title: "Net worth" },
+          nw.empty
+            ? /* @__PURE__ */ React.createElement("div", { className: "hint" }, "Nothing recorded yet")
+            : /* @__PURE__ */ React.createElement(React.Fragment, null,
+                /* @__PURE__ */ React.createElement("div", {
+                  className: "glance-value",
+                  style: nw.total < 0 ? { color: "var(--red)" } : void 0
+                }, fmt(nw.total, true)),
+                /* @__PURE__ */ React.createElement("div", { className: "hint" },
+                  fmt(nw.assets + nw.cash), " owned \u00b7 ", fmt(nw.debts), " owed")),
+          /* @__PURE__ */ React.createElement("button", {
+            className: "glance-action",
+            onClick: () => { setTab("plan"); window.location.hash = "#/plan/networth"; },
+            title: "What you own, what is in your accounts, and what you owe"
+          }, nw.empty ? "Add what you own\u2026" : "Details\u2026"));
+      },
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = startOfToday();
         const horizon = new Date(today);

@@ -146,7 +146,7 @@
         if (g0 == null ? void 0 : g0.payoutEntryId) {
           setEntries((prev) => prev.map((e) => e.id === g0.payoutEntryId ? __spreadProps(__spreadValues({}, e), { desc: `Goal payout: ${name}`, amount: target, startDate: goalForm.targetDate || e.startDate }) : e));
         }
-        setGoals((prev) => prev.map((g) => g.id === goalForm.id ? __spreadProps(__spreadValues({}, g), { name, target, saved, monthly, targetDate: goalForm.targetDate || "" }) : g));
+        setGoals((prev) => prev.map((g) => g.id === goalForm.id ? __spreadProps(__spreadValues({}, g), { repeatMonths: Number(goalForm.repeatMonths) || 0, name, target, saved, monthly, targetDate: goalForm.targetDate || "" }) : g));
         logActivity("goal", `Edited the goal ${name} \u2014 ${fmt(saved)} of ${fmt(target)}`);
       } else {
         const id = genId();
@@ -188,7 +188,7 @@
             notes: "Planned goal spending"
           }]);
         }
-        setGoals((prev) => [...prev, { id, name, target, saved, monthly, targetDate: goalForm.targetDate || "", entryId, payoutEntryId, createdAt: (/* @__PURE__ */ new Date()).toISOString() }]);
+        setGoals((prev) => [...prev, { id, repeatMonths: Number(goalForm.repeatMonths) || 0, name, target, saved, monthly, targetDate: goalForm.targetDate || "", entryId, payoutEntryId, createdAt: (/* @__PURE__ */ new Date()).toISOString() }]);
         logActivity("goal", `Added the goal ${name} \u2014 ${fmt(target)}`);
       }
       toast(goalForm.id ? "Goal updated" : "Goal added");
@@ -217,7 +217,7 @@
     // opposite order one tap apart.
     return /* @__PURE__ */ React.createElement("div", { className: "cf-page" }, (() => {
       const openGoalForm = (g) => {
-        setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", linkEntry: true, payoutEntry: true });
+        setGoalForm(g ? __spreadProps(__spreadValues({}, g), { target: String(centsToDollars(g.target)), saved: String(centsToDollars(g.saved)), monthly: String(centsToDollars(g.monthly)) }) : { id: null, name: "", target: "", saved: "0", monthly: "", targetDate: "", repeatMonths: 0, linkEntry: true, payoutEntry: true });
         setGoalErrors({});
         setShowGoalForm(true);
       };
@@ -388,7 +388,23 @@
                 value: goalForm.targetDate,
                 onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { targetDate: e.target.value }))
               }
-            ), errTxt("targetDate"))), !goalForm.id && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
+            ), errTxt("targetDate"))),
+          /* @__PURE__ */ React.createElement("div", { className: "mt-12" },
+            /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "goal-repeat" }, "Repeats"),
+            /* @__PURE__ */ React.createElement("select", {
+              id: "goal-repeat",
+              className: "field-input",
+              value: String(goalForm.repeatMonths || 0),
+              onChange: (e) => setGoalForm((f) => __spreadProps(__spreadValues({}, f), { repeatMonths: Number(e.target.value) }))
+            },
+              /* @__PURE__ */ React.createElement("option", { value: "0" }, "Once"),
+              /* @__PURE__ */ React.createElement("option", { value: "1" }, "Every month"),
+              /* @__PURE__ */ React.createElement("option", { value: "3" }, "Every 3 months"),
+              /* @__PURE__ */ React.createElement("option", { value: "6" }, "Every 6 months"),
+              /* @__PURE__ */ React.createElement("option", { value: "12" }, "Every year")),
+            /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" },
+              "A goal that repeats is a sinking fund: when the target date arrives the money is spent, and the goal starts again for the next one. Anything saved over the target carries over.")),
+          !goalForm.id && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement(
               "input",
               {
                 type: "checkbox",

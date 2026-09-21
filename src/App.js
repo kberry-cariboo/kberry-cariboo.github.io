@@ -12,6 +12,7 @@
       joinHousehold,
       createInvite,
       setMemberDisabled,
+      setMemberRole,
       updateMemberName,
       updateMyName,
       signOut
@@ -645,7 +646,18 @@
     }, [setActivity, sessionUser]);
     // A description short enough for a log line, without cutting a word in half
     // when it already fits.
-    const householdCtx = useMemo(() => ({ members, sessionUser, accounts, logActivity }), [members, sessionUser, accounts, logActivity]);
+    // Whether this account may change anything. The server is the boundary —
+    // save_household refuses a viewer outright — and this is so the interface
+    // does not offer what would then be refused. A member whose row has not
+    // loaded yet is treated as a writer: the alternative is flashing a
+    // view-only interface at every owner on every cold start, and a wrong
+    // guess here costs nothing because the server still decides.
+    const myRole = useMemo(() => {
+      const me = (members || []).find((m) => m.user_id === (sessionUser == null ? void 0 : sessionUser.id));
+      return me ? me.role || "member" : null;
+    }, [members, sessionUser]);
+    const canWrite = myRole !== "viewer";
+    const householdCtx = useMemo(() => ({ members, sessionUser, accounts, logActivity, canWrite, myRole }), [members, sessionUser, accounts, logActivity, canWrite, myRole]);
     const logDesc = (d) => {
       const t = String(d == null ? "" : d).trim() || "Entry";
       return t.length > 40 ? t.slice(0, 39) + "\u2026" : t;
@@ -1170,6 +1182,22 @@
     // you would want told. The Alerts centre lists every one, so it is the
     // place you can go to see everything the app has to say — the screens that
     // compute them still show them in context, from these same helpers.
+    // A repeating goal is a sinking fund: when its date arrives the money is
+    // spent and the next cycle begins. Nothing else moves it along, so it is
+    // rolled here, on load and whenever goals or entries change.
+    //
+    // Safe to run on every render that changes them, because a plan for a
+    // household with nothing due reports no change and applies nothing —
+    // tests/sinking.mjs pins that, since without it this would be a loop.
+    useEffect(() => {
+      const plan = planGoalRollovers(goals, entries, todayStr());
+      if (!plan.changed) return;
+      applyGoalRollovers(plan, { setGoals, setEntries });
+      plan.rolls.forEach((r) => {
+        const g = goals.find((x) => x.id === r.goalId);
+        logActivity("goal", `${logDesc(g ? g.name : "A goal")} rolled over to ${r.to}`);
+      });
+    }, [goals, entries, setGoals, setEntries, logActivity]);
     const appFindings = useMemo(() => {
       const simDebts = Object.entries(debtData || {})
         .map(([key, v]) => ({
@@ -1180,13 +1208,35 @@
         }))
         .filter((d) => d.bal > 0 && d.pmt > 0 && !(debtData[d.key] || {}).hidden);
       const extra = Math.round((parseFloat(debtExtra) || 0) * 100);
+      // The month-level insight says whether the month is heavy and names the
+      // single biggest mover. These say which categories are spending unlike
+      // themselves — a month can be unremarkable overall while two categories
+      // have both moved, and that is the case the one-driver line cannot
+      // report.
+      const now = /* @__PURE__ */ new Date();
+      const anomalies = now.getFullYear() === activeYear
+        ? categoryAnomalies(activeFlow, now.getMonth())
+        : [];
       return [
         spendingInsightFinding(computeSpendingInsight(activeFlow, activeYear)),
+        ...categoryAnomalyFindings(anomalies, MONTHS[now.getMonth()]),
         debtStrategyFinding(simDebts, extra)
       ].filter(Boolean);
     }, [activeFlow, activeYear, debtData, debtExtra]);
     const appNotices = useMemo(() => {
       const out = [];
+      // Said once, at the top, rather than by every control going quiet with
+      // no explanation. A view-only member can read the whole budget; what
+      // they cannot do is change it, and being told why beats discovering it
+      // by pressing something.
+      if (!canWrite) {
+        out.push({
+          id: "view-only",
+          tone: "info",
+          icon: "eye",
+          msg: "You have view-only access to this household. You can see everything; changes are turned off.",
+        });
+      }
       // Not on the alerts page itself: there the banner is a summary of the
       // page under it, and its "View alerts" action goes nowhere.
       if (showLowBanner && tab !== "alerts") {
@@ -1255,7 +1305,7 @@
       }
       return out;
     }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab,
-        activeYear, yearConfigs]);
+        activeYear, yearConfigs, canWrite]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
     // constructor is never used — it doesn't exist on Android):
@@ -1718,6 +1768,7 @@
         // The drifted-bills panel compares each entry's amount against the
         // actuals recorded on its occurrences, which live here.
         overridesByYr,
+        assets,
         applyDriftFix,
         setYearConfigs,
         addEntry,
@@ -1910,6 +1961,7 @@
         members,
         createInvite,
         setMemberDisabled,
+        setMemberRole,
         updateMemberName
       }
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(

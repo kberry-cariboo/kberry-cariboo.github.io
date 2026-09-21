@@ -162,6 +162,20 @@ jobs:
       - name: Check the net worth arithmetic
         run: node tests/networth.mjs
 
+      # Browser-free: drives src/lib/sinking.js directly. The roll runs
+      # unattended on every load and reaches goals and entries at once, so the
+      # hazards are year-copy's: it has to be idempotent, and it has to land on
+      # a date that is actually still ahead when cycles have been missed.
+      - name: Check repeating goals roll over
+        run: node tests/sinking.mjs
+
+      # Browser-free: drives src/lib/anomaly.js directly. Most of the file is
+      # about staying quiet — a biweekly bill's two-and-three-payment months
+      # and one holiday sitting in the baseline both look enormous against a
+      # mean and neither is worth saying.
+      - name: Check category anomaly detection
+        run: node tests/anomaly.mjs
+
       # Browser-free: drives src/lib/drift.js directly. The feature is a
       # judgement about when to speak — the silent cases (a variable bill, a
       # few dollars on a mortgage, an entry that has already ended) are what
@@ -215,6 +229,13 @@ jobs:
 
       - name: Check the app against the real SQL
         run: CF_TEST_PG=1 node tests/sync-sql.mjs
+
+      # An access-control boundary, so it is asserted against the database as
+      # the caller rather than read off the policies: a view-only member is
+      # refused on every path that writes, is refused nothing that reads, and
+      # an ordinary member is unaffected. Neutering the role check turns it red.
+      - name: Check view-only members cannot write
+        run: psql -v ON_ERROR_STOP=1 -f tests/viewer-role.sql
 
       # Reloading a household from the cloud: conflicts, offline edits, a
       # divergence needing the user to choose, receipts. None of it reachable by

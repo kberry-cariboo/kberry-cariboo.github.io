@@ -87,6 +87,8 @@ npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
 node tests/dates.mjs          # the schedule engine, browser-free
 node tests/help-ia.mjs        # Help prose vs the real navigation, browser-free
 node tests/drift.mjs          # drifted-bill detection, browser-free
+node tests/anomaly.mjs        # category anomaly detection, browser-free
+node tests/sinking.mjs        # repeating goals rolling over, browser-free
 node tests/networth.mjs       # net worth arithmetic, browser-free
 node tests/theme-tokens.mjs   # CSS palette vs its JS mirror, browser-free
 node tests/regression.mjs     # the browser suite
@@ -250,6 +252,7 @@ createdb cf_scratch
 psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
 psql -v ON_ERROR_STOP=1 -f supabase/schema-test.sql
 CF_TEST_PG=1 node tests/payload-roundtrip.mjs
+psql -v ON_ERROR_STOP=1 -f tests/viewer-role.sql   # view-only members
 CF_TEST_PG=1 node tests/sync-sql.mjs
 ```
 

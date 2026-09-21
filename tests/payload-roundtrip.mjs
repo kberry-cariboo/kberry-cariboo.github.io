@@ -139,7 +139,7 @@ const payload = {
            { id: 'a-odd', name: 'Something else', kind: 'crypto', value: 125050,
              asOf: '', note: '', createdAt: '2026-01-02T00:00:00.000Z' }],
   goals: [{ id: 'g-roof', name: 'New roof', target: 500000, saved: 125000, monthly: 25000,
-            targetDate: '2027-06-01', entryId: 'e-expense', payoutEntryId: null,
+            targetDate: '2027-06-01', entryId: 'e-expense', payoutEntryId: null, repeatMonths: 12,
             createdAt: '2026-01-02T00:00:00.000Z' }],
   categories: ['Housing', 'Income', 'Food', 'Utilities', 'Savings / RRSP', 'Farm / Animals'],
   categoryColors: { Housing: '#2F6FED', Income: '#1FA97A' },
