@@ -873,6 +873,21 @@
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
+    // Accepting a drifted-bill suggestion is an ordinary entry edit, and it
+    // goes through the same path as one: splitEntryEditFromCurrentMonth means
+    // the new amount applies from this month forward, so the months already
+    // behind you keep what they actually cost. Rewriting those would destroy
+    // the very actuals the suggestion was read from.
+    //
+    // No undo entry, deliberately: entry edits are not on the undo stack
+    // anywhere else in the app, and the occurrence remapping a split can do
+    // is not something a one-line revert can put back honestly.
+    const applyDriftFix = (d) => {
+      const before = entries.find((e) => e.id === d.entryId);
+      if (!before || !d || !Number.isFinite(d.suggested)) return;
+      saveEntryEdit(d.entryId, __spreadProps(__spreadValues({}, before), { amount: d.suggested }));
+      toast(`${logDesc(before.desc)} updated to ${fmt(d.suggested)} from this month on.`);
+    };
     const {
       status: houseStatus,
       msg: houseMsg,
@@ -1680,6 +1695,10 @@
         users: members,
         sessionUser,
         entries,
+        // The drifted-bills panel compares each entry's amount against the
+        // actuals recorded on its occurrences, which live here.
+        overridesByYr,
+        applyDriftFix,
         setYearConfigs,
         addEntry,
         setTab,

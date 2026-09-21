@@ -86,6 +86,7 @@ npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
   build.js .eslint-bundle.js  # what CI runs
 node tests/dates.mjs          # the schedule engine, browser-free
 node tests/help-ia.mjs        # Help prose vs the real navigation, browser-free
+node tests/drift.mjs          # drifted-bill detection, browser-free
 node tests/regression.mjs     # the browser suite
 node tests/layout-sweep.mjs   # every route at every width
 ```

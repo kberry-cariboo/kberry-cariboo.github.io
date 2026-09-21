@@ -149,6 +149,13 @@ jobs:
       - name: Check the schedule engine
         run: node tests/dates.mjs
 
+      # Browser-free: drives src/lib/drift.js directly. The feature is a
+      # judgement about when to speak — the silent cases (a variable bill, a
+      # few dollars on a mortgage, an entry that has already ended) are what
+      # make it usable, and they are cheaper to pin as data than as clicks.
+      - name: Check drifted-bill detection
+        run: node tests/drift.mjs
+
       # Browser-free: reads the route tables and the shortcut handler as the
       # source of truth and holds the Help prose against them. The page is
       # English in one file, so a rename elsewhere used to leave it describing

@@ -5800,6 +5800,72 @@ await test('dashboard: Upcoming shows the next seven outstanding, whatever the w
 // The four headline numbers each carry a sparkline of the year's shape. They
 // are drawn from `summaries`, so a tile whose sparkline is missing or flat
 // means the tile is reading a different year than the number beside it.
+// A recurring entry records what you expect to pay; the actuals recorded
+// against its occurrences record what it really cost. Nothing in the app used
+// to read one against the other, so a bill that had quietly risen kept every
+// projection past today too optimistic. The logic and its thresholds are
+// covered in tests/drift.mjs — what is checked here is that the panel reads
+// real app state, and that accepting a suggestion edits the entry.
+//
+// The fixture carries no overrides, so the drift is seeded for this test
+// alone rather than added to the shared fixture, where it would move every
+// total in every other suite. Hydro & gas (entry 7) is $185 a month on the
+// 12th; three months at ~$240 is a rise worth reporting.
+const DRIFT_OVERRIDES = JSON.stringify({
+  2026: {
+    '7-2026-0-12': { actualAmount: 24000 },
+    '7-2026-1-12': { actualAmount: 24500 },
+    '7-2026-2-12': { actualAmount: 23800 },
+  },
+});
+const withDrift = (stub) => stub.replace('overridesByYr: {}', 'overridesByYr: ' + DRIFT_OVERRIDES);
+
+await test('dashboard: a bill whose actuals have drifted is reported with the figure it settled at', async () => {
+  const { ctx, page } = await ctxPage({ stub: withDrift });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const row = page.locator('.drift-row').filter({ hasText: 'Hydro' });
+  if (await row.count() === 0) throw new Error('the drifted-bills panel does not list Hydro & gas');
+  const text = (await row.first().innerText()).replace(/\s+/g, ' ');
+  // The median of 240.00 / 245.00 / 238.00, not the mean, and not the planned
+  // figure it is replacing.
+  if (!/240\.00/.test(text)) throw new Error('the row does not offer the settled figure: ' + text);
+  if (!/185\.00/.test(text)) throw new Error('the row does not say what the entry currently claims: ' + text);
+  await ctx.close();
+});
+
+await test('dashboard: accepting a drifted bill updates the entry it names', async () => {
+  const { ctx, page } = await ctxPage({ stub: withDrift });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  await page.locator('.drift-row').filter({ hasText: 'Hydro' }).locator('button').click();
+  await page.waitForTimeout(900);
+  // The row is gone, which is the whole point: the bill has been corrected.
+  // It is worth asserting rather than assuming, because the edit path splits
+  // the entry — the old definition keeps the months already paid, and it is
+  // the one holding the actuals the suggestion was read from.
+  if (await page.locator('.drift-row').filter({ hasText: 'Hydro' }).count() !== 0) {
+    throw new Error('the bill is still listed as drifted after being corrected');
+  }
+  // And the money moved: the entry carries the settled figure from here on.
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await settled(page);
+  const listed = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  if (!/Hydro & gas/.test(listed)) throw new Error('Hydro & gas vanished from Entries after the update');
+  if (!/240\.00/.test(listed)) throw new Error('no entry carries the corrected amount: ' + listed.slice(0, 300));
+  await ctx.close();
+});
+
+await test('dashboard: with nothing recorded against a bill, the drifted panel stays away', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  if (await page.locator('.drift-row').count() !== 0) {
+    throw new Error('the drifted-bills panel appeared with no actuals recorded anywhere');
+  }
+  await ctx.close();
+});
+
 await test('dashboard: each headline number has a sparkline of the twelve months behind it', async () => {
   const { ctx, page } = await ctxPage();
   await page.goto(BASE + '#/today', { waitUntil: 'load' });

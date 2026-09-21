@@ -1556,6 +1556,23 @@
         .glance-value{font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:16px;font-weight:700;overflow-wrap:anywhere;}
         .glance-value-sub{font-size:10px;font-weight:400;color:var(--textLt);margin-left:6px;display:inline-block;white-space:nowrap;}
         .ending-soon-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+        /* Drifted bills. Three columns on a desktop — what it is, what it
+           should be, and the button — collapsing to a stack on a phone, where
+           the figure earns the room more than the alignment does. */
+        .drift-list{display:flex;flex-direction:column;gap:2px;}
+        .drift-row{display:flex;align-items:center;gap:14px;padding:10px 0;
+          border-bottom:1px solid var(--border);}
+        .drift-row:last-child{border-bottom:none;}
+        .drift-row-main{flex:1;min-width:0;}
+        .drift-desc{font-weight:600;font-size:14px;margin-bottom:2px;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .drift-row-figure{text-align:right;flex-shrink:0;}
+        .drift-suggested{font-family:var(--font-mono);font-weight:700;font-size:15px;}
+        @media (max-width:640px){
+          .drift-row{flex-wrap:wrap;gap:8px;}
+          .drift-row-main{flex:1 1 100%;}
+          .drift-row-figure{text-align:left;flex:1;}
+        }
         .ending-soon-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;border-radius:20px;padding:7px 14px;}
         .upcoming-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
         .upcoming-hdr-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
@@ -4883,6 +4900,143 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     const past = flow.filter((ev) => ev.date <= today);
     return past.length > 0 ? past[past.length - 1].balance : openBal;
+  }
+  // What a recurring bill actually costs, against what the entry still says.
+  //
+  // The app already records the real figure: "Actual Amount Paid" on an
+  // occurrence updates the running balance and the Envelopes totals without
+  // touching the plan, which is exactly right for one month and quietly wrong
+  // over six. An entry that says $110 while the last six payments averaged
+  // $141 makes every projection past today too optimistic, and nothing in the
+  // app ever noticed — the information was all there, unread.
+  //
+  // So this reads it. Pure functions over plain data: entries and the
+  // per-occurrence overrides, in, findings out. No React, no storage, no
+  // clock — the caller says which years to look at.
+  //
+  // Money is integer cents here as everywhere else.
+
+  // An occurrence override records two different kinds of "not the plan":
+  // `actualAmount` is what was really paid (reconciliation after the fact) and
+  // `amount` is a one-off different figure set in advance. Both mean "this
+  // date was not the entry's amount", so both count as evidence — a bill the
+  // user keeps hand-editing upward has drifted just as surely as one they keep
+  // reconciling upward.
+  const driftActualOf = (ov) => {
+    if (!ov || ov.skipped) return void 0;
+    if (ov.actualAmount !== void 0) return ov.actualAmount;
+    if (ov.amount !== void 0) return ov.amount;
+    return void 0;
+  };
+  // Override keys are `${entryId}-${year}-${month}-${day}`, and an entry id can
+  // itself contain a dash, so the tail is matched rather than the whole key
+  // split on "-".
+  const DRIFT_KEY_TAIL = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+  function driftSamplesFor(entry, overridesByYr) {
+    const out = [];
+    const prefix = entry.id + "-";
+    Object.keys(overridesByYr || {}).forEach((year) => {
+      const ovs = overridesByYr[year] || {};
+      Object.keys(ovs).forEach((key) => {
+        if (key.indexOf(prefix) !== 0) return;
+        const m = DRIFT_KEY_TAIL.exec(key.slice(prefix.length));
+        if (!m) return;
+        const actual = driftActualOf(ovs[key]);
+        if (actual === void 0 || !Number.isFinite(actual)) return;
+        out.push({ year: +m[1], month: +m[2], day: +m[3], actual });
+      });
+    });
+    // Oldest first, so "the most recent N" is a slice off the end.
+    return out.sort((a, b) => a.year - b.year || a.month - b.month || a.day - b.day);
+  }
+  // The middle figure, not the average: one forgotten annual top-up or a
+  // double payment should not drag the suggestion with it. An even-length run
+  // takes the mean of the middle two, rounded to the cent.
+  function driftMedian(values) {
+    if (!values.length) return 0;
+    const v = [...values].sort((a, b) => a - b);
+    const mid = v.length >> 1;
+    return v.length % 2 ? v[mid] : Math.round((v[mid - 1] + v[mid]) / 2);
+  }
+  const DRIFT_DEFAULTS = {
+    // Three payments is the fewest that can show a pattern rather than a
+    // coincidence.
+    minSamples: 3,
+    // Only the recent run matters: a bill that rose eighteen months ago and
+    // has been steady since has already drifted, and the old figures would
+    // drag the suggestion back toward a number nobody pays any more.
+    window: 6,
+    // Ignore anything under a tenth, and under five dollars in absolute terms
+    // — a $2 swing on a $600 mortgage is noise, and so is 15% of $3.
+    tolerance: 0.1,
+    minAbsCents: 500,
+    // Two thirds of the run has to lean the same way. A bill that alternates
+    // high and low around the planned figure is variable, not drifted, and
+    // telling someone to "update" it to the middle of its own swing is noise.
+    agreement: 2 / 3,
+  };
+  // One entry's finding, or null when it has not drifted. Exposed separately
+  // so the reasoning is testable a case at a time.
+  function driftForEntry(entry, overridesByYr, opts = {}) {
+    const o = { ...DRIFT_DEFAULTS, ...opts };
+    // A one-time entry has no plan to drift from, and a zero amount has no
+    // percentage to be off by.
+    if (!entry || !entry.repeats) return null;
+    // An entry that has already finished cannot be corrected: changing its
+    // amount moves no future occurrence, so reporting it is an instruction the
+    // user cannot usefully follow. This matters more than it sounds, because
+    // accepting a suggestion *creates* such an entry — the edit path splits
+    // the old definition off at the end of last month and starts a new one
+    // carrying the new figure. Without this, the bill you just corrected
+    // would stay on the list, still citing the actuals that are now the
+    // historical entry's own.
+    if (o.asOf && entry.recurEnd && entry.recurEnd < o.asOf) return null;
+    const planned = entry.amount;
+    if (!Number.isFinite(planned) || planned <= 0) return null;
+
+    const all = driftSamplesFor(entry, overridesByYr);
+    if (all.length < o.minSamples) return null;
+    const recent = all.slice(-o.window);
+    const values = recent.map((s) => s.actual);
+    const suggested = driftMedian(values);
+    const delta = suggested - planned;
+    if (delta === 0) return null;
+
+    const threshold = Math.max(o.minAbsCents, Math.round(planned * o.tolerance));
+    if (Math.abs(delta) < threshold) return null;
+
+    // Do the samples agree on the direction the median moved?
+    const leaning = values.filter((v) => (delta > 0 ? v > planned : v < planned)).length;
+    if (leaning / values.length < o.agreement) return null;
+
+    return {
+      entryId: entry.id,
+      desc: entry.desc,
+      category: entry.category,
+      type: entry.type,
+      planned,
+      suggested,
+      delta,
+      direction: delta > 0 ? "up" : "down",
+      samples: values.length,
+      observed: all.length,
+      low: Math.min(...values),
+      high: Math.max(...values),
+      // Signed fraction of the planned amount, for wording like "+28%".
+      pct: delta / planned,
+      since: recent[0],
+      latest: recent[recent.length - 1],
+    };
+  }
+  // Every drifted entry, worst first. "Worst" is the absolute cash difference
+  // rather than the percentage: a mortgage $90 out matters more than a
+  // subscription 40% out at $4, and the list exists to be acted on from the
+  // top.
+  function findAmountDrift(entries, overridesByYr, opts = {}) {
+    return (entries || [])
+      .map((e) => driftForEntry(e, overridesByYr, opts))
+      .filter(Boolean)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
   }
   // ── Rolling one budget year forward into the next ────────────────────────
   //
@@ -14608,6 +14762,7 @@ Fill every field of the response schema. Rules:
   }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {
+  }, overridesByYr = {}, applyDriftFix = () => {
   }, setEntries = () => {
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
   }, dashOrder = [], setDashOrder = () => {
@@ -15020,6 +15175,7 @@ Fill every field of the response schema. Rules:
       { id: "nextLow", label: "Next low point", size: "third" },
       { id: "dueMonth", label: "Due rest of month", size: "third" },
       { id: "upcoming", label: "Upcoming \u2014 next 7", size: "full" },
+      { id: "drift", label: "Bills that have drifted", size: "full" },
       { id: "endingSoon", label: "Ending-soon chips", size: "full" },
       { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
       { id: "kpis", label: "KPI tiles", size: "full" },
@@ -15047,6 +15203,15 @@ Fill every field of the response schema. Rules:
     // the alert threshold, red overdrawn). Eleven of the fourteen balance
     // readouts already did this; the three that painted a healthy balance
     // green made the genuinely alarming ones harder to pick out.
+    // What each recurring bill actually costs, against what its entry still
+    // says. The evidence is the actuals already recorded on occurrences — see
+    // src/lib/drift.js for when this is allowed to speak, which is the whole
+    // design problem: a variable bill that swings either side of its planned
+    // figure has not drifted, and saying so would make the panel noise.
+    const driftFindings = useMemo(
+      () => findAmountDrift(entries, overridesByYr, { asOf: todayStr() }),
+      [entries, overridesByYr]
+    );
     const WIDGET_RENDER = {
       runway: () => runway && /* @__PURE__ */ React.createElement(Card, { className: "runway-card" },
         /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Next 90 days"),
@@ -15093,6 +15258,33 @@ Fill every field of the response schema. Rules:
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
       } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
       dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { className: "glance-value c-text" }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
+      drift: () => driftFindings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
+        /* @__PURE__ */ React.createElement(SectionTitle, {
+          help: "A recurring entry says what you expect to pay. When the amounts you have actually recorded against it keep landing somewhere else, every projection past today is using the wrong figure \u2014 these are the ones far enough out, for long enough, to be worth correcting."
+        }, "Bills that have drifted"),
+        /* @__PURE__ */ React.createElement("div", { className: "drift-list" }, driftFindings.slice(0, 5).map((d) => /* @__PURE__ */ React.createElement("div", { key: d.entryId, className: "drift-row" },
+          /* @__PURE__ */ React.createElement("div", { className: "drift-row-main" },
+            /* @__PURE__ */ React.createElement("div", { className: "drift-desc" }, d.desc),
+            /* @__PURE__ */ React.createElement("div", { className: "hint" },
+              "Entry says ", fmt(d.planned), " \u00b7 last ", d.samples,
+              d.samples === 1 ? " payment" : " payments",
+              " ranged ", fmt(d.low), "\u2013", fmt(d.high))),
+          /* @__PURE__ */ React.createElement("div", { className: "drift-row-figure" },
+            /* @__PURE__ */ React.createElement("div", {
+              className: "drift-suggested",
+              // Direction is the news, so it carries the colour: a bill that
+              // has risen is the one that makes the forecast optimistic.
+              style: { color: d.direction === "up" ? "var(--red)" : "var(--greenDk)" }
+            }, d.direction === "up" ? "\u2191 " : "\u2193 ", fmt(d.suggested)),
+            /* @__PURE__ */ React.createElement("div", { className: "hint" },
+              (d.delta > 0 ? "+" : "\u2212"), fmt(Math.abs(d.delta)), " a time")),
+          /* @__PURE__ */ React.createElement("button", {
+            className: "cf-btn cf-btn--secondary cf-btn--compact",
+            onClick: () => applyDriftFix(d),
+            "aria-label": `Update ${d.desc} to ${fmt(d.suggested)}`
+          }, "Update")))),
+        driftFindings.length > 5 && /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" },
+          "and ", driftFindings.length - 5, " more")),
       endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
         const today = startOfToday();
         const horizon = new Date(today);
@@ -16055,6 +16247,7 @@ Fill every field of the response schema. Rules:
           ["Upcoming — next 7", "The next seven things still outstanding, each with the balance it leaves behind, and a circle to tick it off. Seven things rather than seven days: a quiet week would otherwise leave the card nearly empty, and a busy one would hide the tail of it behind a footnote. Ticking one off drops it and brings the next one up, and the heading says how far ahead the seven reach. It reads every budget year, so a run that crosses into January still shows the January half."],
           ["Annual income, expenses, surplus and lowest balance", "The year as four numbers, each with a sparkline of its shape across the months."],
           ["What changed", "A written comparison of this month against last, generated on demand when AI access is configured."],
+          ["Bills that have drifted", "A recurring entry says what you expect to pay; the actuals you record against it say what it really cost. When the recent ones keep landing somewhere else \u2014 far enough out, for long enough, and leaning the same way \u2014 the bill is listed here with the figure it has settled at, and one button updates the entry to it. Updating applies from this month forward, so the months already behind you keep what they actually cost. A bill that simply varies, swinging either side of its planned amount, is not drift and is not listed."],
           ["Charts", "Running balance, surplus or shortfall by month, income against expenses, top expense categories, income sources, and budget against actual for the year."],
           ["Monthly summary and year-over-year", "The twelve-month table, exportable to CSV or PDF, and a comparison against your other budget years once you have more than one."],
           ["What drove a year-over-year change", "In the Annual Comparison table, the figure in the vs Prior Year column opens. It breaks the change in net surplus into the two sides it came from \u2014 income and expenses \u2014 and then into the biggest movers, largest effect first, with the rest gathered into one \u201cAll other movements\u201d line so the figures still add up to the change exactly; Show all lists every one. A \u25b8 beside a category opens the entries inside it."]
@@ -19662,6 +19855,21 @@ Fill every field of the response schema. Rules:
         setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
       }
     };
+    // Accepting a drifted-bill suggestion is an ordinary entry edit, and it
+    // goes through the same path as one: splitEntryEditFromCurrentMonth means
+    // the new amount applies from this month forward, so the months already
+    // behind you keep what they actually cost. Rewriting those would destroy
+    // the very actuals the suggestion was read from.
+    //
+    // No undo entry, deliberately: entry edits are not on the undo stack
+    // anywhere else in the app, and the occurrence remapping a split can do
+    // is not something a one-line revert can put back honestly.
+    const applyDriftFix = (d) => {
+      const before = entries.find((e) => e.id === d.entryId);
+      if (!before || !d || !Number.isFinite(d.suggested)) return;
+      saveEntryEdit(d.entryId, __spreadProps(__spreadValues({}, before), { amount: d.suggested }));
+      toast(`${logDesc(before.desc)} updated to ${fmt(d.suggested)} from this month on.`);
+    };
     const {
       status: houseStatus,
       msg: houseMsg,
@@ -20469,6 +20677,10 @@ Fill every field of the response schema. Rules:
         users: members,
         sessionUser,
         entries,
+        // The drifted-bills panel compares each entry's amount against the
+        // actuals recorded on its occurrences, which live here.
+        overridesByYr,
+        applyDriftFix,
         setYearConfigs,
         addEntry,
         setTab,
