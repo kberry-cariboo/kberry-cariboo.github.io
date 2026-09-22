@@ -283,6 +283,7 @@
              them theme-aware changes how heavy the app feels and belongs with
              the elevation work, not here. */
           --surface-media:#FFFFFF;
+          --blur-scrim:6px;
           --scrim:rgba(0,0,0,0.35); --scrim-strong:rgba(0,0,0,0.85);
           --scrim-modal:rgba(90,90,97,0.4);
           --shadow-ink-faint:color-mix(in srgb, var(--navy) 6%, transparent);
@@ -979,6 +980,25 @@
         .ef-save-template{font-size:var(--fs-xs);font-weight:600;padding:var(--space-10) var(--space-14);border-radius:var(--radius-8);border:1px dashed var(--border);cursor:pointer;margin-right:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:var(--space-6);}
         .csv-title{font-size:var(--fs-lg);font-weight:700;color:var(--text);}
         .ctx-menu-backdrop{position:fixed;inset:0;z-index:9000;background:var(--scrim);}
+        /* The scrim is a flat wash, so a sheet sits on a page that is still
+           perfectly legible behind it — the dimming says "inactive" but the
+           eye keeps reading the rows underneath. A short blur says it better
+           and costs nothing when it is not supported.
+
+           Written as an enhancement that is *removed* on request rather than
+           one that is only added when a preference is known. An engine that
+           has never heard of prefers-reduced-transparency makes any query on
+           it false, so asking for `no-preference` would have quietly meant
+           "nobody gets this"; asking for `reduce` means "everybody gets it
+           except the people who asked not to", which is the intent. */
+        @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+          .modal-overlay,.ctx-menu-backdrop,.receipt-lightbox{
+            -webkit-backdrop-filter:blur(var(--blur-scrim));backdrop-filter:blur(var(--blur-scrim));}
+          @media (prefers-reduced-transparency:reduce){
+            .modal-overlay,.ctx-menu-backdrop,.receipt-lightbox{
+              -webkit-backdrop-filter:none;backdrop-filter:none;}
+          }
+        }
         .ctx-menu-sheet{position:fixed;left:0;right:0;bottom:0;border-radius:var(--radius-20) var(--radius-20) 0 0;padding:var(--space-10) 0 calc(var(--space-10) + env(safe-area-inset-bottom));box-shadow:0 -8px 32px var(--shadow-ink);user-select:none;}
         /* One handle for every bottom sheet — the context menu's, and (via
            SheetHandle) each modal card's. Desktop cards aren't sheets, so it
@@ -3038,7 +3058,26 @@
           main .cf-page>.cf-card .glance-grid,main .cf-page>.cf-card .kpi-grid,
           main .cf-page>.cf-card .kpi-grid-4{margin-left:calc(var(--space-16) * -1);margin-right:calc(var(--space-16) * -1);}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
-          .month-picker{gap:var(--space-4);flex-wrap:nowrap;overflow-x:auto;
+          /* Snap, so a free swipe settles with a month centred rather than at
+             whatever offset the thumb left behind.
+
+             It does not stop the pills at the two ends being clipped, and I
+             wrote a comment here first claiming that it did. Twelve pills are
+             wider than the strip, so centring one necessarily cuts the ones at
+             the edges; measuring it (an arbitrary scroll of 137px settles to
+             124px, and Mar and Nov are cut either way) is what corrected the
+             claim. What this buys is a consistent resting position, which is
+             the reason a picker snaps at all.
+
+             proximity, not mandatory: mandatory fights small nudges and makes
+             a strip of twelve short pills feel like it is grabbing back.
+
+             center, because the strip already centres the selected month
+             programmatically (scrollIntoView with inline:"center" in
+             primitives.js). Aligning to the start instead would have the snap
+             and the app disagreeing about where a month belongs, and the
+             browser would settle it after every selection. */
+          .month-picker{scroll-snap-type:x proximity;gap:var(--space-4);flex-wrap:nowrap;overflow-x:auto;
             -webkit-overflow-scrolling:touch;scrollbar-width:none;
             padding-bottom:var(--space-4);
             /* Bleeds by exactly the page gutter so the strip reaches the screen
@@ -3054,6 +3093,7 @@
              fade covers the cut instead of stopping short of it. */
           .month-picker-fade--left{left:calc(var(--container-gutter) * -1);}
           .month-picker-fade--right{right:calc(var(--container-gutter) * -1);}
+          .month-picker>.cf-pill{scroll-snap-align:center;}
           .month-picker::-webkit-scrollbar{display:none;}
           .glance-grid{gap:var(--space-6);}
           /* Icon-only sub-tabs were unreadable: a scale for "Budget vs
