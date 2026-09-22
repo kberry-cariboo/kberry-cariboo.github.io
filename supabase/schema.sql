@@ -31,9 +31,17 @@
 -- Nobody can read/write another household's data because every policy and RPC
 -- below checks the caller is a member of the household they're touching.
 
--- gen_random_bytes (invite codes) lives in pgcrypto. gen_random_uuid() is core
--- from PG13 on, so this is only needed for the former.
-create extension if not exists pgcrypto;
+-- No extensions. This file used to open with `create extension if not exists
+-- pgcrypto`, because create_invite() drew its randomness from that extension's
+-- gen_random_bytes(). On a Supabase project that line is a no-op — pgcrypto is
+-- already installed, in the `extensions` schema — and `set search_path = public`
+-- meant the function could not see it. The schema deployed clean and inviting
+-- someone failed with "function gen_random_bytes(integer) does not exist".
+--
+-- Everything here now uses gen_random_uuid(), which is core Postgres from 13 on
+-- and needs no extension to be installed, or reachable, or anywhere in
+-- particular. (Requires PG13+; Supabase is well past that.) Removing the line
+-- does not uninstall anything from a database that already has it.
 
 create table if not exists households (
   id uuid primary key default gen_random_uuid(),
@@ -2267,15 +2275,7 @@ create or replace function create_invite()
 returns text
 language plpgsql
 security definer
--- `extensions` is on the path because that is where Supabase installs
--- pgcrypto, and gen_random_bytes below comes from it. `create extension if
--- not exists pgcrypto` at the top of this file does not move an extension
--- that is already installed somewhere else, so on a Supabase project the
--- extension exists, the function compiles, and the call fails at run time
--- with "function gen_random_bytes(integer) does not exist" — the invite
--- button simply never produces a code. Both orders are listed so this works
--- on a bare Postgres, where the extension lands in public, as well.
-set search_path = public, extensions
+set search_path = public
 as $$
 declare
   hid uuid;
@@ -2285,14 +2285,27 @@ begin
   if hid is null then
     raise exception 'You must belong to a household first.';
   end if;
-  -- gen_random_bytes (pgcrypto) is a CSPRNG; random() is a seeded PRNG whose
-  -- output is predictable from prior draws, which is not a property you want
-  -- guarding access to a household's entire financial history. Base32-ish
-  -- alphabet with I/O/0/1 removed so codes survive being read aloud or typed
-  -- from a photo. 8 chars over 32 symbols = ~40 bits.
-  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + (get_byte(b, i) % 32), 1), '')
+  -- Randomness from gen_random_uuid(), which is core Postgres from 13 on and
+  -- is a CSPRNG. It used to come from pgcrypto's gen_random_bytes(), and that
+  -- is what broke inviting in production: Supabase installs pgcrypto in the
+  -- `extensions` schema, `create extension if not exists` will not move an
+  -- extension that is already installed, and this function's search_path is
+  -- public. The schema deployed, the function compiled, and the call failed
+  -- only when somebody pressed the button. Depending on no extension at all
+  -- is a smaller thing to get wrong than depending on one being reachable.
+  --
+  -- random() would also need no extension and is not an option: it is a
+  -- seeded PRNG whose output is predictable from prior draws, which is not a
+  -- property you want guarding access to a household's financial history.
+  --
+  -- Base32-ish alphabet with I/O/0/1 removed so codes survive being read
+  -- aloud or typed from a photo. 8 chars over 32 symbols = ~40 bits. The byte
+  -- positions skip 6 and 8, which carry a v4 UUID's version and variant bits
+  -- rather than randomness, and the ordering is explicit because string_agg
+  -- has no defined order without one.
+  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + (get_byte(u, b) % 32), 1), '' order by b)
     into code
-    from (select gen_random_bytes(8) as b) g, generate_series(0, 7) as i;
+    from (select uuid_send(gen_random_uuid()) as u) g, unnest(array[0,1,2,3,4,5,7,9]) as b;
   insert into household_invites(code, household_id, created_by) values (code, hid, auth.uid());
   return code;
 end;
