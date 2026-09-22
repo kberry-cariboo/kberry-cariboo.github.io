@@ -1071,7 +1071,15 @@
            .budget-amount-td and the mobile entries cards,
            which already right-align. Keyed to the column
            name, not a position — see the header className in entries.js. */
-        .entries-col-amount{font-weight:600;padding:var(--space-10) var(--space-12);text-align:right;}
+        /* nowrap like every other figure column in this table. A variable
+           entry's amount is a range — "+$3.7k–$4.6k" — and an en dash is a
+           legal break point, so the payroll row broke after it and stood two
+           lines tall in a table where nothing else does. Date, schedule,
+           until and notes were all already nowrap; the amount was the one
+           column left able to wrap, which is the column least able to afford
+           it. The table lives in an overflow-x wrapper, so the cost of a wide
+           amount is a scrollbar on the table, not a broken row. */
+        .entries-col-amount{font-weight:600;padding:var(--space-10) var(--space-12);text-align:right;white-space:nowrap;}
         /* Doubled-up class so it outranks .entries-th--col's text-align:left,
            which is defined further down the file. */
         .entries-th.entries-th--amount{text-align:right;}

@@ -3902,6 +3902,58 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
 // The Forecast is the one view whose whole job is "where is this heading", and
 // it answered with a paginated table: three pages for a 90-day horizon, the low
 // point unmarked even though the Dashboard puts it in a tile.
+// A variable entry's amount is a range, and the shared household has no
+// variable entry at all — which is why the desktop table shipped for months
+// with the one column able to wrap. This pushes one in, at amounts that
+// produce the widest string the formatter makes: "$3.7k\u2013$4.6k", where the
+// separator is an en dash and a browser is entitled to break after one.
+await test('entries: a variable amount stays on one line in the desktop table', async () => {
+  const months = {};
+  // 3,712 to 4,638 — k-formatted to one decimal, so the range reads at its
+  // full width rather than collapsing to "$4k".
+  for (let m = 1; m <= 12; m++) months[m] = m % 2 ? 371200 : 463800;
+  const varEntry = JSON.stringify([{ id: 9950, desc: 'Ken \u2014 Payroll (1st)', type: 'income',
+    amount: 371200, monthlyAmounts: months, category: 'Income', repeats: true,
+    recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-01-01`, notes: '' }]);
+  const { ctx, page } = await ctxPage({
+    stub: (t) => t.replace('const payload = {', `entries.push(...${varEntry}); const payload = {`) });
+  try {
+    await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.first().click().catch(() => {});
+    await page.waitForTimeout(300);
+    const report = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll('.entries-col-amount')];
+      if (!cells.length) return { err: 'the desktop entries table did not render' };
+      // Range() measures the text itself rather than the cell box, so cell
+      // padding and row height cannot mask or manufacture a second line.
+      const lines = (el) => {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        return r.getClientRects().length;
+      };
+      const ranged = cells.filter((c) => /\u2013/.test(c.textContent));
+      return {
+        total: cells.length,
+        ranged: ranged.map((c) => c.textContent.trim()),
+        wrapped: cells.filter((c) => lines(c) > 1).map((c) => c.textContent.trim()),
+        nowrap: cells.length ? getComputedStyle(cells[0]).whiteSpace : null,
+      };
+    });
+    if (report.err) throw new Error(report.err);
+    // Without a range on the page this test passes by never seeing one — which
+    // is exactly how the shared household let the bug through.
+    if (!report.ranged.length) {
+      throw new Error(`no amount rendered as a range, so nothing was checked `
+        + `(${report.total} amount cells, whiteSpace=${report.nowrap})`);
+    }
+    if (report.wrapped.length) {
+      throw new Error(`amount cells wrapped onto a second line: ${report.wrapped.join(', ')}`);
+    }
+  } finally { await ctx.close(); }
+});
+
 await test('forecast: a balance curve marks the low point and the alert threshold', async () => {
   // A one-off expense far enough out to dip the curve and let it recover, so
   // the low point is genuinely ahead rather than being today's opening balance
