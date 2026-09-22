@@ -522,6 +522,15 @@ fails the old `check` and is coerced to `'month'`, so "the third Friday"
 quietly becomes "the 16th" and `recurNth` vanishes. Run the SQL first and the
 whole class of problem doesn't arise.
 
+**If inviting someone fails with "function gen_random_bytes(integer) does not
+exist"**, your database is running a `create_invite()` from before the fix.
+Re-running `supabase/schema.sql` repairs it, and `supabase/fix-invite.sql` is
+that one function on its own — paste it into the Supabase SQL editor if you
+would rather not re-run the whole schema. It replaces a function and touches no
+data. The cause is in the comment above `create_invite()`: the old version drew
+its randomness from pgcrypto, which Supabase installs in the `extensions`
+schema, and the function's `search_path` was `public`.
+
 If you're upgrading an existing project, just re-run `supabase/schema.sql`: a
 migration block at the end automatically copies each household's old
 `household_data` blob into the new tables (extracting inline base64 receipt
