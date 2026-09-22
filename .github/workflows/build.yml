@@ -164,6 +164,15 @@ jobs:
       - name: Check every breakpoint is on the ladder
         run: node tests/breakpoints.mjs
 
+      # Browser-free: resolves every background/colour pair in the stylesheet
+      # against both palettes and does the WCAG arithmetic. The palette test
+      # above checks the two declarations of the palette agree with each other;
+      # it cannot tell you that any pairing of them can be read. This found
+      # white text at 2.6:1 on a dark-mode button, and a chip whose text and
+      # background were the same colour to within 1.06:1.
+      - name: Check text can be read on what it sits on
+        run: node tests/contrast.mjs
+
       # Browser-free: drives src/lib/networth.js directly. Values arrive from a
       # form and from the cloud, so they can be strings, missing or nonsense,
       # and one bad row must not turn a household's net worth into NaN.

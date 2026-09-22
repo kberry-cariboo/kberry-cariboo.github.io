@@ -139,7 +139,13 @@
     // in both. coral existed; mint did not, so the totals row fell back to the
     // on-white green and printed 2.08:1 against the navy behind it.
     coral: "#FF9B8C",
-    mint: "#7FD3A8"
+    mint: "#7FD3A8",
+    // Ink for a chip or button whose *background* is the semantic colour.
+    // Not white in dark mode: --red and --greenDk go lighter there so they
+    // can be read as text on a dark page, which leaves white on top of them
+    // at 3.0:1 and 2.6:1 against a 4.5:1 floor. Near-black reads 6.3 and 7.2.
+    inkOnDanger: "#FFFFFF",
+    inkOnSuccess: "#FFFFFF"
   };
   const DARK = {
     navy: "#0A1210",
@@ -181,7 +187,9 @@
     // in both. coral existed; mint did not, so the totals row fell back to the
     // on-white green and printed 2.08:1 against the navy behind it.
     coral: "#FF9B8C",
-    mint: "#7FD3A8"
+    mint: "#7FD3A8",
+    inkOnDanger: "#0A1210",
+    inkOnSuccess: "#0A1210"
   };
   // Contrast utilities (WCAG 2.1 relative luminance / ratio). Used to keep
   // category chips readable: a chip's text is its category hue drawn on a 13%
