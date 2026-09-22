@@ -175,7 +175,7 @@
              aliases for now, on purpose: retiming the app's motion is a
              design change and this commit is not one. Both are in one place
              to be changed when it is. */
-          --dur-fast:0.12s; --dur-base:0.15s; --dur-slow:0.2s; --dur-slower:0.4s; --dur-loop:1s; --dur-loop-slow:1.5s;
+          --dur-instant:0.01ms; --dur-fast:0.12s; --dur-base:0.15s; --dur-slow:0.2s; --dur-slower:0.4s; --dur-loop:1s; --dur-loop-slow:1.5s;
           --ease-default:ease; --ease-out:ease-out; --ease-in:ease-in; --ease-in-out:ease-in-out; --ease-linear:linear; --ease-emphasis:cubic-bezier(.2,.9,.3,1);
         }
         .help-p,.help-desc,.hint,.notice-msg{text-wrap:pretty;}
@@ -2264,7 +2264,7 @@
         /* Entries desc: fill available space, truncate */
         .entries-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-sm);padding:var(--space-10) var(--space-12);width:40%;min-width:120px;}
         /* Budget totals row sticky */
-        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
+        .budget-totals-row{box-shadow:0 -2px 8px var(--shadow-ink-soft);background:var(--navy);position:sticky;bottom:0;}
         /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
         .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
           gap:var(--space-10);padding:var(--space-12) var(--space-16);border-top:1px solid var(--border);}
@@ -2721,7 +2721,7 @@
         @media not (hover:hover){
           button:active:not(:disabled){transform:scale(0.97);}
         }
-        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms;transition-duration:0.01ms;}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:var(--dur-instant);transition-duration:var(--dur-instant);}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
            130px, and the category ended up half the table away from the thing
@@ -3415,7 +3415,7 @@
             --accent:#2F6FED;--accentLt:#EAF1FE;
             --chipKeep:100%;--primary:#1C2B3A;--coral:#FF8A7A;
           }
-          html,body{height:auto;overflow:visible;background:#fff;color-scheme:light;}
+          html,body{height:auto;overflow:visible;background:var(--bgCard);color-scheme:light;}
           .app-scroll{height:auto;overflow:visible;}
           /* App chrome: header, both nav variants, footer, and anything
              else marked data-noprint (banners, toasts, the Customize row…). */
@@ -3425,7 +3425,7 @@
           }
           .content-area{padding:0;}
           .cf-page{max-width:none;}
-          .cf-card{box-shadow:none;border:1px solid #E8E4DD;}
+          .cf-card{box-shadow:none;border:1px solid var(--border);}
           .cf-card,tr,.debt-item,.goal-row-cursor{break-inside:avoid;}
         }
         }
