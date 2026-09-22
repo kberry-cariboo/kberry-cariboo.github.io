@@ -325,7 +325,7 @@
             --headerBg:#0A1210;
             --inputBg:#121A17;
             --doneBg:#12271E;
-            --shadowSm:0 1px 2px var(--scrim);
+            --shadowSm:0 1px 2px rgba(0,0,0,0.35);
             --shadowMd:0 2px 6px rgba(0,0,0,0.45);
             --shadowLg:0 6px 24px rgba(0,0,0,0.5);
             --shadowXl:0 18px 48px rgba(0,0,0,0.6);
