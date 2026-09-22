@@ -257,6 +257,96 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     await page.getByText('over', { exact: false }).first().waitFor(V);
   });
 
+  // An envelope's question is how much is left in it. The row used to answer
+  // that only when the answer was bad news — "$40 over" if you had gone past
+  // the target, and nothing at all if you had not, leaving you to subtract
+  // $1,240 from $1,500 in your head for every category on the page. This
+  // asserts the arithmetic rather than the presence of the words: a note that
+  // says "left" while showing the overage would read perfectly well and be
+  // wrong by twice the number.
+  await test('envelopes: every row says what is left in it, and the figures add up', async () => {
+    await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    await page.getByText('Envelopes', { exact: false }).first().waitFor(V);
+    const report = await page.evaluate(() => {
+      const cents = (t) => {
+        const m = String(t).replace(/[^0-9.]/g, '');
+        return m ? Math.round(parseFloat(m) * 100) : null;
+      };
+      const bad = [];
+      let left = 0, over = 0, withTarget = 0;
+      for (const row of document.querySelectorAll('.bva-row')) {
+        const chip = (row.querySelector('.cat-chip') || {}).textContent || '?';
+        const actual = cents((row.querySelector('.bva-actual-amt') || {}).textContent);
+        const targetEl = row.querySelector('.bva-target');
+        if (!targetEl) continue;                    // no target set: "Set a target"
+        withTarget++;
+        const target = cents(targetEl.textContent);
+        const o = row.querySelector('.over-note');
+        const l = row.querySelector('.left-note');
+        if (!o === !l) { bad.push(`${chip}: ${o ? 'both' : 'neither'} an over note and a left note`); continue; }
+        if (l) {
+          left++;
+          // Exactly spent is the third state this slot reports, and it says so
+          // in words. It has to be exactly spent to be allowed to.
+          if (/Fully spent/.test(l.textContent)) {
+            if (actual !== target) bad.push(`${chip}: says fully spent at ${actual} of ${target}`);
+            continue;
+          }
+          if (actual === target) bad.push(`${chip}: "${l.textContent.trim()}" on an exactly-spent envelope`);
+          const said = cents(l.textContent);
+          if (Math.abs(said - (target - actual)) > 1) {
+            bad.push(`${chip}: says ${said} left, target ${target} - actual ${actual} = ${target - actual}`);
+          }
+          // fmt() marks a negative with a leading minus. What is left in an
+          // envelope is never negative — if it reads "-$260.00 left" the row
+          // is showing actual-minus-target, which has the right magnitude and
+          // the wrong sign, and the arithmetic check above cannot see it
+          // because it reads the digits.
+          if (/-/.test(l.textContent)) bad.push(`${chip}: "${l.textContent.trim()}" — a negative amount left`);
+        } else {
+          over++;
+          const said = cents(o.textContent);
+          if (Math.abs(said - (actual - target)) > 1) {
+            bad.push(`${chip}: says ${said} over, actual ${actual} - target ${target} = ${actual - target}`);
+          }
+        }
+      }
+      // The total carries the same pair and had the same gap.
+      const totals = document.querySelector('.bva-totals-row');
+      let totalNote = null;
+      if (totals) {
+        const amts = [...totals.querySelectorAll('.cf-text-mono-13')].map((e) => cents(e.textContent));
+        const note = totals.querySelector('.total-over-note');
+        if (!note) bad.push('the totals row says neither what is over nor what is left');
+        else if (amts.length >= 2) {
+          const [tActual, tTarget] = amts;
+          totalNote = note.textContent.trim();
+          if (/Fully spent/.test(totalNote)) {
+            if (tActual !== tTarget) bad.push(`total: says fully spent at ${tActual} of ${tTarget}`);
+            return { bad, left, over, withTarget, totalNote };
+          }
+          const said = cents(note.textContent);
+          const isLeft = /left/.test(note.textContent);
+          const want = isLeft ? tTarget - tActual : tActual - tTarget;
+          if (Math.abs(said - want) > 1) {
+            bad.push(`total: says ${note.textContent.trim()}, actual ${tActual} target ${tTarget}`);
+          }
+        }
+      }
+      return { bad, left, over, withTarget, totalNote };
+    });
+    if (report.bad.length) throw new Error(report.bad.join('; '));
+    // Without an under-budget row on the page this test would pass by never
+    // looking at the thing it was written for.
+    if (report.left === 0) {
+      throw new Error(`no envelope is under its target, so "left" was never checked `
+        + `(${report.withTarget} rows with a target, ${report.over} over)`);
+    }
+    if (report.over === 0) throw new Error('no envelope is over its target, so "over" was never checked');
+    if (!report.totalNote) throw new Error('the totals row carried no over/left note to check');
+  });
+
   await test('budget forecast: the horizon toggle switches between 30 and 90 days', async () => {
     await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
     await page.waitForTimeout(800);

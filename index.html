@@ -1570,6 +1570,24 @@
         .bva-actual-amt{font-weight:600;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;}
         .carry-note{font-size:var(--fs-3xs);color:var(--textLt);white-space:nowrap;flex-shrink:0;}
         .over-note{font-size:var(--fs-2xs);white-space:nowrap;flex-shrink:0;}
+        /* The other half of .over-note, and the reason it is quiet. An
+           envelope's question is how much is left in it, and the row answered
+           it only when the answer was bad news: over budget said "$40 over",
+           under budget said nothing and left you to subtract. Both notes sit
+           in the same slot and are mutually exclusive, so the widest this row
+           ever gets is unchanged — which is the whole reason it fits on a
+           320px phone, where .bva-amounts already wraps for the overage.
+
+           No colour. --over-note takes amber or red from the row's state;
+           this one is --textLt, because a category that is simply fine has
+           nothing to say beyond the number.
+
+           An envelope spent exactly to its target says "Fully spent" rather
+           than "$0.00 left". That is not a quantity, it is the third state
+           this slot reports, and a scheduled bill paid at the scheduled
+           amount hits it every month — on the fixture household it is half
+           the rows, which is a lot of zeros to read past. */
+        .left-note{font-size:var(--fs-2xs);color:var(--textLt);white-space:nowrap;flex-shrink:0;}
         .bva-progress-track{height:6px;background:var(--border);border-radius:var(--radius-4);}
         .bva-progress-fill{height:100%;border-radius:var(--radius-4);transition:width var(--dur-slower) var(--ease-default);}
         .bva-totals-row>.cf-row{flex-wrap:wrap;gap:var(--space-2) var(--space-8);}
@@ -13759,7 +13777,7 @@ const RUNWAY_DAYS = 90;
                 setBvaModalData({ cat, target: "", editCat: cat, rollover: !!(budgetTargets._rollover || {})[cat] });
                 setShowBvaModal(true);
               }
-            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
+            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), target > 0 && (over ? /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over") : /* @__PURE__ */ React.createElement("span", { className: "left-note" }, diff === 0 ? "Fully spent" : fmt(roundMoney(target - actual)) + " left"))),
             // The kebab is a sibling of .bva-amounts, not a child of it: the
             // amounts group wraps to a second line on a phone once the actual,
             // the target and an overage all have to fit, and a row action that
@@ -13789,7 +13807,7 @@ const RUNWAY_DAYS = 90;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over")));
+          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), totalTarget > 0 && (tOver ? /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over") : /* @__PURE__ */ React.createElement("span", { className: "total-over-note left-note" }, tDiff === 0 ? "Fully spent" : fmt(roundMoney(totalTarget - totalActual)) + " left"))));
         })()));
       })()
     );
