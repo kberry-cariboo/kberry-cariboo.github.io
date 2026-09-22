@@ -175,7 +175,7 @@
              aliases for now, on purpose: retiming the app's motion is a
              design change and this commit is not one. Both are in one place
              to be changed when it is. */
-          --dur-fast:0.12s; --dur-base:0.15s; --dur-slow:0.2s; --dur-slower:0.4s; --dur-loop:1s; --dur-loop-slow:1.5s;
+          --dur-instant:0.01ms; --dur-fast:0.12s; --dur-base:0.15s; --dur-slow:0.2s; --dur-slower:0.4s; --dur-loop:1s; --dur-loop-slow:1.5s;
           --ease-default:ease; --ease-out:ease-out; --ease-in:ease-in; --ease-in-out:ease-in-out; --ease-linear:linear; --ease-emphasis:cubic-bezier(.2,.9,.3,1);
         }
         .help-p,.help-desc,.hint,.notice-msg{text-wrap:pretty;}
@@ -2004,13 +2004,48 @@
         .customize-label{flex:1;min-width:0;}
         .wm-arrow{font-size:var(--fs-sm);width:34px;height:34px;line-height:32px;border-radius:var(--radius-6);border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--textMid);padding:0;}
         .customize-done-row{display:flex;justify-content:flex-end;margin-top:var(--space-18);}
-        .glance-grid{display:grid;gap:var(--space-8);margin-bottom:var(--space-14);}
+        /* The column count comes in as an attribute and the tracks are decided
+           here. It used to arrive as an inline style from dashboard.js, which
+           outranks every cascade layer — so the mobile override could only win
+           with !important, and those were the last two in the file. */
+        .glance-grid{display:grid;gap:var(--space-8);margin-bottom:var(--space-14);
+          grid-template-columns:minmax(0,1fr);}
+        .glance-grid[data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr));}
+        .glance-grid[data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));}
+        /* A tile alone in its run gets the whole page width, and the stacked
+           label-over-value it was drawn for then reads as a stretched copy of
+           nothing — "BALANCE TODAY" with 1,094px of empty paper beside it.
+           The mobile stylesheet already diagnosed this for its odd last tile
+           and has the fix: lay it out along the width instead, label on the
+           left and figure on the right, the way every other full-width row in
+           the app is built. That rule was written inside a max-width query, so
+           a reader who hides two of the three glance tiles in Customize gets
+           the stretched version on a desktop and the good one on a phone.
+
+           This is the case container queries are usually reached for, and it
+           does not need one: the packer already knows how many columns it
+           asked for and now says so in an attribute, so the condition is
+           directly expressible. A container query would have had to measure
+           the grid and divide by the same number. */
+        .glance-grid[data-cols="1"]>.glance-tile{display:flex;align-items:baseline;
+          justify-content:space-between;gap:var(--space-12);}
+        .glance-grid[data-cols="1"]>.glance-tile .glance-tile-title{margin-bottom:0;}
+        /* A tile can carry a third thing — Balance today has a Reconcile link —
+           and space-between would then spread three items across the width and
+           strand the figure in the middle of the paper. The auto margin makes
+           it two groups instead: the label on the left, the figure and
+           whatever follows it together on the right. */
+        .glance-grid[data-cols="1"]>.glance-tile>.glance-value{margin-left:auto;}
+        .glance-grid[data-cols="1"]>.glance-tile .glance-value{text-align:right;}
         /* align-items:start, not the grid default of stretch: a pair of cards
            in one row used to be forced to a common height, so Income Sources
            beside a dense Budget vs Actual rendered as a short chart followed by
            a large empty area inside a card stretched to match its neighbour.
            Each card is now as tall as what it holds. */
-        .chart-grid{display:grid;gap:var(--space-16);margin-bottom:var(--space-16);max-width:100%;overflow:hidden;
+        .chart-grid[data-split="even"]{grid-template-columns:repeat(2,minmax(0,1fr));}
+        .chart-grid[data-split="wide-narrow"]{grid-template-columns:3fr 2fr;}
+        .chart-grid[data-split="narrow-wide"]{grid-template-columns:2fr 3fr;}
+        .chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-16);margin-bottom:var(--space-16);max-width:100%;overflow:hidden;
           align-items:start;}
         /* Inline error/info banner (auth screens, forms) */
         /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
@@ -2264,7 +2299,7 @@
         /* Entries desc: fill available space, truncate */
         .entries-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-sm);padding:var(--space-10) var(--space-12);width:40%;min-width:120px;}
         /* Budget totals row sticky */
-        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
+        .budget-totals-row{box-shadow:0 -2px 8px var(--shadow-ink-soft);background:var(--navy);position:sticky;bottom:0;}
         /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
         .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
           gap:var(--space-10);padding:var(--space-12) var(--space-16);border-top:1px solid var(--border);}
@@ -2721,7 +2756,7 @@
         @media not (hover:hover){
           button:active:not(:disabled){transform:scale(0.97);}
         }
-        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms;transition-duration:0.01ms;}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:var(--dur-instant);transition-duration:var(--dur-instant);}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
            130px, and the category ended up half the table away from the thing
@@ -2875,10 +2910,10 @@
              card (Income Sources, Budget vs Actual) has a 342px min-content
              width, so the "stacked" column was 22px wider than the viewport
              and .dash-page's overflow:hidden cut the right edge off. */
-          /* The one thing layers cannot do: React writes this grid's column count
-             as an inline style, and an inline style outranks every layer. Hence
-             !important on that one declaration, and only it. */
-          .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:var(--space-10);}
+          /* One column on a phone, whatever split the page asked for. No
+             !important: the count is an attribute now, so this is an ordinary
+             rule in a later layer rather than a fight with an inline style. */
+          .chart-grid,.chart-grid[data-split]{grid-template-columns:minmax(0,1fr);gap:var(--space-10);}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden;max-width:100%;}
           /* Panels were inset cards: a 10px page gutter, then a 1px border,
@@ -3051,9 +3086,9 @@
              enough for a labelled currency value. Two up, with a lone third
              tile spanning the row. !important because the column count is set
              inline from the widget run length in dashboard.js. */
-          /* Same reason as .chart-grid: the column count comes in inline from
-             the widget run length in dashboard.js. */
-          .glance-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
+          /* Three glance tiles across a phone leaves ~110px each, so two up
+             whatever the run length was. */
+          .glance-grid,.glance-grid[data-cols]{grid-template-columns:repeat(2,minmax(0,1fr));}
           /* Spanning the row left the odd tile reading as a stretched copy
              of the two above it — the same stacked label-over-value in twice
              the width, which looks like the grid ran out rather than like a
@@ -3415,7 +3450,7 @@
             --accent:#2F6FED;--accentLt:#EAF1FE;
             --chipKeep:100%;--primary:#1C2B3A;--coral:#FF8A7A;
           }
-          html,body{height:auto;overflow:visible;background:#fff;color-scheme:light;}
+          html,body{height:auto;overflow:visible;background:var(--bgCard);color-scheme:light;}
           .app-scroll{height:auto;overflow:visible;}
           /* App chrome: header, both nav variants, footer, and anything
              else marked data-noprint (banners, toasts, the Customize row…). */
@@ -3425,7 +3460,7 @@
           }
           .content-area{padding:0;}
           .cf-page{max-width:none;}
-          .cf-card{box-shadow:none;border:1px solid #E8E4DD;}
+          .cf-card{box-shadow:none;border:1px solid var(--border);}
           .cf-card,tr,.debt-item,.goal-row-cursor{break-inside:avoid;}
         }
         }
