@@ -156,6 +156,14 @@ jobs:
       - name: Check the theme tokens agree
         run: node tests/theme-tokens.mjs
 
+      # Browser-free: reads src/styles.css as text. The stylesheet had ten
+      # breakpoints, several of which were whatever width a component happened
+      # to stop fitting at. A media condition cannot read a custom property, so
+      # the ladder cannot live in the CSS — it lives in the test, and this
+      # fails on any width that is not a step on it, in either direction.
+      - name: Check every breakpoint is on the ladder
+        run: node tests/breakpoints.mjs
+
       # Browser-free: drives src/lib/networth.js directly. Values arrive from a
       # form and from the cloud, so they can be strings, missing or nonsense,
       # and one bad row must not turn a household's net worth into NaN.
