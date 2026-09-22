@@ -157,7 +157,15 @@
            rem, not px, so the reader's own text-size setting still works —
            tests/regression.mjs asserts that at 200%. */
         :root{
-          --fs-3xs:0.625rem; --fs-2xs:0.6875rem; --fs-xs:0.75rem; --fs-sm:0.8125rem; --fs-md:0.875rem; --fs-lg:0.9375rem; --fs-xl:1rem; --fs-2xl:1.125rem; --fs-3xl:1.25rem; --fs-4xl:1.5rem; --fs-5xl:1.75rem; --fs-6xl:2rem;
+          /* Raised one step across the reading range. The app's text clustered
+             at 10, 11, 12 and 13px, which is where it got its cramped, dense
+             feel: the three sizes carrying most of the words were 11, 12 and
+             13, and the floor was 10. They are 12, 13, 14 and 11 now.
+             Display sizes go up two, because a headline number that does not
+             also grow starts to look small beside the body text under it.
+             Nothing here is fluid — see the clamp() sizes below for the four
+             places where that earns its keep. */
+          --fs-3xs:0.6875rem; --fs-2xs:0.75rem; --fs-xs:0.8125rem; --fs-sm:0.875rem; --fs-md:0.9375rem; --fs-lg:1rem; --fs-xl:1.0625rem; --fs-2xl:1.1875rem; --fs-3xl:1.375rem; --fs-4xl:1.625rem; --fs-5xl:1.875rem; --fs-6xl:2.125rem;
         }
         :root{
           --space-2:0.125rem; --space-4:0.25rem; --space-6:0.375rem; --space-8:0.5rem; --space-10:0.625rem; --space-12:0.75rem; --space-14:0.875rem; --space-16:1rem; --space-18:1.125rem; --space-20:1.25rem; --space-24:1.5rem; --space-28:1.75rem; --space-32:2rem;
@@ -3036,7 +3044,7 @@
              opens below the grid on tap instead, which is also what keeps the
              cell a real touch target. */
           .cal-cell{min-height:60px;padding:var(--space-6) var(--space-4);align-items:center;gap:var(--space-4);}
-          .cal-daynum{align-self:center;font-size:var(--fs-xs);}
+          .cal-daynum{align-self:center;}
           .cal-bal{display:none;}
           .cal-events{display:none;}
           .cal-dots{display:flex;gap:var(--space-4);flex-wrap:wrap;justify-content:center;max-width:100%;}
