@@ -42,7 +42,7 @@
         /* The order is fixed by the boot <style> in index.template.html, which
            comes first in the document and declares the same list with `boot`
            ahead of these. Repeated here so this file states its own contract. */
-        @layer boot, app, overrides, responsive, late, utilities, print;
+        @layer boot, app, overrides, responsive, late, utilities, layout, print;
 
         @layer app {
         *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
@@ -540,8 +540,6 @@
            only, so it beats .mb-16 and its bespoke siblings on specificity
            without !important — a panel that genuinely needs different spacing
            can still say so with a more specific rule. */
-        main>.cf-page>*{margin-top:0;margin-bottom:var(--space-16);}
-        main>.cf-page>*:last-child{margin-bottom:0;}
         .lh-15{line-height:1.5;}
         /* Bare text-color utilities — no font-size, so they compose safely
            with whatever type context they're used in */
@@ -2357,7 +2355,7 @@
              stack's spacing was made uniform. */
           .forecast-page{display:flex;flex-direction:column;}
           .forecast-page>.cf-card--flush{order:1;}
-          .forecast-page>.forecast-exportbar-row{order:2;margin-top:var(--space-16);margin-bottom:0;}
+          .forecast-page>.forecast-exportbar-row{order:2;}
         }
         /* ── A measure for label-and-value rows ──────────────────────────
            These row families are a name on the left and its value on the
@@ -3361,6 +3359,37 @@
         .btn-pad-24{padding:var(--space-10) var(--space-24);}
         .text-10{font-size:var(--fs-3xs);}
         .mb-16{margin-bottom:var(--space-16);}
+        }
+
+        /* Structural invariants that no utility may break.
+           The panel rhythm below was written to beat .mb-16 and its siblings
+           on specificity — type and class selectors, deliberately, so it
+           needed no !important. Layer order does not care about specificity,
+           so the moment the margin utilities moved into their own layer they
+           started winning and the stack grew a second gap size. The rhythm is
+           the invariant and the utility is the exception, so the rhythm goes
+           above it. A panel that genuinely needs different spacing still can,
+           from a layer after this one.
+
+           This does not disarm the utilities generally — the selector only
+           matches a direct child of a view's page element, so .mb-20 on
+           anything that is not a top-level panel still does what it says. */
+        @layer layout {
+        main>.cf-page>*{margin-top:0;margin-bottom:var(--space-16);}
+        main>.cf-page>*:last-child{margin-bottom:0;}
+
+        /* The exception the rule above promises. Forecast moves its export bar
+           below the ledger with `order`, so the bar is not the DOM's last
+           child and the ledger card is — which means :last-child zeroes the
+           gap between them and the bar has to supply it from the other side.
+           It lives here, beside the rule it overrides, because specificity is
+           what resolves the two and specificity only gets a say within one
+           layer. Left in `responsive` it would lose the moment the rhythm
+           moved above it, and the gap it exists to create was collapsing to
+           0px. */
+        @media(max-width:768px){
+          .forecast-page>.forecast-exportbar-row{margin-top:var(--space-16);margin-bottom:0;}
+        }
         }
 
         @layer print {
