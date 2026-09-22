@@ -261,8 +261,19 @@
           --ink-on-accent:#fff;
           --ink-on-primary:var(--ink-on-accent);
           /* Fails AA against these two in dark mode — see the note above. */
-          --ink-on-danger:var(--ink-on-accent);
-          --ink-on-success:var(--ink-on-accent);
+          /* These two are not white in dark mode, and that is the point of
+             naming them separately. Measured against a 4.5:1 floor:
+                white on --red      6.0:1 light   3.0:1 dark   <- failed
+                white on --greenDk  6.4:1 light   2.6:1 dark   <- failed
+             Both tokens go light in dark mode because dark mode makes those
+             two surfaces *lighter*, not darker — --red is #E07767 there so it
+             can be read as text on a dark page, which is the right call for
+             text and the wrong one to put white on top of. Near-black ink
+             fixes it: 6.3:1 on the red and 7.2:1 on the green. Declared in
+             camelCase because tests/theme-tokens.mjs joins these to the
+             LIGHT/DARK mirror in app-data.js, which is keyed that way. */
+          --inkOnDanger:#FFFFFF;
+          --inkOnSuccess:#FFFFFF;
           --on-dark-08:var(--on-dark-08); --on-dark-16:var(--on-dark-16);
           --on-dark-30:var(--on-dark-30); --on-dark-45:var(--on-dark-45);
           --on-dark-60:var(--on-dark-60); --on-dark-85:var(--on-dark-85);
@@ -329,6 +340,8 @@
         @media (prefers-color-scheme: dark){
           :root:not([data-theme]){
             color-scheme:dark;
+            --inkOnDanger:#0A1210;
+            --inkOnSuccess:#0A1210;
             --navy:#0A1210;
             --navyMid:#121A17;
             --navyLt:#1E2B27;
@@ -364,6 +377,8 @@
         }
         :root[data-theme="dark"]{
           color-scheme:dark;
+          --inkOnDanger:#0A1210;
+          --inkOnSuccess:#0A1210;
           --navy:#0A1210;
           --navyMid:#121A17;
           --navyLt:#1E2B27;
@@ -515,7 +530,7 @@
         .cf-btn--primary{background:var(--primary);color:var(--ink-on-accent);}
         .cf-btn--secondary{background:transparent;color:var(--textMid);border:1px solid var(--border);}
         .cf-btn--danger{background:var(--redLt);color:var(--red);border:1px solid var(--redLt);}
-        .cf-btn--danger-solid{background:var(--red);color:var(--ink-on-accent);font-weight:700;}
+        .cf-btn--danger-solid{background:var(--red);color:var(--inkOnDanger);font-weight:700;}
         .cf-btn:disabled{cursor:not-allowed;background:var(--border);color:var(--textMid);}
         /* ── One button size scale ──
            Four steps. There used to be thirteen size modifiers describing nine
@@ -550,14 +565,7 @@
         .cf-row{display:flex;align-items:center;}
         .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
         .cf-col{display:flex;flex-direction:column;}
-        .cf-gap-6{gap:var(--space-6);}
-        .cf-gap-8{gap:var(--space-8);}
-        .cf-gap-10{gap:var(--space-10);}
-        .cf-gap-12{gap:var(--space-12);}
-        .cf-gap-14{gap:var(--space-14);}
         .cf-wrap{flex-wrap:wrap;}
-        .flex-1{flex:1;}
-        .min-w-0{min-width:0;}
         .cf-page{max-width:var(--container-w);width:100%;margin:0 auto;}
         /* One vertical rhythm for the panel stack.
            Measured across ten views, the gap between one panel and the next
@@ -574,18 +582,6 @@
            can still say so with a more specific rule. */
         main>.cf-page>*{margin-top:0;margin-bottom:var(--space-16);}
         main>.cf-page>*:last-child{margin-bottom:0;}
-        /* Spacing scale — dedupes the most repeated one-off margin/padding
-           values found across components (audit round 6, inline-style pass) */
-        .mb-0{margin-bottom:0;}
-        .mb-5{margin-bottom:var(--space-6);}
-        .mb-6{margin-bottom:var(--space-6);}
-        .mb-8{margin-bottom:var(--space-8);}
-        .mb-12{margin-bottom:var(--space-12);}
-        .mb-14{margin-bottom:var(--space-14);}
-        .mb-20{margin-bottom:var(--space-20);}
-        .mt-2{margin-top:var(--space-2);}
-        .mt-4{margin-top:var(--space-4);}
-        .pb-28{padding-bottom:var(--space-28);}
         .lh-15{line-height:1.5;}
         /* Bare text-color utilities — no font-size, so they compose safely
            with whatever type context they're used in */
@@ -597,7 +593,6 @@
         /* Compound type styles that recur as a unit (extends the existing
            .tx/.txm/.txl/.lbl/.hint scale from round 3) */
         .tx-sb{font-family:var(--font-ui);font-size:var(--fs-sm);font-weight:600;color:var(--text);}
-        .text-9{font-size:var(--fs-3xs);}
         /* Table header row (dark navy bg, used under .th cells) */
         .thead-row{background:var(--navy);}
         .kpi-tile{padding:var(--space-12) var(--space-14);}
@@ -607,8 +602,6 @@
         /* .cf-btn size modifiers beyond --sm/--compact, for the sizes that
            recurred as one-off style overrides */
         .cf-btn--action{font-weight:700;}
-        /* Generic one-off utilities (page-by-page inline-style migration) */
-        .fw-600{font-weight:600;}
         .justify-end{justify-content:flex-end;}
         .relative{position:relative;}
         .inline-block{display:inline-block;}
@@ -635,8 +628,6 @@
         .confirm-dialog-message{font-size:var(--fs-md);color:var(--textMid);margin-bottom:var(--space-24);line-height:1.6;}
         .toggle-row{display:flex;align-items:center;gap:var(--space-10);user-select:none;}
         .toggle-label{font-size:var(--fs-sm);color:var(--text);font-weight:600;cursor:pointer;}
-        .shrink-0{flex-shrink:0;}
-        .fw-700{font-weight:700;}
         /* ── App.js ── */
         .app-scroll{background:var(--bg);min-height:100vh;color:var(--text);display:flex;flex-direction:column;}
         .tab-bar-outer{background:var(--headerBg);padding:0;line-height:0;font-size:0;}
@@ -690,7 +681,6 @@
         .form-note-text{font-size:var(--fs-xs);color:var(--textLt);margin-bottom:var(--space-14);}
         .form-err-text{color:var(--red);font-size:var(--fs-xs);margin-bottom:var(--space-10);}
         .form-ok-text{color:var(--greenDk);font-size:var(--fs-xs);margin-bottom:var(--space-10);}
-        .mt-6{margin-top:var(--space-6);}
         .tab-bar{display:flex;gap:var(--space-2);font-size:initial;line-height:initial;padding:0 var(--container-gutter);}
         .tab-bar-btn{font-size:var(--fs-sm);font-weight:600;padding:var(--space-12) var(--space-18);border:none;cursor:pointer;
           background:transparent;transition:color var(--dur-base),border-color var(--dur-base);}
@@ -820,8 +810,6 @@
         .oem-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-4);}
         .oem-title{font-size:var(--fs-lg);font-weight:700;color:var(--text);}
         .oem-hint{font-size:var(--fs-xs);color:var(--amberInk);margin-bottom:var(--space-18);}
-        .flex-55{flex:1 1 55%;}
-        .flex-45{flex:1 1 45%;}
         .oem-attach-img{height:56px;border-radius:var(--radius-8);border:1px solid var(--border);cursor:pointer;}
         .oem-remove-btn{font-size:var(--fs-xs);padding:var(--space-6) var(--space-12);border-radius:var(--radius-8);border:1px solid var(--red);
           cursor:pointer;background:transparent;color:var(--red);}
@@ -852,7 +840,6 @@
         .household-signout-wrap{text-align:center;margin-top:var(--space-20);}
         .household-signout-btn{font-size:var(--fs-xs);color:var(--on-dark-45);background:transparent;
           border:none;cursor:pointer;text-decoration:underline;}
-        .text-center{text-align:center;}
         /* ── help.js ── */
         /* The shortcut row and key cap outlived the modal they were written
            for — they're the shortcuts section of the Help page now. */
@@ -971,17 +958,17 @@
         /* ── forms.js ── */
         .required-mark{color:var(--red);margin-left:var(--space-2);}
         .entry-form-row2{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-10);margin-bottom:var(--space-12);}
-        .recur-summary-chip{font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--navyLt);background:var(--stripe);border-radius:var(--radius-6);padding:var(--space-4) var(--space-8);border:1px solid var(--border);}
+        /* --navyLt is a surface colour: dark in the light theme, and still dark
+           in the dark one, where the chip's own background is dark too. That put
+           #1E2B27 text on #1D2622 — 1.06:1, which is not text, it is a rumour.
+           --primaryInk is the token that exists for ink in the brand colour and
+           flips with the theme. */
+        .recur-summary-chip{font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--primaryInk);background:var(--stripe);border-radius:var(--radius-6);padding:var(--space-4) var(--space-8);border:1px solid var(--border);}
         .entry-form-date-row{display:flex;gap:var(--space-16);align-items:flex-end;margin-bottom:var(--space-12);flex-wrap:wrap;}
-        .min-w-160{min-width:160px;}
         .repeats-toggle-row{display:flex;align-items:center;gap:var(--space-12);padding-bottom:var(--space-2);}
         .recur-panel{background:var(--bg);border-radius:var(--radius-10);padding:var(--space-12) var(--space-14);margin-bottom:var(--space-12);border:1px solid var(--border);}
         .recur-panel-heading{font-size:var(--fs-2xs);font-weight:700;color:var(--textMid);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:var(--space-10);}
         .recur-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-10);margin-bottom:var(--space-10);}
-        .mb-10{margin-bottom:var(--space-10);}
-        .mt-8{margin-top:var(--space-8);}
-        .mt-10{margin-top:var(--space-10);}
-        .mt-12{margin-top:var(--space-12);}
         .weekday-btn-row{display:flex;gap:var(--space-4);flex-wrap:wrap;}
         .weekday-btn{font-size:var(--fs-2xs);font-weight:700;flex:1 1 auto;min-width:34px;height:32px;border-radius:var(--radius-6);}
         .recur-semimonth-desc{font-size:var(--fs-sm);color:var(--textMid);margin-bottom:var(--space-10);}
@@ -1102,7 +1089,7 @@
         .budget-bulkbar--accent{background:var(--primary);}
         .budget-bulkbar-count{font-size:var(--fs-sm);font-weight:700;color:var(--ink-on-accent);white-space:nowrap;}
         .budget-bulkbar-total{font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:700;color:var(--ink-on-accent);opacity:0.9;white-space:nowrap;}
-        .budget-bulk-markpaid-btn{font-size:var(--fs-xs);font-weight:700;padding:var(--space-8) var(--space-14);border-radius:var(--radius-20);border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:var(--ink-on-accent);}
+        .budget-bulk-markpaid-btn{font-size:var(--fs-xs);font-weight:700;padding:var(--space-8) var(--space-14);border-radius:var(--radius-20);border:none;cursor:pointer;white-space:nowrap;background:var(--greenDk);color:var(--inkOnSuccess);}
         .budget-bulk-clear-btn{font-size:var(--fs-xs);font-weight:600;padding:var(--space-8) var(--space-12);border-radius:var(--radius-20);border:1px solid var(--on-dark-45);cursor:pointer;background:transparent;color:var(--ink-on-accent);}
         /* ── forecast-plan.js ── */
         .forecast-table{width:100%;border-collapse:collapse;min-width:360px;}
@@ -1160,7 +1147,7 @@
         .wizard-field-stack{display:flex;flex-direction:column;gap:var(--space-10);max-width:280px;margin:0 auto var(--space-20);}
         .wizard-text-input{font-size:var(--fs-sm);padding:var(--space-10) var(--space-12);border:1.5px solid var(--border);border-radius:var(--radius-8);background:var(--inputBg);color:var(--text);outline:none;}
         .wizard-amount-input{flex:1;padding:var(--space-10) var(--space-12);border:1.5px solid var(--border);border-radius:var(--radius-8);background:var(--inputBg);color:var(--text);outline:none;}
-        .wizard-finish-btn{font-size:var(--fs-sm);font-weight:700;padding:var(--space-10) var(--space-28);border-radius:var(--radius-8);border:none;cursor:pointer;background:var(--greenDk);color:var(--ink-on-accent);}
+        .wizard-finish-btn{font-size:var(--fs-sm);font-weight:700;padding:var(--space-10) var(--space-28);border-radius:var(--radius-8);border:none;cursor:pointer;background:var(--greenDk);color:var(--inkOnSuccess);}
         .wizard-card{max-width:480px;margin:0 auto var(--space-24);border:2px solid var(--primary);}
         .wizard-dots-row{display:flex;justify-content:center;gap:var(--space-8);margin-bottom:var(--space-20);}
         .wizard-dot{width:10px;height:10px;border-radius:var(--radius-circle);transition:background var(--dur-slow);}
@@ -1221,9 +1208,6 @@
         .cashflow-month-label{font-size:var(--fs-3xs);text-align:center;color:var(--textLt);margin-top:var(--space-2);}
         /* ── settings.js ── */
         .link-primary{color:var(--primaryInk);}
-        .cf-gap-16{gap:var(--space-16);}
-        .mt-14{margin-top:var(--space-14);}
-        .mt-16{margin-top:var(--space-16);}
         .alert-row-cta{font-size:var(--fs-xs);color:var(--textLt);}
         .settings-header-title{font-size:var(--fs-3xl);font-weight:700;color:var(--text);}
         /* ── Settings directory ──────────────────────────────────────
@@ -1328,7 +1312,6 @@
            "+ Add" button clean off the viewport. */
         .settings-input{font-size:var(--fs-sm);padding:var(--space-8) var(--space-12);border:1px solid var(--border);border-radius:var(--radius-6);background:var(--inputBg);color:var(--text);outline:none;min-width:0;}
         .settings-label{font-size:var(--fs-2xs);font-weight:700;color:var(--textMid);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:var(--space-8);}
-        .w-120{width:120px;}
         .year-row{display:flex;align-items:center;gap:var(--space-10);padding:var(--space-8) var(--space-12);flex-wrap:wrap;row-gap:var(--space-8);border-radius:var(--radius-8);margin-bottom:var(--space-6);}
         .year-number{font-family:var(--font-mono);font-size:var(--fs-md);font-weight:700;color:var(--text);min-width:52px;}
         .openbal-label{font-size:var(--fs-2xs);color:var(--textMid);white-space:nowrap;}
@@ -1421,8 +1404,6 @@
         .section-nav-item[aria-current]{font-weight:700;color:var(--primaryInk);}
         .settings-quicklinks{display:flex;gap:var(--space-6);overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:var(--space-14);margin-bottom:var(--space-6);}
         .year-openbal{display:flex;align-items:center;gap:var(--space-6);flex:1;min-width:0;}
-        /* ── budget.js ── */
-        .mt-20{margin-top:var(--space-20);}
         .budget-event-tr{cursor:pointer;}
         .budget-col-checkbox--cell{padding:var(--space-8) var(--space-4) var(--space-8) var(--space-10);width:30px;white-space:nowrap;text-align:center;}
         .budget-row-checkbtn{width:20px;height:20px;border-radius:var(--radius-6);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-on-accent);font-size:var(--fs-xs);line-height:1;}
@@ -1531,7 +1512,6 @@
         .csvimport-preview-wrap{max-height:44vh;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-8);}
         .csvimport-cat-select{min-width:120px;font-size:var(--fs-xs);padding:var(--space-4) var(--space-6);height:auto;}
         .rollover-label{display:flex;align-items:flex-start;gap:var(--space-8);font-size:var(--fs-sm);color:var(--text);cursor:pointer;}
-        .btn-pad-24{padding:var(--space-10) var(--space-24);}
         .bva-card{margin-top:var(--space-20);margin-bottom:var(--space-12);padding:0;overflow:hidden;}
         .bva-header-row{padding:var(--space-20) var(--space-24);display:flex;justify-content:space-between;align-items:center;}
         .bva-header-label{font-size:var(--fs-2xs);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
@@ -1867,7 +1847,6 @@
         .dash-cat-tr--open:hover{background:var(--stripe);}
         .dash-cat-tr--open:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
         .bva-subtitle{font-size:var(--fs-2xs);color:var(--textLt);margin-top:calc(var(--space-6) * -1);margin-bottom:var(--space-10);}
-        .text-10{font-size:var(--fs-3xs);}
         .bva-empty-state{padding:var(--space-32) var(--space-16);text-align:center;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
         .bva-empty-icon{margin-bottom:var(--space-8);color:var(--textLt);}
         .bva-empty-title{font-size:var(--fs-sm);color:var(--textMid);font-weight:600;margin-bottom:var(--space-4);}
@@ -2359,7 +2338,7 @@
         }
 
         @layer overrides {
-        .entries-bulk-delete{background:var(--red);color:var(--ink-on-accent);}
+        .entries-bulk-delete{background:var(--red);color:var(--inkOnDanger);}
         .yoy-toggle-active{background:var(--primary);color:var(--ink-on-accent);border-color:var(--primary);}
         .yoy-th-num{text-align:right;}
         /* Indented past the parent's triangle, so the nesting is visible
@@ -3359,7 +3338,6 @@
         }
 
         @layer late {
-        .mb-16{margin-bottom:var(--space-16);}
         /* Wraps rather than overruns: "Total  $36,040.00 / $34,240.00  $1,800.00
            over" is three unbreakable tokens on one line, and at 320px they
            needed ~17px more than the card had — the card's overflow:hidden ate
@@ -3375,9 +3353,54 @@
         .mobile-year-badge--header .mobile-year-badge-caret{color:var(--on-dark-60);}
         }
 
+        /* Single-purpose classes, last, so they do what their names say.
+           Before layers these sat wherever they happened to sit, and whether
+           one worked was an accident of source order: .mb-16 beat the
+           responsive rule below it, while .text-9 lost to .cat-chip and had
+           never once applied. A utility that silently does nothing is worse
+           than no utility, because the markup says it is there. */
         @layer utilities {
         /* Layout helpers */
         .cf-hidden{display:none;}
+        
+        .cf-gap-6{gap:var(--space-6);}
+        .cf-gap-8{gap:var(--space-8);}
+        .cf-gap-10{gap:var(--space-10);}
+        .cf-gap-12{gap:var(--space-12);}
+        .cf-gap-14{gap:var(--space-14);}
+        .flex-1{flex:1;}
+        .min-w-0{min-width:0;}
+        .mb-0{margin-bottom:0;}
+        .mb-5{margin-bottom:var(--space-6);}
+        .mb-6{margin-bottom:var(--space-6);}
+        .mb-8{margin-bottom:var(--space-8);}
+        .mb-12{margin-bottom:var(--space-12);}
+        .mb-14{margin-bottom:var(--space-14);}
+        .mb-20{margin-bottom:var(--space-20);}
+        .mt-2{margin-top:var(--space-2);}
+        .mt-4{margin-top:var(--space-4);}
+        .pb-28{padding-bottom:var(--space-28);}
+        .text-9{font-size:var(--fs-3xs);}
+        .fw-600{font-weight:600;}
+        .shrink-0{flex-shrink:0;}
+        .fw-700{font-weight:700;}
+        .mt-6{margin-top:var(--space-6);}
+        .flex-55{flex:1 1 55%;}
+        .flex-45{flex:1 1 45%;}
+        .text-center{text-align:center;}
+        .min-w-160{min-width:160px;}
+        .mb-10{margin-bottom:var(--space-10);}
+        .mt-8{margin-top:var(--space-8);}
+        .mt-10{margin-top:var(--space-10);}
+        .mt-12{margin-top:var(--space-12);}
+        .cf-gap-16{gap:var(--space-16);}
+        .mt-14{margin-top:var(--space-14);}
+        .mt-16{margin-top:var(--space-16);}
+        .w-120{width:120px;}
+        .mt-20{margin-top:var(--space-20);}
+        .btn-pad-24{padding:var(--space-10) var(--space-24);}
+        .text-10{font-size:var(--fs-3xs);}
+        .mb-16{margin-bottom:var(--space-16);}
         }
 
         @layer print {
@@ -8063,7 +8086,13 @@ document.addEventListener('DOMContentLoaded',function(){
     // in both. coral existed; mint did not, so the totals row fell back to the
     // on-white green and printed 2.08:1 against the navy behind it.
     coral: "#FF9B8C",
-    mint: "#7FD3A8"
+    mint: "#7FD3A8",
+    // Ink for a chip or button whose *background* is the semantic colour.
+    // Not white in dark mode: --red and --greenDk go lighter there so they
+    // can be read as text on a dark page, which leaves white on top of them
+    // at 3.0:1 and 2.6:1 against a 4.5:1 floor. Near-black reads 6.3 and 7.2.
+    inkOnDanger: "#FFFFFF",
+    inkOnSuccess: "#FFFFFF"
   };
   const DARK = {
     navy: "#0A1210",
@@ -8105,7 +8134,9 @@ document.addEventListener('DOMContentLoaded',function(){
     // in both. coral existed; mint did not, so the totals row fell back to the
     // on-white green and printed 2.08:1 against the navy behind it.
     coral: "#FF9B8C",
-    mint: "#7FD3A8"
+    mint: "#7FD3A8",
+    inkOnDanger: "#0A1210",
+    inkOnSuccess: "#0A1210"
   };
   // Contrast utilities (WCAG 2.1 relative luminance / ratio). Used to keep
   // category chips readable: a chip's text is its category hue drawn on a 13%
