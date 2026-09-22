@@ -297,6 +297,20 @@
           --tint-red-strong:color-mix(in srgb, var(--red) 16%, transparent);
           --tint-green:color-mix(in srgb, var(--green) 16%, transparent);
           --tint-amber:color-mix(in srgb, var(--amber) 16%, transparent);
+          /* The keyboard focus ring. Two values, because the app has two kinds
+             of surface and one ring colour cannot sit on both: --accent is
+             6.2:1 on the page and 1.68:1 on the navy header, where the year
+             pills, the search field, the avatar and every tab live. Chrome
+             painted in --headerBg/--navy/--navyMid re-points --focus-ring at
+             the on-dark value, and every descendant inherits it — which is
+             why there is no list of header selectors in the focus rules
+             below.
+
+             Both clear the 3:1 that WCAG 1.4.11 asks of a focus indicator,
+             on every surface they can land on, in both themes.
+             tests/contrast.mjs does that arithmetic. */
+          --focus-ring:var(--accent);
+          --focus-ring-on-dark:var(--ink-on-accent);
         }
         :root{
           color-scheme:light;
@@ -418,7 +432,7 @@
         .field-input{font-family:var(--font-ui);font-size:var(--fs-sm);padding:var(--space-10) var(--space-12);
           border:1.5px solid var(--border);border-radius:var(--radius-8);
           background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
-        .field-input:focus{border-color:var(--navy);}
+        .field-input:focus{border-color:var(--focus-ring);}
         .field-input.field-error{border-color:var(--red);background:var(--tint-red);}
         .field-input--mono{font-family:var(--font-mono);}
         .field-error-text{font-family:var(--font-ui);font-size:var(--fs-2xs);color:var(--red);margin-top:var(--space-4);}
@@ -476,7 +490,6 @@
            so it drops the filled circle until you interact with it. */
         .helptip-btn--mark{width:auto;min-width:13px;background:transparent;color:var(--textLt);font-size:var(--fs-2xs);font-weight:400;padding:0 1px;}
         .helptip-btn--mark:hover,.helptip-btn--mark[aria-expanded="true"]{background:var(--navyLt);color:var(--ink-on-accent);}
-        .helptip-btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
         .helptip-bubble{position:absolute;top:calc(100% + 7px);left:-6px;z-index:2600;
           width:max-content;max-width:min(272px,calc(100vw - 32px));
           padding:var(--space-8) var(--space-10);border-radius:var(--radius-8);
@@ -630,6 +643,23 @@
         .toggle-label{font-size:var(--fs-sm);color:var(--text);font-weight:600;cursor:pointer;}
         /* ── App.js ── */
         .app-scroll{background:var(--bg);min-height:100vh;color:var(--text);display:flex;flex-direction:column;}
+        /* Every surface below is painted in the app's dark chrome and holds
+           something you can tab to. Re-pointing the token once per container
+           beats naming the controls: the header alone has the year pills, the
+           search field and its clear button, the alert bell, the avatar and
+           the tab strip, and the next control added to it is covered without
+           anyone remembering this rule exists.
+
+           `thead` rather than the four header-cell classes, because one of
+           them is not a header. .budget-th-actions is the kebab column, and
+           the same class sits on the <td> of every body row, where the
+           background is a stripe — a white ring on #EDF1EC is 1.15:1. The
+           element that is reliably dark is the header, not the class.
+           tests/focus-ring.mjs measured that; reading the stylesheet did
+           not. */
+        thead,.tab-bar-outer,.undo-toast,.budget-bulkbar,
+        .monthly-totals-row,.budget-totals-row,
+        .household-onboard-wrap,.lockscreen-wrap,.app-footer{--focus-ring:var(--focus-ring-on-dark);}
         .tab-bar-outer{background:var(--headerBg);padding:0;line-height:0;font-size:0;}
         .header-inner{max-width:var(--container-w);margin:0 auto;padding:0 var(--container-gutter);display:flex;align-items:center;
           justify-content:space-between;height:64px;font-size:initial;line-height:initial;}
@@ -1594,7 +1624,7 @@
         .account-filter-select{font-family:var(--font-ui);font-size:var(--fs-sm);padding:var(--space-8) var(--space-12);
           border:1.5px solid var(--border);border-radius:var(--radius-8);
           background:var(--inputBg);color:var(--text);outline:none;min-height:38px;}
-        .account-filter-select:focus{border-color:var(--navy);}
+        .account-filter-select:focus{border-color:var(--focus-ring);}
         /* Accounts list in Settings: name, kind, opening share, remove. */
         .account-row{display:flex;align-items:center;gap:var(--space-10);flex-wrap:wrap;
           padding:var(--space-8) 0;border-bottom:1px solid var(--border);}
@@ -1630,7 +1660,7 @@
         .cal-cell--neg{background:var(--redLt);box-shadow:inset 3px 0 0 0 var(--red);}
         .cal-cell--today .cal-daynum{background:var(--primary);color:var(--ink-on-accent);}
         .cal-cell--open{outline:2px solid var(--primary);outline-offset:-2px;}
-        .cal-cell:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .cal-cell:focus-visible{outline-offset:-2px;}
         .cal-daynum{display:inline-flex;align-items:center;justify-content:center;
           min-width:21px;height:21px;padding:0 var(--space-6);border-radius:var(--radius-12);
           font-size:var(--fs-xs);font-weight:700;line-height:1;align-self:flex-start;}
@@ -1860,11 +1890,10 @@
           border:none;font:inherit;color:inherit;padding:var(--space-2) var(--space-4);margin:calc(var(--space-2) * -1) calc(var(--space-4) * -1);
           border-radius:var(--radius-6);cursor:pointer;}
         .dash-cat-open:hover{background:var(--stripe);}
-        .dash-cat-open:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .dash-cat-open:focus-visible{outline-offset:1px;}
         .dash-cat-tr--open{cursor:pointer;}
-        .dash-cat-slice:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
         .dash-cat-tr--open:hover{background:var(--stripe);}
-        .dash-cat-tr--open:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .dash-cat-tr--open:focus-visible{outline-offset:-2px;}
         .bva-subtitle{font-size:var(--fs-2xs);color:var(--textLt);margin-top:calc(var(--space-6) * -1);margin-bottom:var(--space-10);}
         .bva-empty-state{padding:var(--space-32) var(--space-16);text-align:center;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
         .bva-empty-icon{margin-bottom:var(--space-8);color:var(--textLt);}
@@ -1894,7 +1923,7 @@
           font:inherit;color:inherit;cursor:pointer;border-radius:var(--radius-6);
           display:inline-flex;align-items:center;gap:var(--space-4);position:relative;}
         .yoy-drill-btn:hover{background:var(--stripe);text-decoration:underline;}
-        .yoy-drill-btn:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .yoy-drill-btn:focus-visible{outline-offset:1px;}
         .yoy-drill-caret{font-size:var(--fs-md);line-height:1;opacity:0.55;}
         .yoy-drill-btn:hover .yoy-drill-caret{opacity:1;}
         .yoy-drill-hint{font-size:var(--fs-2xs);color:var(--textLt);padding:var(--space-10) var(--space-2) 0;}
@@ -1922,7 +1951,7 @@
           align-items:center;gap:var(--space-8);width:100%;padding:var(--space-10) var(--space-14);background:none;
           border:none;font:inherit;color:inherit;text-align:left;cursor:pointer;}
         .catd-row-head:hover{background:var(--stripe);}
-        .catd-row-head:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .catd-row-head:focus-visible{outline-offset:-2px;}
         .catd-caret{font-size:var(--fs-xs);line-height:1;color:var(--textLt);}
         .catd-desc{font-size:var(--fs-sm);font-weight:600;color:var(--text);
           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1965,7 +1994,7 @@
           background:none;border:none;padding:0;margin:0;cursor:pointer;
           color:var(--textLt);font-size:var(--fs-2xs);line-height:1;width:12px;text-align:left;}
         .yoyd-expand:hover{color:var(--text);}
-        .yoyd-expand:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--radius-4);}
+        .yoyd-expand:focus-visible{outline-offset:2px;border-radius:var(--radius-4);}
         .yoyd-child-tr{background:var(--stripe);}
         .yoyd-child-tr td{font-size:var(--fs-xs);color:var(--textMid);}
         .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -2226,8 +2255,21 @@
            gesture. Pair with cf-checkbtn for the touch-halo hit area. */
         .row-menu-btn{width:24px;height:24px;flex-shrink:0;border:none;border-radius:var(--radius-6);cursor:pointer;background:transparent;color:var(--textLt);font-size:var(--fs-xl);line-height:1;display:inline-flex;align-items:center;justify-content:center;}
         .row-menu-btn:hover{background:var(--stripe);color:var(--text);}
-        /* Accessible focus ring — keyboard only, consistent everywhere */
-        :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-4);}
+        /* Accessible focus ring — keyboard only, consistent everywhere.
+
+           No border-radius here. It used to set 4px, meaning to round the
+           ring; what it actually did was round the *element*, so a 34px
+           avatar, a colour swatch, a paid marker and every other circular
+           button in the app snapped from a circle to a rounded square for as
+           long as it held focus. The outline already follows whatever radius
+           the element has — measured, not assumed — so a round button gets a
+           round ring by doing nothing at all.
+
+           The colour comes from --focus-ring, which dark chrome re-points at
+           itself. The rules below add only an offset: a ring that would be
+           clipped by a table cell or a scroll container is pulled inside it,
+           and nothing else about them may differ. */
+        :focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;}
         button:focus:not(:focus-visible){outline:none;}
         /* ── UI polish ─────────────────────────────────────────────────── */
         /* ── One axis for layout ──────────────────────────────────────────
@@ -2401,9 +2443,23 @@
         /* Text inputs/selects get a visible focus ring on ANY focus (mouse or keyboard) —
            they have outline:none inline, so this restores feedback for pointer users. */
         input:focus,select:focus,textarea:focus{
-          outline:2px solid var(--accent);outline-offset:1px;
-          border-color:var(--accent);
+          outline:2px solid var(--focus-ring);outline-offset:1px;
+          border-color:var(--focus-ring);
         }
+        /* The one input that must not wear its own ring. A category's colour
+           swatch is an opacity:0 <input type="color"> lying exactly on top of
+           the coloured dot, so the ring above was drawn against whatever
+           colour the household picked — 1.35:1 on one of the stock greens,
+           and no ring colour survives an arbitrary palette. The dot wears it
+           instead: outside the dot's border box the ring is on the card,
+           which is a surface the app controls.
+
+           Here rather than beside .color-swatch, because the rule it has to
+           beat is in this layer and a layer outranks specificity — the same
+           edit in `app` computed to no change at all, which is the trap the
+           cascade-layer comment at the top of this file describes. */
+        .color-swatch-input:focus{outline:none;}
+        .color-swatch:has(.color-swatch-input:focus){outline:2px solid var(--focus-ring);outline-offset:2px;}
         }
 
         @layer responsive {

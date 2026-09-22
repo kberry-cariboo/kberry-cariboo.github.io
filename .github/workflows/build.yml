@@ -353,6 +353,16 @@ jobs:
       - name: Run layout sweep
         run: node tests/layout-sweep.mjs
 
+      # Tabs to every control on twelve routes in both themes and measures the
+      # ring the cascade actually produced against the surface behind it, at
+      # the 3:1 WCAG asks of a focus indicator. The stylesheet cannot be read
+      # for this: a control is styled in one place and painted onto the navy
+      # header two hundred lines away. It found a help-tip ring at 1.02:1 in
+      # dark mode, the whole header at 1.68:1 in light mode, and a global rule
+      # that squared off every circular button while it held focus.
+      - name: Check the focus ring can be seen
+        run: node tests/focus-ring.mjs
+
       - name: Check for changes
         id: diff
         run: |
