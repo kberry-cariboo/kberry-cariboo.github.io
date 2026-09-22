@@ -254,6 +254,25 @@ psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
 psql -v ON_ERROR_STOP=1 -f supabase/schema-test.sql
 CF_TEST_PG=1 node tests/payload-roundtrip.mjs
 psql -v ON_ERROR_STOP=1 -f tests/viewer-role.sql   # view-only members
+psql -v ON_ERROR_STOP=1 -f tests/invite-flow.sql  # inviting someone in
+
+# Where an extension lives is part of the test. The invite code used to come
+# from pgcrypto's gen_random_bytes() under `set search_path = public`: fine on a
+# database with pgcrypto in public, and broken on Supabase, which already has it
+# in `extensions` where "create extension if not exists" will not move it. The
+# schema loaded clean and inviting someone failed at the button press with
+# "function gen_random_bytes(integer) does not exist". Nothing here uses or
+# installs pgcrypto now — codes come from core gen_random_uuid() — so CI runs
+# this file against three databases, and the third is the one that proves it:
+#   1. pgcrypto in public  (the command above, after `create extension pgcrypto`)
+#   2. pgcrypto in extensions, as Supabase ships it:
+#        createdb cf_supabase_layout
+#        psql -d cf_supabase_layout -c 'create schema extensions;
+#          create extension pgcrypto with schema extensions;'
+#   3. no pgcrypto installed at all:
+#        createdb cf_no_pgcrypto
+#   ...then the auth shim, schema.sql and invite-flow.sql against each.
+# Putting gen_random_bytes back turns 2 and 3 red with the production error.
 CF_TEST_PG=1 node tests/sync-sql.mjs
 ```
 

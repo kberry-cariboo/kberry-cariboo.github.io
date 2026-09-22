@@ -245,6 +245,66 @@ jobs:
       - name: Check view-only members cannot write
         run: psql -v ON_ERROR_STOP=1 -f tests/viewer-role.sql
 
+      # The invite flow, on all three extension layouts, because that difference
+      # is what made this fail in production while every check here passed.
+      # create_invite() drew on pgcrypto's gen_random_bytes() under `set
+      # search_path = public`: fine on a database where pgcrypto sits in public,
+      # broken on a Supabase project, which already has it in `extensions` where
+      # `create extension if not exists` will not move it.
+      #
+      # The schema no longer installs or uses pgcrypto at all, so the third
+      # layout — no pgcrypto anywhere — is the one that proves the dependency is
+      # gone rather than merely satisfied. Reinstating gen_random_bytes turns
+      # the second and third red with the production error verbatim.
+      #
+      # The scratch database is the layout a database upgraded from the old
+      # schema has, since that schema created pgcrypto in public; the default
+      # database is the bare one.
+      - name: Check inviting someone works (pgcrypto in public)
+        run: |
+          psql -v ON_ERROR_STOP=1 -c 'create extension if not exists pgcrypto;'
+          psql -v ON_ERROR_STOP=1 -f tests/invite-flow.sql
+
+      - name: Check inviting someone works (pgcrypto in extensions, as Supabase ships it)
+        run: |
+          createdb cf_supabase_layout
+          psql -d cf_supabase_layout -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists auth;
+          create schema if not exists extensions;
+          create extension if not exists pgcrypto with schema extensions;
+          create table if not exists auth.users (id uuid primary key default gen_random_uuid(), email text);
+          create or replace function auth.uid() returns uuid language sql stable as
+            $fn$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
+          do $do$ begin
+            if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+          end $do$;
+          SQL
+          psql -d cf_supabase_layout -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          psql -d cf_supabase_layout -v ON_ERROR_STOP=1 -f tests/invite-flow.sql
+
+      - name: Check inviting someone works (no pgcrypto installed at all)
+        run: |
+          createdb cf_no_pgcrypto
+          psql -d cf_no_pgcrypto -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists auth;
+          create table if not exists auth.users (id uuid primary key default gen_random_uuid(), email text);
+          create or replace function auth.uid() returns uuid language sql stable as
+            $fn$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $fn$;
+          do $do$ begin
+            if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+          end $do$;
+          SQL
+          psql -d cf_no_pgcrypto -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          # Loading the schema must not have installed it behind our backs, or
+          # the layout below it is not the layout this step claims to test.
+          test "$(psql -d cf_no_pgcrypto -tAc "select count(*) from pg_extension where extname = 'pgcrypto'")" = 0 \
+            || { echo 'schema.sql installed pgcrypto — this step no longer tests what it says'; exit 1; }
+          psql -d cf_no_pgcrypto -v ON_ERROR_STOP=1 -f tests/invite-flow.sql
+
       # Reloading a household from the cloud: conflicts, offline edits, a
       # divergence needing the user to choose, receipts. None of it reachable by
       # clicking, all of it data-loss shaped.
