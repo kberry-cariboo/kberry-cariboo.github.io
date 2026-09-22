@@ -2012,6 +2012,31 @@
           grid-template-columns:minmax(0,1fr);}
         .glance-grid[data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr));}
         .glance-grid[data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));}
+        /* A tile alone in its run gets the whole page width, and the stacked
+           label-over-value it was drawn for then reads as a stretched copy of
+           nothing — "BALANCE TODAY" with 1,094px of empty paper beside it.
+           The mobile stylesheet already diagnosed this for its odd last tile
+           and has the fix: lay it out along the width instead, label on the
+           left and figure on the right, the way every other full-width row in
+           the app is built. That rule was written inside a max-width query, so
+           a reader who hides two of the three glance tiles in Customize gets
+           the stretched version on a desktop and the good one on a phone.
+
+           This is the case container queries are usually reached for, and it
+           does not need one: the packer already knows how many columns it
+           asked for and now says so in an attribute, so the condition is
+           directly expressible. A container query would have had to measure
+           the grid and divide by the same number. */
+        .glance-grid[data-cols="1"]>.glance-tile{display:flex;align-items:baseline;
+          justify-content:space-between;gap:var(--space-12);}
+        .glance-grid[data-cols="1"]>.glance-tile .glance-tile-title{margin-bottom:0;}
+        /* A tile can carry a third thing — Balance today has a Reconcile link —
+           and space-between would then spread three items across the width and
+           strand the figure in the middle of the paper. The auto margin makes
+           it two groups instead: the label on the left, the figure and
+           whatever follows it together on the right. */
+        .glance-grid[data-cols="1"]>.glance-tile>.glance-value{margin-left:auto;}
+        .glance-grid[data-cols="1"]>.glance-tile .glance-value{text-align:right;}
         /* align-items:start, not the grid default of stretch: a pair of cards
            in one row used to be forced to a common height, so Income Sources
            beside a dense Budget vs Actual rendered as a short chart followed by
