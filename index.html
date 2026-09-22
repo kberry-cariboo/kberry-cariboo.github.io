@@ -2029,6 +2029,12 @@
              the hit area without growing the number. */
           .yoy-drill-btn::after{content:'';position:absolute;inset:-12px;}
           .yoyd-expand::after{content:'';position:absolute;inset:-17px;}
+          /* A label and a bar come to 25px, which is under the floor now that
+             the row is a control. Real padding rather than a halo: these rows
+             are stacked 8px apart, so haloes big enough to matter would
+             overlap and the wrong category would open. The widget's height is
+             fixed and scrolls, so this costs visible bars, not layout. */
+          .dash-cat-open{padding:10px 4px;margin:0 -4px;}
         }
         .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;}
         /* .card-flat is padding:0 so the table runs to the card's edges; the
