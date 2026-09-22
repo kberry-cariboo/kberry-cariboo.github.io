@@ -173,6 +173,14 @@ jobs:
       - name: Check text can be read on what it sits on
         run: node tests/contrast.mjs
 
+      # Browser-free: the app honours prefers-reduced-motion in exactly one
+      # rule, and that rule cannot reach an inline style or a native smooth
+      # scroll. This fails if a component animates from a style prop, if a
+      # smooth scroll stops asking first, or if a duration appears outside the
+      # token set — none of which shows up in a screenshot or a layout check.
+      - name: Check motion stops when the reader asks it to
+        run: node tests/motion.mjs
+
       # Browser-free: drives src/lib/networth.js directly. Values arrive from a
       # form and from the cloud, so they can be strings, missing or nonsense,
       # and one bad row must not turn a household's net worth into NaN.

@@ -460,7 +460,8 @@
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
         .cf-card{background:var(--bgCard);border-radius:var(--radius-10);border:1px solid var(--border);
-          padding:var(--space-20) var(--space-24);transition:border-color var(--dur-base) var(--ease-default);}
+          padding:var(--space-20) var(--space-24);
+          transition:border-color var(--dur-base) var(--ease-default),box-shadow var(--dur-base) var(--ease-out);}
         .cf-card--flush{padding:0;overflow:hidden;}
         .modal-overlay{position:fixed;inset:0;background:var(--scrim-modal);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:var(--space-16);}
@@ -1632,7 +1633,7 @@
         .progress-track{height:6px;border-radius:var(--radius-4);background:var(--border);}
         .progress-track--clip{height:6px;border-radius:var(--radius-4);background:var(--border);overflow:hidden;}
         .progress-track-8{height:8px;border-radius:var(--radius-4);background:var(--border);overflow:hidden;}
-        .progress-fill{height:100%;border-radius:var(--radius-4);}
+        .progress-fill{height:100%;border-radius:var(--radius-4);transition:width var(--dur-slower) var(--ease-default);}
         .debtsnap-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-14);flex-wrap:wrap;gap:var(--space-8);}
         .debtsnap-row-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--space-4);flex-wrap:wrap;gap:var(--space-6);}
         .debtsnap-apr-badge{font-size:var(--fs-2xs);color:var(--textLt);background:var(--bg);padding:var(--space-2) var(--space-6);border-radius:var(--radius-4);border:1px solid var(--border);}
@@ -2381,9 +2382,6 @@
           .holiday-date{flex-basis:100%;}
           .holiday-name{flex-basis:100%;}
         }
-        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
-        @media(prefers-reduced-motion:reduce){.header-search-input{transition:none;}}
-        @media(prefers-reduced-motion:reduce){.filter-pill-chevron{transition:none;}}
         /* The horizon pills and the what-if switch are two controls that
            configure the chart under them. Each had a card of its own, which on
            a phone is ~260px of shell before the thing they configure — nearly
@@ -2432,7 +2430,6 @@
           .cat-row:has(.settings-input) .settings-input{flex-basis:100%;}
           .cat-row:has(.settings-input) .color-swatch{order:-1;}
         }
-        @media(prefers-reduced-motion:reduce){.section-nav-chev{transition:none;}}
         @media(max-width:768px){
           .section-nav{display:block;}
           /* The strip and the sticky bar are the same index twice. The strip is
@@ -2441,10 +2438,6 @@
              replaces it. */
           .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
         }
-        @media (prefers-reduced-motion:reduce){
-          .budget-card-row.is-settling{transition:none;}
-        }
-        @media(prefers-reduced-motion:reduce){.month-summary-chev{transition:none;}}
         /* On a phone the envelope rows give back the card's side padding: a
            category name and two amounts on one line had 320px of a 390px
            screen, and the amounts are what has to stay unwrapped. */
@@ -2776,6 +2769,21 @@
         @media not (hover:hover){
           button:active:not(:disabled){transform:scale(0.97);}
         }
+        /* One rule, deliberately. Six selectors used to carry a
+           `prefers-reduced-motion` opt-out of their own — .helptip-bubble,
+           .header-search-input, two chevrons, a nav chevron and a settling
+           budget row — each written when that component was written, and
+           each of them dead the moment this blanket landed. Six named
+           selectors also read as a list of the motion that honours the
+           setting, which invites the next component to add itself to the
+           list or, more likely, to forget to. Everything is covered here;
+           tests/motion.mjs fails if a seventh appears.
+
+           It cannot reach two things. An inline style outranks it, so no
+           component may set transition or animation in one — the same test
+           enforces that. And a native smooth scroll is not a CSS animation
+           at all, which is why app-data.js checks the media query itself
+           before asking for one. */
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:var(--dur-instant);transition-duration:var(--dur-instant);}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
