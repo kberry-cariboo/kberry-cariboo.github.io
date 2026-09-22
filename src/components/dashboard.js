@@ -1494,15 +1494,19 @@
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", "data-cols": run.length }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
-          const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
+          // The split is named rather than written as a track list, so the
+          // stylesheet owns the columns. It used to arrive as an inline style,
+          // which outranks every layer and is why the mobile override needed
+          // !important — the last two in the file.
+          const split = sz === "wide" && sz2 === "narrow" ? "wide-narrow" : sz === "narrow" && sz2 === "wide" ? "narrow-wide" : "even";
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", "data-split": split }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
           i += 2;
         } else if (sz !== "full") {
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()));
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid", "data-split": "single" }, WIDGET_RENDER[id]()));
           i += 1;
         } else {
           rows.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));

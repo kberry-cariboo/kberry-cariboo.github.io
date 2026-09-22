@@ -2044,13 +2044,23 @@
         .customize-label{flex:1;min-width:0;}
         .wm-arrow{font-size:var(--fs-sm);width:34px;height:34px;line-height:32px;border-radius:var(--radius-6);border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--textMid);padding:0;}
         .customize-done-row{display:flex;justify-content:flex-end;margin-top:var(--space-18);}
-        .glance-grid{display:grid;gap:var(--space-8);margin-bottom:var(--space-14);}
+        /* The column count comes in as an attribute and the tracks are decided
+           here. It used to arrive as an inline style from dashboard.js, which
+           outranks every cascade layer — so the mobile override could only win
+           with !important, and those were the last two in the file. */
+        .glance-grid{display:grid;gap:var(--space-8);margin-bottom:var(--space-14);
+          grid-template-columns:minmax(0,1fr);}
+        .glance-grid[data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr));}
+        .glance-grid[data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));}
         /* align-items:start, not the grid default of stretch: a pair of cards
            in one row used to be forced to a common height, so Income Sources
            beside a dense Budget vs Actual rendered as a short chart followed by
            a large empty area inside a card stretched to match its neighbour.
            Each card is now as tall as what it holds. */
-        .chart-grid{display:grid;gap:var(--space-16);margin-bottom:var(--space-16);max-width:100%;overflow:hidden;
+        .chart-grid[data-split="even"]{grid-template-columns:repeat(2,minmax(0,1fr));}
+        .chart-grid[data-split="wide-narrow"]{grid-template-columns:3fr 2fr;}
+        .chart-grid[data-split="narrow-wide"]{grid-template-columns:2fr 3fr;}
+        .chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-16);margin-bottom:var(--space-16);max-width:100%;overflow:hidden;
           align-items:start;}
         /* Inline error/info banner (auth screens, forms) */
         /* Dropdown menu items (user menu, template picker) — CSS hover, no JS handlers */
@@ -2915,10 +2925,10 @@
              card (Income Sources, Budget vs Actual) has a 342px min-content
              width, so the "stacked" column was 22px wider than the viewport
              and .dash-page's overflow:hidden cut the right edge off. */
-          /* The one thing layers cannot do: React writes this grid's column count
-             as an inline style, and an inline style outranks every layer. Hence
-             !important on that one declaration, and only it. */
-          .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:var(--space-10);}
+          /* One column on a phone, whatever split the page asked for. No
+             !important: the count is an attribute now, so this is an ordinary
+             rule in a later layer rather than a fight with an inline style. */
+          .chart-grid,.chart-grid[data-split]{grid-template-columns:minmax(0,1fr);gap:var(--space-10);}
           /* Dashboard wrapper: no overflow */
           .dash-wrap{overflow:hidden;max-width:100%;}
           /* Panels were inset cards: a 10px page gutter, then a 1px border,
@@ -3091,9 +3101,9 @@
              enough for a labelled currency value. Two up, with a lone third
              tile spanning the row. !important because the column count is set
              inline from the widget run length in dashboard.js. */
-          /* Same reason as .chart-grid: the column count comes in inline from
-             the widget run length in dashboard.js. */
-          .glance-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
+          /* Three glance tiles across a phone leaves ~110px each, so two up
+             whatever the run length was. */
+          .glance-grid,.glance-grid[data-cols]{grid-template-columns:repeat(2,minmax(0,1fr));}
           /* Spanning the row left the odd tile reading as a stretched copy
              of the two above it — the same stacked label-over-value in twice
              the width, which looks like the grid ran out rather than like a
@@ -17298,15 +17308,19 @@ Fill every field of the response schema. Rules:
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", style: { gridTemplateColumns: `repeat(${run.length},1fr)` } }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", "data-cols": run.length }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
-          const cols = sz === "wide" && sz2 === "narrow" ? "3fr 2fr" : sz === "narrow" && sz2 === "wide" ? "2fr 3fr" : "1fr 1fr";
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", style: { gridTemplateColumns: cols } }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
+          // The split is named rather than written as a track list, so the
+          // stylesheet owns the columns. It used to arrive as an inline style,
+          // which outranks every layer and is why the mobile override needed
+          // !important — the last two in the file.
+          const split = sz === "wide" && sz2 === "narrow" ? "wide-narrow" : sz === "narrow" && sz2 === "wide" ? "narrow-wide" : "even";
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", "data-split": split }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
           i += 2;
         } else if (sz !== "full") {
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid" }, WIDGET_RENDER[id]()));
+          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid", "data-split": "single" }, WIDGET_RENDER[id]()));
           i += 1;
         } else {
           rows.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
