@@ -347,6 +347,151 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     if (!report.totalNote) throw new Error('the totals row carried no over/left note to check');
   });
 
+  // Today's category widget grew this first and Envelopes had the same gap one
+  // scope down. The scope is the whole risk: the sheet and the row read the
+  // same `flow`, and a sheet that answered for the year would look entirely
+  // correct beside a row that means one month — $19,800 of Housing under a row
+  // saying $1,650, with every line in it true.
+  await test('envelopes: a row opens onto the payments behind it, for that month only', async () => {
+    await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.waitForTimeout(250);
+
+    const cents = (t) => {
+      const m = String(t).replace(/[^0-9.]/g, '');
+      return m ? Math.round(parseFloat(m) * 100) : 0;
+    };
+    const row = page.locator('.bva-body>.context-menu-cursor').first();
+    const rowCat = (await row.locator('.cat-chip').innerText()).trim();
+    const rowActual = cents(await row.locator('.bva-actual-amt').innerText());
+    // Where a press actually lands, across the row. The bar matters most: it
+    // is the part that looks most like the thing you would press, and it is a
+    // sibling of the row that paints above the trigger — the chip and the
+    // amounts are inside a row that has to let the press through. Hit-tested
+    // rather than clicked, because the parts that pass the press through are
+    // by definition not clickable themselves.
+    const landings = await page.evaluate(() => {
+      const w = document.querySelector('.bva-body>.context-menu-cursor');
+      const r = w.getBoundingClientRect();
+      const land = (x, y) => {
+        const el = document.elementFromPoint(x, y);
+        if (!el) return 'nothing';
+        return el.closest('.bva-row-open') ? 'opens'
+          : el.closest('.row-menu-btn') ? 'kebab' : 'dead';
+      };
+      // Each part is probed at the centre of its own box, not at a fraction
+      // of the row's. A guessed fraction found the gap above the bar rather
+      // than the bar, and passed while the bar was swallowing every press.
+      const mid = (sel) => {
+        const e = w.querySelector(sel);
+        if (!e) return null;
+        const b = e.getBoundingClientRect();
+        return [b.left + b.width / 2, b.top + b.height / 2];
+      };
+      const probe = (sel) => { const m = mid(sel); return m ? land(m[0], m[1]) : 'missing'; };
+      return { chip: probe('.cat-chip'), bar: probe('.bva-progress-track'),
+               amounts: probe('.bva-actual-amt'), kebab: probe('.row-menu-btn') };
+    });
+    for (const part of ['chip', 'bar', 'amounts']) {
+      if (landings[part] !== 'opens') {
+        throw new Error(`a press on the ${part} lands on "${landings[part]}", not the row trigger`);
+      }
+    }
+    if (landings.kebab !== 'kebab') {
+      throw new Error(`a press on the kebab lands on "${landings.kebab}"`);
+    }
+
+    await row.locator('.bva-row-open').click();
+    await page.locator('.catd-card').waitFor(V);
+
+    const sheet = await page.evaluate(() => {
+      const c = (t) => { const m = String(t).replace(/[^0-9.]/g, ''); return m ? Math.round(parseFloat(m) * 100) : 0; };
+      const card = document.querySelector('.catd-card');
+      const rows = [...card.querySelectorAll('.catd-row-head')]
+        .map((r) => ({ desc: r.querySelector('.catd-desc').textContent.trim(),
+                       amt: c(r.querySelector('.catd-amt').textContent) }));
+      return {
+        title: card.querySelector('.modal-title-lg').textContent.trim(),
+        sub: card.querySelector('.catd-summary-sub').textContent.trim(),
+        total: c(card.querySelector('.catd-summary-amt').textContent),
+        rows,
+      };
+    });
+
+    if (sheet.title !== rowCat) {
+      throw new Error(`pressed ${rowCat} and got a sheet for ${sheet.title}`);
+    }
+    if (sheet.total !== rowActual) {
+      throw new Error(`the sheet says ${sheet.total} and the row it opened from says ${rowActual}`
+        + ` — the breakdown is not scoped to the month the row means`);
+    }
+    const sum = sheet.rows.reduce((s2, r) => s2 + r.amt, 0);
+    if (sum !== sheet.total) {
+      throw new Error(`the lines add to ${sum} and the total says ${sheet.total}: `
+        + sheet.rows.map((r) => `${r.desc} ${r.amt}`).join(', '));
+    }
+    if (!sheet.rows.length) throw new Error('the sheet opened with no lines in it');
+    // "in Sep 2026", not "in 2026". A sheet that names the year is the failure
+    // above wearing the right number by luck.
+    if (!/ in [A-Z][a-z]{2} \d{4}$/.test(sheet.sub)) {
+      throw new Error(`the sheet does not say which month it is answering for: "${sheet.sub}"`);
+    }
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    if (await page.locator('.catd-card').count() !== 0) throw new Error('Escape did not close the breakdown');
+
+    // The kebab keeps its own job: it sits above the trigger, not under it.
+    await row.locator('.row-menu-btn').click();
+    await page.waitForTimeout(300);
+    if (await page.locator('.catd-card').count() !== 0) {
+      throw new Error('the kebab opened the breakdown instead of the row menu');
+    }
+    await page.getByText('Show the expenses', { exact: false }).first().waitFor(V);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+
+    // The same row on a phone, which is a different layout and not a smaller
+    // one: >=1000px makes the wrapper a grid and the kebab one of its items,
+    // where it paints above the overlay on its own. On a phone the row is an
+    // ordinary flex box and the kebab needs to be told. Probing only the wide
+    // layout passed with that rule deleted.
+    const { ctx: pctx, page: phone } = await ctxPage({ touch: true });
+    try {
+      await phone.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+      await phone.waitForTimeout(900);
+      const pn = phone.getByRole('button', { name: 'Remind me later' });
+      if (await pn.count() > 0) await pn.click().catch(() => {});
+      await phone.waitForTimeout(250);
+      const small = await phone.evaluate(() => {
+        const w = document.querySelector('.bva-body>.context-menu-cursor');
+        if (!w) return { err: 'no envelope rows on the phone layout' };
+        const land = (sel) => {
+          const e = w.querySelector(sel);
+          if (!e) return 'missing';
+          const b = e.getBoundingClientRect();
+          const el = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          if (!el) return 'nothing';
+          return el.closest('.bva-row-open') ? 'opens'
+            : el.closest('.row-menu-btn') ? 'kebab' : 'dead';
+        };
+        // A row is a tap target now; 44px is the floor and these rows were 34.
+        const short = [...document.querySelectorAll('.bva-row-open')]
+          .filter((b) => b.getBoundingClientRect().height < 44)
+          .map((b) => Math.round(b.getBoundingClientRect().height) + 'px');
+        return { chip: land('.cat-chip'), kebab: land('.row-menu-btn'), short };
+      });
+      if (small.err) throw new Error(small.err);
+      if (small.chip !== 'opens') throw new Error(`on a phone, a press on the chip lands on "${small.chip}"`);
+      if (small.kebab !== 'kebab') throw new Error(`on a phone, the overlay covers the kebab (press lands on "${small.kebab}")`);
+      if (small.short.length) {
+        throw new Error(`${small.short.length} envelope rows are under the 44px tap floor: ${small.short.join(', ')}`);
+      }
+    } finally { await pctx.close(); }
+  });
+
   await test('budget forecast: the horizon toggle switches between 30 and 90 days', async () => {
     await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
     await page.waitForTimeout(800);

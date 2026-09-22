@@ -1705,9 +1705,31 @@
         /* The category chip is what gives way, not the amounts: the two
            figures are the row's reason for existing, so a long category name
            truncates rather than pushing them toward the edge. */
+        /* Press anywhere on an envelope to see what its total is made of.
+
+           The control is an absolutely-positioned button laid over the row
+           rather than the row itself, for two reasons. A role="button" must
+           not contain a focusable descendant and the row carries the kebab;
+           and at >=1000px the row wrapper *is* a four-column grid, where an
+           out-of-flow child takes no cell — so this adds a control without
+           adding a box to either layout.
+
+           Nothing else needs a z-index or a pointer-events rule, and that is
+           worth saying because four of them were written before any were
+           measured. A positioned element paints above non-positioned content,
+           so the overlay already catches the chip, the amounts and the bar;
+           and the kebab is .cf-checkbtn, which is position:relative for its
+           own tap halo and so comes back above the overlay on its own. Every
+           rule added to arrange that measured as doing nothing, including an
+           explicit z-index on the kebab. The two hit-test probes in
+           tests/regression.mjs — one per layout, because >=1000px makes the
+           wrapper a grid and the phone does not — are what says this still
+           holds. */
+        .bva-body>.context-menu-cursor{position:relative;}
+        .bva-row-open{position:absolute;inset:0;z-index:0;width:100%;padding:0;margin:0;
+          border:none;background:transparent;cursor:pointer;font:inherit;color:inherit;}
+        .bva-row-open:focus-visible{outline-offset:-2px;border-radius:var(--radius-6);}
         .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);gap:var(--space-6);flex-wrap:nowrap;min-width:0;}
-        .bva-row>.cat-chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .bva-amounts{display:flex;align-items:center;gap:var(--space-6);flex-wrap:nowrap;flex:1;justify-content:flex-end;min-width:0;}
         .bva-target{color:var(--textMid);white-space:nowrap;flex-shrink:0;}
         /* ── plan-dashboard.js ── */
         .goal-header-row{display:flex;justify-content:space-between;align-items:center;}
@@ -2906,6 +2928,15 @@
            enforces that. And a native smooth scroll is not a CSS animation
            at all, which is why app-data.js checks the media query itself
            before asking for one. */
+        /* An envelope row is 34px of text, which was fine while the only way
+           to act on it was a long-press. It is a tap target now, and 44px is
+           the floor — tests/layout-sweep.mjs measures every control on every
+           touch pass and would have said so. Padding rather than a negative
+           -inset halo: adjacent rows have no gap between them, so overlapping
+           halos would hand a tap in the margin to whichever row painted last. */
+        @media(pointer:coarse){
+          .bva-body>.context-menu-cursor{padding-top:var(--space-6);padding-bottom:var(--space-6);}
+        }
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:var(--dur-instant);transition-duration:var(--dur-instant);}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
@@ -10078,6 +10109,88 @@ const RUNWAY_DAYS = 90;
     onClick: () => onChange(!value),
     className: "cf-switch"
   }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), className: "toggle-label" }, label));
+
+  // What a category's total is made of, as a sheet.
+  //
+  // Today's "Top expense categories" widget grew this first: a bar said
+  // Housing was $19,800 and the only way to find out which payments that was
+  // meant going to Flow and filtering by hand. Envelopes has exactly the same
+  // gap one scope down — a row says Housing is $4,183.32 of $4,183.32 for
+  // October and does not say what October was — so the sheet lives here and
+  // both pages open the same one. A breakdown that looked different depending
+  // on which page you asked from would be two answers to one question.
+  //
+  // `scope` is the only thing that differs: the dashboard asks about a year,
+  // an envelope about a month. It is a phrase rather than a flag because it
+  // appears in two sentences and neither reads well assembled from parts.
+  // The caller also owns which rows are expanded, so opening a category on
+  // one page does not leave a drawer open on the other.
+  const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }) => {
+    if (!detail) return null;
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": `The expenses behind ${detail.category}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card catd-card" },
+        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onClose }),
+        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, detail.category),
+        // The total again, at the top, because it is the number the reader
+        // pressed and the one every row below has to add up to. Shown even
+        // when the category is empty — "$0.00 across 0 payments" is a clearer
+        // answer than a missing figure.
+        /* @__PURE__ */ React.createElement("div", { className: "catd-summary" },
+          /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(detail.total)),
+          /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" },
+            `across ${detail.count} ${detail.count === 1 ? "payment" : "payments"} in ${scope}`)
+        ),
+        detail.rows.length === 0
+          ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${scope} is filed under ${detail.category}. If you were expecting something here, it is filed under another category — Flow will show you which.`)
+          : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, detail.rows.map((r) => {
+              const open = !!openRows[r.key];
+              return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" },
+                /* @__PURE__ */ React.createElement("button", {
+                  type: "button",
+                  className: "catd-row-head",
+                  "aria-expanded": open ? "true" : "false",
+                  // A recurring line is one row saying "26 payments"; the
+                  // dates are a level down, for when that is the question.
+                  // A line that happened once has nothing to expand to, so it
+                  // says its own date instead of offering an empty drawer.
+                  "aria-label": r.count > 1
+                    ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments — ${open ? "hide" : "show"} the dates`
+                    : `${r.desc}, ${fmt(r.total)}`,
+                  onClick: () => onToggleRow(r.key)
+                },
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? (open ? "▾" : "▸") : ""),
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-count" },
+                    r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, year)),
+                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
+                ),
+                open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
+                  "div",
+                  { key: o.id || oi, className: "catd-occ" },
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, year)),
+                  // Why this one is not simply the entry's amount. Without it
+                  // a column of identical figures with one odd number in it
+                  // reads as a mistake rather than as an edit somebody made.
+                  o.edited ? /* @__PURE__ */ React.createElement("span", { className: "catd-occ-tag" }, "Edited") : null,
+                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-occ-amt" }, fmt(o.amount))
+                )))
+              );
+            })),
+        /* @__PURE__ */ React.createElement("div", { className: "catd-done-row" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: onClose, className: "cf-btn cf-btn--primary fw-700 btn-pad-24" },
+          "Done"
+        ))
+      )
+    );
+  };
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     var _a, _b, _c, _d, _e;
     // Off the household context rather than a prop: the form is opened from
@@ -12991,6 +13104,30 @@ const RUNWAY_DAYS = 90;
     }, [monthIdx, flowSub, activeYear]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
+    // Which envelope's breakdown is open. The row says Housing is $4,183.32
+    // of $4,183.32 and stops there; the payments behind it were two screens
+    // away, in Flow, behind a filter set by hand — the same gap Today's
+    // category widget had, one scope down.
+    const [bvaDetailCat, setBvaDetailCat] = useState(null);
+    const [bvaOpenRows, setBvaOpenRows] = useState({});
+    const openBvaDetail = (cat) => { setBvaOpenRows({}); setBvaDetailCat(cat); };
+    const closeBvaDetail = () => { setBvaOpenRows({}); setBvaDetailCat(null); };
+    // Escape closes it, as it does every other reading surface in the app.
+    useEffect(() => {
+      if (bvaDetailCat === null) return;
+      const h = (e) => { if (e.key === "Escape") closeBvaDetail(); };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [bvaDetailCat]);
+    // Scoped to the month on screen, and scoped the same way the row's own
+    // total is: monthCatExpense sums `flow` by ev.month, so this filters
+    // `flow` by ev.month and nothing else. A breakdown that does not add up
+    // to the figure the reader pressed is worse than no breakdown.
+    const bvaDetail = useMemo(
+      () => (bvaDetailCat === null ? null
+        : categoryDetail(flow.filter((ev) => ev.month === monthIdx), bvaDetailCat)),
+      [flow, monthIdx, bvaDetailCat]
+    );
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
     // Skipped occurrences never enter `flow` at all, so this is the only way
     // to find (and undo) one — surfaced only for the currently-viewed month
@@ -13626,6 +13763,7 @@ const RUNWAY_DAYS = 90;
           y: bvaCtxMenu.y,
           onClose: () => setBvaCtxMenu(null),
           items: [
+            { icon: "\u{1F50D}", label: "Show the expenses", action: () => openBvaDetail(bvaCtxMenu.cat) },
             { icon: "\u270E", label: "Edit target", action: () => {
               setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
@@ -13651,7 +13789,16 @@ const RUNWAY_DAYS = 90;
             }, danger: true }
           ]
         }
-      ), showBvaModal && (() => {
+      ), /* @__PURE__ */ React.createElement(CategoryDetailSheet, {
+        detail: bvaDetail,
+        openRows: bvaOpenRows,
+        onToggleRow: (key) => setBvaOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [key]: !prev[key] })),
+        onClose: closeBvaDetail,
+        // A month, where Today's widget asks about a year. Same sheet, and
+        // the only thing that changes is the sentence under the total.
+        scope: `${MONTHS[monthIdx]} ${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}`,
+        year: activeYear
+      }), showBvaModal && (() => {
         const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
         const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
         const saveBva = () => {
@@ -13776,6 +13923,12 @@ const RUNWAY_DAYS = 90;
               },
               className: "context-menu-cursor"
             },
+            /* @__PURE__ */ React.createElement("button", {
+              type: "button",
+              className: "bva-row-open",
+              onClick: () => openBvaDetail(cat),
+              "aria-label": `${cat}, ${fmt(actual)}${target > 0 ? " of " + fmt(target) : ""} \u2014 show the expenses behind it`
+            }),
             /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 1, minWidth: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
             } }, fmt(actual)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
@@ -17132,69 +17285,14 @@ Fill every field of the response schema. Rules:
       onCancel: () => setShowReconcile(false),
       onConfirm: recordReconcile
     }), firstRunPanel,
-    catDetail && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": `The expenses behind ${catDetail.category}`
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card catd-card" },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: closeCatDetail }),
-        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, catDetail.category),
-        // The total again, at the top, because it is the number the reader
-        // pressed and the one every row below has to add up to. Shown even
-        // when the category is empty — "$0.00 across 0 payments" is a clearer
-        // answer than a missing figure.
-        /* @__PURE__ */ React.createElement("div", { className: "catd-summary" },
-          /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(catDetail.total)),
-          /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" },
-            `across ${catDetail.count} ${catDetail.count === 1 ? "payment" : "payments"} in ${activeYear}`)
-        ),
-        catDetail.rows.length === 0
-          ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${activeYear} is filed under ${catDetail.category}. If you were expecting something here, it is filed under another category \u2014 Flow will show you which.`)
-          : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, catDetail.rows.map((r) => {
-              const open = !!catOpenRows[r.key];
-              return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" },
-                /* @__PURE__ */ React.createElement("button", {
-                  type: "button",
-                  className: "catd-row-head",
-                  "aria-expanded": open ? "true" : "false",
-                  // A recurring line is one row saying "26 payments"; the
-                  // dates are a level down, for when that is the question.
-                  // A line that happened once has nothing to expand to, so it
-                  // says its own date instead of offering an empty drawer.
-                  "aria-label": r.count > 1
-                    ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments \u2014 ${open ? "hide" : "show"} the dates`
-                    : `${r.desc}, ${fmt(r.total)}`,
-                  onClick: () => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [r.key]: !prev[r.key] }))
-                },
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? (open ? "\u25BE" : "\u25B8") : ""),
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-count" },
-                    r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, activeYear)),
-                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
-                ),
-                open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
-                  "div",
-                  { key: o.id || oi, className: "catd-occ" },
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, activeYear)),
-                  // Why this one is not simply the entry's amount. Without it
-                  // a column of identical figures with one odd number in it
-                  // reads as a mistake rather than as an edit somebody made.
-                  o.edited ? /* @__PURE__ */ React.createElement("span", { className: "catd-occ-tag" }, "Edited") : null,
-                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-occ-amt" }, fmt(o.amount))
-                )))
-              );
-            })),
-        /* @__PURE__ */ React.createElement("div", { className: "catd-done-row" }, /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: closeCatDetail, className: "cf-btn cf-btn--primary fw-700 btn-pad-24" },
-          "Done"
-        ))
-      )
-    ),
+    /* @__PURE__ */ React.createElement(CategoryDetailSheet, {
+      detail: catDetail,
+      openRows: catOpenRows,
+      onToggleRow: (key) => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [key]: !prev[key] })),
+      onClose: closeCatDetail,
+      scope: activeYear,
+      year: activeYear
+    }),
     yoyDetail && /* @__PURE__ */ React.createElement(
       "div",
       {
