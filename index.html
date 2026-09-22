@@ -283,6 +283,7 @@
              them theme-aware changes how heavy the app feels and belongs with
              the elevation work, not here. */
           --surface-media:#FFFFFF;
+          --blur-scrim:6px;
           --scrim:rgba(0,0,0,0.35); --scrim-strong:rgba(0,0,0,0.85);
           --scrim-modal:rgba(90,90,97,0.4);
           --shadow-ink-faint:color-mix(in srgb, var(--navy) 6%, transparent);
@@ -296,6 +297,20 @@
           --tint-red-strong:color-mix(in srgb, var(--red) 16%, transparent);
           --tint-green:color-mix(in srgb, var(--green) 16%, transparent);
           --tint-amber:color-mix(in srgb, var(--amber) 16%, transparent);
+          /* The keyboard focus ring. Two values, because the app has two kinds
+             of surface and one ring colour cannot sit on both: --accent is
+             6.2:1 on the page and 1.68:1 on the navy header, where the year
+             pills, the search field, the avatar and every tab live. Chrome
+             painted in --headerBg/--navy/--navyMid re-points --focus-ring at
+             the on-dark value, and every descendant inherits it — which is
+             why there is no list of header selectors in the focus rules
+             below.
+
+             Both clear the 3:1 that WCAG 1.4.11 asks of a focus indicator,
+             on every surface they can land on, in both themes.
+             tests/contrast.mjs does that arithmetic. */
+          --focus-ring:var(--accent);
+          --focus-ring-on-dark:var(--ink-on-accent);
         }
         :root{
           color-scheme:light;
@@ -364,7 +379,7 @@
             --headerBg:#0A1210;
             --inputBg:#121A17;
             --doneBg:#12271E;
-            --shadowSm:0 1px 2px var(--scrim);
+            --shadowSm:0 1px 2px rgba(0,0,0,0.35);
             --shadowMd:0 2px 6px rgba(0,0,0,0.45);
             --shadowLg:0 6px 24px rgba(0,0,0,0.5);
             --shadowXl:0 18px 48px rgba(0,0,0,0.6);
@@ -417,7 +432,7 @@
         .field-input{font-family:var(--font-ui);font-size:var(--fs-sm);padding:var(--space-10) var(--space-12);
           border:1.5px solid var(--border);border-radius:var(--radius-8);
           background:var(--inputBg);color:var(--text);outline:none;width:100%;box-sizing:border-box;}
-        .field-input:focus{border-color:var(--navy);}
+        .field-input:focus{border-color:var(--focus-ring);}
         .field-input.field-error{border-color:var(--red);background:var(--tint-red);}
         .field-input--mono{font-family:var(--font-mono);}
         .field-error-text{font-family:var(--font-ui);font-size:var(--fs-2xs);color:var(--red);margin-top:var(--space-4);}
@@ -475,7 +490,6 @@
            so it drops the filled circle until you interact with it. */
         .helptip-btn--mark{width:auto;min-width:13px;background:transparent;color:var(--textLt);font-size:var(--fs-2xs);font-weight:400;padding:0 1px;}
         .helptip-btn--mark:hover,.helptip-btn--mark[aria-expanded="true"]{background:var(--navyLt);color:var(--ink-on-accent);}
-        .helptip-btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
         .helptip-bubble{position:absolute;top:calc(100% + 7px);left:-6px;z-index:2600;
           width:max-content;max-width:min(272px,calc(100vw - 32px));
           padding:var(--space-8) var(--space-10);border-radius:var(--radius-8);
@@ -499,7 +513,8 @@
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
         .cf-card{background:var(--bgCard);border-radius:var(--radius-10);border:1px solid var(--border);
-          padding:var(--space-20) var(--space-24);transition:border-color var(--dur-base) var(--ease-default);}
+          padding:var(--space-20) var(--space-24);
+          transition:border-color var(--dur-base) var(--ease-default),box-shadow var(--dur-base) var(--ease-out);}
         .cf-card--flush{padding:0;overflow:hidden;}
         .modal-overlay{position:fixed;inset:0;background:var(--scrim-modal);z-index:2000;
           display:flex;align-items:center;justify-content:center;padding:var(--space-16);}
@@ -628,6 +643,23 @@
         .toggle-label{font-size:var(--fs-sm);color:var(--text);font-weight:600;cursor:pointer;}
         /* ── App.js ── */
         .app-scroll{background:var(--bg);min-height:100vh;color:var(--text);display:flex;flex-direction:column;}
+        /* Every surface below is painted in the app's dark chrome and holds
+           something you can tab to. Re-pointing the token once per container
+           beats naming the controls: the header alone has the year pills, the
+           search field and its clear button, the alert bell, the avatar and
+           the tab strip, and the next control added to it is covered without
+           anyone remembering this rule exists.
+
+           `thead` rather than the four header-cell classes, because one of
+           them is not a header. .budget-th-actions is the kebab column, and
+           the same class sits on the <td> of every body row, where the
+           background is a stripe — a white ring on #EDF1EC is 1.15:1. The
+           element that is reliably dark is the header, not the class.
+           tests/focus-ring.mjs measured that; reading the stylesheet did
+           not. */
+        thead,.tab-bar-outer,.undo-toast,.budget-bulkbar,
+        .monthly-totals-row,.budget-totals-row,
+        .household-onboard-wrap,.lockscreen-wrap,.app-footer{--focus-ring:var(--focus-ring-on-dark);}
         .tab-bar-outer{background:var(--headerBg);padding:0;line-height:0;font-size:0;}
         .header-inner{max-width:var(--container-w);margin:0 auto;padding:0 var(--container-gutter);display:flex;align-items:center;
           justify-content:space-between;height:64px;font-size:initial;line-height:initial;}
@@ -979,6 +1011,25 @@
         .ef-save-template{font-size:var(--fs-xs);font-weight:600;padding:var(--space-10) var(--space-14);border-radius:var(--radius-8);border:1px dashed var(--border);cursor:pointer;margin-right:auto;background:transparent;color:var(--textMid);display:inline-flex;align-items:center;gap:var(--space-6);}
         .csv-title{font-size:var(--fs-lg);font-weight:700;color:var(--text);}
         .ctx-menu-backdrop{position:fixed;inset:0;z-index:9000;background:var(--scrim);}
+        /* The scrim is a flat wash, so a sheet sits on a page that is still
+           perfectly legible behind it — the dimming says "inactive" but the
+           eye keeps reading the rows underneath. A short blur says it better
+           and costs nothing when it is not supported.
+
+           Written as an enhancement that is *removed* on request rather than
+           one that is only added when a preference is known. An engine that
+           has never heard of prefers-reduced-transparency makes any query on
+           it false, so asking for `no-preference` would have quietly meant
+           "nobody gets this"; asking for `reduce` means "everybody gets it
+           except the people who asked not to", which is the intent. */
+        @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+          .modal-overlay,.ctx-menu-backdrop,.receipt-lightbox{
+            -webkit-backdrop-filter:blur(var(--blur-scrim));backdrop-filter:blur(var(--blur-scrim));}
+          @media (prefers-reduced-transparency:reduce){
+            .modal-overlay,.ctx-menu-backdrop,.receipt-lightbox{
+              -webkit-backdrop-filter:none;backdrop-filter:none;}
+          }
+        }
         .ctx-menu-sheet{position:fixed;left:0;right:0;bottom:0;border-radius:var(--radius-20) var(--radius-20) 0 0;padding:var(--space-10) 0 calc(var(--space-10) + env(safe-area-inset-bottom));box-shadow:0 -8px 32px var(--shadow-ink);user-select:none;}
         /* One handle for every bottom sheet — the context menu's, and (via
            SheetHandle) each modal card's. Desktop cards aren't sheets, so it
@@ -1519,6 +1570,24 @@
         .bva-actual-amt{font-weight:600;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;}
         .carry-note{font-size:var(--fs-3xs);color:var(--textLt);white-space:nowrap;flex-shrink:0;}
         .over-note{font-size:var(--fs-2xs);white-space:nowrap;flex-shrink:0;}
+        /* The other half of .over-note, and the reason it is quiet. An
+           envelope's question is how much is left in it, and the row answered
+           it only when the answer was bad news: over budget said "$40 over",
+           under budget said nothing and left you to subtract. Both notes sit
+           in the same slot and are mutually exclusive, so the widest this row
+           ever gets is unchanged — which is the whole reason it fits on a
+           320px phone, where .bva-amounts already wraps for the overage.
+
+           No colour. --over-note takes amber or red from the row's state;
+           this one is --textLt, because a category that is simply fine has
+           nothing to say beyond the number.
+
+           An envelope spent exactly to its target says "Fully spent" rather
+           than "$0.00 left". That is not a quantity, it is the third state
+           this slot reports, and a scheduled bill paid at the scheduled
+           amount hits it every month — on the fixture household it is half
+           the rows, which is a lot of zeros to read past. */
+        .left-note{font-size:var(--fs-2xs);color:var(--textLt);white-space:nowrap;flex-shrink:0;}
         .bva-progress-track{height:6px;background:var(--border);border-radius:var(--radius-4);}
         .bva-progress-fill{height:100%;border-radius:var(--radius-4);transition:width var(--dur-slower) var(--ease-default);}
         .bva-totals-row>.cf-row{flex-wrap:wrap;gap:var(--space-2) var(--space-8);}
@@ -1573,7 +1642,7 @@
         .account-filter-select{font-family:var(--font-ui);font-size:var(--fs-sm);padding:var(--space-8) var(--space-12);
           border:1.5px solid var(--border);border-radius:var(--radius-8);
           background:var(--inputBg);color:var(--text);outline:none;min-height:38px;}
-        .account-filter-select:focus{border-color:var(--navy);}
+        .account-filter-select:focus{border-color:var(--focus-ring);}
         /* Accounts list in Settings: name, kind, opening share, remove. */
         .account-row{display:flex;align-items:center;gap:var(--space-10);flex-wrap:wrap;
           padding:var(--space-8) 0;border-bottom:1px solid var(--border);}
@@ -1609,7 +1678,7 @@
         .cal-cell--neg{background:var(--redLt);box-shadow:inset 3px 0 0 0 var(--red);}
         .cal-cell--today .cal-daynum{background:var(--primary);color:var(--ink-on-accent);}
         .cal-cell--open{outline:2px solid var(--primary);outline-offset:-2px;}
-        .cal-cell:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .cal-cell:focus-visible{outline-offset:-2px;}
         .cal-daynum{display:inline-flex;align-items:center;justify-content:center;
           min-width:21px;height:21px;padding:0 var(--space-6);border-radius:var(--radius-12);
           font-size:var(--fs-xs);font-weight:700;line-height:1;align-self:flex-start;}
@@ -1652,7 +1721,7 @@
         .progress-track{height:6px;border-radius:var(--radius-4);background:var(--border);}
         .progress-track--clip{height:6px;border-radius:var(--radius-4);background:var(--border);overflow:hidden;}
         .progress-track-8{height:8px;border-radius:var(--radius-4);background:var(--border);overflow:hidden;}
-        .progress-fill{height:100%;border-radius:var(--radius-4);}
+        .progress-fill{height:100%;border-radius:var(--radius-4);transition:width var(--dur-slower) var(--ease-default);}
         .debtsnap-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-14);flex-wrap:wrap;gap:var(--space-8);}
         .debtsnap-row-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--space-4);flex-wrap:wrap;gap:var(--space-6);}
         .debtsnap-apr-badge{font-size:var(--fs-2xs);color:var(--textLt);background:var(--bg);padding:var(--space-2) var(--space-6);border-radius:var(--radius-4);border:1px solid var(--border);}
@@ -1839,11 +1908,10 @@
           border:none;font:inherit;color:inherit;padding:var(--space-2) var(--space-4);margin:calc(var(--space-2) * -1) calc(var(--space-4) * -1);
           border-radius:var(--radius-6);cursor:pointer;}
         .dash-cat-open:hover{background:var(--stripe);}
-        .dash-cat-open:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .dash-cat-open:focus-visible{outline-offset:1px;}
         .dash-cat-tr--open{cursor:pointer;}
-        .dash-cat-slice:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
         .dash-cat-tr--open:hover{background:var(--stripe);}
-        .dash-cat-tr--open:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .dash-cat-tr--open:focus-visible{outline-offset:-2px;}
         .bva-subtitle{font-size:var(--fs-2xs);color:var(--textLt);margin-top:calc(var(--space-6) * -1);margin-bottom:var(--space-10);}
         .bva-empty-state{padding:var(--space-32) var(--space-16);text-align:center;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
         .bva-empty-icon{margin-bottom:var(--space-8);color:var(--textLt);}
@@ -1873,7 +1941,7 @@
           font:inherit;color:inherit;cursor:pointer;border-radius:var(--radius-6);
           display:inline-flex;align-items:center;gap:var(--space-4);position:relative;}
         .yoy-drill-btn:hover{background:var(--stripe);text-decoration:underline;}
-        .yoy-drill-btn:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .yoy-drill-btn:focus-visible{outline-offset:1px;}
         .yoy-drill-caret{font-size:var(--fs-md);line-height:1;opacity:0.55;}
         .yoy-drill-btn:hover .yoy-drill-caret{opacity:1;}
         .yoy-drill-hint{font-size:var(--fs-2xs);color:var(--textLt);padding:var(--space-10) var(--space-2) 0;}
@@ -1901,7 +1969,7 @@
           align-items:center;gap:var(--space-8);width:100%;padding:var(--space-10) var(--space-14);background:none;
           border:none;font:inherit;color:inherit;text-align:left;cursor:pointer;}
         .catd-row-head:hover{background:var(--stripe);}
-        .catd-row-head:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .catd-row-head:focus-visible{outline-offset:-2px;}
         .catd-caret{font-size:var(--fs-xs);line-height:1;color:var(--textLt);}
         .catd-desc{font-size:var(--fs-sm);font-weight:600;color:var(--text);
           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1944,7 +2012,7 @@
           background:none;border:none;padding:0;margin:0;cursor:pointer;
           color:var(--textLt);font-size:var(--fs-2xs);line-height:1;width:12px;text-align:left;}
         .yoyd-expand:hover{color:var(--text);}
-        .yoyd-expand:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--radius-4);}
+        .yoyd-expand:focus-visible{outline-offset:2px;border-radius:var(--radius-4);}
         .yoyd-child-tr{background:var(--stripe);}
         .yoyd-child-tr td{font-size:var(--fs-xs);color:var(--textMid);}
         .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -2205,8 +2273,21 @@
            gesture. Pair with cf-checkbtn for the touch-halo hit area. */
         .row-menu-btn{width:24px;height:24px;flex-shrink:0;border:none;border-radius:var(--radius-6);cursor:pointer;background:transparent;color:var(--textLt);font-size:var(--fs-xl);line-height:1;display:inline-flex;align-items:center;justify-content:center;}
         .row-menu-btn:hover{background:var(--stripe);color:var(--text);}
-        /* Accessible focus ring — keyboard only, consistent everywhere */
-        :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-4);}
+        /* Accessible focus ring — keyboard only, consistent everywhere.
+
+           No border-radius here. It used to set 4px, meaning to round the
+           ring; what it actually did was round the *element*, so a 34px
+           avatar, a colour swatch, a paid marker and every other circular
+           button in the app snapped from a circle to a rounded square for as
+           long as it held focus. The outline already follows whatever radius
+           the element has — measured, not assumed — so a round button gets a
+           round ring by doing nothing at all.
+
+           The colour comes from --focus-ring, which dark chrome re-points at
+           itself. The rules below add only an offset: a ring that would be
+           clipped by a table cell or a scroll container is pulled inside it,
+           and nothing else about them may differ. */
+        :focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;}
         button:focus:not(:focus-visible){outline:none;}
         /* ── UI polish ─────────────────────────────────────────────────── */
         /* ── One axis for layout ──────────────────────────────────────────
@@ -2380,9 +2461,23 @@
         /* Text inputs/selects get a visible focus ring on ANY focus (mouse or keyboard) —
            they have outline:none inline, so this restores feedback for pointer users. */
         input:focus,select:focus,textarea:focus{
-          outline:2px solid var(--accent);outline-offset:1px;
-          border-color:var(--accent);
+          outline:2px solid var(--focus-ring);outline-offset:1px;
+          border-color:var(--focus-ring);
         }
+        /* The one input that must not wear its own ring. A category's colour
+           swatch is an opacity:0 <input type="color"> lying exactly on top of
+           the coloured dot, so the ring above was drawn against whatever
+           colour the household picked — 1.35:1 on one of the stock greens,
+           and no ring colour survives an arbitrary palette. The dot wears it
+           instead: outside the dot's border box the ring is on the card,
+           which is a surface the app controls.
+
+           Here rather than beside .color-swatch, because the rule it has to
+           beat is in this layer and a layer outranks specificity — the same
+           edit in `app` computed to no change at all, which is the trap the
+           cascade-layer comment at the top of this file describes. */
+        .color-swatch-input:focus{outline:none;}
+        .color-swatch:has(.color-swatch-input:focus){outline:2px solid var(--focus-ring);outline-offset:2px;}
         }
 
         @layer responsive {
@@ -2401,9 +2496,6 @@
           .holiday-date{flex-basis:100%;}
           .holiday-name{flex-basis:100%;}
         }
-        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
-        @media(prefers-reduced-motion:reduce){.header-search-input{transition:none;}}
-        @media(prefers-reduced-motion:reduce){.filter-pill-chevron{transition:none;}}
         /* The horizon pills and the what-if switch are two controls that
            configure the chart under them. Each had a card of its own, which on
            a phone is ~260px of shell before the thing they configure — nearly
@@ -2452,7 +2544,6 @@
           .cat-row:has(.settings-input) .settings-input{flex-basis:100%;}
           .cat-row:has(.settings-input) .color-swatch{order:-1;}
         }
-        @media(prefers-reduced-motion:reduce){.section-nav-chev{transition:none;}}
         @media(max-width:768px){
           .section-nav{display:block;}
           /* The strip and the sticky bar are the same index twice. The strip is
@@ -2461,10 +2552,6 @@
              replaces it. */
           .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
         }
-        @media (prefers-reduced-motion:reduce){
-          .budget-card-row.is-settling{transition:none;}
-        }
-        @media(prefers-reduced-motion:reduce){.month-summary-chev{transition:none;}}
         /* On a phone the envelope rows give back the card's side padding: a
            category name and two amounts on one line had 320px of a 390px
            screen, and the amounts are what has to stay unwrapped. */
@@ -2796,6 +2883,21 @@
         @media not (hover:hover){
           button:active:not(:disabled){transform:scale(0.97);}
         }
+        /* One rule, deliberately. Six selectors used to carry a
+           `prefers-reduced-motion` opt-out of their own — .helptip-bubble,
+           .header-search-input, two chevrons, a nav chevron and a settling
+           budget row — each written when that component was written, and
+           each of them dead the moment this blanket landed. Six named
+           selectors also read as a list of the motion that honours the
+           setting, which invites the next component to add itself to the
+           list or, more likely, to forget to. Everything is covered here;
+           tests/motion.mjs fails if a seventh appears.
+
+           It cannot reach two things. An inline style outranks it, so no
+           component may set transition or animation in one — the same test
+           enforces that. And a native smooth scroll is not a CSS animation
+           at all, which is why app-data.js checks the media query itself
+           before asking for one. */
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:var(--dur-instant);transition-duration:var(--dur-instant);}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
@@ -3038,7 +3140,26 @@
           main .cf-page>.cf-card .glance-grid,main .cf-page>.cf-card .kpi-grid,
           main .cf-page>.cf-card .kpi-grid-4{margin-left:calc(var(--space-16) * -1);margin-right:calc(var(--space-16) * -1);}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
-          .month-picker{gap:var(--space-4);flex-wrap:nowrap;overflow-x:auto;
+          /* Snap, so a free swipe settles with a month centred rather than at
+             whatever offset the thumb left behind.
+
+             It does not stop the pills at the two ends being clipped, and I
+             wrote a comment here first claiming that it did. Twelve pills are
+             wider than the strip, so centring one necessarily cuts the ones at
+             the edges; measuring it (an arbitrary scroll of 137px settles to
+             124px, and Mar and Nov are cut either way) is what corrected the
+             claim. What this buys is a consistent resting position, which is
+             the reason a picker snaps at all.
+
+             proximity, not mandatory: mandatory fights small nudges and makes
+             a strip of twelve short pills feel like it is grabbing back.
+
+             center, because the strip already centres the selected month
+             programmatically (scrollIntoView with inline:"center" in
+             primitives.js). Aligning to the start instead would have the snap
+             and the app disagreeing about where a month belongs, and the
+             browser would settle it after every selection. */
+          .month-picker{scroll-snap-type:x proximity;gap:var(--space-4);flex-wrap:nowrap;overflow-x:auto;
             -webkit-overflow-scrolling:touch;scrollbar-width:none;
             padding-bottom:var(--space-4);
             /* Bleeds by exactly the page gutter so the strip reaches the screen
@@ -3054,6 +3175,7 @@
              fade covers the cut instead of stopping short of it. */
           .month-picker-fade--left{left:calc(var(--container-gutter) * -1);}
           .month-picker-fade--right{right:calc(var(--container-gutter) * -1);}
+          .month-picker>.cf-pill{scroll-snap-align:center;}
           .month-picker::-webkit-scrollbar{display:none;}
           .glance-grid{gap:var(--space-6);}
           /* Icon-only sub-tabs were unreadable: a scale for "Budget vs
@@ -13655,7 +13777,7 @@ const RUNWAY_DAYS = 90;
                 setBvaModalData({ cat, target: "", editCat: cat, rollover: !!(budgetTargets._rollover || {})[cat] });
                 setShowBvaModal(true);
               }
-            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), over &&/* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over")),
+            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), target > 0 && (over ? /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over") : /* @__PURE__ */ React.createElement("span", { className: "left-note" }, diff === 0 ? "Fully spent" : fmt(roundMoney(target - actual)) + " left"))),
             // The kebab is a sibling of .bva-amounts, not a child of it: the
             // amounts group wraps to a second line on a phone once the actual,
             // the target and an overage all have to fit, and a row action that
@@ -13685,7 +13807,7 @@ const RUNWAY_DAYS = 90;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over")));
+          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), totalTarget > 0 && (tOver ? /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over") : /* @__PURE__ */ React.createElement("span", { className: "total-over-note left-note" }, tDiff === 0 ? "Fully spent" : fmt(roundMoney(totalTarget - totalActual)) + " left"))));
         })()));
       })()
     );
@@ -14941,7 +15063,7 @@ Fill every field of the response schema. Rules:
             },
             "⋮"
           ))),
-          /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", borderRadius: 4, background: barColor, transition: "width 0.3s ease" } })),
+          /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: { width: pct + "%", background: barColor } })),
           /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set", g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, " \u00B7 by ", (() => {
             const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
             return MONTHS[t.getMonth()] + " " + t.getFullYear();

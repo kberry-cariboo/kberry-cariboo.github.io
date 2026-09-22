@@ -126,6 +126,28 @@ check('both palettes are readable from their files',
     redundant.length === 0, 'repeated needlessly: ' + redundant.join(', '));
 }
 
+// ── The two dark palettes have to be the same palette ────────────────────────
+// Dark is declared twice: once under :root[data-theme="dark"] for a reader who
+// chose it, and once under :root:not([data-theme]) inside a
+// prefers-color-scheme query for a reader who did not. The second is the one
+// most people actually get, and until now nothing read it — the checks above
+// look at :root and the explicit dark block only. A token could drift there
+// and every test would still pass.
+//
+// It is not hypothetical. Tokenising the app's literal colours rewrote
+// --shadowSm in the system-preference block and not in the explicit one; the
+// value was identical so nothing looked wrong, and nothing was watching.
+{
+  const auto = tokensIn(':root:not([data-theme])');
+  check('the system-preference dark block is readable', Object.keys(auto).length > 0,
+    'no :root:not([data-theme]) block found — has the prefers-color-scheme query moved?');
+  const differ = Object.keys({ ...auto, ...cssDark })
+    .filter((k) => auto[k] !== cssDark[k])
+    .map((k) => `--${k}: prefers-color-scheme "${auto[k]}" vs [data-theme=dark] "${cssDark[k]}"`);
+  check('both declarations of the dark palette say the same thing',
+    differ.length === 0, differ.join('\n     '));
+}
+
 // ── Neither side has tokens the other has never heard of ─────────────────────
 {
   const strays = Object.keys(cssDark).filter((k) => DARK[k] === undefined);

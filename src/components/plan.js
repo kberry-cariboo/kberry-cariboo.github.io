@@ -299,7 +299,7 @@
             },
             "⋮"
           ))),
-          /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", borderRadius: 4, background: barColor, transition: "width 0.3s ease" } })),
+          /* @__PURE__ */ React.createElement("div", { className: "progress-track-8" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: { width: pct + "%", background: barColor } })),
           /* @__PURE__ */ React.createElement("div", { className: "goal-footer-row" }, /* @__PURE__ */ React.createElement("span", null, g.monthly > 0 ? fmt(g.monthly) + "/mo" : "No monthly funding set", g.targetDate && /* @__PURE__ */ React.createElement("span", { className: "goal-target-date" }, " \u00B7 by ", (() => {
             const t = /* @__PURE__ */ new Date(g.targetDate + "T00:00:00");
             return MONTHS[t.getMonth()] + " " + t.getFullYear();
