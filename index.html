@@ -14,6 +14,16 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <style>
+  /* Layered, and first, because unlayered rules beat every layer.
+     The reset below is `*{margin:0;padding:0}`. While this sheet was
+     unlayered it lost to the main stylesheet by source order, which is what
+     everything downstream was written against. The moment the main stylesheet
+     moved into @layer, this reset started winning instead and every padding in
+     the app collapsed to zero. The layer order is declared here rather than
+     in styles.css because this <style> comes first in the document, and the
+     first declaration is the one that fixes the order. */
+  @layer boot, app, overrides, responsive, late, utilities, print;
+  @layer boot {
   *{box-sizing:border-box;margin:0;padding:0;}
   html{height:100%;-webkit-text-size-adjust:100%;scrollbar-gutter:stable;}
   body{height:100%;background:var(--bg);font-family:Inter,sans-serif;overflow-x:hidden;scrollbar-gutter:stable;}
@@ -26,11 +36,55 @@
   .bmsg{font-size:11px;color:rgba(255,255,255,0.4);}
   @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
   svg{max-width:100%;}
+  }
 </style>
 <style>@font-face{font-family:'Schibsted Grotesk';font-style:normal;font-weight:400 800;font-display:swap;src:url('fonts/schibsted-var.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
         @font-face{font-family:'Schibsted Grotesk';font-style:normal;font-weight:400 800;font-display:swap;src:url('fonts/schibsted-var-ext.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
         @font-face{font-family:'Spline Sans Mono';font-style:normal;font-weight:400 600;font-display:swap;src:url('fonts/splinemono-var.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
         @font-face{font-family:'Spline Sans Mono';font-style:normal;font-weight:400 600;font-display:swap;src:url('fonts/splinemono-var-ext.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+
+        /* ── Cascade layers ────────────────────────────────────────────────
+           177 declarations in this file carried !important, and 166 of them
+           were inside a media query. None of those were fighting an inline
+           style or a third-party stylesheet. They were fighting *this* file:
+           the mobile overrides live at the bottom and are usually written
+           against a single class, so a base rule like `.cf-card .foo` simply
+           outranked them. !important was the cheapest way through, and once
+           a few rules had it the next one needed it too.
+
+           Layers settle it by construction. A rule in a later layer beats a
+           rule in an earlier one whatever its specificity, so a responsive
+           override no longer has to out-shout the rule it is overriding.
+
+             app         everything that describes a component
+             overrides   the handful of base rules that must beat a more
+                         specific base rule — a focus ring, an active toggle
+             responsive  every width, pointer, hover and height query
+             late        the four rules that have to outrank a responsive
+                         one. Each was winning on source order alone, which
+                         is exactly what layer order reverses; each was found
+                         by diffing computed styles, not by reading
+             utilities   .cf-hidden, which has to outrank everything
+             print       last, so a printed page is not re-styled by a
+                         width query that happens to match the paper
+
+           !important is gone from all five. That is deliberate and not
+           merely tidy: an !important declaration inverts layer order, so one
+           left behind in `app` would outrank the responsive rule written to
+           override it — the opposite of what it looks like it does. If a
+           rule here ever needs to beat a React inline style, that is the one
+           case layers cannot reach and !important is still the answer; say
+           so in a comment beside it.
+
+           @font-face stays outside the layers. Unlayered rules outrank every
+           layer, which is wrong for anything that cascades — a font's src
+           does not. */
+        /* The order is fixed by the boot <style> in index.template.html, which
+           comes first in the document and declares the same list with `boot`
+           ahead of these. Repeated here so this file states its own contract. */
+        @layer boot, app, overrides, responsive, late, utilities, print;
+
+        @layer app {
         *{box-sizing:border-box;} html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
         /* ── Container widths ────────────────────────────────────────────
            One measure for the whole app, declared once. Before this there
@@ -311,15 +365,6 @@
           --primary:#377E70;
           --primaryInk:#78B7A6;
         }
-        /* The page gutter is spacing, and was the last of it still in raw px.
-           That mattered the moment the rest became rem: at 200% text the
-           gutter stayed put while everything measured against it doubled, and
-           the month strip — which bleeds outwards to meet the screen edge —
-           overshot by 2px and put a sideways scrollbar on Flow and Envelopes.
-           rem here too, so the two cannot drift apart again. */
-        @media(min-width:1400px){:root{--container-gutter:2.5rem;}}
-        @media(max-width:768px){:root{--container-gutter:var(--space-12);}}
-        @media(max-width:480px){:root{--container-gutter:var(--space-10);}}
         /* ── Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) ── */
         .field-label{font-family:var(--font-ui);font-size:0.75rem;font-weight:600;color:var(--textMid);
           display:block;margin-bottom:var(--space-6);}
@@ -371,12 +416,6 @@
           border:1px solid transparent;background:transparent;color:var(--red);}
         .holiday-remove-btn:hover{background:var(--redLt);}
         .holiday-form{border:1px solid var(--border);border-radius:var(--radius-10);padding:var(--space-14);background:var(--stripe);}
-        @media(max-width:640px){
-          /* The chips and buttons wrap under the name rather than squeezing the
-             date column to nothing on a phone. */
-          .holiday-date{flex-basis:100%;}
-          .holiday-name{flex-basis:100%;}
-        }
         .helptip-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:var(--space-6);}
         .helptip-btn{display:inline-flex;align-items:center;justify-content:center;
           width:15px;height:15px;padding:0;border:none;border-radius:var(--radius-circle);cursor:help;
@@ -411,7 +450,6 @@
            out of the overflow calculation entirely. */
         .helptip-bubble:not(.is-open){max-width:0;max-height:0;padding:0;border-width:0;overflow:hidden;}
         .helptip-bubble.is-open{opacity:1;visibility:visible;transform:translateY(0);}
-        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
 
         /* ── Shared component classes (replaces repeated inline styles) ── */
         .cf-card{background:var(--bgCard);border-radius:var(--radius-10);border:1px solid var(--border);
@@ -478,8 +516,6 @@
         .cf-btn--sm,.cf-btn--xs,.cf-btn--tiny,.cf-btn--md,.cf-btn--showhide,
         .reset-targets-btn{font-size:0.75rem;padding:var(--space-8) var(--space-14);}
         .cf-btn--wide,.cf-btn--action{font-size:0.75rem;padding:var(--space-8) var(--space-18);}
-        /* Layout helpers */
-        .cf-hidden{display:none!important;}
         .cf-row{display:flex;align-items:center;}
         .cf-row-between{display:flex;align-items:center;justify-content:space-between;}
         .cf-col{display:flex;flex-direction:column;}
@@ -515,7 +551,6 @@
         .mb-8{margin-bottom:var(--space-8);}
         .mb-12{margin-bottom:var(--space-12);}
         .mb-14{margin-bottom:var(--space-14);}
-        .mb-16{margin-bottom:var(--space-16);}
         .mb-20{margin-bottom:var(--space-20);}
         .mt-2{margin-top:var(--space-2);}
         .mt-4{margin-top:var(--space-4);}
@@ -596,7 +631,6 @@
           color:var(--ink-on-accent);width:130px;caret-color:var(--amberInk);
           transition:width var(--dur-base) var(--ease-default);}
         .header-search:focus-within .header-search-input{width:230px;}
-        @media(prefers-reduced-motion:reduce){.header-search-input{transition:none;}}
         .header-search-clear{background:transparent;border:none;cursor:pointer;
           color:var(--on-dark-60);font-size:0.875rem;padding:0;line-height:1;}
         .alert-bell-btn{position:relative;border:1px solid;border-radius:var(--radius-8);width:36px;height:36px;
@@ -710,7 +744,6 @@
         .entries-th--select,.entries-col-select{width:34px;padding-left:var(--space-10);padding-right:0;text-align:center;}
         .entries-bulk-cat{font-size:0.75rem;padding:var(--space-6) var(--space-8);border-radius:var(--radius-6);border:1px solid var(--border);
           background:var(--bgCard);color:var(--text);font-family:inherit;max-width:180px;}
-        .entries-bulk-delete{background:var(--red)!important;color:var(--ink-on-accent)!important;}
         .bva-set-target{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;
           font-size:0.6875rem;font-weight:600;color:var(--accent);text-decoration:underline;
           text-underline-offset:2px;white-space:nowrap;}
@@ -950,7 +983,6 @@
         .filter-pill-chevron{display:inline-flex;align-items:center;color:var(--textLt);
           transition:transform var(--dur-slow) var(--ease-default);}
         .filter-pill-chevron--open{transform:rotate(180deg);}
-        @media(prefers-reduced-motion:reduce){.filter-pill-chevron{transition:none;}}
         .filter-pill-dropdown{position:absolute;top:calc(100% + 6px);left:0;z-index:500;background:var(--bgCard);border:1px solid var(--border);border-radius:var(--radius-10);box-shadow:var(--shadowLg);min-width:180px;max-height:260px;overflow-y:auto;padding:var(--space-6) 0;}
         /* In-flow variant for the mobile filter sheet — see FilterPill's
            `inline` prop. Absolute positioning inside a scrolling sheet let the
@@ -1049,18 +1081,6 @@
         .kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-12);margin-bottom:var(--space-16);}
         .forecast-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);flex-wrap:wrap;gap:var(--space-8);}
         .forecast-label{font-size:0.6875rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
-        /* The horizon pills and the what-if switch are two controls that
-           configure the chart under them. Each had a card of its own, which on
-           a phone is ~260px of shell before the thing they configure — nearly
-           a full screen of chrome ahead of the forecast. They keep their cards
-           where there is width to spare and become plain control rows on a
-           phone. */
-        @media(max-width:768px){
-          .forecast-setup{background:none;border:none;box-shadow:none;padding:0;margin-bottom:var(--space-12);}
-          /* The card is titled "90-Day Forecast"; the line under it said the
-             same thing again. */
-          .forecast-sub{display:none;}
-        }
         .forecast-empty-text{text-align:center;color:var(--textLt);}
         /* ExportBar's own box. It used to carry inline display/gap, which
            meant the toolbar could not be adjusted per breakpoint. */
@@ -1070,31 +1090,13 @@
            the wrapper exists only to give the phone rule something to order
            against. */
         .budget-list-lens{display:contents;}
-        @media(max-width:768px){
-          /* Export is something you do having read the month, not before it,
-             and its "+ Add" is the bottom nav's compose button a second time.
-             The bar moves under the ledger; nothing is removed. */
-          .budget-list-lens{display:flex;flex-direction:column;}
-          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:var(--space-16);margin-bottom:0;}
-          /* Forecast's export bar was left where the list lens's used to be —
-             above the ledger — so the same rule applies to it. Its bar and its
-             ledger are siblings on the page rather than inside a wrapper, so
-             the page orders them directly. Worth 60px of chrome ahead of the
-             first row, which is what put it back inside its budget once the
-             stack's spacing was made uniform. */
-          .forecast-page{display:flex;flex-direction:column;}
-          .forecast-page>.cf-card--flush{order:1;}
-          .forecast-page>.forecast-exportbar-row{order:2;margin-top:var(--space-16);margin-bottom:0;}
-        }
         .budget-toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:var(--space-8);margin-bottom:var(--space-8);flex-wrap:wrap;}
         .budget-toolbar-row--end{justify-content:flex-end;}
-        .yoy-toggle-active{background:var(--primary)!important;color:var(--ink-on-accent)!important;border-color:var(--primary)!important;}
         .yoy-card{margin-top:var(--space-14);margin-bottom:var(--space-14);}
         .yoy-header-row{padding:var(--space-16) var(--space-18) var(--space-10);}
         .yoy-title{font-size:0.6875rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--textLt);}
         .yoy-table{width:100%;border-collapse:collapse;min-width:420px;}
         .yoy-table th{background:var(--navy);color:var(--ink-on-accent);font-size:0.6875rem;font-weight:600;padding:var(--space-8) var(--space-14);white-space:nowrap;text-align:left;}
-        .yoy-th-num{text-align:right!important;}
         .yoy-table td{padding:var(--space-8) var(--space-14);font-size:0.8125rem;border-bottom:1px solid var(--border);vertical-align:middle;}
         .yoy-td-desc{color:var(--text);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .yoy-td-cat{white-space:nowrap;}
@@ -1212,22 +1214,6 @@
         .alerts-group-title{font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;
           text-transform:uppercase;color:var(--textLt);margin:var(--space-24) 0 var(--space-8) var(--space-2);}
         .episode-list{display:flex;flex-direction:column;gap:var(--space-12);}
-        /* ── A measure for label-and-value rows ──────────────────────────
-           These row families are a name on the left and its value on the
-           right, and they were written for a phone, where that is the whole
-           width and reads perfectly. Left to fill a 1440px page they became
-           1120px bars with nothing in the middle: a settings row put "Budget
-           years" and "2026" more than a thousand pixels apart, and a debt row
-           put its menu that far from the debt's name. The eye cannot pair a
-           label with a value across that, so cap the span and centre it.
-           Rows that have something to put in the middle — a budget-vs-actual
-           bar, a table — are deliberately not in this list: there the width
-           is carrying data, and Envelopes at 1440px is the proof. */
-        @media(min-width:1000px){
-          .set-dir,.set-dir-head,.episode-list,.upcoming-list,.upcoming-header-row,
-          .alerts-finding,.alerts-group-title,.alerts-head{max-width:var(--measure-rows);
-            margin-left:auto;margin-right:auto;}
-        }
         /* The tone is a 4px edge and the figures, not a wash over the whole
            card: sixty pink boxes was the thing that stopped reading as alarm. */
         .episode{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;
@@ -1346,10 +1332,6 @@
         .cat-row:has(.settings-input){flex-wrap:wrap;row-gap:var(--space-8);padding:var(--space-10) 0;}
         .cat-row:has(.settings-input) .settings-input{flex:1 1 140px;min-width:0;}
         .cat-row:has(.settings-input) .cf-btn{flex:0 0 auto;}
-        @media(max-width:640px){
-          .cat-row:has(.settings-input) .settings-input{flex-basis:100%;}
-          .cat-row:has(.settings-input) .color-swatch{order:-1;}
-        }
         .drag-handle{color:var(--textLt);font-size:0.875rem;cursor:grab;}
         .color-swatch{position:relative;width:22px;height:22px;border-radius:var(--radius-circle);flex-shrink:0;cursor:pointer;border:2px solid var(--bgCard);box-shadow:0 0 0 1px var(--border);}
         .color-swatch-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:none;}
@@ -1400,21 +1382,12 @@
           color:var(--textLt);background:var(--stripe);
           transition:background var(--dur-base) var(--ease-default),color var(--dur-base) var(--ease-default);}
         .section-nav-btn:hover .section-nav-chev{background:var(--accentLt);color:var(--text);}
-        @media(prefers-reduced-motion:reduce){.section-nav-chev{transition:none;}}
         .section-nav-list{display:flex;flex-direction:column;}
         .section-nav-item{display:flex;align-items:center;min-height:44px;padding:var(--space-12) var(--space-2);
           border:none;border-top:1px solid var(--stripe);background:none;color:var(--text);
           font:inherit;font-size:0.875rem;text-align:left;cursor:pointer;width:100%;}
         .section-nav-item:first-child{border-top:none;}
         .section-nav-item[aria-current]{font-weight:700;color:var(--primaryInk);}
-        @media(max-width:768px){
-          .section-nav{display:block;}
-          /* The strip and the sticky bar are the same index twice. The strip is
-             a two-column grid of up to fourteen pills — about 200px, and only
-             reachable at the top of the page — so on a phone the sticky one
-             replaces it. */
-          .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
-        }
         .settings-quicklinks{display:flex;gap:var(--space-6);overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:var(--space-14);margin-bottom:var(--space-6);}
         .year-openbal{display:flex;align-items:center;gap:var(--space-6);flex:1;min-width:0;}
         /* ── budget.js ── */
@@ -1458,9 +1431,6 @@
         .ledger-row-action--skip{background:var(--amberInk);margin-left:auto;}
         .budget-card-row.is-dragging{transition:none;}
         .budget-card-row.is-settling{transition:transform var(--dur-slow) var(--ease-emphasis);}
-        @media (prefers-reduced-motion:reduce){
-          .budget-card-row.is-settling{transition:none;}
-        }
         .card-top-row{display:flex;align-items:center;gap:var(--space-8);justify-content:space-between;}
         .card-desc-span{font-weight:600;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
         /* The date, the amount and the running balance sit on one line while
@@ -1508,7 +1478,6 @@
           transition:transform var(--dur-slow) var(--ease-default),background var(--dur-base) var(--ease-default),color var(--dur-base) var(--ease-default);}
         .month-summary-line:hover .month-summary-chev{background:var(--accentLt);color:var(--text);}
         .month-summary-chev--open{transform:rotate(180deg);}
-        @media(prefers-reduced-motion:reduce){.month-summary-chev{transition:none;}}
         .month-summary .kpi-grid{margin-top:var(--space-10);margin-bottom:0;}
         .budget-th-checkbox{width:30px;padding:var(--space-10) var(--space-4);text-align:center;}
         .budget-th-day{font-size:0.6875rem;font-weight:700;color:var(--ink-on-accent);padding:var(--space-10) var(--space-6);text-align:left;letter-spacing:0.04em;text-transform:uppercase;}
@@ -1536,13 +1505,6 @@
         .bva-header-row{padding:var(--space-20) var(--space-24);display:flex;justify-content:space-between;align-items:center;}
         .bva-header-label{font-size:0.6875rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
         .bva-body{display:flex;flex-direction:column;gap:var(--space-10);padding:0 var(--space-24) var(--space-20);}
-        /* On a phone the envelope rows give back the card's side padding: a
-           category name and two amounts on one line had 320px of a 390px
-           screen, and the amounts are what has to stay unwrapped. */
-        @media(max-width:480px){
-          .bva-body{padding:0 0 var(--space-16);}
-          .bva-body>*{padding:0 var(--space-14);}
-        }
         .bva-empty-wrap{font-size:0.8125rem;color:var(--textLt);text-align:center;padding:var(--space-8) 0;}
         .context-menu-cursor{cursor:context-menu;}
         .bva-actual-amt{font-weight:600;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;}
@@ -1550,12 +1512,6 @@
         .over-note{font-size:0.6875rem;white-space:nowrap;flex-shrink:0;}
         .bva-progress-track{height:6px;background:var(--border);border-radius:var(--radius-4);}
         .bva-progress-fill{height:100%;border-radius:var(--radius-4);transition:width var(--dur-slower) var(--ease-default);}
-        /* Wraps rather than overruns: "Total  $36,040.00 / $34,240.00  $1,800.00
-           over" is three unbreakable tokens on one line, and at 320px they
-           needed ~17px more than the card had — the card's overflow:hidden ate
-           the "over" note, which is the one part that isn't repeated anywhere
-           else on the row. */
-        .bva-totals-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-2) var(--space-10);margin-top:var(--space-6);padding-top:var(--space-10);border-top:2px solid var(--border);}
         .bva-totals-row>.cf-row{flex-wrap:wrap;gap:var(--space-2) var(--space-8);}
         .bva-total-label{font-size:0.75rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--textMid);}
         .total-over-note{font-size:0.625rem;}
@@ -1596,13 +1552,6 @@
         .scenario-summary{margin-top:var(--space-14);padding:var(--space-12) var(--space-14);border-radius:var(--radius-10);
           background:var(--stripe);border:1px solid var(--border);font-size:0.8125rem;line-height:1.5;}
         .dollar-sm{font-size:0.75rem;color:var(--textMid);}
-        @media(max-width:640px){
-          /* At phone width the description, chip, amount and button do not fit
-             on one line; let the controls wrap under the name rather than
-             crushing the amount field to nothing. */
-          .scenario-row{flex-wrap:wrap;}
-          .scenario-desc{flex:1 1 100%;}
-        }
         /* Account filter: sits under the sub-tab strip, above the month pills. */
         .account-filter{display:flex;align-items:center;gap:var(--space-8);max-width:var(--container-w);
           margin:0 auto var(--space-14);}
@@ -1684,16 +1633,6 @@
         .goal-list{margin:0 calc(var(--space-24) * -1);display:grid;grid-template-columns:minmax(0,1fr);align-items:start;}
         .goal-list>.goal-row-cursor{padding:var(--space-12) var(--space-24);border-top:1px solid var(--border);min-width:0;}
         .goal-list>.goal-row-cursor:first-child{border-top:none;}
-        /* Two goals abreast once there is room for them: 480px is about where
-           one of these rows stops looking stretched, so a second column
-           appears at 1200px. The full-bleed margin and the hairlines are a
-           single-column idea, so both are dropped here — side by side, a rule
-           between columns would read as a table. */
-        @media(min-width:1200px){
-          .goal-list{margin:0;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));column-gap:36px;}
-          .goal-list>.goal-row-cursor{padding:var(--space-12) 0;border-top:none;}
-          .goal-list>.goal-row-cursor+.goal-row-cursor{border-top:none;}
-        }
         /* Truncate rather than wrap: the percentage and the menu on the right
            are fixed points the eye runs down, so the name is what gives way. */
         .goal-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1798,16 +1737,6 @@
            chrome before a single figure — the negative margin gives that back
            and leaves one visible box instead of three. */
         .debt-list{margin:0 calc(var(--space-24) * -1);display:flex;flex-direction:column;}
-        /* Debts are the same shape of object on the same tab as goals, and
-           only .goal-list ever got the two-abreast treatment — so a debt sat
-           alone across the full card while a goal beside it paired up. This
-           has to come after the flex rule above rather than beside the goal
-           one: same specificity, and the later rule is the one that wins. */
-        @media(min-width:1200px){
-          .debt-list{margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));
-            column-gap:36px;}
-          .debt-list>.debt-item{padding-left:0;padding-right:0;}
-        }
         .debt-item{padding:var(--space-12) var(--space-24);border-top:1px solid var(--border);cursor:context-menu;}
         .debt-item:first-child{border-top:none;}
         .debt-item-head{display:flex;align-items:baseline;gap:var(--space-10);}
@@ -1824,10 +1753,6 @@
            The area under it gives it a mass that is visibly draining. */
         .debt-item-trend{margin-top:var(--space-8);height:22px;opacity:.85;}
         .sparkline-svg--wide{width:100%;display:block;}
-        @media(max-width:480px){
-          .debt-list{margin:0 calc(var(--space-16) * -1);}
-          .debt-item{padding:var(--space-12) var(--space-16);}
-        }
         .debtform-optional{font-weight:400;text-transform:none;letter-spacing:0;color:var(--textLt);}
         .debtform-hint{font-size:0.6875rem;color:var(--textLt);margin-top:var(--space-6);}
         /* min-width:0 is load-bearing, not tidy-up: the row is a
@@ -1861,12 +1786,6 @@
         .nw-asset-name{font-weight:600;font-size:0.875rem;margin-bottom:var(--space-2);
           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .nw-asset-amt{font-family:var(--font-mono);font-weight:600;font-size:0.875rem;flex-shrink:0;}
-        @media (max-width:640px){
-          .nw-total{font-size:1.75rem;}
-          .nw-parts{grid-template-columns:1fr;gap:var(--space-8);}
-          .nw-asset-row{flex-wrap:wrap;gap:var(--space-8);}
-          .nw-asset-main{flex:1 1 100%;}
-        }
         .drift-list{display:flex;flex-direction:column;gap:var(--space-2);}
         .drift-row{display:flex;align-items:center;gap:var(--space-14);padding:var(--space-10) 0;
           border-bottom:1px solid var(--border);}
@@ -1876,11 +1795,6 @@
           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .drift-row-figure{text-align:right;flex-shrink:0;}
         .drift-suggested{font-family:var(--font-mono);font-weight:700;font-size:0.9375rem;}
-        @media (max-width:640px){
-          .drift-row{flex-wrap:wrap;gap:var(--space-8);}
-          .drift-row-main{flex:1 1 100%;}
-          .drift-row-figure{text-align:left;flex:1;}
-        }
         .ending-soon-chip{display:inline-flex;align-items:center;gap:var(--space-8);font-size:0.75rem;border-radius:var(--radius-20);padding:var(--space-8) var(--space-14);}
         .upcoming-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-12);}
         .upcoming-hdr-label{font-size:0.6875rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--textLt);}
@@ -1995,17 +1909,6 @@
           border-radius:var(--radius-pill);padding:1px var(--space-6);background:var(--bgCard);}
         .catd-occ-amt{color:var(--text);white-space:nowrap;}
         .catd-done-row{display:flex;justify-content:flex-end;margin-top:var(--space-18);}
-        /* Same reasoning as .yoyd-done-row: a category with forty lines in it
-           outruns the sheet, and the way out must not be at the far end of
-           that scroll. It reserves its own height rather than hanging on a
-           negative margin, so no row ever ends up underneath it. */
-        @media (max-width:640px){
-          .catd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
-            border-top:1px solid var(--border);
-            margin:var(--space-16) calc(var(--space-16) * -1) 0;padding:var(--space-12) var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));}
-          .modal-card.catd-card{padding-bottom:0!important;}
-          .catd-card{padding:var(--space-16);}
-        }
         .yoyd-intro{font-size:0.75rem;color:var(--textMid);line-height:1.5;margin-bottom:var(--space-14);}
         .yoyd-bridge{border:1px solid var(--border);border-radius:var(--radius-10);overflow:hidden;}
         .yoyd-bridge-row{display:flex;align-items:baseline;justify-content:space-between;
@@ -2036,9 +1939,6 @@
         .yoyd-expand:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--radius-4);}
         .yoyd-child-tr{background:var(--stripe);}
         .yoyd-child-tr td{font-size:0.75rem;color:var(--textMid);}
-        /* Indented past the parent's triangle, so the nesting is visible
-           without a second column spent on it. */
-        .yoyd-child-td{padding-left:44px!important;}
         .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .yoyd-kind{font-size:0.625rem;color:var(--textLt);text-transform:uppercase;letter-spacing:0.06em;}
         /* Relative magnitude, drawn behind the figure it scales. Right-aligned
@@ -2060,20 +1960,6 @@
         .yoyd-table-wrap{margin-top:0;}
         .yoyd-showall-row{display:flex;justify-content:center;margin-top:var(--space-10);}
         .yoyd-done-row{display:flex;justify-content:flex-end;margin-top:var(--space-18);}
-        /* A long comparison outruns the sheet, and the way out was at the far
-           end of it. Sticky, so Done is on screen from the first row.
-           Deliberately not .oem-footer-row: that one hangs on a negative
-           bottom margin, which is right for a form whose last field carries
-           its own margin and wrong here — it overlapped the Net surplus row,
-           the one line the whole sheet is arithmetic towards. This reserves
-           its own height in the flow instead, so nothing is ever underneath
-           it at the end of the scroll. */
-        @media(pointer:coarse){
-          .yoyd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
-            border-top:1px solid var(--border);
-            margin:var(--space-16) calc(var(--space-16) * -1) 0;padding:var(--space-12) var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));}
-          .modal-card.yoy-detail-card{padding-bottom:0!important;}
-        }
         .yoyd-tr--other td{color:var(--textMid);font-style:italic;}
         .yoyd-tr--other .yoyd-name{font-style:normal;}
         /* Fixed layout: the widths come from here, not from the longest
@@ -2096,69 +1982,6 @@
         .yoy-detail-card .yoy-table td.yoy-td-desc{max-width:none;padding-left:var(--space-28);overflow:visible;}
         .yoy-detail-card .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
         .yoy-detail-card .yoy-num{overflow:visible;white-space:nowrap;}
-        @media(max-width:640px){
-          .yoy-detail-card{padding:var(--space-20) var(--space-16);}
-          .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:var(--space-8) 0;}
-          .yoy-detail-card .yoy-table td.yoy-td-desc{padding-left:var(--space-18);}
-          /* The reflow. Each row stops being four columns and becomes a
-             two-column grid: everything about the line on the left, its effect
-             on the right. `minmax(0,1fr)` is what makes it safe — the name
-             column is allowed to shrink to nothing and ellipsize, so the
-             effect column, sized to its own content, can never be pushed off
-             the screen the way the table's fourth column was. The two year
-             columns fold into the line under the name; nothing is dropped.
-             The roles in dashboard.js are what keep this a table to a screen
-             reader once its display changes. */
-          .yoy-detail-card .yoy-table,
-          .yoy-detail-card .yoy-table thead,
-          .yoy-detail-card .yoy-table tbody,
-          .yoy-detail-card .yoy-table tfoot{display:block;}
-          .yoy-detail-card colgroup{display:none;}
-          .yoy-detail-card .yoy-tr,
-          .yoy-detail-card .yoy-foot,
-          .yoy-detail-card .thead-row{display:grid;grid-template-columns:minmax(0,1fr) auto;
-            align-items:center;column-gap:var(--space-10);padding:var(--space-8) var(--space-10);}
-          .yoy-detail-card .thead-row th{padding:0;}
-          .yoy-detail-card .yoy-tr td,.yoy-detail-card .yoy-foot td{padding:0;border:none;}
-          .yoyd-year-col{display:none;}
-          .yoyd-inline-amts{display:block;font-size:0.6875rem;color:var(--textLt);margin-top:var(--space-2);}
-          .yoy-detail-card .yoy-td-desc{white-space:normal;}
-          .yoy-detail-card .yoyd-effect-td{text-align:right;}
-          .yoyd-child-td{padding-left:34px!important;}
-          /* The bar sat behind the figure, in a cell as wide as the sheet. In
-             a two-column grid that cell is only as wide as its number, so the
-             same bar reads as a tick rather than a magnitude. Anchored to the
-             row instead: its inline width is a percentage, so against the row
-             it becomes a full-width scale again, on its own line underneath.
-             The row reserves the height for it. */
-          .yoy-detail-card .yoy-tr{position:relative;padding-bottom:var(--space-16);}
-          /* The cell ellipsizes its figure, which means it also clips a child
-             trying to escape it — and the bar is now anchored to the row, not
-             the cell. It has to be let out. */
-          .yoy-detail-card .yoyd-effect-td{overflow:visible;position:static;}
-          /* max-width, because the inline width is a percentage of the row's
-             padding box and the bar is inset from its left edge — 100% plus a
-             10px offset is 10px of horizontal scroll on the widest row. */
-          .yoy-detail-card .yoyd-fill{top:auto;right:auto;left:10px;bottom:6px;height:3px;
-            border-radius:var(--radius-2);max-width:calc(100% - 20px);}
-          .yoyd-bridge-row--compact{display:flex;}
-          .yoyd-bridge-row--wide{display:none;}
-          .yoyd-bridge-row{padding:var(--space-10) var(--space-12);}
-          .yoyd-intro{font-size:0.6875rem;margin-bottom:var(--space-12);}
-        }
-        @media (pointer:coarse){
-          /* The cell's own 9px padding leaves the button ~25px tall. The halo
-             is the .cf-checkbtn treatment: a transparent ::after that grows
-             the hit area without growing the number. */
-          .yoy-drill-btn::after{content:'';position:absolute;inset:-12px;}
-          .yoyd-expand::after{content:'';position:absolute;inset:-17px;}
-          /* A label and a bar come to 25px, which is under the floor now that
-             the row is a control. Real padding rather than a halo: these rows
-             are stacked 8px apart, so haloes big enough to matter would
-             overlap and the wrong category would open. The widget's height is
-             fixed and scrolls, so this costs visible bars, not layout. */
-          .dash-cat-open{padding:var(--space-10) var(--space-4);margin:0 calc(var(--space-4) * -1);}
-        }
         .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;}
         /* .card-flat is padding:0 so the table runs to the card's edges; the
            header it now carries has to put its own padding back. */
@@ -2323,6 +2146,419 @@
            that zooms the page out and scales/displaces position:fixed chrome
            (bottom nav). Wide content belongs in an .hscroll container. */
         html,body{overflow-x:hidden;overflow-x:clip;}
+        .chart-toggle-btn{font-size:0.625rem;font-weight:700;min-width:34px;min-height:34px;
+          padding:var(--space-2) var(--space-8);border-radius:var(--radius-6);border:none;cursor:pointer;letter-spacing:0.04em;
+          display:inline-flex;align-items:center;justify-content:center;
+          background:var(--border);color:var(--textMid);}
+        .chart-toggle-btn[aria-pressed="true"]{background:var(--primary);color:var(--ink-on-accent);}
+        /* Small check/menu buttons keep their compact visual but get a padded
+           touch halo — the pseudo-element is part of the button's hit area. */
+        .cf-checkbtn{position:relative;}
+        .cf-checkbtn::after{content:'';position:absolute;inset:-10px;}
+        /* One shared "row actions" affordance (a kebab that opens the same
+           menu as right-click/long-press) used everywhere a list row has
+           edit/delete/etc. actions — BvA, budget grid, entries, goals,
+           debt — instead of each screen inventing its own icon, size, and
+           gesture. Pair with cf-checkbtn for the touch-halo hit area. */
+        .row-menu-btn{width:24px;height:24px;flex-shrink:0;border:none;border-radius:var(--radius-6);cursor:pointer;background:transparent;color:var(--textLt);font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
+        .row-menu-btn:hover{background:var(--stripe);color:var(--text);}
+        /* Accessible focus ring — keyboard only, consistent everywhere */
+        :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-4);}
+        button:focus:not(:focus-visible){outline:none;}
+        /* ── UI polish ─────────────────────────────────────────────────── */
+        /* ── One axis for layout ──────────────────────────────────────────
+           Which *layout* you get is decided by width alone (768px, the same
+           threshold useIsMobile() reads). `pointer:coarse` is reserved for
+           things that are genuinely about the input device — hit-target
+           sizes, camera capture, menus as bottom sheets, the app-shell
+           scroll lock that stops a touch browser's URL bar animating fixed
+           chrome, and affordances for gestures touch can't perform.
+
+           Splitting them the other way is what produced the two undesigned
+           combinations this app used to ship: an 820px tablet got the phone
+           bottom nav with desktop tables, and a 700px desktop window got
+           phone cards with the desktop tab bar. Now a narrow window is a
+           narrow window whatever is pointing at it, and a wide tablet gets
+           the wide layout. */
+        /* The compose button. It reads as the one action in a row of
+           destinations, so it gets a filled mark rather than a line icon —
+           and it sits in the middle, where a thumb naturally rests. */
+        /* The mark is 42px where every other icon slot is 24px, so shrinking
+           the button's top padding to fit it pushed this one label 13px below
+           the other four — and its baseline to within 4px of the viewport
+           floor, before the safe-area inset a home indicator adds. The mark
+           keeps its size and rises out of the bar instead: the negative margin
+           means it occupies the same 24px of layout as an icon, so all five
+           labels sit on one line. overflow has to be visible on the button and
+           the bar for the raised part to draw; the label keeps its own
+           ellipsis clamp, which is what the button's overflow was standing in
+           for. */
+        .bottomnav-compose{padding-top:var(--space-8);overflow:visible;}
+        .bottomnav-compose-mark{display:grid;place-items:center;width:42px;height:42px;
+          margin-top:calc(var(--space-18) * -1);border-radius:var(--radius-12);background:var(--primary);color:var(--ink-on-accent);
+          box-shadow:var(--shadowMd);}
+        .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
+          overflow:visible;background:var(--bgCard);border-top:1px solid var(--border);
+          padding-bottom:env(safe-area-inset-bottom);
+          box-shadow:0 -2px 12px var(--shadow-ink-faint);}
+        /* Camera capture: touch devices only — desktop shows gallery picker alone */
+        .attach-camera{display:none;}
+        html{-webkit-tap-highlight-color:transparent;}
+        input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+        input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+        .modal-card{overscroll-behavior:contain;}
+        tr{transition:background var(--dur-fast) var(--ease-default);}
+        input,select,button,textarea{font-family:var(--font-ui);}
+
+        /* ── Typography tokens — apply to all data content ──────────── */
+        /* Primary data text (descriptions, labels, names) */
+        .tx  {font-family:var(--font-ui);font-size:0.8125rem;color:var(--text);}
+        /* Secondary / metadata (categories, dates, schedule) */
+        .txm {font-family:var(--font-ui);font-size:0.8125rem;color:var(--textMid);}
+        /* Muted (notes, hints, historical, inactive) */
+        .txl {font-family:var(--font-ui);font-size:0.8125rem;color:var(--textLt);}
+        /* Monospace numbers (amounts, balances) */
+        .mno {font-family:var(--font-mono);font-size:0.8125rem;}
+        /* Small caps section label (uppercase, letter-spaced) — intentionally 11px */
+        .lbl {font-family:var(--font-ui);font-size:0.6875rem;font-weight:700;
+              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);margin:0;}
+        /* Hint / help text below fields — intentionally 11px */
+        .hint{font-family:var(--font-ui);font-size:0.6875rem;color:var(--textLt);}
+
+        /* Table header cells — standardized */
+        .th  {font-family:var(--font-ui);font-size:0.6875rem;font-weight:700;
+              text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-on-accent);padding:var(--space-10) var(--space-14);}
+        /* Standard data table body cell */
+        .td  {font-family:var(--font-ui);font-size:0.8125rem;color:var(--text);padding:var(--space-10) var(--space-14);}
+        /* ── Budget Monthly grid columns ──────────────────────────────────
+           Desktop: fixed layout + explicit widths so columns never shift
+           between months. Mobile overrides live in the ≤480px block below. */
+        .budget-monthly-table{table-layout:fixed;}
+        .budget-monthly-table .budget-col-day{width:38px;}
+        .budget-monthly-table .budget-col-desc{width:auto;max-width:0;}
+        .budget-monthly-table .budget-col-category{width:120px;}
+        .budget-monthly-table .budget-col-income{width:105px;}
+        .budget-monthly-table .budget-col-expense{width:105px;}
+        .budget-monthly-table .budget-col-balance{width:120px;}
+        /* Centered fixed-position toasts keep their translateX(-50%) while
+           animating in — the plain slideUp keyframe would drop it. */
+        @keyframes slideUpCentered{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+        /* Small "which year am I looking at" indicator for Budget/Plan on
+           mobile, where the header's year-pills are hidden (see above) and
+           there'd otherwise be no on-screen indication of the active year. */
+        .mobile-year-badge{display:none;}
+        .mobile-year-badge--btn{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+        .mobile-year-badge-caret{font-size:0.5625rem;color:var(--textLt);}
+
+
+        /* ── Bottom-sheet modals on mobile ─────────────────────────────── */
+        @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .modal-card{background:var(--bgCard);border-radius:var(--radius-16);box-shadow:var(--shadowXl);animation:slideUp var(--dur-slow) var(--ease-out);}
+        @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}
+
+        /* Wide screens get more gutter, not a wider measure — widening only
+           .content-area used to leave its .cf-page children centred at a
+           narrower width inside it. */
+        /* Wide screens get more gutter via --container-gutter, not a wider
+           measure — widening only .content-area used to leave its .cf-page
+           children centred at a narrower width inside it. */
+
+        /* ── Entries table: card view on mobile ─────────────────────────── */
+        /* Entries: table on desktop, cards on mobile */
+        .entries-cards{display:none;}
+        /* Budget sub-tab labels: full text on desktop; icon-only, uniform size on mobile */
+        /* ── Unified scroll utility — every grid scrolls like Entries ──
+           hidden scrollbar (all engines) + vertical scrollport + horizontal overflow;
+           direct-child thead cells stick to the top while scrolling. */
+        .hscroll{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
+          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
+        .hscroll::-webkit-scrollbar{display:none;}
+        .hscroll>table>thead>tr>th{position:sticky;top:0;z-index:5;background:var(--navy);}
+        /* Stripe-headed tables (e.g. income sources) keep their stripe when sticky */
+        .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
+        /* Paginated grids (Monthly, Forecast): row count per page is bounded,
+           so no internal vertical scrollport is needed — only horizontal
+           overflow for narrow viewports. */
+        .hscroll--paged{max-height:none;overflow-y:visible;}
+        /* Entries wrap: horizontal overflow only — paginated, so no vertical scrollport */
+        .entries-table-wrap{display:block;overflow-x:auto;}
+        .entries-table thead .entries-th{position:sticky;top:0;z-index:5;}
+        /* ── Settings: one card per row ─────────────────────────────────────
+           The short cards used to pair up above 1100px to cut the scroll. With
+           the sections in alphabetical order that pairing works against the
+           order itself: two cards side by side have no reading sequence, so
+           "the one after Appearance" stops being a place on the page, and the
+           quicklink strip above — which is the alphabetical index — no longer
+           describes what you scroll past. One per row, and the strip is how
+           you skip the scroll. */
+        .entries-table{width:100%;border-collapse:collapse;min-width:540px;}
+        /* Entries desc: fill available space, truncate */
+        .entries-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8125rem;padding:var(--space-10) var(--space-12);width:40%;min-width:120px;}
+        /* Budget totals row sticky */
+        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
+        /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
+        .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+          gap:var(--space-10);padding:var(--space-12) var(--space-16);border-top:1px solid var(--border);}
+        /* Mobile has no Prev/Next (infinite scroll instead). The extra bottom
+           padding this used to carry for nav clearance is now handled once, by
+           .app-scroll, so every element gets it rather than just this one. */
+        .grid-pagination-info{font-size:0.75rem;color:var(--textLt);}
+        .grid-pagination-controls{display:flex;align-items:center;gap:var(--space-10);}
+        .grid-pagination-size{display:flex;align-items:center;gap:var(--space-6);font-size:0.75rem;color:var(--textMid);}
+        .grid-pagination-size select{font-size:0.75rem;padding:var(--space-4) var(--space-8);border:1px solid var(--border);
+          border-radius:var(--radius-6);background:var(--inputBg);color:var(--text);}
+        .grid-pagination-page{font-size:0.75rem;color:var(--textMid);white-space:nowrap;}
+        .grid-pagination-nav{font-size:0.875rem;padding:var(--space-2) var(--space-10);border-radius:var(--radius-6);border:1px solid var(--border);
+          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
+        .grid-pagination-nav:disabled{cursor:default;color:var(--border);}
+
+        /* AI report: two-column card grid on wide screens */
+        /* minmax(0,…), not a bare 1fr — the fourth time this exact bug has
+           landed here. `1fr` is `minmax(auto,1fr)`, so a track floors at its
+           min-content width, and a report section holds long unbreakable
+           tokens (a currency string, a **bolded** phrase). At 390px the single
+           column measured 446px and the whole page scrolled sideways. */
+        .ai-report-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-16);margin-bottom:var(--space-16);}
+        .ai-report-grid>.ai-section-card{min-width:0;}
+        .ai-item-text,.ai-numbered-row,.ai-bullet-row{min-width:0;overflow-wrap:anywhere;}
+
+        /* Keyboard shortcut hint in search placeholder */
+        #global-search::placeholder{color:var(--textLt);}
+        }
+
+        @layer overrides {
+        .entries-bulk-delete{background:var(--red);color:var(--ink-on-accent);}
+        .yoy-toggle-active{background:var(--primary);color:var(--ink-on-accent);border-color:var(--primary);}
+        .yoy-th-num{text-align:right;}
+        /* Indented past the parent's triangle, so the nesting is visible
+           without a second column spent on it. */
+        .yoyd-child-td{padding-left:44px;}
+        /* Text inputs/selects get a visible focus ring on ANY focus (mouse or keyboard) —
+           they have outline:none inline, so this restores feedback for pointer users. */
+        input:focus,select:focus,textarea:focus{
+          outline:2px solid var(--accent);outline-offset:1px;
+          border-color:var(--accent);
+        }
+        }
+
+        @layer responsive {
+        /* The page gutter is spacing, and was the last of it still in raw px.
+           That mattered the moment the rest became rem: at 200% text the
+           gutter stayed put while everything measured against it doubled, and
+           the month strip — which bleeds outwards to meet the screen edge —
+           overshot by 2px and put a sideways scrollbar on Flow and Envelopes.
+           rem here too, so the two cannot drift apart again. */
+        @media(min-width:1400px){:root{--container-gutter:2.5rem;}}
+        @media(max-width:768px){:root{--container-gutter:var(--space-12);}}
+        @media(max-width:480px){:root{--container-gutter:var(--space-10);}}
+        @media(max-width:640px){
+          /* The chips and buttons wrap under the name rather than squeezing the
+             date column to nothing on a phone. */
+          .holiday-date{flex-basis:100%;}
+          .holiday-name{flex-basis:100%;}
+        }
+        @media(prefers-reduced-motion:reduce){.helptip-bubble{transition:none;}}
+        @media(prefers-reduced-motion:reduce){.header-search-input{transition:none;}}
+        @media(prefers-reduced-motion:reduce){.filter-pill-chevron{transition:none;}}
+        /* The horizon pills and the what-if switch are two controls that
+           configure the chart under them. Each had a card of its own, which on
+           a phone is ~260px of shell before the thing they configure — nearly
+           a full screen of chrome ahead of the forecast. They keep their cards
+           where there is width to spare and become plain control rows on a
+           phone. */
+        @media(max-width:768px){
+          .forecast-setup{background:none;border:none;box-shadow:none;padding:0;margin-bottom:var(--space-12);}
+          /* The card is titled "90-Day Forecast"; the line under it said the
+             same thing again. */
+          .forecast-sub{display:none;}
+        }
+        @media(max-width:768px){
+          /* Export is something you do having read the month, not before it,
+             and its "+ Add" is the bottom nav's compose button a second time.
+             The bar moves under the ledger; nothing is removed. */
+          .budget-list-lens{display:flex;flex-direction:column;}
+          .budget-list-lens>.budget-toolbar-row{order:2;margin-top:var(--space-16);margin-bottom:0;}
+          /* Forecast's export bar was left where the list lens's used to be —
+             above the ledger — so the same rule applies to it. Its bar and its
+             ledger are siblings on the page rather than inside a wrapper, so
+             the page orders them directly. Worth 60px of chrome ahead of the
+             first row, which is what put it back inside its budget once the
+             stack's spacing was made uniform. */
+          .forecast-page{display:flex;flex-direction:column;}
+          .forecast-page>.cf-card--flush{order:1;}
+          .forecast-page>.forecast-exportbar-row{order:2;margin-top:var(--space-16);margin-bottom:0;}
+        }
+        /* ── A measure for label-and-value rows ──────────────────────────
+           These row families are a name on the left and its value on the
+           right, and they were written for a phone, where that is the whole
+           width and reads perfectly. Left to fill a 1440px page they became
+           1120px bars with nothing in the middle: a settings row put "Budget
+           years" and "2026" more than a thousand pixels apart, and a debt row
+           put its menu that far from the debt's name. The eye cannot pair a
+           label with a value across that, so cap the span and centre it.
+           Rows that have something to put in the middle — a budget-vs-actual
+           bar, a table — are deliberately not in this list: there the width
+           is carrying data, and Envelopes at 1440px is the proof. */
+        @media(min-width:1000px){
+          .set-dir,.set-dir-head,.episode-list,.upcoming-list,.upcoming-header-row,
+          .alerts-finding,.alerts-group-title,.alerts-head{max-width:var(--measure-rows);
+            margin-left:auto;margin-right:auto;}
+        }
+        @media(max-width:640px){
+          .cat-row:has(.settings-input) .settings-input{flex-basis:100%;}
+          .cat-row:has(.settings-input) .color-swatch{order:-1;}
+        }
+        @media(prefers-reduced-motion:reduce){.section-nav-chev{transition:none;}}
+        @media(max-width:768px){
+          .section-nav{display:block;}
+          /* The strip and the sticky bar are the same index twice. The strip is
+             a two-column grid of up to fourteen pills — about 200px, and only
+             reachable at the top of the page — so on a phone the sticky one
+             replaces it. */
+          .help-page>.settings-quicklinks,.settings-cards>.settings-quicklinks{display:none;}
+        }
+        @media (prefers-reduced-motion:reduce){
+          .budget-card-row.is-settling{transition:none;}
+        }
+        @media(prefers-reduced-motion:reduce){.month-summary-chev{transition:none;}}
+        /* On a phone the envelope rows give back the card's side padding: a
+           category name and two amounts on one line had 320px of a 390px
+           screen, and the amounts are what has to stay unwrapped. */
+        @media(max-width:480px){
+          .bva-body{padding:0 0 var(--space-16);}
+          .bva-body>*{padding:0 var(--space-14);}
+        }
+        @media(max-width:640px){
+          /* At phone width the description, chip, amount and button do not fit
+             on one line; let the controls wrap under the name rather than
+             crushing the amount field to nothing. */
+          .scenario-row{flex-wrap:wrap;}
+          .scenario-desc{flex:1 1 100%;}
+        }
+        /* Two goals abreast once there is room for them: 480px is about where
+           one of these rows stops looking stretched, so a second column
+           appears at 1200px. The full-bleed margin and the hairlines are a
+           single-column idea, so both are dropped here — side by side, a rule
+           between columns would read as a table. */
+        @media(min-width:1200px){
+          .goal-list{margin:0;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));column-gap:36px;}
+          .goal-list>.goal-row-cursor{padding:var(--space-12) 0;border-top:none;}
+          .goal-list>.goal-row-cursor+.goal-row-cursor{border-top:none;}
+        }
+        /* Debts are the same shape of object on the same tab as goals, and
+           only .goal-list ever got the two-abreast treatment — so a debt sat
+           alone across the full card while a goal beside it paired up. This
+           has to come after the flex rule above rather than beside the goal
+           one: same specificity, and the later rule is the one that wins. */
+        @media(min-width:1200px){
+          .debt-list{margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));
+            column-gap:36px;}
+          .debt-list>.debt-item{padding-left:0;padding-right:0;}
+        }
+        @media(max-width:480px){
+          .debt-list{margin:0 calc(var(--space-16) * -1);}
+          .debt-item{padding:var(--space-12) var(--space-16);}
+        }
+        @media (max-width:640px){
+          .nw-total{font-size:1.75rem;}
+          .nw-parts{grid-template-columns:1fr;gap:var(--space-8);}
+          .nw-asset-row{flex-wrap:wrap;gap:var(--space-8);}
+          .nw-asset-main{flex:1 1 100%;}
+        }
+        @media (max-width:640px){
+          .drift-row{flex-wrap:wrap;gap:var(--space-8);}
+          .drift-row-main{flex:1 1 100%;}
+          .drift-row-figure{text-align:left;flex:1;}
+        }
+        /* Same reasoning as .yoyd-done-row: a category with forty lines in it
+           outruns the sheet, and the way out must not be at the far end of
+           that scroll. It reserves its own height rather than hanging on a
+           negative margin, so no row ever ends up underneath it. */
+        @media (max-width:640px){
+          .catd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
+            border-top:1px solid var(--border);
+            margin:var(--space-16) calc(var(--space-16) * -1) 0;padding:var(--space-12) var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));}
+          .modal-card.catd-card{padding-bottom:0;}
+          .catd-card{padding:var(--space-16);}
+        }
+        /* A long comparison outruns the sheet, and the way out was at the far
+           end of it. Sticky, so Done is on screen from the first row.
+           Deliberately not .oem-footer-row: that one hangs on a negative
+           bottom margin, which is right for a form whose last field carries
+           its own margin and wrong here — it overlapped the Net surplus row,
+           the one line the whole sheet is arithmetic towards. This reserves
+           its own height in the flow instead, so nothing is ever underneath
+           it at the end of the scroll. */
+        @media(pointer:coarse){
+          .yoyd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
+            border-top:1px solid var(--border);
+            margin:var(--space-16) calc(var(--space-16) * -1) 0;padding:var(--space-12) var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));}
+          .modal-card.yoy-detail-card{padding-bottom:0;}
+        }
+        @media(max-width:640px){
+          .yoy-detail-card{padding:var(--space-20) var(--space-16);}
+          .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:var(--space-8) 0;}
+          .yoy-detail-card .yoy-table td.yoy-td-desc{padding-left:var(--space-18);}
+          /* The reflow. Each row stops being four columns and becomes a
+             two-column grid: everything about the line on the left, its effect
+             on the right. `minmax(0,1fr)` is what makes it safe — the name
+             column is allowed to shrink to nothing and ellipsize, so the
+             effect column, sized to its own content, can never be pushed off
+             the screen the way the table's fourth column was. The two year
+             columns fold into the line under the name; nothing is dropped.
+             The roles in dashboard.js are what keep this a table to a screen
+             reader once its display changes. */
+          .yoy-detail-card .yoy-table,
+          .yoy-detail-card .yoy-table thead,
+          .yoy-detail-card .yoy-table tbody,
+          .yoy-detail-card .yoy-table tfoot{display:block;}
+          .yoy-detail-card colgroup{display:none;}
+          .yoy-detail-card .yoy-tr,
+          .yoy-detail-card .yoy-foot,
+          .yoy-detail-card .thead-row{display:grid;grid-template-columns:minmax(0,1fr) auto;
+            align-items:center;column-gap:var(--space-10);padding:var(--space-8) var(--space-10);}
+          .yoy-detail-card .thead-row th{padding:0;}
+          .yoy-detail-card .yoy-tr td,.yoy-detail-card .yoy-foot td{padding:0;border:none;}
+          .yoyd-year-col{display:none;}
+          .yoyd-inline-amts{display:block;font-size:0.6875rem;color:var(--textLt);margin-top:var(--space-2);}
+          .yoy-detail-card .yoy-td-desc{white-space:normal;}
+          .yoy-detail-card .yoyd-effect-td{text-align:right;}
+          .yoyd-child-td{padding-left:34px;}
+          /* The bar sat behind the figure, in a cell as wide as the sheet. In
+             a two-column grid that cell is only as wide as its number, so the
+             same bar reads as a tick rather than a magnitude. Anchored to the
+             row instead: its inline width is a percentage, so against the row
+             it becomes a full-width scale again, on its own line underneath.
+             The row reserves the height for it. */
+          .yoy-detail-card .yoy-tr{position:relative;padding-bottom:var(--space-16);}
+          /* The cell ellipsizes its figure, which means it also clips a child
+             trying to escape it — and the bar is now anchored to the row, not
+             the cell. It has to be let out. */
+          .yoy-detail-card .yoyd-effect-td{overflow:visible;position:static;}
+          /* max-width, because the inline width is a percentage of the row's
+             padding box and the bar is inset from its left edge — 100% plus a
+             10px offset is 10px of horizontal scroll on the widest row. */
+          .yoy-detail-card .yoyd-fill{top:auto;right:auto;left:10px;bottom:6px;height:3px;
+            border-radius:var(--radius-2);max-width:calc(100% - 20px);}
+          .yoyd-bridge-row--compact{display:flex;}
+          .yoyd-bridge-row--wide{display:none;}
+          .yoyd-bridge-row{padding:var(--space-10) var(--space-12);}
+          .yoyd-intro{font-size:0.6875rem;margin-bottom:var(--space-12);}
+        }
+        @media (pointer:coarse){
+          /* The cell's own 9px padding leaves the button ~25px tall. The halo
+             is the .cf-checkbtn treatment: a transparent ::after that grows
+             the hit area without growing the number. */
+          .yoy-drill-btn::after{content:'';position:absolute;inset:-12px;}
+          .yoyd-expand::after{content:'';position:absolute;inset:-17px;}
+          /* A label and a bar come to 25px, which is under the floor now that
+             the row is a control. Real padding rather than a halo: these rows
+             are stacked 8px apart, so haloes big enough to matter would
+             overlap and the wrong category would open. The widget's height is
+             fixed and scrolls, so this costs visible bars, not layout. */
+          .dash-cat-open{padding:var(--space-10) var(--space-4);margin:0 calc(var(--space-4) * -1);}
+        }
         /* ── Mobile app-shell scrolling ─────────────────────────────────────
            On touch devices the page body must never scroll: a scrolling body
            collapses/expands the browser's URL bar, and position:fixed chrome
@@ -2348,7 +2584,7 @@
           button:not(:disabled):active{transform:translateY(0.5px) scale(0.985);}
           /* Interactive rows highlight on hover */
           .entries-table tbody tr:hover,
-          .hscroll table tbody tr:hover{background:var(--accentLt)!important;}
+          .hscroll table tbody tr:hover{background:var(--accentLt);}
           /* Nav tabs + pills subtle hover */
           .tab-bar button:hover,.budget-subtab-pill:hover{filter:brightness(1.04);}
           .ctx-menu-item{font-size:0.8125rem;padding:var(--space-10) var(--space-16);border:none;width:100%;cursor:pointer;
@@ -2356,24 +2592,8 @@
             transition:background var(--dur-fast);}
           .ctx-menu-item:hover{background:var(--stripe);}
         }
-        .chart-toggle-btn{font-size:0.625rem;font-weight:700;min-width:34px;min-height:34px;
-          padding:var(--space-2) var(--space-8);border-radius:var(--radius-6);border:none;cursor:pointer;letter-spacing:0.04em;
-          display:inline-flex;align-items:center;justify-content:center;
-          background:var(--border);color:var(--textMid);}
-        .chart-toggle-btn[aria-pressed="true"]{background:var(--primary);color:var(--ink-on-accent);}
-        /* Small check/menu buttons keep their compact visual but get a padded
-           touch halo — the pseudo-element is part of the button's hit area. */
-        .cf-checkbtn{position:relative;}
-        .cf-checkbtn::after{content:'';position:absolute;inset:-10px;}
-        /* One shared "row actions" affordance (a kebab that opens the same
-           menu as right-click/long-press) used everywhere a list row has
-           edit/delete/etc. actions — BvA, budget grid, entries, goals,
-           debt — instead of each screen inventing its own icon, size, and
-           gesture. Pair with cf-checkbtn for the touch-halo hit area. */
-        .row-menu-btn{width:24px;height:24px;flex-shrink:0;border:none;border-radius:var(--radius-6);cursor:pointer;background:transparent;color:var(--textLt);font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
-        .row-menu-btn:hover{background:var(--stripe);color:var(--text);}
         @media (pointer:coarse){
-          .chart-toggle-btn{min-width:44px!important;min-height:44px!important;}
+          .chart-toggle-btn{min-width:44px;min-height:44px;}
           /* 44px is the WCAG 2.5.5 / HIG / Material floor. These used to sit
              at 40 and 36, and the controls that only exist on touch — the
              mobile year badge, the Entries "Filters" button, the avatar menu
@@ -2386,11 +2606,11 @@
           .month-pill{min-width:44px;}
           .mobile-year-badge--btn{min-height:44px;}
           .entries-mobile-filter-btn{min-height:44px;}
-          .user-avatar-btn{width:44px!important;height:44px!important;}
-          .alert-bell-btn{width:44px!important;height:44px!important;}
+          .user-avatar-btn{width:44px;height:44px;}
+          .alert-bell-btn{width:44px;height:44px;}
           .entries-search-wrap{min-height:44px;}
-          .entries-search-input{align-self:stretch;padding:0!important;}
-          .weekday-btn{height:44px!important;}
+          .entries-search-input{align-self:stretch;padding:0;}
+          .weekday-btn{height:44px;}
           .row-menu-btn,.paid-btn,.budget-row-checkbtn,.budget-card-checkbtn,
           .budget-selectall-btn{position:relative;}
           .row-menu-btn::after,.paid-btn::after,.budget-row-checkbtn::after,
@@ -2405,7 +2625,7 @@
              -11px each side came out at 40, four short of the floor. The
              sweep across every route found it; the eight screens the
              touch-target test visits do not include this one. */
-          .color-swatch-input{min-height:0;inset:-13px!important;width:auto!important;height:auto!important;}
+          .color-swatch-input{min-height:0;inset:-13px;width:auto;height:auto;}
           .grid-pagination-size select,.grid-pagination-nav{min-height:44px;}
           /* Every form control, not just the ones that happened to get a
              class. Anything the user has to hit with a thumb clears 44px;
@@ -2489,51 +2709,6 @@
           .entries-th--col .entries-th-drag-hint,
           .budget-th-col .entries-th-drag-hint{display:none;}
         }
-        /* Accessible focus ring — keyboard only, consistent everywhere */
-        :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-4);}
-        button:focus:not(:focus-visible){outline:none;}
-        /* Text inputs/selects get a visible focus ring on ANY focus (mouse or keyboard) —
-           they have outline:none inline, so this restores feedback for pointer users. */
-        input:focus,select:focus,textarea:focus{
-          outline:2px solid var(--accent)!important;outline-offset:1px;
-          border-color:var(--accent)!important;
-        }
-        /* ── UI polish ─────────────────────────────────────────────────── */
-        /* ── One axis for layout ──────────────────────────────────────────
-           Which *layout* you get is decided by width alone (768px, the same
-           threshold useIsMobile() reads). `pointer:coarse` is reserved for
-           things that are genuinely about the input device — hit-target
-           sizes, camera capture, menus as bottom sheets, the app-shell
-           scroll lock that stops a touch browser's URL bar animating fixed
-           chrome, and affordances for gestures touch can't perform.
-
-           Splitting them the other way is what produced the two undesigned
-           combinations this app used to ship: an 820px tablet got the phone
-           bottom nav with desktop tables, and a 700px desktop window got
-           phone cards with the desktop tab bar. Now a narrow window is a
-           narrow window whatever is pointing at it, and a wide tablet gets
-           the wide layout. */
-        /* The compose button. It reads as the one action in a row of
-           destinations, so it gets a filled mark rather than a line icon —
-           and it sits in the middle, where a thumb naturally rests. */
-        /* The mark is 42px where every other icon slot is 24px, so shrinking
-           the button's top padding to fit it pushed this one label 13px below
-           the other four — and its baseline to within 4px of the viewport
-           floor, before the safe-area inset a home indicator adds. The mark
-           keeps its size and rises out of the bar instead: the negative margin
-           means it occupies the same 24px of layout as an icon, so all five
-           labels sit on one line. overflow has to be visible on the button and
-           the bar for the raised part to draw; the label keeps its own
-           ellipsis clamp, which is what the button's overflow was standing in
-           for. */
-        .bottomnav-compose{padding-top:var(--space-8);overflow:visible;}
-        .bottomnav-compose-mark{display:grid;place-items:center;width:42px;height:42px;
-          margin-top:calc(var(--space-18) * -1);border-radius:var(--radius-12);background:var(--primary);color:var(--ink-on-accent);
-          box-shadow:var(--shadowMd);}
-        .cf-bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1400;
-          overflow:visible;background:var(--bgCard);border-top:1px solid var(--border);
-          padding-bottom:env(safe-area-inset-bottom);
-          box-shadow:0 -2px 12px var(--shadow-ink-faint);}
         /* A short viewport is a phone too. The breakpoints were width-only, so
            rotating a phone (844x390) crossed into the desktop layout: the
            bottom nav disappeared, the 107px desktop header took 27% of a
@@ -2542,7 +2717,7 @@
            no thumb nav", and it catches a short desktop window too. */
         @media(max-width:768px),(max-height:500px){
           .cf-bottomnav{display:flex;}
-          .tab-bar{display:none!important;}
+          .tab-bar{display:none;}
           /* Nav clearance belongs to the scroll container, not to <main>: the
              footer is a *sibling* of <main> inside .app-scroll, so padding on
              .content-area left it uncovered and the fixed nav sat on top of
@@ -2560,64 +2735,25 @@
              padding at all, so Privacy, Terms and the build stamp sat under
              the nav on every route. */
           .app-scroll{padding-bottom:calc(72px + env(safe-area-inset-bottom));}
-          .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom))!important;}
+          .budget-bulkbar{bottom:calc(72px + env(safe-area-inset-bottom));}
         }
         /* Landscape on a phone is 390px of height for everything. Restoring the
            bottom nav costs 62px of that, so the header gives the same back:
            the logo row is the one band that is pure identity, and it can be a
            good deal shorter when height is the scarce axis. */
         @media(max-height:500px){
-          .header-inner{height:44px!important;}
-          .header-logo-img,.logo-area img{height:22px!important;}
+          .header-inner{height:44px;}
+          .header-logo-img,.logo-area img{height:22px;}
           .cf-bottomnav{padding-top:var(--space-2);}
           .content-area{padding-top:var(--space-14);padding-bottom:var(--space-14);}
-          .content-area{padding-bottom:var(--space-20)!important;}
+          .content-area{padding-bottom:var(--space-20);}
         }
-        /* Camera capture: touch devices only — desktop shows gallery picker alone */
-        .attach-camera{display:none!important;}
-        @media (pointer:coarse){.attach-camera{display:inline-flex!important;}}
-        html{-webkit-tap-highlight-color:transparent;}
+        @media (pointer:coarse){.attach-camera{display:inline-flex;}}
         /* Touch/no-hover devices: simple press feedback (hover handled by the pointer:fine block above) */
         @media not (hover:hover){
           button:active:not(:disabled){transform:scale(0.97);}
         }
-        input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-        input[type=number]{-moz-appearance:textfield;appearance:textfield;}
-        .modal-card{overscroll-behavior:contain;}
-        tr{transition:background var(--dur-fast) var(--ease-default);}
-        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}}
-        input,select,button,textarea{font-family:var(--font-ui);}
-
-        /* ── Typography tokens — apply to all data content ──────────── */
-        /* Primary data text (descriptions, labels, names) */
-        .tx  {font-family:var(--font-ui);font-size:0.8125rem;color:var(--text);}
-        /* Secondary / metadata (categories, dates, schedule) */
-        .txm {font-family:var(--font-ui);font-size:0.8125rem;color:var(--textMid);}
-        /* Muted (notes, hints, historical, inactive) */
-        .txl {font-family:var(--font-ui);font-size:0.8125rem;color:var(--textLt);}
-        /* Monospace numbers (amounts, balances) */
-        .mno {font-family:var(--font-mono);font-size:0.8125rem;}
-        /* Small caps section label (uppercase, letter-spaced) — intentionally 11px */
-        .lbl {font-family:var(--font-ui);font-size:0.6875rem;font-weight:700;
-              text-transform:uppercase;letter-spacing:0.1em;color:var(--textLt);margin:0;}
-        /* Hint / help text below fields — intentionally 11px */
-        .hint{font-family:var(--font-ui);font-size:0.6875rem;color:var(--textLt);}
-
-        /* Table header cells — standardized */
-        .th  {font-family:var(--font-ui);font-size:0.6875rem;font-weight:700;
-              text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-on-accent);padding:var(--space-10) var(--space-14);}
-        /* Standard data table body cell */
-        .td  {font-family:var(--font-ui);font-size:0.8125rem;color:var(--text);padding:var(--space-10) var(--space-14);}
-        /* ── Budget Monthly grid columns ──────────────────────────────────
-           Desktop: fixed layout + explicit widths so columns never shift
-           between months. Mobile overrides live in the ≤480px block below. */
-        .budget-monthly-table{table-layout:fixed;}
-        .budget-monthly-table .budget-col-day{width:38px;}
-        .budget-monthly-table .budget-col-desc{width:auto;max-width:0;}
-        .budget-monthly-table .budget-col-category{width:120px;}
-        .budget-monthly-table .budget-col-income{width:105px;}
-        .budget-monthly-table .budget-col-expense{width:105px;}
-        .budget-monthly-table .budget-col-balance{width:120px;}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms;transition-duration:0.01ms;}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
            130px, and the category ended up half the table away from the thing
@@ -2630,17 +2766,14 @@
           .budget-monthly-table .budget-col-expense{width:150px;}
           .budget-monthly-table .budget-col-balance{width:170px;}
         }
-        /* Centered fixed-position toasts keep their translateX(-50%) while
-           animating in — the plain slideUp keyframe would drop it. */
-        @keyframes slideUpCentered{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
         @media(max-width:768px){
           /* Hide header search on mobile — saves space for essential controls.
              Known, accepted asymmetry: global search (month match-dots, search
              banners) is desktop-only; mobile searches per-view via the
              Entries toolbar search instead. */
-          .header-search{display:none!important;}
+          .header-search{display:none;}
           /* Hide year pills on mobile — managed in Settings */
-          .year-pills{display:none!important;}
+          .year-pills{display:none;}
         }
         /* The other half of that bargain, which was never written down: the
            Entries toolbar search *substitutes* for the header search on a
@@ -2689,10 +2822,6 @@
           .goal-header-row{flex-wrap:wrap;row-gap:var(--space-6);}
           .goal-header-row>*:not(:first-child){margin-left:auto;}
         }
-        /* Small "which year am I looking at" indicator for Budget/Plan on
-           mobile, where the header's year-pills are hidden (see above) and
-           there'd otherwise be no on-screen indication of the active year. */
-        .mobile-year-badge{display:none;}
         @media(max-width:768px){
           .mobile-year-badge{
             display:inline-flex;align-items:center;gap:var(--space-6);
@@ -2700,50 +2829,6 @@
             background:var(--stripe);border:1px solid var(--border);
             padding:var(--space-6) var(--space-12);border-radius:var(--radius-16);margin-bottom:var(--space-10);
           }
-        }
-        .mobile-year-badge--btn{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-        .mobile-year-badge-caret{font-size:0.5625rem;color:var(--textLt);}
-        /* Header variant: the page-surface tokens the badge normally uses are
-           invisible on navy, so it borrows the same translucent-white
-           treatment as the search pill and the avatar. */
-        .mobile-year-badge--header{background:var(--on-dark-08);
-          border-color:var(--on-dark-16);color:var(--on-dark-85);
-          margin-bottom:0;flex-shrink:0;border-radius:var(--radius-24);padding:var(--space-6) var(--space-14);}
-        .mobile-year-badge--header .mobile-year-badge-caret{color:var(--on-dark-60);}
-        /* ── Print stylesheet (PDF export via window.print()) ───────────
-           Goal: only the report content prints — no header, nav, footer,
-           or transient banners — and it always prints in the light
-           theme's colors, even mid-session in dark mode, since the theme
-           colors are set as inline custom properties on <html> (highest
-           specificity short of !important) rather than toggled by a class. */
-        @media print{
-          :root,:root[data-theme="dark"]{
-            color-scheme:light;
-            --navy:#1C2B3A;--navyMid:#243447;--navyLt:#2D4057;
-            --bg:#F7F4EF;--bgCard:#FFFFFF;
-            --green:#2ECC8A;--greenDk:#27AE73;--greenLt:#EAFBF3;
-            --red:#E85D4A;--redLt:#FFF0EE;
-            --amber:#F5A623;--amberLt:#FFF8EC;
-            --text:#1C2B3A;--textMid:#5A6A7A;--textLt:#66798C;
-            --border:#E8E4DD;--stripe:#F7F4EF;
-            --headerBg:#1C2B3A;--headerText:#ffffff;
-            --inputBg:#F7F4EF;--doneBg:#EAFBF3;
-            --shadowSm:none;--shadowMd:none;--shadowLg:none;--shadowXl:none;
-            --accent:#2F6FED;--accentLt:#EAF1FE;
-            --chipKeep:100%;--primary:#1C2B3A;--coral:#FF8A7A;
-          }
-          html,body{height:auto;overflow:visible;background:#fff!important;color-scheme:light!important;}
-          .app-scroll{height:auto!important;overflow:visible!important;}
-          /* App chrome: header, both nav variants, footer, and anything
-             else marked data-noprint (banners, toasts, the Customize row…). */
-          [data-noprint],.tab-bar,.cf-bottomnav,.month-picker,.month-picker-fade,
-          .budget-subtabs,.modal-overlay{
-            display:none!important;
-          }
-          .content-area{padding:0!important;}
-          .cf-page{max-width:none!important;}
-          .cf-card{box-shadow:none!important;border:1px solid #E8E4DD!important;}
-          .cf-card,tr,.debt-item,.goal-row-cursor{break-inside:avoid;}
         }
 
         /* ── Mobile layout ─────────────────────────────────────────── */
@@ -2754,7 +2839,7 @@
              comment here used to claim kept their compact size. They don't,
              and they can't: a sub-16px input is an unavoidable zoom on focus.
              The grids drop to 3 and then 2 columns instead. */
-          input,select,textarea{font-size:max(1rem, 16px)!important;}
+          input,select,textarea{font-size:max(1rem, 16px);}
           /* Bottom-sheet modals — slide up from bottom edge, flush with it
              (the desktop overlay padding left a floating 16px gap under the
              sheet's straight bottom corners).
@@ -2764,17 +2849,17 @@
              bottom pushed its own action row below the fold. dvh tracks the
              live viewport. Both are listed so engines without dvh keep the
              old behaviour rather than no max-height at all. */
-          .modal-overlay{align-items:flex-end!important;padding:0!important;}
+          .modal-overlay{align-items:flex-end;padding:0;}
           .modal-card{
-            border-radius:var(--radius-20) var(--radius-20) 0 0!important;
-            width:100%!important;max-width:100%!important;
-            padding-bottom:calc(var(--space-24) + env(safe-area-inset-bottom))!important;
-            max-height:92vh!important;max-height:92dvh!important;overflow-y:auto!important;
+            border-radius:var(--radius-20) var(--radius-20) 0 0;
+            width:100%;max-width:100%;
+            padding-bottom:calc(var(--space-24) + env(safe-area-inset-bottom));
+            max-height:92vh;max-height:92dvh;overflow-y:auto;
           }
           /* Drag handle on every bottom sheet, matching the touch context
              menu — and, unlike before, it does something: SheetHandle wires a
              swipe-down-to-dismiss gesture to it. */
-          .sheet-handle{display:block!important;}
+          .sheet-handle{display:block;}
           /* Sheet actions stay reachable without scrolling to the bottom of a
              long form. The negative margins undo the card's own padding so the
              bar spans the full sheet width. */
@@ -2787,44 +2872,47 @@
             border-top:1px solid var(--border);z-index:2;}
 
           /* Entry form: stack 3-col row on tablet */
-          .entry-form-row2{grid-template-columns:1fr!important;}
+          .entry-form-row2{grid-template-columns:1fr;}
           /* Entries: switch to cards on mobile — table hidden */
-          .entries-cards{display:block!important;}
+          .entries-cards{display:block;}
           /* Prevent focus zoom on Android/iOS: inputs must render ≥16px */
-          input,select,textarea{font-size:max(1rem, 16px)!important;}
-          .wm-arrow{width:44px!important;height:44px!important;line-height:42px!important;font-size:1rem!important;}
-          .entries-table-wrap{display:none!important;}
+          input,select,textarea{font-size:max(1rem, 16px);}
+          .wm-arrow{width:44px;height:44px;line-height:42px;font-size:1rem;}
+          .entries-table-wrap{display:none;}
           /* No mobile max-width: the column fills the window all the way to
              the 768px breakpoint, so the header, the content and the nav all
              span the same full width and the gutter token is the only thing
              holding them off the edge. */
           /* Header: single fixed row — never wraps */
-          .header-inner{flex-wrap:nowrap!important;height:56px!important;gap:var(--space-8);}
-          .logo-area img{height:23px!important;}
+          .header-inner{flex-wrap:nowrap;height:56px;gap:var(--space-8);}
+          .logo-area img{height:23px;}
           /* Tab bar: scrollable, no scrollbar visible */
-          .tab-bar{gap:0!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
-            padding-bottom:0!important;scrollbar-width:none;}
+          .tab-bar{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+            padding-bottom:0;scrollbar-width:none;}
           .tab-bar::-webkit-scrollbar{display:none;}
-          .tab-bar button{padding:var(--space-10) var(--space-10)!important;font-size:0.6875rem!important;white-space:nowrap;}
+          .tab-bar button{padding:var(--space-10) var(--space-10);font-size:0.6875rem;white-space:nowrap;}
           /* Content padding — top/sides only; bottom stays the nav-clearance
              value set above (a padding-bottom set here as part of the
              shorthand would silently win over it and re-collapse the gap
              above the fixed bottom nav). */
-          .content-area{padding-top:var(--space-12)!important;margin-top:0!important;}
+          .content-area{padding-top:var(--space-12);margin-top:0;}
           /* Kill any residual navy gap between tab-bar and content on mobile */
-          .tab-bar-outer{overflow:hidden!important;}
+          .tab-bar-outer{overflow:hidden;}
           /* KPI grids: 2-column on tablet/mobile */
-          .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:var(--space-8)!important;}
+          .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-8);}
           .kpi-card .kpi-value{font-size:1rem;}
-          .kpi-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:var(--space-8)!important;}
+          .kpi-grid-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-8);}
           /* Dashboard: charts stack, no overflow. minmax(0,…) rather than a
              bare 1fr — 1fr floors at min-content, and at 320px the widest
              card (Income Sources, Budget vs Actual) has a 342px min-content
              width, so the "stacked" column was 22px wider than the viewport
              and .dash-page's overflow:hidden cut the right edge off. */
-          .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:var(--space-10)!important;}
+          /* The one thing layers cannot do: React writes this grid's column count
+             as an inline style, and an inline style outranks every layer. Hence
+             !important on that one declaration, and only it. */
+          .chart-grid{grid-template-columns:minmax(0,1fr)!important;gap:var(--space-10);}
           /* Dashboard wrapper: no overflow */
-          .dash-wrap{overflow:hidden!important;max-width:100%!important;}
+          .dash-wrap{overflow:hidden;max-width:100%;}
           /* Panels were inset cards: a 10px page gutter, then a 1px border,
              then 24px of card padding on each side — 18% of a 390px phone
              spent on chrome before a figure is drawn, and the reason a chart
@@ -2842,13 +2930,13 @@
           main .cf-page>.cf-card,
           main .cf-page>.chart-grid,
           main .cf-page>.budget-list-lens>.cf-card{
-            margin-left:calc(-1 * var(--container-gutter))!important;
-            margin-right:calc(-1 * var(--container-gutter))!important;
-            max-width:none!important;}
+            margin-left:calc(-1 * var(--container-gutter));
+            margin-right:calc(-1 * var(--container-gutter));
+            max-width:none;}
           main .cf-page>.cf-card,
           main .cf-page>.chart-grid>.cf-card,
           main .cf-page>.budget-list-lens>.cf-card{
-            border-radius:0!important;border-left:0!important;border-right:0!important;}
+            border-radius:0;border-left:0;border-right:0;}
           /* The band's padding, except on the cards that wrap a table or a
              list drawing its own edges — those declare padding:0 for
              themselves, and 16px insets rows meant to reach the edge. It cost
@@ -2857,12 +2945,12 @@
           main .cf-page>.cf-card:not(.cf-card--flush):not(.card-flat):not(.bva-card):not(.forecast-setup),
           main .cf-page>.chart-grid>.cf-card:not(.cf-card--flush):not(.card-flat),
           main .cf-page>.budget-list-lens>.cf-card:not(.cf-card--flush):not(.card-flat){
-            padding:var(--space-16)!important;}
+            padding:var(--space-16);}
           /* Forecast's two control blocks give up their card chrome entirely
              on a phone — that was the §2.2 fix that took 751px of chrome down
              to 619px, and putting the band's padding back would undo it. */
-          main .cf-page>.cf-card.forecast-setup{padding:0!important;
-            background:none!important;border:0!important;box-shadow:none!important;}
+          main .cf-page>.cf-card.forecast-setup{padding:0;
+            background:none;border:0;box-shadow:none;}
           /* Named in the :not() above rather than left to out-specify it: a
              :not() chain carries the specificity of everything inside it, so
              the padding rule had quietly grown stronger than this one and put
@@ -2878,8 +2966,8 @@
 
           /* Settings detail pages strip the card entirely — the page already
              names itself — so they opt out rather than becoming bands. */
-          .set-detail>.cf-card{margin-left:0!important;margin-right:0!important;
-            border:0!important;padding:0!important;}
+          .set-detail>.cf-card{margin-left:0;margin-right:0;
+            border:0;padding:0;}
           /* The tile grids — the three at-a-glance figures, the four annual
              KPIs — become one band apiece rather than a raft of little cards
              floating in the gutter between two full-width ones.
@@ -2890,11 +2978,11 @@
              across at 768px, two at 480, and a lone last tile spanning both —
              and the gap does not. */
           main .cf-page .glance-grid,main .cf-page .kpi-grid,main .cf-page .kpi-grid-4{
-            max-width:none!important;gap:1px!important;background:var(--border);
+            max-width:none;gap:1px;background:var(--border);
             border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
           main .cf-page .glance-grid>*,main .cf-page .kpi-grid>*,main .cf-page .kpi-grid-4>*{
-            border:0!important;border-radius:0!important;box-shadow:none!important;
-            padding:var(--space-14) var(--space-16)!important;background:var(--bgCard)!important;}
+            border:0;border-radius:0;box-shadow:none;
+            padding:var(--space-14) var(--space-16);background:var(--bgCard);}
           /* A band reaches the edges of whatever holds it. On the page that is
              the gutter; inside a panel it is the panel's 16px. Flow's month
              summary and Plan's debt tracker keep their tiles in a card, which
@@ -2902,20 +2990,20 @@
              already bands — same KpiCard, same .kpi-grid, two nestings. */
           main .cf-page>.glance-grid,main .cf-page>.kpi-grid,main .cf-page>.kpi-grid-4,
           main .cf-page>.month-summary>.kpi-grid{
-            margin-left:calc(-1 * var(--container-gutter))!important;
-            margin-right:calc(-1 * var(--container-gutter))!important;}
+            margin-left:calc(-1 * var(--container-gutter));
+            margin-right:calc(-1 * var(--container-gutter));}
           main .cf-page>.cf-card .glance-grid,main .cf-page>.cf-card .kpi-grid,
-          main .cf-page>.cf-card .kpi-grid-4{margin-left:calc(var(--space-16) * -1)!important;margin-right:calc(var(--space-16) * -1)!important;}
+          main .cf-page>.cf-card .kpi-grid-4{margin-left:calc(var(--space-16) * -1);margin-right:calc(var(--space-16) * -1);}
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
-          .month-picker{gap:var(--space-4)!important;flex-wrap:nowrap!important;overflow-x:auto!important;
-            -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
-            padding-bottom:var(--space-4)!important;
+          .month-picker{gap:var(--space-4);flex-wrap:nowrap;overflow-x:auto;
+            -webkit-overflow-scrolling:touch;scrollbar-width:none;
+            padding-bottom:var(--space-4);
             /* Bleeds by exactly the page gutter so the strip reaches the screen
                edge. It used to say 6px while the gutter was 10 or 12, so it
                never quite got there — and once the gutter scaled with the text
                and this did not, it overshot instead. One source now. */
-            margin-left:calc(var(--container-gutter) * -1)!important;margin-right:calc(var(--container-gutter) * -1)!important;
-            padding-left:var(--container-gutter)!important;padding-right:var(--container-gutter)!important;}
+            margin-left:calc(var(--container-gutter) * -1);margin-right:calc(var(--container-gutter) * -1);
+            padding-left:var(--container-gutter);padding-right:var(--container-gutter);}
           /* The strip escapes its wrapper by 6px a side (the negative margins
              above), but the fades are positioned against the wrapper — so the
              hint sat 6px inside the edge where a pill actually gets cut, and
@@ -2923,8 +3011,8 @@
              fade covers the cut instead of stopping short of it. */
           .month-picker-fade--left{left:calc(var(--container-gutter) * -1);}
           .month-picker-fade--right{right:calc(var(--container-gutter) * -1);}
-          .month-picker::-webkit-scrollbar{display:none!important;}
-          .glance-grid{gap:var(--space-6)!important;}
+          .month-picker::-webkit-scrollbar{display:none;}
+          .glance-grid{gap:var(--space-6);}
           /* Icon-only sub-tabs were unreadable: a scale for "Budget vs
              Actual" and a mountain for "Payoff Strategy" aren't learnable, and
              `title` never fires on touch — so the label stays and the icon is
@@ -2940,19 +3028,19 @@
              scrolls. Shortening the label instead was the other option, and it
              is the wrong one — a destination called "Budget vs Actual" in one
              place and "vs Actual" in another is two names for one view. */
-          .budget-subtab-pill>svg{display:none!important;}
-          .budget-subtabs-row{gap:var(--space-6)!important;}
-          .budget-subtab-pill{min-height:44px!important;min-width:44px!important;
-            padding:var(--space-4) var(--space-12)!important;display:inline-flex!important;align-items:center!important;
-            justify-content:center!important;gap:0!important;font-size:0.6875rem!important;}
-          .budget-subtabs{margin-left:calc(var(--space-4) * -1)!important;margin-right:calc(var(--space-4) * -1)!important;padding-left:var(--space-4)!important;padding-right:var(--space-4)!important;}
-          .year-openbal{flex-basis:100%!important;order:5;}
-          .year-openbal input{flex:1 1 auto!important;width:auto!important;}
+          .budget-subtab-pill>svg{display:none;}
+          .budget-subtabs-row{gap:var(--space-6);}
+          .budget-subtab-pill{min-height:44px;min-width:44px;
+            padding:var(--space-4) var(--space-12);display:inline-flex;align-items:center;
+            justify-content:center;gap:0;font-size:0.6875rem;}
+          .budget-subtabs{margin-left:calc(var(--space-4) * -1);margin-right:calc(var(--space-4) * -1);padding-left:var(--space-4);padding-right:var(--space-4);}
+          .year-openbal{flex-basis:100%;order:5;}
+          .year-openbal input{flex:1 1 auto;width:auto;}
           /* Month pills: the strip scrolls horizontally, so pills can afford a
              real touch height (the old 4×6px padding made ~17px-tall targets) */
-          .month-picker button{padding:var(--space-10) var(--space-10)!important;font-size:0.6875rem!important;}
-          .month-nav-arrow{display:none!important;}
-          .month-today-pill{display:none!important;}
+          .month-picker button{padding:var(--space-10) var(--space-10);font-size:0.6875rem;}
+          .month-nav-arrow{display:none;}
+          .month-today-pill{display:none;}
           /* Monthly, Forecast and Entries all swap to card renderers at this
              breakpoint (useIsMobile shares the 768px threshold), so the
              table-tuning rules that used to live here — .budget-col-cat,
@@ -2974,7 +3062,7 @@
           .cal-dow-full{display:none;}
           .cal-dow-short{display:inline;}
           /* Monthly amounts: 3 columns on mobile instead of 12 */
-          .monthly-amounts-grid{grid-template-columns:repeat(3,1fr)!important;}
+          .monthly-amounts-grid{grid-template-columns:repeat(3,1fr);}
           /* On a phone the message wraps to several lines and the two buttons
              would be squeezed onto the end of the last one; give them their own
              full-width row instead. */
@@ -2989,12 +3077,14 @@
           /* minmax(0,…), not a bare 1fr: 1fr floors at min-content, so a
              six-figure amount pushed the track — and the card with it — past
              the viewport instead of being allowed to wrap inside it. */
-          .kpi-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:var(--space-6)!important;}
-          .kpi-grid-4{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:var(--space-6)!important;}
+          .kpi-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-6);}
+          .kpi-grid-4{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-6);}
           /* Three glance tiles across a phone leaves ~110px each, which isn't
              enough for a labelled currency value. Two up, with a lone third
              tile spanning the row. !important because the column count is set
              inline from the widget run length in dashboard.js. */
+          /* Same reason as .chart-grid: the column count comes in inline from
+             the widget run length in dashboard.js. */
           .glance-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
           /* Spanning the row left the odd tile reading as a stretched copy
              of the two above it — the same stacked label-over-value in twice
@@ -3006,15 +3096,15 @@
             display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-12);}
           .glance-grid>.glance-tile:last-child:nth-child(odd) .glance-tile-title{margin-bottom:0;}
           .glance-grid>.glance-tile:last-child:nth-child(odd) .glance-value{text-align:right;}
-          .monthly-amounts-grid{grid-template-columns:repeat(2,1fr)!important;}
-          .month-picker button{padding:var(--space-10) var(--space-10)!important;font-size:0.6875rem!important;}
+          .monthly-amounts-grid{grid-template-columns:repeat(2,1fr);}
+          .month-picker button{padding:var(--space-10) var(--space-10);font-size:0.6875rem;}
           /* Hide ‹ › arrows on mobile — month buttons are tappable directly */
-          .month-nav-arrow{display:none!important;}
-          .month-today-pill{display:none!important;}
-          .content-area{padding-top:var(--space-10)!important;margin-top:0!important;}
-          .tab-bar-outer{overflow:hidden!important;}
-          .tab-bar{margin:0!important;padding:0!important;}
-          .tab-bar button{padding:var(--space-10) var(--space-8)!important;font-size:0.625rem!important;}
+          .month-nav-arrow{display:none;}
+          .month-today-pill{display:none;}
+          .content-area{padding-top:var(--space-10);margin-top:0;}
+          .tab-bar-outer{overflow:hidden;}
+          .tab-bar{margin:0;padding:0;}
+          .tab-bar button{padding:var(--space-10) var(--space-8);font-size:0.625rem;}
           /* The Budget Monthly table's phone column widths used to live here,
              under a comment describing a horizontal-swipe grid — but Monthly
              renders as cards below 768px, so none of it ever applied. Removed
@@ -3028,15 +3118,15 @@
              the same as one comfortably under it. It's back, and the row
              wraps instead of being pinned to one line, because chip + actual
              + target + overage genuinely doesn't fit at 320px. */
-          .bva-row{flex-wrap:nowrap!important;align-items:flex-start;}
-          .bva-amounts{flex-wrap:wrap!important;justify-content:flex-end;row-gap:0;}
+          .bva-row{flex-wrap:nowrap;align-items:flex-start;}
+          .bva-amounts{flex-wrap:wrap;justify-content:flex-end;row-gap:0;}
           /* A 140px term column leaves ~190px for a sentence at 393px, which
              turns every definition into a tall two-column sliver. Stack them:
              the term reads as a heading for the paragraph under it. */
           .help-defs{grid-template-columns:1fr;row-gap:var(--space-2);}
           .help-defs dd{margin-bottom:var(--space-10);}
           /* Entries filter row: stack on phone */
-          .entries-filter-row{flex-wrap:wrap!important;gap:var(--space-6)!important;}
+          .entries-filter-row{flex-wrap:wrap;gap:var(--space-6);}
           /* The quicklink index scrolls horizontally with the scrollbar
              explicitly hidden and no edge fade, so at 320px the last pill
              just clips mid-word with nothing to suggest it is reachable.
@@ -3054,7 +3144,7 @@
              jump to, so the same grid spends 208px of a phone screen on a
              table of contents for content you are already scrolling into.
              One scrolling row keeps the jump and costs 44px. */
-          .ai-quicklinks{display:flex!important;flex-wrap:nowrap;overflow-x:auto!important;
+          .ai-quicklinks{display:flex;flex-wrap:nowrap;overflow-x:auto;
             -webkit-overflow-scrolling:touch;}
           .ai-quicklinks .quicklink-pill{width:auto;white-space:nowrap;flex-shrink:0;}
           /* The row-actions kebab belongs on the right edge of its row — that
@@ -3093,66 +3183,31 @@
            and overflows the card; 15px brings it back inside with room to
            spare. Only the value shrinks — labels stay put. */
         @media(max-width:360px){
-          .kpi-card{padding:var(--space-14) var(--space-14)!important;}
-          .kpi-card .kpi-value{font-size:0.9375rem!important;overflow-wrap:anywhere;}
+          .kpi-card{padding:var(--space-14) var(--space-14);}
+          .kpi-card .kpi-value{font-size:0.9375rem;overflow-wrap:anywhere;}
           /* Same step-down for the annual tiles' value, which shares the
              two-up grid and therefore the same ~109px of content width. */
-          .kpi-spark-value{font-size:0.9375rem!important;}
+          .kpi-spark-value{font-size:0.9375rem;}
           /* Same step-down the KPI tiles get, for the same reason — the
              glance tiles were the one card type that never received it. */
-          .glance-value{font-size:0.875rem!important;}
-          .glance-value-sub{display:block;margin-left:0!important;}
+          .glance-value{font-size:0.875rem;}
+          .glance-value-sub{display:block;margin-left:0;}
           /* "Surplus/Shortfall" is a single unbreakable token, so the label
              overruns the card here too — the tracking is what costs it the
              last few pixels. */
-          .kpi-card .kpi-label{font-size:0.625rem!important;letter-spacing:0.04em!important;}
+          .kpi-card .kpi-label{font-size:0.625rem;letter-spacing:0.04em;}
           /* The full chip crowds the avatar off the header at this width, so
              drop the qualifier — "Offline" alone still carries it, and the
              chip's title attribute keeps the full sentence. */
-          .offline-chip{padding:var(--space-4) var(--space-8)!important;font-size:0.625rem!important;}
-          .offline-chip-more{display:none!important;}
+          .offline-chip{padding:var(--space-4) var(--space-8);font-size:0.625rem;}
+          .offline-chip-more{display:none;}
           /* Four equal-width sub-tabs leave ~70px each here, and icon + gap +
              padding eats 36 of it — "Monthly" was ellipsised to "Month…".
              The label is the part that carries the meaning (icons alone are
              what this replaced), so the icon steps aside, not the word. */
           .budget-subtab-pill svg{display:none;}
-          .budget-subtab-pill{padding:0 var(--space-6)!important;gap:0!important;}
+          .budget-subtab-pill{padding:0 var(--space-6);gap:0;}
         }
-
-
-        /* ── Bottom-sheet modals on mobile ─────────────────────────────── */
-        @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .modal-card{background:var(--bgCard);border-radius:var(--radius-16);box-shadow:var(--shadowXl);animation:slideUp var(--dur-slow) var(--ease-out);}
-        @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.9}}
-
-        /* Wide screens get more gutter, not a wider measure — widening only
-           .content-area used to leave its .cf-page children centred at a
-           narrower width inside it. */
-        /* Wide screens get more gutter via --container-gutter, not a wider
-           measure — widening only .content-area used to leave its .cf-page
-           children centred at a narrower width inside it. */
-
-        /* ── Entries table: card view on mobile ─────────────────────────── */
-        /* Entries: table on desktop, cards on mobile */
-        .entries-cards{display:none;}
-        /* Budget sub-tab labels: full text on desktop; icon-only, uniform size on mobile */
-        /* ── Unified scroll utility — every grid scrolls like Entries ──
-           hidden scrollbar (all engines) + vertical scrollport + horizontal overflow;
-           direct-child thead cells stick to the top while scrolling. */
-        .hscroll{display:block;max-height:72vh;overflow-y:auto;overflow-x:auto;
-          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}
-        .hscroll::-webkit-scrollbar{display:none;}
-        .hscroll>table>thead>tr>th{position:sticky;top:0;z-index:5;background:var(--navy);}
-        /* Stripe-headed tables (e.g. income sources) keep their stripe when sticky */
-        .hscroll>table>thead>tr[data-stripe="1"]>th{background:var(--stripe);}
-        /* Paginated grids (Monthly, Forecast): row count per page is bounded,
-           so no internal vertical scrollport is needed — only horizontal
-           overflow for narrow viewports. */
-        .hscroll--paged{max-height:none;overflow-y:visible;}
-        /* Entries wrap: horizontal overflow only — paginated, so no vertical scrollport */
-        .entries-table-wrap{display:block;overflow-x:auto;}
-        .entries-table thead .entries-th{position:sticky;top:0;z-index:5;}
         /* ── Sticky column headers ────────────────────────────────────────
            These wrappers declared `position:sticky; top:0` on their thead and
            none of it worked: `overflow-x:auto` forces the other axis's
@@ -3269,48 +3324,68 @@
           .settings-page .key-disclaimer-row,
           .ai-subtitle{max-width:68ch;}
         }
-        /* ── Settings: one card per row ─────────────────────────────────────
-           The short cards used to pair up above 1100px to cut the scroll. With
-           the sections in alphabetical order that pairing works against the
-           order itself: two cards side by side have no reading sequence, so
-           "the one after Appearance" stops being a place on the page, and the
-           quicklink strip above — which is the alphabetical index — no longer
-           describes what you scroll past. One per row, and the strip is how
-           you skip the scroll. */
-        .entries-table{width:100%;border-collapse:collapse;min-width:540px;}
-        /* Entries desc: fill available space, truncate */
-        .entries-desc-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8125rem;padding:var(--space-10) var(--space-12);width:40%;min-width:120px;}
-        /* Budget totals row sticky */
-        .budget-totals-row{box-shadow:0 -2px 8px rgba(0,0,0,0.12);background:var(--navy);position:sticky;bottom:0;}
-        /* ── Grid pagination (Monthly, Forecast, Entries) ─────────────────── */
-        .grid-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
-          gap:var(--space-10);padding:var(--space-12) var(--space-16);border-top:1px solid var(--border);}
-        /* Mobile has no Prev/Next (infinite scroll instead). The extra bottom
-           padding this used to carry for nav clearance is now handled once, by
-           .app-scroll, so every element gets it rather than just this one. */
-        .grid-pagination-info{font-size:0.75rem;color:var(--textLt);}
-        .grid-pagination-controls{display:flex;align-items:center;gap:var(--space-10);}
-        .grid-pagination-size{display:flex;align-items:center;gap:var(--space-6);font-size:0.75rem;color:var(--textMid);}
-        .grid-pagination-size select{font-size:0.75rem;padding:var(--space-4) var(--space-8);border:1px solid var(--border);
-          border-radius:var(--radius-6);background:var(--inputBg);color:var(--text);}
-        .grid-pagination-page{font-size:0.75rem;color:var(--textMid);white-space:nowrap;}
-        .grid-pagination-nav{font-size:0.875rem;padding:var(--space-2) var(--space-10);border-radius:var(--radius-6);border:1px solid var(--border);
-          cursor:pointer;background:transparent;color:var(--textMid);line-height:1.2;flex-shrink:0;}
-        .grid-pagination-nav:disabled{cursor:default;color:var(--border);}
-
-        /* AI report: two-column card grid on wide screens */
-        /* minmax(0,…), not a bare 1fr — the fourth time this exact bug has
-           landed here. `1fr` is `minmax(auto,1fr)`, so a track floors at its
-           min-content width, and a report section holds long unbreakable
-           tokens (a currency string, a **bolded** phrase). At 390px the single
-           column measured 446px and the whole page scrolled sideways. */
-        .ai-report-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-16);margin-bottom:var(--space-16);}
-        .ai-report-grid>.ai-section-card{min-width:0;}
-        .ai-item-text,.ai-numbered-row,.ai-bullet-row{min-width:0;overflow-wrap:anywhere;}
         @media(min-width:1000px){.ai-report-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+        }
 
-        /* Keyboard shortcut hint in search placeholder */
-        #global-search::placeholder{color:var(--textLt);}
+        @layer late {
+        .mb-16{margin-bottom:var(--space-16);}
+        /* Wraps rather than overruns: "Total  $36,040.00 / $34,240.00  $1,800.00
+           over" is three unbreakable tokens on one line, and at 320px they
+           needed ~17px more than the card had — the card's overflow:hidden ate
+           the "over" note, which is the one part that isn't repeated anywhere
+           else on the row. */
+        .bva-totals-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-2) var(--space-10);margin-top:var(--space-6);padding-top:var(--space-10);border-top:2px solid var(--border);}
+        /* Header variant: the page-surface tokens the badge normally uses are
+           invisible on navy, so it borrows the same translucent-white
+           treatment as the search pill and the avatar. */
+        .mobile-year-badge--header{background:var(--on-dark-08);
+          border-color:var(--on-dark-16);color:var(--on-dark-85);
+          margin-bottom:0;flex-shrink:0;border-radius:var(--radius-24);padding:var(--space-6) var(--space-14);}
+        .mobile-year-badge--header .mobile-year-badge-caret{color:var(--on-dark-60);}
+        }
+
+        @layer utilities {
+        /* Layout helpers */
+        .cf-hidden{display:none;}
+        }
+
+        @layer print {
+        /* ── Print stylesheet (PDF export via window.print()) ───────────
+           Goal: only the report content prints — no header, nav, footer,
+           or transient banners — and it always prints in the light
+           theme's colors, even mid-session in dark mode, since the theme
+           colors are set as inline custom properties on <html> (highest
+           specificity short of !important) rather than toggled by a class. */
+        @media print{
+          :root,:root[data-theme="dark"]{
+            color-scheme:light;
+            --navy:#1C2B3A;--navyMid:#243447;--navyLt:#2D4057;
+            --bg:#F7F4EF;--bgCard:#FFFFFF;
+            --green:#2ECC8A;--greenDk:#27AE73;--greenLt:#EAFBF3;
+            --red:#E85D4A;--redLt:#FFF0EE;
+            --amber:#F5A623;--amberLt:#FFF8EC;
+            --text:#1C2B3A;--textMid:#5A6A7A;--textLt:#66798C;
+            --border:#E8E4DD;--stripe:#F7F4EF;
+            --headerBg:#1C2B3A;--headerText:#ffffff;
+            --inputBg:#F7F4EF;--doneBg:#EAFBF3;
+            --shadowSm:none;--shadowMd:none;--shadowLg:none;--shadowXl:none;
+            --accent:#2F6FED;--accentLt:#EAF1FE;
+            --chipKeep:100%;--primary:#1C2B3A;--coral:#FF8A7A;
+          }
+          html,body{height:auto;overflow:visible;background:#fff;color-scheme:light;}
+          .app-scroll{height:auto;overflow:visible;}
+          /* App chrome: header, both nav variants, footer, and anything
+             else marked data-noprint (banners, toasts, the Customize row…). */
+          [data-noprint],.tab-bar,.cf-bottomnav,.month-picker,.month-picker-fade,
+          .budget-subtabs,.modal-overlay{
+            display:none;
+          }
+          .content-area{padding:0;}
+          .cf-page{max-width:none;}
+          .cf-card{box-shadow:none;border:1px solid #E8E4DD;}
+          .cf-card,tr,.debt-item,.goal-row-cursor{break-inside:avoid;}
+        }
+        }
 </style>
 </head>
 <body>
