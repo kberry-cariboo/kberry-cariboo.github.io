@@ -68,7 +68,35 @@
            for: it evens a two-line title instead of leaving one word stranded
            underneath. It is deliberately not used on prose — it is capped at
            a handful of lines and does nothing useful on a paragraph. */
-                /* ── Spacing, radius and motion ────────────────────────────────────
+                /* ── Breakpoints ───────────────────────────────────────────────────
+           There were ten. Some are real — a phone, the tablet boundary, a wide
+           desktop — and some were whatever the width happened to be on the day
+           a component stopped fitting. Nothing explained why the net-worth
+           parts went single-column at 640 while the scenario rows wrapped at
+           560: the same instruction at two arbitrary widths. A reader dragging
+           a window down through 600px crossed three different "narrow"
+           thresholds, and a contributor adding a rule had no way to choose.
+
+           The ladder is now seven steps, each with a reason, and it is written
+           down in tests/breakpoints.mjs — which fails the build on any width
+           that is not a step on it. It has to live there rather than here
+           because a media condition cannot read a custom property: there is no
+           var() in @media, so the names cannot be in the CSS at all. This is
+           the next best thing, and it makes drift impossible rather than
+           merely discouraged.
+
+             xs   max 360   the narrowest screen still sold
+             sm   max 480   an ordinary phone held upright
+             md   max 640   where a two-column row stops fitting side by side
+             lg   max 768 / min 769   the phone/desktop boundary useIsMobile() reads
+             xl   min 1000  enough width for a table to stop being a list
+             2xl  min 1200  two panels side by side
+             3xl  min 1400  a wider gutter rather than a wider measure
+
+           Height and capability queries — max-height for a phone on its side,
+           pointer, hover, prefers-reduced-motion — are deliberately not on this
+           ladder. They are about the device, not the layout. */
+        /* ── Spacing, radius and motion ────────────────────────────────────
            The palette has been tokenised since the theme work; everything else
            was literals. 400-odd of them, and not a scale: padding appeared at
            4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24 and 28
@@ -343,7 +371,7 @@
           border:1px solid transparent;background:transparent;color:var(--red);}
         .holiday-remove-btn:hover{background:var(--redLt);}
         .holiday-form{border:1px solid var(--border);border-radius:var(--radius-10);padding:var(--space-14);background:var(--stripe);}
-        @media(max-width:560px){
+        @media(max-width:640px){
           /* The chips and buttons wrap under the name rather than squeezing the
              date column to nothing on a phone. */
           .holiday-date{flex-basis:100%;}
@@ -1318,7 +1346,7 @@
         .cat-row:has(.settings-input){flex-wrap:wrap;row-gap:var(--space-8);padding:var(--space-10) 0;}
         .cat-row:has(.settings-input) .settings-input{flex:1 1 140px;min-width:0;}
         .cat-row:has(.settings-input) .cf-btn{flex:0 0 auto;}
-        @media(max-width:560px){
+        @media(max-width:640px){
           .cat-row:has(.settings-input) .settings-input{flex-basis:100%;}
           .cat-row:has(.settings-input) .color-swatch{order:-1;}
         }
@@ -1568,7 +1596,7 @@
         .scenario-summary{margin-top:var(--space-14);padding:var(--space-12) var(--space-14);border-radius:var(--radius-10);
           background:var(--stripe);border:1px solid var(--border);font-size:0.8125rem;line-height:1.5;}
         .dollar-sm{font-size:0.75rem;color:var(--textMid);}
-        @media(max-width:560px){
+        @media(max-width:640px){
           /* At phone width the description, chip, amount and button do not fit
              on one line; let the controls wrap under the name rather than
              crushing the amount field to nothing. */
@@ -2068,7 +2096,7 @@
         .yoy-detail-card .yoy-table td.yoy-td-desc{max-width:none;padding-left:var(--space-28);overflow:visible;}
         .yoy-detail-card .yoyd-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
         .yoy-detail-card .yoy-num{overflow:visible;white-space:nowrap;}
-        @media(max-width:560px){
+        @media(max-width:640px){
           .yoy-detail-card{padding:var(--space-20) var(--space-16);}
           .yoy-detail-card .yoy-table th,.yoy-detail-card .yoy-table td{padding:var(--space-8) 0;}
           .yoy-detail-card .yoy-table td.yoy-td-desc{padding-left:var(--space-18);}
@@ -3276,10 +3304,10 @@
            min-content width, and a report section holds long unbreakable
            tokens (a currency string, a **bolded** phrase). At 390px the single
            column measured 446px and the whole page scrolled sideways. */
-        .ai-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-16);margin-bottom:var(--space-16);}
+        .ai-report-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-16);margin-bottom:var(--space-16);}
         .ai-report-grid>.ai-section-card{min-width:0;}
         .ai-item-text,.ai-numbered-row,.ai-bullet-row{min-width:0;overflow-wrap:anywhere;}
-        @media(max-width:900px){.ai-report-grid{grid-template-columns:minmax(0,1fr);}}
+        @media(min-width:1000px){.ai-report-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 
         /* Keyboard shortcut hint in search placeholder */
         #global-search::placeholder{color:var(--textLt);}

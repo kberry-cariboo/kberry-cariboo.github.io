@@ -92,6 +92,7 @@ node tests/sinking.mjs        # repeating goals rolling over, browser-free
 node tests/networth.mjs       # net worth arithmetic, browser-free
 node tests/cat-detail.mjs     # the category drill-down's grouping, browser-free
 node tests/theme-tokens.mjs   # CSS palette vs its JS mirror, browser-free
+node tests/breakpoints.mjs    # one ladder of media widths, browser-free
 node tests/regression.mjs     # the browser suite
 node tests/layout-sweep.mjs   # every route at every width
 ```

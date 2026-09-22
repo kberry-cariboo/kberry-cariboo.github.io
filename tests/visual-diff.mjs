@@ -15,6 +15,15 @@
 //   node tests/visual-diff.mjs capture /tmp/after
 //   node tests/visual-diff.mjs compare /tmp/before /tmp/after
 //
+// There is a second, sharper mode for changes to the cascade itself —
+// reordering rules, introducing @layer, retiring !important — where the
+// question is not "does it look the same" but "does every element still
+// resolve to the same value". Pixels answer that only where the difference
+// happens to be visible; computed styles answer it everywhere.
+//
+//   node tests/visual-diff.mjs styles /tmp/before-styles
+//   node tests/visual-diff.mjs compare-styles /tmp/before-styles /tmp/after-styles
+//
 // compare prints one line per screen that moved, worst first, and writes a diff
 // image for each — changed pixels in magenta over a dimmed copy of the new
 // screen, so the eye lands on them immediately.
@@ -122,7 +131,7 @@ async function capture(outDir, { only = null, passOnly = null } = {}) {
   let browser;
   try { browser = await chromium.launch({ executablePath: exe }); } catch { browser = await chromium.launch(); }
 
-  const routes = only ? ROUTES.filter((r) => only.some((o) => r.includes(o))) : ROUTES;
+  const routes = only ? ROUTES.filter((r) => only.some((o) => r.includes(o) || slug(r).includes(o))) : ROUTES;
   const passes = passOnly ? PASSES.filter((p) => passOnly.includes(p.name)) : PASSES;
   if (!routes.length) throw new Error('--only matched no routes');
   if (!passes.length) throw new Error('--pass matched no passes');
@@ -279,6 +288,128 @@ async function compare(dirA, dirB, { tol = 12, maxChanged = null, diffDir = null
   return rows;
 }
 
+
+// ── Computed styles ──────────────────────────────────────────────────────────
+// The properties a stylesheet refactor can plausibly move. Not every property:
+// a full dump is 340-odd per element and the diff drowns in things no rule in
+// this file sets.
+const WATCHED = [
+  'display', 'position', 'width', 'height', 'minWidth', 'minHeight', 'maxWidth',
+  'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+  'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+  'rowGap', 'columnGap', 'flexDirection', 'flexWrap', 'flexBasis', 'alignItems',
+  'justifyContent', 'gridTemplateColumns', 'gridTemplateRows',
+  'fontSize', 'fontWeight', 'lineHeight', 'fontFamily', 'letterSpacing',
+  'textAlign', 'whiteSpace', 'textOverflow', 'overflowX', 'overflowY',
+  'color', 'backgroundColor', 'borderTopWidth', 'borderBottomWidth',
+  'borderLeftWidth', 'borderRightWidth', 'borderTopColor', 'borderTopLeftRadius',
+  'borderBottomLeftRadius', 'boxShadow', 'opacity', 'visibility', 'zIndex',
+  'transform', 'top', 'right', 'bottom', 'left',
+];
+
+// A stable identity for an element across two runs of the same page. The DOM
+// order is deterministic for a fixed fixture and a fixed clock, so the path of
+// child indices is stable and does not depend on class names — which a
+// refactor may legitimately change.
+const DUMP = (watched) => {
+  const path = (el) => {
+    const parts = [];
+    for (let n = el; n && n.parentElement; n = n.parentElement) {
+      parts.push([...n.parentElement.children].indexOf(n));
+    }
+    return parts.reverse().join('/');
+  };
+  const out = {};
+  document.querySelectorAll('body *').forEach((el) => {
+    const cs = getComputedStyle(el);
+    const tag = el.tagName.toLowerCase();
+    const cls = (typeof el.className === 'string' ? el.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
+    out[path(el) + '|' + tag + (cls ? '.' + cls : '')] = watched.map((p) => cs[p]).join('\u0001');
+  });
+  return out;
+};
+
+async function captureStyles(outDir, { only = null, passOnly = null } = {}) {
+  const { writeFileSync, mkdirSync: mk } = await import('fs');
+  if (existsSync(outDir)) rmSync(outDir, { recursive: true, force: true });
+  mk(outDir, { recursive: true });
+  const { chromium } = await loadPlaywright();
+  const { mkStub } = await import(pathToFileURL(join(ROOT, 'tests/household-fixture.mjs')).href);
+  const server = await serve();
+  const exe = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium';
+  let browser;
+  try { browser = await chromium.launch({ executablePath: exe }); } catch { browser = await chromium.launch(); }
+
+  const routes = only ? ROUTES.filter((r) => only.some((o) => r.includes(o) || slug(r).includes(o))) : ROUTES;
+  const passes = passOnly ? PASSES.filter((p) => passOnly.includes(p.name)) : PASSES;
+  let n = 0;
+  for (const pass of passes) {
+    const ctx = await browser.newContext({
+      viewport: { width: pass.width, height: pass.height },
+      hasTouch: !!pass.touch, isMobile: !!pass.touch,
+      colorScheme: pass.dark ? 'dark' : 'light',
+      deviceScaleFactor: 1, reducedMotion: 'reduce',
+    });
+    await ctx.addInitScript(mkStub(!!pass.dark, true));
+    await ctx.addInitScript(`try{localStorage.setItem('cf_darkMode', ${JSON.stringify(JSON.stringify(!!pass.dark))})}catch(e){}`);
+    const page = await ctx.newPage();
+    await page.clock.setFixedTime(new Date('2026-09-22T12:00:00'));
+    for (const route of routes) {
+      await page.goto(`http://127.0.0.1:${PORT}/index.html#/${route}`, { waitUntil: 'load' });
+      await page.waitForTimeout(900);
+      const nudge = page.getByRole('button', { name: 'Remind me later' });
+      if (await nudge.count()) await nudge.click().catch(() => {});
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.mouse.move(0, 0).catch(() => {});
+      await page.evaluate(() => { try { document.activeElement && document.activeElement.blur(); } catch {} });
+      await page.waitForTimeout(250);
+      const dump = await page.evaluate(DUMP, WATCHED);
+      writeFileSync(join(outDir, `${pass.name}__${slug(route)}.json`), JSON.stringify(dump));
+      n++;
+    }
+    await ctx.close();
+  }
+  await browser.close();
+  server.close();
+  console.log(`visual-diff: dumped computed styles for ${n} screens into ${outDir}`);
+}
+
+async function compareStyles(dirA, dirB) {
+  const names = readdirSync(dirB).filter((f) => f.endsWith('.json')).sort();
+  const byProp = new Map();
+  let elements = 0, changed = 0, screensChanged = 0;
+  const perScreen = [];
+  for (const name of names) {
+    if (!existsSync(join(dirA, name))) continue;
+    const a = JSON.parse(readFileSync(join(dirA, name), 'utf8'));
+    const b = JSON.parse(readFileSync(join(dirB, name), 'utf8'));
+    let hits = 0;
+    for (const k of Object.keys(b)) {
+      if (!(k in a)) continue;
+      elements++;
+      if (a[k] === b[k]) continue;
+      const pa = a[k].split('\u0001'), pb = b[k].split('\u0001');
+      for (let i = 0; i < WATCHED.length; i++) {
+        if (pa[i] === pb[i]) continue;
+        hits++; changed++;
+        const key = `${WATCHED[i]}: ${pa[i]} -> ${pb[i]}`;
+        if (!byProp.has(key)) byProp.set(key, { n: 0, where: `${name} ${k.split('|')[1]}` });
+        byProp.get(key).n++;
+      }
+    }
+    if (hits) { screensChanged++; perScreen.push({ name, hits }); }
+  }
+  perScreen.sort((x, y) => y.hits - x.hits);
+  console.log(`visual-diff: ${elements} element/screen pairs compared, ${changed} property differences on ${screensChanged} screens\n`);
+  const rows = [...byProp.entries()].sort((x, y) => y[1].n - x[1].n);
+  for (const [k, v] of rows.slice(0, 40)) {
+    console.log(`${String(v.n).padStart(6)}  ${k}`);
+    console.log(`        e.g. ${v.where}`);
+  }
+  if (rows.length > 40) console.log(`\n... and ${rows.length - 40} more kinds of difference`);
+  return { changed, rows };
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 const flag = (n, d) => {
   const i = rest.indexOf('--' + n);
@@ -292,6 +423,15 @@ if (cmd === 'capture') {
     only: flag('only', null) ? String(flag('only')).split(',').map((x) => x.trim()).filter(Boolean) : null,
     passOnly: flag('pass', null) ? String(flag('pass')).split(',').map((x) => x.trim()).filter(Boolean) : null,
   });
+} else if (cmd === 'styles') {
+  if (!positional[0]) { console.error('usage: visual-diff.mjs styles <dir>'); process.exit(2); }
+  await captureStyles(positional[0], {
+    only: flag('only', null) ? String(flag('only')).split(',').map((x) => x.trim()).filter(Boolean) : null,
+    passOnly: flag('pass', null) ? String(flag('pass')).split(',').map((x) => x.trim()).filter(Boolean) : null,
+  });
+} else if (cmd === 'compare-styles') {
+  if (!positional[1]) { console.error('usage: visual-diff.mjs compare-styles <before> <after>'); process.exit(2); }
+  await compareStyles(positional[0], positional[1]);
 } else if (cmd === 'compare') {
   if (!positional[1]) { console.error('usage: visual-diff.mjs compare <before> <after> [--tol N] [--max-changed PCT]'); process.exit(2); }
   await compare(positional[0], positional[1], {
@@ -300,6 +440,6 @@ if (cmd === 'capture') {
     diffDir: flag('diff-dir', null),
   });
 } else {
-  console.error('usage:\n  visual-diff.mjs capture <dir> [--only today,envelopes] [--pass phone,desktop]\n  visual-diff.mjs compare <before> <after> [--tol N] [--max-changed PCT]');
+  console.error('usage:\n  visual-diff.mjs capture <dir> [--only today,envelopes] [--pass phone,desktop]\n  visual-diff.mjs compare <before> <after> [--tol N] [--max-changed PCT]\n  visual-diff.mjs styles <dir> [--only ...] [--pass ...]\n  visual-diff.mjs compare-styles <before> <after>');
   process.exit(2);
 }
