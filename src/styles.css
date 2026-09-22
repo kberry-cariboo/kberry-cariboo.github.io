@@ -202,9 +202,15 @@
           --primary:#377E70;
           --primaryInk:#78B7A6;
         }
-        @media(min-width:1400px){:root{--container-gutter:40px;}}
-        @media(max-width:768px){:root{--container-gutter:12px;}}
-        @media(max-width:480px){:root{--container-gutter:10px;}}
+        /* The page gutter is spacing, and was the last of it still in raw px.
+           That mattered the moment the rest became rem: at 200% text the
+           gutter stayed put while everything measured against it doubled, and
+           the month strip — which bleeds outwards to meet the screen edge —
+           overshot by 2px and put a sideways scrollbar on Flow and Envelopes.
+           rem here too, so the two cannot drift apart again. */
+        @media(min-width:1400px){:root{--container-gutter:2.5rem;}}
+        @media(max-width:768px){:root{--container-gutter:var(--space-12);}}
+        @media(max-width:480px){:root{--container-gutter:var(--space-10);}}
         /* ── Shared form primitives (replaces 4 near-duplicate inline lbl/inp objects) ── */
         .field-label{font-family:var(--font-ui);font-size:0.75rem;font-weight:600;color:var(--textMid);
           display:block;margin-bottom:var(--space-6);}
@@ -2794,15 +2800,20 @@
           /* Month picker: tighter, arrows hidden (month pills are tappable) */
           .month-picker{gap:var(--space-4)!important;flex-wrap:nowrap!important;overflow-x:auto!important;
             -webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
-            padding-bottom:var(--space-4)!important;margin-left:calc(var(--space-6) * -1)!important;margin-right:calc(var(--space-6) * -1)!important;
-            padding-left:var(--space-6)!important;padding-right:var(--space-6)!important;}
+            padding-bottom:var(--space-4)!important;
+            /* Bleeds by exactly the page gutter so the strip reaches the screen
+               edge. It used to say 6px while the gutter was 10 or 12, so it
+               never quite got there — and once the gutter scaled with the text
+               and this did not, it overshot instead. One source now. */
+            margin-left:calc(var(--container-gutter) * -1)!important;margin-right:calc(var(--container-gutter) * -1)!important;
+            padding-left:var(--container-gutter)!important;padding-right:var(--container-gutter)!important;}
           /* The strip escapes its wrapper by 6px a side (the negative margins
              above), but the fades are positioned against the wrapper — so the
              hint sat 6px inside the edge where a pill actually gets cut, and
              the leftmost month clipped against nothing. Same inset, so the
              fade covers the cut instead of stopping short of it. */
-          .month-picker-fade--left{left:-6px;}
-          .month-picker-fade--right{right:-6px;}
+          .month-picker-fade--left{left:calc(var(--container-gutter) * -1);}
+          .month-picker-fade--right{right:calc(var(--container-gutter) * -1);}
           .month-picker::-webkit-scrollbar{display:none!important;}
           .glance-grid{gap:var(--space-6)!important;}
           /* Icon-only sub-tabs were unreadable: a scale for "Budget vs
