@@ -475,7 +475,12 @@ window.Recharts = (function() {
 
     const slices = pieDescs.flatMap(desc => {
       const { data=[], dataKey, nameKey='name',
-              cx='50%', cy='50%', outerRadius=80, label: lbl } = desc.props;
+              cx='50%', cy='50%', outerRadius=80, label: lbl,
+              // A slice can be a control. Recharts' own Pie takes these; this
+              // shim ignored them silently, which is a worse failure than not
+              // supporting them — the handler was passed, nothing was wired
+              // up, and the only symptom was a chart that did not respond.
+              onClick: onSlice, className: sliceClass, sliceLabel } = desc.props;
       const cells = Children.toArray(desc.props.children).filter(c=>c.type===Cell);
       const total = data.reduce((s,d) => s + Math.max(Number(d[dataKey])||0, 0), 0);
       if (total === 0) return [];
@@ -500,7 +505,7 @@ window.Recharts = (function() {
         const labelText = typeof lbl === 'function'
           ? lbl({ name:d[nameKey], percent:v/total, value:v })
           : (lbl !== false && sweep > 0.25 ? d[nameKey] + ' ' + pct + '%' : '');
-        return { path, fill, name:d[nameKey], value:v, lx, ly, labelText };
+        return { path, fill, name:d[nameKey], value:v, lx, ly, labelText, onSlice, sliceClass, sliceLabel };
       });
     });
 
@@ -529,6 +534,24 @@ window.Recharts = (function() {
         ariaLabel && h('title', null, ariaLabel),
         slices.map((s, i) => h(React.Fragment, { key:i },
           h('path', { d:s.path, fill:s.fill, stroke:pieSurface, strokeWidth:1.5,
+            className: s.sliceClass,
+            // Operable by keyboard as well as by pointer, or the chart is a
+            // control only some people have. A path is not focusable and has
+            // no accessible name of its own, so both are supplied here; none
+            // of it appears on a pie that was given no handler.
+            ...(s.onSlice ? {
+              role: 'button',
+              tabIndex: 0,
+              'aria-label': typeof s.sliceLabel === 'function' ? s.sliceLabel(s) : s.name,
+              style: { cursor: 'pointer' },
+              onClick: e => s.onSlice({ name:s.name, value:s.value }, e),
+              onKeyDown: e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  s.onSlice({ name:s.name, value:s.value }, e);
+                }
+              }
+            } : {}),
             onMouseMove: e => {
               const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
               setTip({ x:e.clientX-r.left, y:e.clientY-r.top, name:s.name, value:s.value });

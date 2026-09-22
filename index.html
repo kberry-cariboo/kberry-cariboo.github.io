@@ -1785,6 +1785,19 @@
         .dash-cat-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
         .dash-cat-amt-td{font-weight:600;padding:6px 8px;text-align:right;color:var(--textMid);}
         .dash-cat-pct-td{padding:6px 8px;text-align:right;color:var(--textLt);}
+        /* The bar rows became buttons, so they have to keep looking like
+           rows and start behaving like controls. A button brings its own
+           font, colour, padding, border and centred text; all of it is reset
+           back to the div they were, and only the affordances are added. */
+        .dash-cat-open{display:block;width:100%;text-align:left;background:none;
+          border:none;font:inherit;color:inherit;padding:2px 4px;margin:-2px -4px;
+          border-radius:6px;cursor:pointer;}
+        .dash-cat-open:hover{background:var(--stripe);}
+        .dash-cat-open:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .dash-cat-tr--open{cursor:pointer;}
+        .dash-cat-slice:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+        .dash-cat-tr--open:hover{background:var(--stripe);}
+        .dash-cat-tr--open:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
         .bva-subtitle{font-size:0.6875rem;color:var(--textLt);margin-top:-6px;margin-bottom:10px;}
         .text-10{font-size:0.625rem;}
         .bva-empty-state{padding:32px 16px;text-align:center;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
@@ -1820,6 +1833,56 @@
         .yoy-drill-btn:hover .yoy-drill-caret{opacity:1;}
         .yoy-drill-hint{font-size:0.6875rem;color:var(--textLt);padding:10px 2px 0;}
         .yoy-detail-card{padding:24px;width:min(600px,calc(100vw - 32px));max-height:88vh;overflow-y:auto;}
+        /* What a category's total is made of. Same frame as the
+           year-over-year sheet — a reading surface with a total at the top
+           and a sticky way out at the bottom — because it is opened the same
+           way and for the same kind of question. */
+        .catd-card{padding:24px;width:min(560px,calc(100vw - 32px));max-height:88vh;overflow-y:auto;}
+        .catd-summary{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+          padding:12px 14px;margin-bottom:14px;background:var(--stripe);
+          border:1px solid var(--border);border-radius:10px;}
+        .catd-summary-amt{font-size:1.25rem;font-weight:700;color:var(--text);}
+        .catd-summary-sub{font-size:0.75rem;color:var(--textMid);}
+        .catd-none{font-size:0.75rem;color:var(--textMid);background:var(--stripe);
+          border:1px dashed var(--border);border-radius:10px;padding:14px;line-height:1.5;}
+        .catd-rows{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+        .catd-row{border-bottom:1px solid var(--border);}
+        .catd-row:last-child{border-bottom:none;}
+        /* A grid rather than flex: the amounts have to line up down the
+           column whatever the descriptions do, and the description is the
+           only thing allowed to be cut short. The caret sits in a fixed
+           gutter so a one-off line and a recurring one share a left edge. */
+        .catd-row-head{display:grid;grid-template-columns:14px minmax(0,1fr) auto auto;
+          align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;
+          border:none;font:inherit;color:inherit;text-align:left;cursor:pointer;}
+        .catd-row-head:hover{background:var(--stripe);}
+        .catd-row-head:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .catd-caret{font-size:0.75rem;line-height:1;color:var(--textLt);}
+        .catd-desc{font-size:0.8125rem;font-weight:600;color:var(--text);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .catd-count{font-size:0.6875rem;color:var(--textLt);white-space:nowrap;}
+        .catd-amt{font-weight:600;color:var(--textMid);white-space:nowrap;}
+        .catd-occs{background:var(--stripe);border-top:1px solid var(--border);}
+        .catd-occ{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+          align-items:center;gap:8px;padding:6px 14px 6px 36px;font-size:0.75rem;}
+        .catd-occ+.catd-occ{border-top:1px solid var(--border);}
+        .catd-occ-date{color:var(--textMid);}
+        .catd-occ-tag{font-size:0.5625rem;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;color:var(--textLt);border:1px solid var(--border);
+          border-radius:999px;padding:1px 6px;background:var(--bgCard);}
+        .catd-occ-amt{color:var(--text);white-space:nowrap;}
+        .catd-done-row{display:flex;justify-content:flex-end;margin-top:18px;}
+        /* Same reasoning as .yoyd-done-row: a category with forty lines in it
+           outruns the sheet, and the way out must not be at the far end of
+           that scroll. It reserves its own height rather than hanging on a
+           negative margin, so no row ever ends up underneath it. */
+        @media (max-width:640px){
+          .catd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
+            border-top:1px solid var(--border);
+            margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+          .modal-card.catd-card{padding-bottom:0!important;}
+          .catd-card{padding:16px;}
+        }
         .yoyd-intro{font-size:0.75rem;color:var(--textMid);line-height:1.5;margin-bottom:14px;}
         .yoyd-bridge{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
         .yoyd-bridge-row{display:flex;align-items:baseline;justify-content:space-between;
@@ -1966,6 +2029,12 @@
              the hit area without growing the number. */
           .yoy-drill-btn::after{content:'';position:absolute;inset:-12px;}
           .yoyd-expand::after{content:'';position:absolute;inset:-17px;}
+          /* A label and a bar come to 25px, which is under the floor now that
+             the row is a control. Real padding rather than a halo: these rows
+             are stacked 8px apart, so haloes big enough to matter would
+             overlap and the wrong category would open. The widget's height is
+             fixed and scrolls, so this costs visible bars, not layout. */
+          .dash-cat-open{padding:10px 4px;margin:0 -4px;}
         }
         .summary-toolbar-row{display:flex;justify-content:space-between;align-items:center;}
         /* .card-flat is padding:0 so the table runs to the card's edges; the
@@ -3658,7 +3727,12 @@ react-dom/cjs/react-dom-client.production.js:
 
     const slices = pieDescs.flatMap(desc => {
       const { data=[], dataKey, nameKey='name',
-              cx='50%', cy='50%', outerRadius=80, label: lbl } = desc.props;
+              cx='50%', cy='50%', outerRadius=80, label: lbl,
+              // A slice can be a control. Recharts' own Pie takes these; this
+              // shim ignored them silently, which is a worse failure than not
+              // supporting them — the handler was passed, nothing was wired
+              // up, and the only symptom was a chart that did not respond.
+              onClick: onSlice, className: sliceClass, sliceLabel } = desc.props;
       const cells = Children.toArray(desc.props.children).filter(c=>c.type===Cell);
       const total = data.reduce((s,d) => s + Math.max(Number(d[dataKey])||0, 0), 0);
       if (total === 0) return [];
@@ -3683,7 +3757,7 @@ react-dom/cjs/react-dom-client.production.js:
         const labelText = typeof lbl === 'function'
           ? lbl({ name:d[nameKey], percent:v/total, value:v })
           : (lbl !== false && sweep > 0.25 ? d[nameKey] + ' ' + pct + '%' : '');
-        return { path, fill, name:d[nameKey], value:v, lx, ly, labelText };
+        return { path, fill, name:d[nameKey], value:v, lx, ly, labelText, onSlice, sliceClass, sliceLabel };
       });
     });
 
@@ -3712,6 +3786,24 @@ react-dom/cjs/react-dom-client.production.js:
         ariaLabel && h('title', null, ariaLabel),
         slices.map((s, i) => h(React.Fragment, { key:i },
           h('path', { d:s.path, fill:s.fill, stroke:pieSurface, strokeWidth:1.5,
+            className: s.sliceClass,
+            // Operable by keyboard as well as by pointer, or the chart is a
+            // control only some people have. A path is not focusable and has
+            // no accessible name of its own, so both are supplied here; none
+            // of it appears on a pie that was given no handler.
+            ...(s.onSlice ? {
+              role: 'button',
+              tabIndex: 0,
+              'aria-label': typeof s.sliceLabel === 'function' ? s.sliceLabel(s) : s.name,
+              style: { cursor: 'pointer' },
+              onClick: e => s.onSlice({ name:s.name, value:s.value }, e),
+              onKeyDown: e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  s.onSlice({ name:s.name, value:s.value }, e);
+                }
+              }
+            } : {}),
             onMouseMove: e => {
               const r = e.currentTarget.ownerSVGElement.getBoundingClientRect();
               setTip({ x:e.clientX-r.left, y:e.clientY-r.top, name:s.name, value:s.value });
@@ -5471,6 +5563,65 @@ document.addEventListener('DOMContentLoaded',function(){
       // and the UI needs to tell them apart to know whether to show an empty
       // state or a figure.
       empty: (Array.isArray(assets) ? assets : []).length === 0 && owed === 0
+    };
+  }
+  // What a category's total is actually made of.
+  //
+  // Today's "Top expense categories" widget answers "where does the money go"
+  // and stops there: a bar says Housing is $19,800 and the only way to find
+  // out which payments that is was to go to Flow and filter by hand. The
+  // number is the interesting part and the breakdown behind it was two
+  // screens away.
+  //
+  // So this takes the events already behind the bar and groups them the way a
+  // person reads them — by the thing being paid, not by date. A year of
+  // groceries is one line saying twenty-six payments, not twenty-six lines;
+  // the dates are still there, one level down, for when that is the question.
+  //
+  // Pure functions over the flow. Money is integer cents.
+
+  // One category's expenses, grouped by what was being paid.
+  //
+  // Grouped by entryId where there is one, falling back to the description:
+  // two different entries can share a description ("Insurance" for the car and
+  // the house) and should not be added together, while one entry's occurrences
+  // should be, even if a per-date override renamed one of them.
+  function categoryDetail(flow, category) {
+    const events = (Array.isArray(flow) ? flow : []).filter(
+      (e) => e && e.type === "expense" && (e.category || "") === category
+    );
+    const groups = new Map();
+    events.forEach((e) => {
+      const key = e.entryId || ("desc:" + (e.desc || ""));
+      let g = groups.get(key);
+      if (!g) {
+        g = { key, desc: e.desc || "(no description)", total: 0, count: 0, occurrences: [] };
+        groups.set(key, g);
+      }
+      g.total += e.amount || 0;
+      g.count++;
+      g.occurrences.push({
+        id: e.id,
+        date: e.date,
+        month: e.month,
+        day: e.day,
+        desc: e.desc,
+        amount: e.amount || 0,
+        // Whether this one was a per-date override rather than the scheduled
+        // figure. Worth showing: it is the usual reason a line is not simply
+        // the entry's amount times its count.
+        edited: e.plannedAmount !== void 0 && e.plannedAmount !== e.amount,
+      });
+    });
+    const rows = [...groups.values()].sort((a, b) => b.total - a.total || a.desc.localeCompare(b.desc));
+    // Occurrences in date order within a row, because that is the only order
+    // that reads as a history.
+    rows.forEach((r) => r.occurrences.sort((a, b) => (a.month - b.month) || (a.day - b.day)));
+    return {
+      category,
+      rows,
+      total: rows.reduce((s, r) => s + r.total, 0),
+      count: events.length,
     };
   }
   // ── Rolling one budget year forward into the next ────────────────────────
@@ -15533,6 +15684,21 @@ Fill every field of the response schema. Rules:
     // Whether the list is showing every mover or the biggest few with the rest
     // rolled up. Reset with the rows, for the same reason.
     const [yoyShowAll, setYoyShowAll] = useState(false);
+    // Which category's breakdown is open, by name. The widget shows a total
+    // and had no way to ask what it was made of — the answer was two screens
+    // away, in Flow, behind a filter set by hand.
+    const [catDetailName, setCatDetailName] = useState(null);
+    const [catOpenRows, setCatOpenRows] = useState({});
+    const openCatDetail = (cat) => { setCatOpenRows({}); setCatDetailName(cat); };
+    const closeCatDetail = () => { setCatOpenRows({}); setCatDetailName(null); };
+    // Escape closes it, as it does the year-over-year sheet. It is a reading
+    // surface with nothing to commit, so leaving costs nothing.
+    useEffect(() => {
+      if (catDetailName === null) return;
+      const h = (e) => { if (e.key === "Escape") closeCatDetail(); };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [catDetailName]);
     const openYoyDetail = (year) => {
       setYoyOpenRows({});
       setYoyShowAll(false);
@@ -15564,6 +15730,13 @@ Fill every field of the response schema. Rules:
       if (sharedView || !sessionUser) return flow;
       return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
+    // Declared here rather than beside its state above, because it reads
+    // effectiveFlow and a const is in its temporal dead zone until the line
+    // that declares it.
+    const catDetail = useMemo(
+      () => (catDetailName === null ? null : categoryDetail(effectiveFlow, catDetailName)),
+      [effectiveFlow, catDetailName]
+    );
     const [showReconcile, setShowReconcile] = useState(false);
     // Posts the difference between the projected balance and the real one as a
     // dated one-time transfer. See ReconcileModal for why a transfer and not
@@ -16186,7 +16359,15 @@ Fill every field of the response schema. Rules:
       ))))),
       topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView, label: "Top Expense Categories" }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "dash-cat-bar-wrap", tabIndex: 0, role: "group", "aria-label": "Top expense categories, scrollable" }, catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: {
+        return /* @__PURE__ */ React.createElement("button", {
+          key: cat,
+          type: "button",
+          className: "dash-cat-open",
+          onClick: () => openCatDetail(cat),
+          // The row reads as a label and an amount; neither says what
+          // pressing it does, and a screen reader gets only those two.
+          "aria-label": `${cat}, ${fmt(total)} \u2014 show the expenses behind it`
+        }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: {
           width: `${pct}%`,
           background: getCatColor(cat, categories, categoryColors)
         } })));
@@ -16200,12 +16381,27 @@ Fill every field of the response schema. Rules:
           dataKey: "value",
           nameKey: "name",
           label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
-          labelLine: false
+          labelLine: false,
+          // A slice opens the same breakdown a bar does.
+          onClick: (d) => d && d.name && openCatDetail(d.name),
+          className: "dash-cat-slice",
+          // A wedge has no accessible name and its visible label is a
+          // percentage, so the slice says the category and the amount — the
+          // same sentence the bar's button says.
+          sliceLabel: (sl) => `${sl.name}, ${fmt(sl.value)} \u2014 show the expenses behind it`
         },
         catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories, categoryColors) }))
       ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { className: "dash-cat-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "dash-cat-table-hdr-row" }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-cat-th", style: {
         textAlign: i === 0 ? "left" : "right"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, className: "dash-cat-tr" }, /* @__PURE__ */ React.createElement("td", { className: "dash-cat-td" }, /* @__PURE__ */ React.createElement("div", { className: "dash-cat-dot", style: { background: getCatColor(cat, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-amt-td" }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-pct-td" }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
+      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", {
+        key: cat,
+        className: "dash-cat-tr dash-cat-tr--open",
+        tabIndex: 0,
+        role: "button",
+        "aria-label": `${cat}, ${fmt(total)} \u2014 show the expenses behind it`,
+        onClick: () => openCatDetail(cat),
+        onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCatDetail(cat); } }
+      }, /* @__PURE__ */ React.createElement("td", { className: "dash-cat-td" }, /* @__PURE__ */ React.createElement("div", { className: "dash-cat-dot", style: { background: getCatColor(cat, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-amt-td" }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-pct-td" }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
       incomeSources: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -16477,6 +16673,69 @@ Fill every field of the response schema. Rules:
       onCancel: () => setShowReconcile(false),
       onConfirm: recordReconcile
     }), firstRunPanel,
+    catDetail && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": `The expenses behind ${catDetail.category}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card catd-card" },
+        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: closeCatDetail }),
+        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, catDetail.category),
+        // The total again, at the top, because it is the number the reader
+        // pressed and the one every row below has to add up to. Shown even
+        // when the category is empty — "$0.00 across 0 payments" is a clearer
+        // answer than a missing figure.
+        /* @__PURE__ */ React.createElement("div", { className: "catd-summary" },
+          /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(catDetail.total)),
+          /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" },
+            `across ${catDetail.count} ${catDetail.count === 1 ? "payment" : "payments"} in ${activeYear}`)
+        ),
+        catDetail.rows.length === 0
+          ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${activeYear} is filed under ${catDetail.category}. If you were expecting something here, it is filed under another category \u2014 Flow will show you which.`)
+          : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, catDetail.rows.map((r) => {
+              const open = !!catOpenRows[r.key];
+              return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" },
+                /* @__PURE__ */ React.createElement("button", {
+                  type: "button",
+                  className: "catd-row-head",
+                  "aria-expanded": open ? "true" : "false",
+                  // A recurring line is one row saying "26 payments"; the
+                  // dates are a level down, for when that is the question.
+                  // A line that happened once has nothing to expand to, so it
+                  // says its own date instead of offering an empty drawer.
+                  "aria-label": r.count > 1
+                    ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments \u2014 ${open ? "hide" : "show"} the dates`
+                    : `${r.desc}, ${fmt(r.total)}`,
+                  onClick: () => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [r.key]: !prev[r.key] }))
+                },
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? (open ? "\u25BE" : "\u25B8") : ""),
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-count" },
+                    r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, activeYear)),
+                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
+                ),
+                open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
+                  "div",
+                  { key: o.id || oi, className: "catd-occ" },
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, activeYear)),
+                  // Why this one is not simply the entry's amount. Without it
+                  // a column of identical figures with one odd number in it
+                  // reads as a mistake rather than as an edit somebody made.
+                  o.edited ? /* @__PURE__ */ React.createElement("span", { className: "catd-occ-tag" }, "Edited") : null,
+                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-occ-amt" }, fmt(o.amount))
+                )))
+              );
+            })),
+        /* @__PURE__ */ React.createElement("div", { className: "catd-done-row" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: closeCatDetail, className: "cf-btn cf-btn--primary fw-700 btn-pad-24" },
+          "Done"
+        ))
+      )
+    ),
     yoyDetail && /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -16988,6 +17247,7 @@ Fill every field of the response schema. Rules:
           ["What changed", "A written comparison of this month against last, generated on demand when AI access is configured."],
           ["Bills that have drifted", "A recurring entry says what you expect to pay; the actuals you record against it say what it really cost. When the recent ones keep landing somewhere else \u2014 far enough out, for long enough, and leaning the same way \u2014 the bill is listed here with the figure it has settled at, and one button updates the entry to it. Updating applies from this month forward, so the months already behind you keep what they actually cost. A bill that simply varies, swinging either side of its planned amount, is not drift and is not listed."],
           ["Charts", "Running balance, surplus or shortfall by month, income against expenses, top expense categories, income sources, and budget against actual for the year."],
+          ["What a category is made of", "On Top Expense Categories, a bar or a pie slice opens the payments behind the total. Each line is one thing you pay for \u2014 a year of groceries is one line saying how many payments, not twenty-six lines \u2014 largest first, and the lines add up to the figure you pressed. A \u25b8 opens the dates inside a line, and a date is tagged Edited where the amount recorded for it differs from the amount the entry plans. A payment that happened once shows its date instead of a count."],
           ["Monthly summary and year-over-year", "The twelve-month table, exportable to CSV or PDF, and a comparison against your other budget years once you have more than one."],
           ["What drove a year-over-year change", "In the Annual Comparison table, the figure in the vs Prior Year column opens. It breaks the change in net surplus into the two sides it came from \u2014 income and expenses \u2014 and then into the biggest movers, largest effect first, with the rest gathered into one \u201cAll other movements\u201d line so the figures still add up to the change exactly; Show all lists every one. A \u25b8 beside a category opens the entries inside it."]
         ] },

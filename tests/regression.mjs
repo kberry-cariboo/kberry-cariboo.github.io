@@ -6492,6 +6492,251 @@ for (const [label, opts] of [['on a phone', { touch: true }], ['on a desktop', {
   });
 }
 
+// A bar on Today says Personal is $5,580 and, until now, said nothing else.
+//
+// The drill-down is only worth having if the lines behind the bar reconcile to
+// it, so the numbers here are checked against the fixture rather than against
+// the sheet's own arithmetic. That distinction matters: categoryDetail derives
+// its headline total by summing the same rows it renders, so a check that the
+// rows add up to the headline can only ever fail on a rendering mistake. The
+// bar comes from a separate pass over the flow, and Gym membership is twelve
+// known payments of a known amount, so those two are what the sheet is held to.
+//
+// Personal is the category with three entries in it, two of them recurring at
+// different cadences and one a single summer holiday, so the sort, the drawer
+// and the one-off row are all exercised by one open. Which events group into
+// which line is decided in tests/cat-detail.mjs, against entries that share a
+// description and dates that were renamed — cases the fixture does not have.
+await test('dashboard: a top-expense category opens onto the payments behind it, and they add up', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const cents = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+
+  const bars = page.locator('.dash-cat-open');
+  if (await bars.count() < 2) throw new Error(`the categories widget offers ${await bars.count()} openable bars`);
+  // The row is a label and an amount. A screen reader gets those two and
+  // nothing that says pressing it does anything, so the button has to say it.
+  const label = await bars.first().getAttribute('aria-label');
+  if (!/show the expenses behind it/.test(label || '')) {
+    throw new Error('a category bar does not say what pressing it does: ' + label);
+  }
+
+  const bar = bars.filter({ hasText: 'Personal' }).first();
+  if (await bar.count() === 0) throw new Error('the fixture has no Personal bar to open');
+  const barTotal = cents(await bar.innerText());
+  await bar.click();
+  const card = page.locator('.catd-card');
+  await card.waitFor();
+  if ((await card.locator('.modal-title-lg').innerText()).trim() !== 'Personal') {
+    throw new Error(`opened Personal and the sheet is titled ${await card.locator('.modal-title-lg').innerText()}`);
+  }
+
+  const read = () => page.evaluate(() => {
+    const num = (t) => Math.round(parseFloat(String(t).replace(/[^0-9.-]/g, '')) * 100);
+    const card = document.querySelector('.catd-card');
+    return {
+      total: num(card.querySelector('.catd-summary-amt').innerText),
+      sub: card.querySelector('.catd-summary-sub').innerText.trim(),
+      rows: [...card.querySelectorAll('.catd-row')].map((r) => ({
+        desc: r.querySelector('.catd-desc').innerText.trim(),
+        count: r.querySelector('.catd-count').innerText.trim(),
+        total: num(r.querySelector('.catd-amt').innerText),
+        occs: [...r.querySelectorAll('.catd-occ')].map((o) => num(o.querySelector('.catd-occ-amt').innerText))
+      }))
+    };
+  });
+
+  const sheet = await read();
+  // The bar is computed by a separate pass over the flow, so this is the one
+  // check that pits two independent sums of the same payments against each
+  // other. A grouping that drops or double-counts an occurrence shows up here.
+  if (sheet.total !== barTotal) throw new Error(`the bar says ${barTotal}, the sheet it opens says ${sheet.total}`);
+  // The lines are the three entries the household files under Personal — not
+  // two (a grouping that merged them) and not thirty-odd (one per payment).
+  const descs = sheet.rows.map((r) => r.desc).sort();
+  if (descs.join(' | ') !== 'Dining out | Gym membership | Summer vacation') {
+    throw new Error('Personal opened onto ' + (descs.join(' | ') || 'nothing'));
+  }
+  // Twelve monthly payments of $55.00, known from the fixture rather than
+  // from the sheet. This is the arithmetic the drawer below has to match.
+  const gym = sheet.rows.find((r) => r.desc === 'Gym membership');
+  if (gym.total !== 12 * 5500) throw new Error(`Gym membership comes to ${gym.total}, and twelve months at $55.00 is ${12 * 5500}`);
+  if (gym.count !== '12 payments') throw new Error(`Gym membership says "${gym.count}", not 12 payments`);
+  // The holiday happened once, so its row shows the day rather than a count —
+  // there is no drawer behind it to open.
+  const hol = sheet.rows.find((r) => r.desc === 'Summer vacation');
+  if (hol.total !== 180000) throw new Error(`Summer vacation comes to ${hol.total}, not 180000`);
+  if (/payment/.test(hol.count)) throw new Error(`a one-off line is labelled "${hol.count}" instead of its date`);
+  // Every line says how many payments it is, or which day it was. A blank
+  // there is a triangle onto nothing. Checked over all the rows, not just the
+  // one-offs, so it cannot pass by finding nothing to look at.
+  const blank = sheet.rows.filter((r) => !r.count);
+  if (blank.length) throw new Error(`${blank.length} line(s) say neither a count nor a date: ` + blank.map((r) => r.desc).join(', '));
+  // Biggest first: what a reader wants from a breakdown is which payment it
+  // mostly is. Dining out outspends the holiday, which outspends the gym.
+  const mags = sheet.rows.map((r) => r.total);
+  if (mags.some((m, i) => i > 0 && m > mags[i - 1])) throw new Error('the lines are not sorted by size: ' + mags.join(', '));
+  if (sheet.rows[0].desc !== 'Dining out') throw new Error('the largest line is ' + sheet.rows[0].desc);
+  // The headline count is every payment in the category, not every line.
+  if (!/across \d+ payments in 2026/.test(sheet.sub)) throw new Error('the sheet does not say what it is counting: ' + sheet.sub);
+
+  // The dates inside a recurring line. Twelve figures of $55.00, because the
+  // row above them is twelve months of it — a drawer showing the entry's
+  // amount once, or the same figure with the per-date edits lost, fails here.
+  const heads = page.locator('.catd-row-head');
+  const gymHead = heads.filter({ hasText: 'Gym membership' }).first();
+  await gymHead.click();
+  await page.waitForTimeout(250);
+  const opened = (await read()).rows.filter((r) => r.occs.length);
+  if (opened.length !== 1) throw new Error(`opening one line expanded ${opened.length}`);
+  const [row] = opened;
+  if (row.desc !== 'Gym membership') throw new Error('pressing Gym membership expanded ' + row.desc);
+  if (row.occs.length !== 12) throw new Error(`Gym membership says 12 payments and lists ${row.occs.length}`);
+  if (row.occs.some((o) => o !== 5500)) throw new Error('a gym payment is not $55.00: ' + row.occs.join(', '));
+  // A one-off line has nothing to open, and pressing it must not pretend
+  // otherwise by opening an empty drawer.
+  await heads.filter({ hasText: 'Summer vacation' }).first().click();
+  await page.waitForTimeout(250);
+  const stillOne = (await read()).rows.filter((r) => r.occs.length);
+  if (stillOne.length !== 1 || stillOne[0].desc !== 'Gym membership') {
+    throw new Error('pressing a one-off line opened a drawer: ' + stillOne.map((r) => r.desc).join(', '));
+  }
+
+  // Escape closes it, and reopening starts collapsed rather than remembering.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  if (await page.locator('.catd-card').count() !== 0) throw new Error('Escape left the breakdown open');
+  await bar.click();
+  await card.waitFor();
+  if (await page.locator('.catd-occ').count() !== 0) throw new Error('reopening the breakdown still has a line expanded');
+
+  // Done closes it too — Escape is not discoverable on a touch device.
+  await card.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.waitForTimeout(250);
+  if (await page.locator('.catd-card').count() !== 0) throw new Error('Done left the breakdown open');
+
+  // And the pie view of the same widget opens the same sheet. Two views of one
+  // number, one of them silently not clickable, is the shape this would rot
+  // into — and the pie is the one a reader is more likely to poke at.
+  const widget = page.locator('.cf-card', { hasText: 'Top Expense Categories' }).first();
+  await widget.getByRole('button', { name: 'Pie', exact: true }).click();
+  await page.waitForTimeout(500);
+  const slices = widget.locator('path.dash-cat-slice');
+  if (await slices.count() < 3) throw new Error(`the pie has ${await slices.count()} slices to open`);
+  // A wedge has no name of its own and its drawn label is a percentage, so it
+  // has to carry the category and the amount for anyone not looking at it.
+  const sliceLabel = await slices.first().getAttribute('aria-label');
+  if (!/show the expenses behind it/.test(sliceLabel || '')) {
+    throw new Error('a pie slice does not say what it opens: ' + sliceLabel);
+  }
+  // Operated by keyboard, not just by pointer. A path is not focusable and
+  // carries no role, so both halves are asserted: that it is in the tab order
+  // at all — .focus() succeeds on tabindex="-1" too, so pressing Enter proves
+  // only the handler — and that Enter then opens it.
+  const tabbable = await slices.first().evaluate((el) => ({ tab: el.getAttribute('tabindex'), role: el.getAttribute('role') }));
+  if (tabbable.tab !== '0') throw new Error(`a pie slice has tabindex="${tabbable.tab}", so it cannot be tabbed to`);
+  if (tabbable.role !== 'button') throw new Error(`a pie slice is announced as "${tabbable.role}", not a button`);
+  await slices.first().focus();
+  await page.keyboard.press('Enter');
+  await card.waitFor();
+  const slicedTotal = cents(await card.locator('.catd-summary-amt').innerText());
+  const sliceName = (await card.locator('.modal-title-lg').innerText()).trim();
+  const barFor = page.locator('.dash-cat-open').filter({ hasText: sliceName });
+  await card.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.waitForTimeout(250);
+  await widget.getByRole('button', { name: 'Bars', exact: true }).click();
+  await page.waitForTimeout(300);
+  if (cents(await barFor.first().innerText()) !== slicedTotal) {
+    throw new Error(`the ${sliceName} slice opens ${slicedTotal}, its bar says ${cents(await barFor.first().innerText())}`);
+  }
+  await ctx.close();
+});
+
+// The sheet is opened from a widget on Today, the most-used screen on a phone.
+// It has fit nothing until it has been measured there, against descriptions of
+// the length real ones are and against a category with enough lines in it to
+// scroll — both of which the fixture is too tidy to provide.
+//
+// The interesting failure is invisible to a rect: text that is nowrap and not
+// ellipsised spills silently over the columns beside it while its own box stays
+// exactly where it was. So the property asserted is not "nothing sticks out of
+// the sheet" — it is that anything wider than its box is ellipsising, and that
+// no figure is among them.
+const longHousing = JSON.stringify([
+  { id: 941, desc: 'Municipal property tax — Cariboo Regional District', type: 'expense', amount: 84500, category: 'Housing', repeats: true, recurUnit: 'month', recurEvery: 3, startDate: `${FIXTURE_YEAR}-02-15`, notes: '' },
+  { id: 942, desc: 'Home & contents insurance — annual renewal', type: 'expense', amount: 142000, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-04-02`, notes: '' },
+  { id: 943, desc: 'Septic tank inspection and pump-out', type: 'expense', amount: 47500, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-05-19`, notes: '' },
+  { id: 944, desc: 'Woodstove chimney sweep', type: 'expense', amount: 21000, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-09-08`, notes: '' },
+  { id: 945, desc: 'Snow clearing — driveway contract', type: 'expense', amount: 36000, category: 'Housing', repeats: true, recurUnit: 'month', recurEvery: 1, startDate: `${FIXTURE_YEAR}-01-05`, recurEnd: `${FIXTURE_YEAR}-03-05`, notes: '' },
+  { id: 946, desc: 'Gutter repair', type: 'expense', amount: 68000, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-10-21`, notes: '' },
+  { id: 947, desc: 'Well pump service', type: 'expense', amount: 53000, category: 'Housing', repeats: false, startDate: `${FIXTURE_YEAR}-06-30`, notes: '' }
+]);
+await test('dashboard: the category breakdown fits the sheet on a phone', async () => {
+  const { ctx, page } = await ctxPage({
+    touch: true,
+    stub: (t) => t.replace('const payload = {', `entries.push(...${longHousing}); const payload = {`)
+  });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await settled(page);
+  const housing = page.locator('.dash-cat-open').filter({ hasText: 'Housing' }).first();
+  if (await housing.count() === 0) throw new Error('the fixture has no Housing bar to open');
+  await housing.click();
+  const card = page.locator('.catd-card');
+  await card.waitFor();
+  if (await page.locator('.catd-row').count() < 8) {
+    throw new Error(`Housing opened onto ${await page.locator('.catd-row').count()} lines — too few to make the sheet scroll, so nothing below is measured`);
+  }
+  await page.locator('.catd-row-head').first().click();
+  await page.waitForTimeout(300);
+
+  // Text wider than its own box overlaps whatever is beside it. One element is
+  // allowed to be in that state — the description — and only because it
+  // ellipsises, which is what says "cut short" to the reader rather than
+  // running the next column's figure through the middle of it.
+  const spill = await page.evaluate(() => [...document.querySelector('.catd-card').querySelectorAll('*')]
+    .filter((el) => el.scrollWidth > el.clientWidth + 1)
+    .filter((el) => { const cs = getComputedStyle(el); return cs.textOverflow !== 'ellipsis' || cs.overflow === 'visible'; })
+    .map((el) => `${el.className || el.tagName} (${el.scrollWidth} in ${el.clientWidth})`).slice(0, 4));
+  if (spill.length) throw new Error('content spills over its neighbours without being cut short: ' + spill.join('; '));
+
+  // And money is never the thing cut short. An ellipsised description is still
+  // a description; an ellipsised "$1,420.…" is a number nobody can add up, and
+  // adding them up is what this sheet is for.
+  const cut = await page.evaluate(() => [...document.querySelectorAll('.catd-amt, .catd-occ-amt, .catd-summary-amt, .catd-count, .catd-occ-date')]
+    .filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.innerText.trim()).slice(0, 3));
+  if (cut.length) throw new Error('a figure is being truncated: ' + cut.join(', '));
+
+  // Nothing may stick out of the sheet sideways either.
+  const over = await page.evaluate(() => {
+    const card = document.querySelector('.catd-card');
+    const cr = card.getBoundingClientRect();
+    const out = [];
+    if (Math.round(cr.right) > document.documentElement.clientWidth) out.push('the sheet itself');
+    card.querySelectorAll('*').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width && (r.right > cr.right + 1 || r.left < cr.left - 1)) out.push(`${el.className || el.tagName}`);
+    });
+    return { out: out.slice(0, 4), scroll: card.scrollWidth - card.clientWidth };
+  });
+  if (over.out.length) throw new Error('the breakdown overflows its sheet: ' + over.out.join('; '));
+  if (over.scroll > 0) throw new Error(`the breakdown scrolls sideways by ${over.scroll}px`);
+
+  // The way out has to be reachable without scrolling to the end of a long
+  // category — the same reason the year-over-year sheet's Done is sticky. The
+  // sheet is deliberately scrollable here, or this passes on a short list.
+  if (await card.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)) {
+    throw new Error('the sheet does not scroll, so a sticky Done is untested');
+  }
+  const done = card.getByRole('button', { name: 'Done', exact: true });
+  const inView = await done.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= window.innerHeight + 1;
+  });
+  if (!inView) throw new Error('Done is off screen before the reader has scrolled');
+  await ctx.close();
+});
+
 // Selecting rows and acting on all of them at once writes `completed`, which
 // is a household field. Nothing drove it.
 await test('flow: selecting every row and marking the month paid marks all of them, and clearing lets go', async () => {

@@ -174,6 +174,21 @@
     // Whether the list is showing every mover or the biggest few with the rest
     // rolled up. Reset with the rows, for the same reason.
     const [yoyShowAll, setYoyShowAll] = useState(false);
+    // Which category's breakdown is open, by name. The widget shows a total
+    // and had no way to ask what it was made of — the answer was two screens
+    // away, in Flow, behind a filter set by hand.
+    const [catDetailName, setCatDetailName] = useState(null);
+    const [catOpenRows, setCatOpenRows] = useState({});
+    const openCatDetail = (cat) => { setCatOpenRows({}); setCatDetailName(cat); };
+    const closeCatDetail = () => { setCatOpenRows({}); setCatDetailName(null); };
+    // Escape closes it, as it does the year-over-year sheet. It is a reading
+    // surface with nothing to commit, so leaving costs nothing.
+    useEffect(() => {
+      if (catDetailName === null) return;
+      const h = (e) => { if (e.key === "Escape") closeCatDetail(); };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [catDetailName]);
     const openYoyDetail = (year) => {
       setYoyOpenRows({});
       setYoyShowAll(false);
@@ -205,6 +220,13 @@
       if (sharedView || !sessionUser) return flow;
       return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
+    // Declared here rather than beside its state above, because it reads
+    // effectiveFlow and a const is in its temporal dead zone until the line
+    // that declares it.
+    const catDetail = useMemo(
+      () => (catDetailName === null ? null : categoryDetail(effectiveFlow, catDetailName)),
+      [effectiveFlow, catDetailName]
+    );
     const [showReconcile, setShowReconcile] = useState(false);
     // Posts the difference between the projected balance and the real one as a
     // dated one-time transfer. See ReconcileModal for why a transfer and not
@@ -827,7 +849,15 @@
       ))))),
       topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView, label: "Top Expense Categories" }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "dash-cat-bar-wrap", tabIndex: 0, role: "group", "aria-label": "Top expense categories, scrollable" }, catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: {
+        return /* @__PURE__ */ React.createElement("button", {
+          key: cat,
+          type: "button",
+          className: "dash-cat-open",
+          onClick: () => openCatDetail(cat),
+          // The row reads as a label and an amount; neither says what
+          // pressing it does, and a screen reader gets only those two.
+          "aria-label": `${cat}, ${fmt(total)} \u2014 show the expenses behind it`
+        }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: {
           width: `${pct}%`,
           background: getCatColor(cat, categories, categoryColors)
         } })));
@@ -841,12 +871,27 @@
           dataKey: "value",
           nameKey: "name",
           label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
-          labelLine: false
+          labelLine: false,
+          // A slice opens the same breakdown a bar does.
+          onClick: (d) => d && d.name && openCatDetail(d.name),
+          className: "dash-cat-slice",
+          // A wedge has no accessible name and its visible label is a
+          // percentage, so the slice says the category and the amount — the
+          // same sentence the bar's button says.
+          sliceLabel: (sl) => `${sl.name}, ${fmt(sl.value)} \u2014 show the expenses behind it`
         },
         catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories, categoryColors) }))
       ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { className: "dash-cat-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "dash-cat-table-hdr-row" }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-cat-th", style: {
         textAlign: i === 0 ? "left" : "right"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", { key: cat, className: "dash-cat-tr" }, /* @__PURE__ */ React.createElement("td", { className: "dash-cat-td" }, /* @__PURE__ */ React.createElement("div", { className: "dash-cat-dot", style: { background: getCatColor(cat, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-amt-td" }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-pct-td" }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
+      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", {
+        key: cat,
+        className: "dash-cat-tr dash-cat-tr--open",
+        tabIndex: 0,
+        role: "button",
+        "aria-label": `${cat}, ${fmt(total)} \u2014 show the expenses behind it`,
+        onClick: () => openCatDetail(cat),
+        onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCatDetail(cat); } }
+      }, /* @__PURE__ */ React.createElement("td", { className: "dash-cat-td" }, /* @__PURE__ */ React.createElement("div", { className: "dash-cat-dot", style: { background: getCatColor(cat, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-amt-td" }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-pct-td" }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
       incomeSources: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
         ChartToggle,
         {
@@ -1118,6 +1163,69 @@
       onCancel: () => setShowReconcile(false),
       onConfirm: recordReconcile
     }), firstRunPanel,
+    catDetail && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "modal-overlay",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": `The expenses behind ${catDetail.category}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card catd-card" },
+        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: closeCatDetail }),
+        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, catDetail.category),
+        // The total again, at the top, because it is the number the reader
+        // pressed and the one every row below has to add up to. Shown even
+        // when the category is empty — "$0.00 across 0 payments" is a clearer
+        // answer than a missing figure.
+        /* @__PURE__ */ React.createElement("div", { className: "catd-summary" },
+          /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(catDetail.total)),
+          /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" },
+            `across ${catDetail.count} ${catDetail.count === 1 ? "payment" : "payments"} in ${activeYear}`)
+        ),
+        catDetail.rows.length === 0
+          ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${activeYear} is filed under ${catDetail.category}. If you were expecting something here, it is filed under another category \u2014 Flow will show you which.`)
+          : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, catDetail.rows.map((r) => {
+              const open = !!catOpenRows[r.key];
+              return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" },
+                /* @__PURE__ */ React.createElement("button", {
+                  type: "button",
+                  className: "catd-row-head",
+                  "aria-expanded": open ? "true" : "false",
+                  // A recurring line is one row saying "26 payments"; the
+                  // dates are a level down, for when that is the question.
+                  // A line that happened once has nothing to expand to, so it
+                  // says its own date instead of offering an empty drawer.
+                  "aria-label": r.count > 1
+                    ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments \u2014 ${open ? "hide" : "show"} the dates`
+                    : `${r.desc}, ${fmt(r.total)}`,
+                  onClick: () => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [r.key]: !prev[r.key] }))
+                },
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? (open ? "\u25BE" : "\u25B8") : ""),
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-count" },
+                    r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, activeYear)),
+                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
+                ),
+                open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
+                  "div",
+                  { key: o.id || oi, className: "catd-occ" },
+                  /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, activeYear)),
+                  // Why this one is not simply the entry's amount. Without it
+                  // a column of identical figures with one odd number in it
+                  // reads as a mistake rather than as an edit somebody made.
+                  o.edited ? /* @__PURE__ */ React.createElement("span", { className: "catd-occ-tag" }, "Edited") : null,
+                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-occ-amt" }, fmt(o.amount))
+                )))
+              );
+            })),
+        /* @__PURE__ */ React.createElement("div", { className: "catd-done-row" }, /* @__PURE__ */ React.createElement(
+          "button",
+          { onClick: closeCatDetail, className: "cf-btn cf-btn--primary fw-700 btn-pad-24" },
+          "Done"
+        ))
+      )
+    ),
     yoyDetail && /* @__PURE__ */ React.createElement(
       "div",
       {
