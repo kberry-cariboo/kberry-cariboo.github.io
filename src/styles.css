@@ -1756,6 +1756,19 @@
         .dash-cat-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
         .dash-cat-amt-td{font-weight:600;padding:6px 8px;text-align:right;color:var(--textMid);}
         .dash-cat-pct-td{padding:6px 8px;text-align:right;color:var(--textLt);}
+        /* The bar rows became buttons, so they have to keep looking like
+           rows and start behaving like controls. A button brings its own
+           font, colour, padding, border and centred text; all of it is reset
+           back to the div they were, and only the affordances are added. */
+        .dash-cat-open{display:block;width:100%;text-align:left;background:none;
+          border:none;font:inherit;color:inherit;padding:2px 4px;margin:-2px -4px;
+          border-radius:6px;cursor:pointer;}
+        .dash-cat-open:hover{background:var(--stripe);}
+        .dash-cat-open:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+        .dash-cat-tr--open{cursor:pointer;}
+        .dash-cat-slice:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+        .dash-cat-tr--open:hover{background:var(--stripe);}
+        .dash-cat-tr--open:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
         .bva-subtitle{font-size:0.6875rem;color:var(--textLt);margin-top:-6px;margin-bottom:10px;}
         .text-10{font-size:0.625rem;}
         .bva-empty-state{padding:32px 16px;text-align:center;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
@@ -1791,6 +1804,56 @@
         .yoy-drill-btn:hover .yoy-drill-caret{opacity:1;}
         .yoy-drill-hint{font-size:0.6875rem;color:var(--textLt);padding:10px 2px 0;}
         .yoy-detail-card{padding:24px;width:min(600px,calc(100vw - 32px));max-height:88vh;overflow-y:auto;}
+        /* What a category's total is made of. Same frame as the
+           year-over-year sheet — a reading surface with a total at the top
+           and a sticky way out at the bottom — because it is opened the same
+           way and for the same kind of question. */
+        .catd-card{padding:24px;width:min(560px,calc(100vw - 32px));max-height:88vh;overflow-y:auto;}
+        .catd-summary{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+          padding:12px 14px;margin-bottom:14px;background:var(--stripe);
+          border:1px solid var(--border);border-radius:10px;}
+        .catd-summary-amt{font-size:1.25rem;font-weight:700;color:var(--text);}
+        .catd-summary-sub{font-size:0.75rem;color:var(--textMid);}
+        .catd-none{font-size:0.75rem;color:var(--textMid);background:var(--stripe);
+          border:1px dashed var(--border);border-radius:10px;padding:14px;line-height:1.5;}
+        .catd-rows{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+        .catd-row{border-bottom:1px solid var(--border);}
+        .catd-row:last-child{border-bottom:none;}
+        /* A grid rather than flex: the amounts have to line up down the
+           column whatever the descriptions do, and the description is the
+           only thing allowed to be cut short. The caret sits in a fixed
+           gutter so a one-off line and a recurring one share a left edge. */
+        .catd-row-head{display:grid;grid-template-columns:14px minmax(0,1fr) auto auto;
+          align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;
+          border:none;font:inherit;color:inherit;text-align:left;cursor:pointer;}
+        .catd-row-head:hover{background:var(--stripe);}
+        .catd-row-head:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;}
+        .catd-caret{font-size:0.75rem;line-height:1;color:var(--textLt);}
+        .catd-desc{font-size:0.8125rem;font-weight:600;color:var(--text);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .catd-count{font-size:0.6875rem;color:var(--textLt);white-space:nowrap;}
+        .catd-amt{font-weight:600;color:var(--textMid);white-space:nowrap;}
+        .catd-occs{background:var(--stripe);border-top:1px solid var(--border);}
+        .catd-occ{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+          align-items:center;gap:8px;padding:6px 14px 6px 36px;font-size:0.75rem;}
+        .catd-occ+.catd-occ{border-top:1px solid var(--border);}
+        .catd-occ-date{color:var(--textMid);}
+        .catd-occ-tag{font-size:0.5625rem;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;color:var(--textLt);border:1px solid var(--border);
+          border-radius:999px;padding:1px 6px;background:var(--bgCard);}
+        .catd-occ-amt{color:var(--text);white-space:nowrap;}
+        .catd-done-row{display:flex;justify-content:flex-end;margin-top:18px;}
+        /* Same reasoning as .yoyd-done-row: a category with forty lines in it
+           outruns the sheet, and the way out must not be at the far end of
+           that scroll. It reserves its own height rather than hanging on a
+           negative margin, so no row ever ends up underneath it. */
+        @media (max-width:640px){
+          .catd-done-row{position:sticky;bottom:0;z-index:3;background:var(--bgCard);
+            border-top:1px solid var(--border);
+            margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+          .modal-card.catd-card{padding-bottom:0!important;}
+          .catd-card{padding:16px;}
+        }
         .yoyd-intro{font-size:0.75rem;color:var(--textMid);line-height:1.5;margin-bottom:14px;}
         .yoyd-bridge{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
         .yoyd-bridge-row{display:flex;align-items:baseline;justify-content:space-between;

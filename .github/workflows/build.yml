@@ -162,6 +162,14 @@ jobs:
       - name: Check the net worth arithmetic
         run: node tests/networth.mjs
 
+      # Browser-free: drives src/lib/cat-detail.js directly. The grouping is
+      # the part with judgement in it — two entries can share a description and
+      # must not be added together, while one entry's occurrences must be, even
+      # when a per-date edit renamed one of them. Neither is visible on screen
+      # until someone notices a total that does not reconcile.
+      - name: Check what a category's total is made of
+        run: node tests/cat-detail.mjs
+
       # Browser-free: drives src/lib/sinking.js directly. The roll runs
       # unattended on every load and reaches goals and entries at once, so the
       # hazards are year-copy's: it has to be idempotent, and it has to land on

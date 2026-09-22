@@ -20,6 +20,7 @@ const APP_MODULES = [
   "src/lib/drift.js",
   "src/lib/sinking.js",
   "src/lib/networth.js",
+  "src/lib/cat-detail.js",
   "src/lib/year-copy.js",
   "src/lib/help-shots.js",
   "src/lib/format.js",
