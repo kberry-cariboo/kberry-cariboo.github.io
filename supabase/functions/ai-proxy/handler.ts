@@ -22,11 +22,20 @@ export const MAX_OUTPUT_TOKENS = 8000;
 // an unbounded upload from turning into an unbounded input-token bill.
 export const MAX_BODY_BYTES = 6 * 1024 * 1024;
 
-export const CORS = {
-  "Access-Control-Allow-Origin": "*",
+const CORS_BASE = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
 };
+// Which web pages may call this from a browser. Empty means any — CORS is not
+// what keeps this private (the membership check is), but naming the site the
+// app is served from stops some other page from driving a signed-in member's
+// browser at it. Set ALLOWED_ORIGINS, comma-separated, to your site's origin.
+export function corsFor(req: Request, allowed: string[]): Record<string, string> {
+  if (!allowed.length) return { ...CORS_BASE, "Access-Control-Allow-Origin": "*" };
+  const origin = req.headers.get("Origin") ?? "";
+  return allowed.includes(origin) ? { ...CORS_BASE, "Access-Control-Allow-Origin": origin } : { ...CORS_BASE };
+}
 
 // Who is calling. `member` is the answer that matters: signing up is open to
 // anyone who finds the app, so a valid login proves only that someone has an
@@ -38,16 +47,22 @@ export type Caller =
 
 export type Deps = {
   anthropicKey: string;
+  allowedOrigins?: string[];
+  // Counts one call against the caller's daily allowance and says whether it
+  // fits. null means the count could not be taken (a database that predates
+  // ai_usage); that is let through rather than switching AI off for everyone
+  // until schema.sql is re-run.
+  takeQuota?: () => Promise<boolean | null>;
   // Resolves the Authorization header to a caller. Never throws for a bad
   // token; that is `{ ok: false }`.
   identify: (authHeader: string) => Promise<Caller>;
   fetch: typeof fetch;
 };
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
+function jsonWith(cors: Record<string, string>) {
+  return (body: unknown, status = 200): Response => new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
 
@@ -78,7 +93,9 @@ export function sanitize(request: Record<string, unknown>): Record<string, unkno
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const cors = corsFor(req, deps.allowedOrigins ?? []);
+  const json = jsonWith(cors);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   // Who's asking. Supabase already rejects an unsigned request before we get
@@ -120,11 +137,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const clean = sanitize(request as Record<string, unknown>);
   if ("error" in clean) return json({ error: clean.error }, 400);
 
-  // Rate limiting hook: `caller.userId` identifies the caller, so a per-user
-  // daily counter (a small table plus an upsert here) is the natural next step
-  // if this ever faces more than a household's worth of traffic. Deliberately
-  // not implemented yet — it needs a schema change, and the membership check
-  // above already bounds who can spend at all.
+  // How much, per member per day (ai_usage / ai_take_quota). Taken only for a
+  // request that is about to reach Anthropic — a refused or malformed one
+  // costs nothing and counts for nothing.
+  if (deps.takeQuota) {
+    const ok = await deps.takeQuota();
+    if (ok === false) return json({ error: "You've reached today's limit for AI features. It resets at midnight UTC." }, 429);
+  }
 
   const res = await deps.fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -151,5 +170,5 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ error: message }, res.status);
   }
 
-  return new Response(text, { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
+  return new Response(text, { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
 }

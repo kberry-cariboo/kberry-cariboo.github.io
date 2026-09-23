@@ -3587,6 +3587,29 @@ await test('dashboard: "My entries" leaves out another member\'s entries, and "A
   await ctx.close();
 });
 
+// The built page carries a Content-Security-Policy that pins its four inline
+// scripts by hash and names every host it talks to. Nothing the app does on
+// any main screen may trip it — a violation is either a blocked feature or a
+// policy that has drifted from the code.
+await test('csp: the page declares a policy, and no screen violates it', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.addInitScript(() => {
+    window.__csp = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const meta = await page.evaluate(() => (document.querySelector('meta[http-equiv="Content-Security-Policy"]') || {}).content || '');
+  if (!/script-src 'self'( 'sha256-[^']+'){4}/.test(meta)) throw new Error('no hash-pinned script-src in the page: ' + meta.slice(0, 120));
+  if (/unsafe-eval/.test(meta) || /script-src[^;]*unsafe-inline/.test(meta)) throw new Error('the script policy allows unsafe-inline or unsafe-eval');
+  for (const r of ['today', 'flow/list', 'flow/calendar', 'flow/curve', 'flow/entries', 'envelopes', 'plan/goals', 'plan/debt', 'plan/networth', 'plan/insights', 'alerts', 'help', 'you', 'you/backup']) {
+    await page.goto(BASE + '#/' + r, { waitUntil: 'load' });
+    await page.waitForTimeout(500);
+  }
+  const v = await page.evaluate(() => window.__csp);
+  await ctx.close();
+  if (v.length) throw new Error('CSP violations: ' + [...new Set(v)].slice(0, 4).join('; '));
+});
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4980,7 +5003,11 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
   // from the route on every render, so a title marker is erased by the very
   // build you are trying to detect.
   serverOverride.set('/sw.js', realSw.replace(/const CACHE = '[^']+'/, "const CACHE = 'cf-deploy-test'"));
-  const nextHtml = realHtml.replace(/const CF_VERSION='[^']+'/, "const CF_VERSION='v-deploy-test'");
+  // The stamp changes the app script, so its pinned hash in the page's CSP
+  // no longer matches and the browser would (rightly) refuse to run it. A real
+  // build writes a policy for its own scripts; this hand-made one drops it.
+  const nextHtml = realHtml.replace(/const CF_VERSION='[^']+'/, "const CF_VERSION='v-deploy-test'")
+    .replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '');
   if (nextHtml === realHtml) throw new Error('could not stamp a new build tag into the page');
   serverOverride.set('/', nextHtml);
   serverOverride.set('/index.html', nextHtml);
@@ -5014,7 +5041,9 @@ await test('service worker: cross-origin reads (the Supabase API) always reach t
     res.end(JSON.stringify({ call: hits }));
   });
   await new Promise((r) => api.listen(PORT - 1, '127.0.0.1', r));
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  // The page's CSP allows the real Supabase host, not this stand-in for it.
+  // What is under test is the worker, so the policy is set aside here.
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, bypassCSP: true });
   try {
     const page = await ctx.newPage();
     await page.addInitScript(mkStub(false, true));

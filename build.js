@@ -78,6 +78,43 @@ function buildServiceWorker(builtHtml) {
   console.log(`build.js: wrote sw.js (${sw.length.toLocaleString()} bytes, cache cf-${cacheName})`);
 }
 
+// A Content-Security-Policy for the built page, as a <meta> (GitHub Pages sets
+// no headers). The page holds a Supabase session and, for some users, an
+// Anthropic key in localStorage; the policy is what stops a script that got
+// into the page some other way from running, or from sending either anywhere.
+//
+// Scripts: only the four inline blocks this build wrote, each pinned by its
+// SHA-256 — no 'unsafe-inline', no 'unsafe-eval' (nothing here evaluates
+// strings). Connections: this origin, the Supabase project the app is built
+// against (read out of supabase-config.js, so a self-hosted build allows its
+// own project), Anthropic for the browser-key fallback, and the holiday feed.
+// Styles keep 'unsafe-inline': the two inline <style> blocks and React's style
+// props, and style injection is not the threat this is for.
+function contentSecurityPolicy(html) {
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map((m) => `'sha256-${crypto.createHash("sha256").update(m[1], "utf8").digest("base64")}'`);
+  if (hashes.length !== 4) {
+    console.error(`build.js: expected 4 inline scripts to pin in the CSP, found ${hashes.length}`);
+    process.exit(1);
+  }
+  const cfg = read("src/lib/supabase-config.js").match(/const SUPABASE_URL = "([^"]+)"/);
+  const supa = cfg && /^https:\/\//.test(cfg[1]) ? new URL(cfg[1]).host : null;
+  const policy = [
+    "default-src 'self'",
+    `script-src 'self' ${hashes.join(" ")}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    ["connect-src 'self'", supa && `https://${supa} wss://${supa}`, "https://api.anthropic.com https://canada-holidays.ca"].filter(Boolean).join(" "),
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+  ].join("; ");
+  return `<meta http-equiv="Content-Security-Policy" content="${policy}"/>`;
+}
+
 function build() {
   const template = read("index.template.html");
   const globalStyles = read("src/styles.css");
@@ -106,10 +143,11 @@ function build() {
     .replace("__SUPABASE_CLIENT__", () => supabaseClient)
     .replace("__APP_CODE__", () => appCode);
 
-  fs.writeFileSync(path.join(ROOT, "index.html"), output);
-  console.log(`build.js: wrote index.html (${output.length.toLocaleString()} bytes)`);
+  const withCsp = output.replace("__CSP__", () => contentSecurityPolicy(output));
+  fs.writeFileSync(path.join(ROOT, "index.html"), withCsp);
+  console.log(`build.js: wrote index.html (${withCsp.length.toLocaleString()} bytes)`);
 
-  buildServiceWorker(output);
+  buildServiceWorker(withCsp);
 }
 
 module.exports = { APP_MODULES, ROOT, read };

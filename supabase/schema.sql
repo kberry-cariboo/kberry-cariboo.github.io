@@ -2787,3 +2787,40 @@ end $$;
 revoke execute on function cf_seed_member_preferences() from public, anon, authenticated;
 revoke execute on function cf_member_pref_keys() from public, anon, authenticated;
 select cf_seed_member_preferences();
+
+-- AI usage, per member per day ------------------------------------------------
+--
+-- The ai-proxy Edge Function spends the deployment owner's Anthropic key on
+-- behalf of signed-in household members. Membership bounds *who*; this bounds
+-- *how much*: one row per user per UTC day, counted by the function before it
+-- calls Anthropic. RLS is on with no policies, so nobody reads or resets the
+-- counter directly — only ai_take_quota touches it.
+create table if not exists ai_usage (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day date not null,
+  calls int not null default 0,
+  primary key (user_id, day)
+);
+alter table ai_usage enable row level security;
+
+-- Counts one call for the caller today and says whether it is within
+-- p_limit. Counting happens either way, so a caller who keeps going past the
+-- limit stays past it. The limit comes from the function's environment
+-- (AI_DAILY_LIMIT); a user calling this directly with a bigger number only
+-- spends their own count faster.
+create or replace function ai_take_quota(p_limit int)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare n int;
+begin
+  if auth.uid() is null then
+    return false;
+  end if;
+  insert into ai_usage as u (user_id, day, calls) values (auth.uid(), (now() at time zone 'utc')::date, 1)
+    on conflict (user_id, day) do update set calls = u.calls + 1
+    returning calls into n;
+  return n <= greatest(coalesce(p_limit, 0), 0);
+end $$;

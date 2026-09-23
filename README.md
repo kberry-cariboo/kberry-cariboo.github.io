@@ -74,9 +74,35 @@ Two related traps this depends on avoiding, both of which have bitten:
 `tests/regression.mjs` asserts both halves: that a repeat launch pulls zero
 bytes, and that a simulated deploy reaches a client that already has one cached.
 
+The built page carries a **Content-Security-Policy** `<meta>`, written by
+`build.js`. It pins the four inline scripts by SHA-256 (no `unsafe-inline` or
+`unsafe-eval` for scripts) and limits connections to this origin, the Supabase
+project in `supabase-config.js`, Anthropic and the holiday feed. A new
+external host has to be added there, and the regression suite's `csp:` test
+fails on any violation on the main screens.
+
 `build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
 
 ## Making a change
+
+The short version, from `package.json`:
+
+```bash
+npm run build          # index.html + sw.js from src/
+npm run lint           # both lint passes, as CI runs them
+npm test               # every browser-free suite (seconds)
+npm run test:browser   # the Playwright suites (~30 min)
+npm run test:sql       # the SQL suites — CF_TEST_PG=1 and a scratch Postgres, below
+npm run check          # build + lint + fast tests: the minimum before a push
+```
+
+`scripts/test.mjs` runs each group suite by suite, prints the output of anything
+that fails and exits non-zero if any did. The groups mirror CI. Running
+`npm install` gives you the pinned Playwright and ESLint locally, and the
+suites find the local Playwright before a global one. The build itself still
+needs nothing installed.
+
+Or suite by suite:
 
 ```bash
 # edit files under src/, then:
@@ -345,6 +371,12 @@ where those files came from. What's in there now:
 | `supabase-client.js` | `@supabase/supabase-js` | 2.116.0 |
 | `mini-recharts.js` | — | hand-written, no upstream |
 
+The two packaged bundles are pinned by SHA-256 in `src/vendor/SHA256SUMS`, and
+`tests/vendor-hashes.mjs` fails CI if either changes. When you regenerate one
+by the recipes below, update the sums in the same commit
+(`cd src/vendor && sha256sum react-bundle.js supabase-client.js > SHA256SUMS`).
+`mini-recharts.js` is ordinary source and isn't pinned.
+
 Keep that table current when you regenerate one — a minified bundle is a poor
 place to look up a version. Both packaged files are reproducible from npm with
 the recipes below; afterwards run `node build.js` and `node tests/regression.mjs`.
@@ -604,6 +636,22 @@ reply on your bill — and caps request size.
 
 The app probes for it once per page load and prefers it automatically. When
 it's deployed, no one needs to enter a key at all.
+
+Two optional secrets tune it:
+
+```bash
+supabase secrets set AI_DAILY_LIMIT=100                         # calls per member per UTC day (default 100)
+supabase secrets set ALLOWED_ORIGINS=https://you.github.io      # sites allowed to call it from a browser
+```
+
+The allowance is counted in `ai_usage` by `ai_take_quota()`, only for requests
+that are about to reach Anthropic, and nobody can read or reset it directly
+(`tests/ai-quota.sql`). A member over the limit gets a 429 until midnight UTC.
+If the database predates the counter, the proxy logs that and lets the call
+through, rather than switching AI off until `schema.sql` is re-run.
+`ALLOWED_ORIGINS` unset means any origin. CORS isn't what keeps the proxy
+private (membership is), but naming your site stops other pages from driving
+a signed-in member's browser at it.
 
 ### Transport 2: a browser-held key (fallback)
 
