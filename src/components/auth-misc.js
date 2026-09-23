@@ -1,4 +1,4 @@
-import { __objRest, __spreadProps, __spreadValues, safeStorage, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
+import { safeStorage, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
 import { VAPID_PUBLIC_KEY, isSupabaseConfigured } from "../lib/supabase-config.js";
 import { SCHEMA_VERSION } from "../lib/migrate.js";
 import { computeRegionHolidays, getStoredHolidays, holidayRowsForYear, holidayYearForEditing, holidaysForYear, isYearStored, mergeFetchedHolidays, parseHolidayPayload, setStoredHolidays } from "../lib/holidays.js";
@@ -17,37 +17,34 @@ import { ForecastView } from "./forecast-plan.js";
 import { PlanView } from "./plan.js";
 import { DashboardView } from "./dashboard.js";
 import { HolidaySettings } from "./settings.js";
-  export function MoneyInput(_a) {
-    var _b = _a, { value, onChange, style, inputRef } = _b, rest = __objRest(_b, ["value", "onChange", "style", "inputRef"]);
+  export function MoneyInput({ value, onChange, style, inputRef, ...rest }) {
     const [focused, setFocused] = useState(false);
     const display = (() => {
       if (focused) return value;
       const n = parseFloat(value);
-      if (value === "" || value == null || isNaN(n)) return value != null ? value : "";
+      if (value === "" || value == null || isNaN(n)) return value ?? "";
       return n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     })();
-    return /* @__PURE__ */ React.createElement(
-      "input",
-      __spreadProps(__spreadValues({}, rest), {
-        ref: inputRef,
-        type: "text",
-        inputMode: "decimal",
-        value: display,
-        onFocus: (e) => {
+    return <input
+      {...rest}
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      value={display}
+      onFocus={(e) => {
           setFocused(true);
           rest.onFocus && rest.onFocus(e);
-        },
-        onBlur: (e) => {
+        }}
+      onBlur={(e) => {
           setFocused(false);
           rest.onBlur && rest.onBlur(e);
-        },
-        onChange: (e) => {
+        }}
+      onChange={(e) => {
           const raw = e.target.value.replace(/,/g, "");
           if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) onChange(raw);
-        },
-        style
-      })
-    );
+        }}
+      style={style}
+    />;
   }
   export function toast(message, kind = "success") {
     try {
@@ -105,21 +102,17 @@ import { HolidaySettings } from "./settings.js";
     // toast) is easy for assistive tech to miss, since live-region
     // announcements are triggered by content changing inside an
     // already-present node, not by the node itself appearing.
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      { role: "status", "aria-live": "polite" },
-      t && /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          onClick: dismiss,
-          className: "feedback-toast",
-          style: { background: t.kind === "error" ? "var(--red)" : "var(--primary)" }
-        },
-        /* @__PURE__ */ React.createElement("span", null, t.kind === "error" ? "\u26A0" : "\u2713"),
-        t.message,
-        queue.length > 1 && /* @__PURE__ */ React.createElement("span", { className: "toast-count-badge" }, "+", queue.length - 1)
-      )
-    );
+    return <div role="status" aria-live="polite">
+      {t && <div
+        onClick={dismiss}
+        className="feedback-toast"
+        style={{ background: t.kind === "error" ? "var(--red)" : "var(--primary)" }}
+      >
+        <span>{t.kind === "error" ? "\u26A0" : "\u2713"}</span>
+        {t.message}
+        {queue.length > 1 && <span className="toast-count-badge">+{queue.length - 1}</span>}
+      </div>}
+    </div>;
   }
   export function UndoToast({ label, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
@@ -137,14 +130,11 @@ import { HolidaySettings } from "./settings.js";
       }), 1e3);
       return () => clearInterval(iv);
     }, [label, count]);
-    return /* @__PURE__ */ React.createElement("div", { className: "undo-toast", role: "status" }, /* @__PURE__ */ React.createElement("span", null, label, count > 1 ? ` (+${count - 1} more)` : ""), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: onUndo,
-        className: "undo-btn"
-      },
-      "\u21A9 Undo"
-    ), /* @__PURE__ */ React.createElement("span", { className: "undo-countdown" }, secs, "s"));
+    return <div className="undo-toast" role="status">
+      <span>{label}{count > 1 ? ` (+${count - 1} more)` : ""}</span>
+      <button onClick={onUndo} className="undo-btn">↩ Undo</button>
+      <span className="undo-countdown">{secs}s</span>
+    </div>;
   }
   export function LoginView() {
     const configured = isSupabaseConfigured();
@@ -238,105 +228,145 @@ import { HolidaySettings } from "./settings.js";
       setInfo("");
     };
     if (!configured) {
-      return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap text-center" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "login-notconfigured-logo" }), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-title" }, "Supabase isn't configured yet"), /* @__PURE__ */ React.createElement("div", { className: "login-notconfigured-desc" }, "Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild."));
+      return <div className="household-onboard-wrap text-center">
+        <img src={LOGO_SRC} alt="CashFlow" className="login-notconfigured-logo" />
+        <div className="login-notconfigured-title">Supabase isn't configured yet</div>
+        <div className="login-notconfigured-desc">
+          Create a free project at supabase.com, run supabase/schema.sql in its SQL editor, then paste your project URL and anon key into src/lib/supabase-config.js and rebuild.
+        </div>
+      </div>;
     }
-    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "login-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Personal budget & cash flow tracker")), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, mode === "signin" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
+    return <div className="household-onboard-wrap">
+      <div className="household-onboard-inner">
+        <div className="login-header">
+          <img src={LOGO_SRC} alt="CashFlow" className="household-onboard-logo" />
+          <div className="household-onboard-email">{"Personal budget & cash flow tracker"}</div>
+        </div>
+        <div className="household-onboard-card">
+          <div className="household-onboard-title">
+            {mode === "signin" ? "Sign in to your account" : mode === "signup" ? "Create your account" : "Reset your password"}
+          </div>
+          {mode !== "forgot" && <div className="cf-row cf-gap-6 justify-center mb-20">
+            <button
+              onClick={() => {
           setMode("signin");
           setError("");
           setInfo("");
-        },
-        className: "household-mode-btn",
-        style: {
+        }}
+              className="household-mode-btn"
+              style={{
           background: mode === "signin" ? "var(--stripe)" : "transparent",
           color: mode === "signin" ? "var(--text)" : "var(--textLt)"
-        }
-      },
-      "Sign in"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
+        }}
+            >
+              Sign in
+            </button>
+            <button
+              onClick={() => {
           setMode("signup");
           setError("");
           setInfo("");
-        },
-        className: "household-mode-btn",
-        style: {
+        }}
+              className="household-mode-btn"
+              style={{
           background: mode === "signup" ? "var(--stripe)" : "transparent",
           color: mode === "signup" ? "var(--text)" : "var(--textLt)"
-        }
-      },
-      "Create account"
-    )), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle mb-16" }, "Enter the email on your account and we'll send you a link to reset your password."), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Email address"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "email",
-        autoComplete: "email",
-        autoFocus: mode === "forgot",
-        value: email,
-        onChange: (e) => {
+        }}
+            >
+              Create account
+            </button>
+          </div>}
+          {mode === "forgot" && <div className="household-onboard-subtitle mb-16">
+            Enter the email on your account and we'll send you a link to reset your password.
+          </div>}
+          <div className="mb-16">
+            <label className="auth-field-label">Email address</label>
+            <input
+              type="email"
+              autoComplete="email"
+              autoFocus={mode === "forgot"}
+              value={email}
+              onChange={(e) => {
           setEmail(e.target.value);
           setError("");
-        },
-        onKeyDown: (e) => {
-          var _a;
+        }}
+              onKeyDown={(e) => {
           if (mode === "forgot") {
             if (e.key === "Enter") attemptLogin();
             return;
           }
-          return e.key === "Enter" && ((_a = document.getElementById("pw-input")) == null ? void 0 : _a.focus());
-        },
-        placeholder: "your@email.com",
-        className: "auth-input"
-      }
-    )), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "pw-input",
-        type: showPw ? "text" : "password",
-        autoComplete: mode === "signin" ? "current-password" : "new-password",
-        value: password,
-        onChange: (e) => {
+          return e.key === "Enter" && (document.getElementById("pw-input")?.focus());
+        }}
+              placeholder="your@email.com"
+              className="auth-input"
+            />
+          </div>
+          {mode !== "forgot" && <div className="mb-12">
+            <label className="auth-field-label">Password</label>
+            <div className="relative">
+              <input
+                id="pw-input"
+                type={showPw ? "text" : "password"}
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                value={password}
+                onChange={(e) => {
           setPassword(e.target.value);
           setError("");
-        },
-        onKeyDown: (e) => e.key === "Enter" && attemptLogin(),
-        placeholder: mode === "signin" ? "Enter your password" : "At least 8 characters",
-        className: "auth-input auth-input--pw"
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowPw((v) => !v),
-        "aria-label": showPw ? "Hide password" : "Show password",
-        className: "auth-pw-toggle"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    ))), mode === "signin" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: goToForgot, className: "ai-settings-link" }, "Forgot password?")), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mb-20" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
-        id: "remember-chk",
-        checked: remember,
-        onChange: (e) => setRemember(e.target.checked),
-        className: "remember-checkbox"
-      }
-    ), /* @__PURE__ */ React.createElement("label", { htmlFor: "remember-chk", className: "remember-label" }, "Remember my email")), error && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-16", "data-tone": "critical", role: "alert" }, error), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, info && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-16", "data-tone": "good", role: "status" }, info)), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: attemptLogin,
-        disabled: loading,
-        className: "auth-submit-btn",
-        style: {
+        }}
+                onKeyDown={(e) => e.key === "Enter" && attemptLogin()}
+                placeholder={mode === "signin" ? "Enter your password" : "At least 8 characters"}
+                className="auth-input auth-input--pw"
+              />
+              <button
+                onClick={() => setShowPw((v) => !v)}
+                aria-label={showPw ? "Hide password" : "Show password"}
+                className="auth-pw-toggle"
+              >
+                <Icon name={showPw ? "eye-off" : "eye"} size={17} />
+              </button>
+            </div>
+          </div>}
+          {mode === "signin" && <div className="mb-12">
+            <button type="button" onClick={goToForgot} className="ai-settings-link">Forgot password?</button>
+          </div>}
+          {mode !== "forgot" && <div className="cf-row cf-gap-8 mb-20">
+            <input
+              type="checkbox"
+              id="remember-chk"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="remember-checkbox"
+            />
+            <label htmlFor="remember-chk" className="remember-label">Remember my email</label>
+          </div>}
+          {error && <div className="notice notice--sm mb-16" data-tone="critical" role="alert">{error}</div>}
+          <div role="status" aria-live="polite">
+            {info && <div className="notice notice--sm mb-16" data-tone="good" role="status">{info}</div>}
+          </div>
+          <button
+            onClick={attemptLogin}
+            disabled={loading}
+            className="auth-submit-btn"
+            style={{
           cursor: loading ? "wait" : "pointer",
           opacity: loading ? 0.7 : 1
-        }
-      },
-      loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"
-    ), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mt-14 text-center" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: backToSignIn, className: "ai-settings-link" }, "\u2190 Back to sign in"))), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
+        }}
+          >
+            {loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+          </button>
+          {mode === "forgot" && <div className="mt-14 text-center">
+            <button type="button" onClick={backToSignIn} className="ai-settings-link">
+              ← Back to sign in
+            </button>
+          </div>}
+        </div>
+        {mode !== "forgot" && <div className="login-footer-note">
+          Your data is stored in your own Supabase project.
+          <br />
+          Family members can join your household with an invite code after signing in.
+        </div>}
+      </div>
+    </div>;
   }
   export function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
@@ -382,83 +412,96 @@ import { HolidaySettings } from "./settings.js";
         setLoading(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "lockscreen-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "lockscreen-logo" }), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-welcome" }, "Welcome back", sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "This device locked after being idle.")), /* @__PURE__ */ React.createElement("div", { className: "lockscreen-card" }, mode === "biometric" ? /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "lockscreen-bio-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28 })), bioError && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-14", "data-tone": "critical", role: "alert" }, bioError), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: tryBiometric,
-        disabled: checking,
-        className: "lockscreen-primary-btn",
-        style: {
+    return <div className="lockscreen-wrap">
+      <div className="lockscreen-inner">
+        <div className="household-onboard-header">
+          <img src={LOGO_SRC} alt="CashFlow" className="lockscreen-logo" />
+          <div className="lockscreen-welcome">
+            Welcome back
+            {sessionUser.fullName ? `, ${sessionUser.fullName.split(" ")[0]}` : ""}
+          </div>
+          <div className="household-onboard-email">This device locked after being idle.</div>
+        </div>
+        <div className="lockscreen-card">
+          {mode === "biometric" ? <div className="text-center">
+            <div className="lockscreen-bio-icon"><Icon name="lock" size={28} /></div>
+            {bioError && <div className="notice notice--sm mb-14" data-tone="critical" role="alert">
+              {bioError}
+            </div>}
+            <button
+              onClick={tryBiometric}
+              disabled={checking}
+              className="lockscreen-primary-btn"
+              style={{
           cursor: checking ? "wait" : "pointer",
           opacity: checking ? 0.7 : 1,
           marginBottom: 10
-        }
-      },
-      checking ? "Checking…" : "Unlock with fingerprint / face"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
+        }}
+            >
+              {checking ? "Checking…" : "Unlock with fingerprint / face"}
+            </button>
+            <button
+              onClick={() => {
           setMode("password");
           setBioError("");
-        },
-        className: "lockscreen-secondary-btn"
-      },
-      "Use password instead"
-    )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "auth-field-label" }, "Password"), /* @__PURE__ */ React.createElement("div", { className: "relative mb-14" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: showPw ? "text" : "password",
-        autoFocus: true,
-        autoComplete: "current-password",
-        value: password,
-        onChange: (e) => {
+        }}
+              className="lockscreen-secondary-btn"
+            >
+              Use password instead
+            </button>
+          </div> : <>
+      <label className="auth-field-label">Password</label>
+      <div className="relative mb-14">
+        <input
+          type={showPw ? "text" : "password"}
+          autoFocus={true}
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => {
           setPassword(e.target.value);
           setPwError("");
-        },
-        onKeyDown: (e) => e.key === "Enter" && unlockWithPassword(),
-        placeholder: "Enter your password",
-        className: "auth-input auth-input--pw"
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowPw((v) => !v),
-        "aria-label": showPw ? "Hide password" : "Show password",
-        className: "auth-pw-toggle"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: showPw ? "eye-off" : "eye", size: 17 })
-    )), pwError && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm mb-14", "data-tone": "critical", role: "alert" }, pwError), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: unlockWithPassword,
-        disabled: loading,
-        className: "lockscreen-primary-btn",
-        style: {
+        }}
+          onKeyDown={(e) => e.key === "Enter" && unlockWithPassword()}
+          placeholder="Enter your password"
+          className="auth-input auth-input--pw"
+        />
+        <button
+          onClick={() => setShowPw((v) => !v)}
+          aria-label={showPw ? "Hide password" : "Show password"}
+          className="auth-pw-toggle"
+        >
+          <Icon name={showPw ? "eye-off" : "eye"} size={17} />
+        </button>
+      </div>
+      {pwError && <div className="notice notice--sm mb-14" data-tone="critical" role="alert">{pwError}</div>}
+      <button
+        onClick={unlockWithPassword}
+        disabled={loading}
+        className="lockscreen-primary-btn"
+        style={{
           cursor: loading ? "wait" : "pointer",
           opacity: loading ? 0.7 : 1,
           marginBottom: hasBiometric ? 10 : 0
-        }
-      },
-      loading ? "Unlocking…" : "Unlock"
-    ), hasBiometric && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
+        }}
+      >
+        {loading ? "Unlocking…" : "Unlock"}
+      </button>
+      {hasBiometric && <button
+        onClick={() => {
           setMode("biometric");
           setPwError("");
-        },
-        className: "lockscreen-secondary-btn"
-      },
-      "Use fingerprint / face instead"
-    ))), /* @__PURE__ */ React.createElement("div", { className: "household-signout-wrap" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: onSignOut,
-        className: "household-signout-btn"
-      },
-      "Not you? Sign out"
-    ))));
+        }}
+        className="lockscreen-secondary-btn"
+      >
+        Use fingerprint / face instead
+      </button>}
+    </>}
+        </div>
+        <div className="household-signout-wrap">
+          <button onClick={onSignOut} className="household-signout-btn">Not you? Sign out</button>
+        </div>
+      </div>
+    </div>;
   }
   // Checks that useHouseholdState produced the state the rest of the sync
   // assumes: a value and a working setter for every row in HOUSEHOLD_FIELDS,
@@ -505,41 +548,41 @@ import { HolidaySettings } from "./settings.js";
       const evs = expandEntries([entry], 2026, {});
       t("expandEntries monthly = 12 events", () => evs.length === 12);
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
-      const semi = __spreadProps(__spreadValues({}, entry), { id: 2, recurUnit: "semimonth", startDate: "2026-01-01" });
+      const semi = { ...entry, id: 2, recurUnit: "semimonth", startDate: "2026-01-01" };
       t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
       // Last day of the month: every month's real length, not the start
       // date's day number. An entry created in February is the case that
       // separates this from a plain monthly entry — that one would stay on
       // the 28th all year.
-      const mend = __spreadProps(__spreadValues({}, entry), { id: 20, recurUnit: "monthend", startDate: "2026-02-28" });
+      const mend = { ...entry, id: 20, recurUnit: "monthend", startDate: "2026-02-28" };
       const mendEvs = expandEntries([mend], 2026, {});
       t("month-end = 11 events (Mar-Dec plus Feb)", () => mendEvs.length === 11);
       t("month-end lands on 31 Mar, 30 Apr, 31 May", () => mendEvs[1].month === 2 && mendEvs[1].day === 31 && mendEvs[2].day === 30 && mendEvs[3].day === 31);
       t("month-end differs from a plain monthly anchored the same day", () => {
-        const plain = expandEntries([__spreadProps(__spreadValues({}, mend), { id: 21, recurUnit: "month" })], 2026, {});
+        const plain = expandEntries([{ ...mend, id: 21, recurUnit: "month" }], 2026, {});
         return plain[1].day === 28 && mendEvs[1].day === 31;
       });
       // Third Friday of each month, from Fri 16 Jan 2026.
-      const nth3 = __spreadProps(__spreadValues({}, entry), { id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" });
+      const nth3 = { ...entry, id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" };
       const nth3Evs = expandEntries([nth3], 2026, {});
       t("3rd Friday = 12 events", () => nth3Evs.length === 12);
       t("3rd Friday is always a Friday", () => nth3Evs.every((ev) => ev.date.getDay() === 5));
       t("3rd Friday is always in the third week", () => nth3Evs.every((ev) => ev.day >= 15 && ev.day <= 21));
       // "Last" is not "fourth": in a month with five Fridays they differ.
-      const nthLast = __spreadProps(__spreadValues({}, entry), { id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" });
+      const nthLast = { ...entry, id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" };
       const lastEvs = expandEntries([nthLast], 2026, {});
       t("last Friday is always a Friday within 7 days of month end", () => lastEvs.every((ev) => ev.date.getDay() === 5 && ev.day > daysInMonth(ev.month, 2026) - 7));
       t("last Friday differs from 4th Friday in a 5-Friday month", () => {
-        const fourth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 24, recurNth: 4 })], 2026, {});
+        const fourth = expandEntries([{ ...nthLast, id: 24, recurNth: 4 }], 2026, {});
         return lastEvs.some((ev, i) => fourth[i] && fourth[i].day !== ev.day);
       });
       // A month with only four of that weekday has no fifth one, and the
       // occurrence is skipped rather than sliding into the next month.
       t("5th Friday skips the months that have none", () => {
-        const fifth = expandEntries([__spreadProps(__spreadValues({}, nthLast), { id: 25, recurNth: 5 })], 2026, {});
+        const fifth = expandEntries([{ ...nthLast, id: 25, recurNth: 5 }], 2026, {});
         return fifth.length > 0 && fifth.length < 12 && fifth.every((ev) => ev.date.getDay() === 5);
       });
-      const biw = __spreadProps(__spreadValues({}, entry), { id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" });
+      const biw = { ...entry, id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" };
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
       const sums = getMonthSummaries(computeFlow(evs, 1e3), 1e3);
@@ -553,7 +596,7 @@ import { HolidaySettings } from "./settings.js";
       // over at local midnight. toISOString() rolls over at 00:00 UTC, which
       // west of Greenwich is mid-afternoon the day before.
       t("todayStr() is the local date, not the UTC one", () => {
-        const now = /* @__PURE__ */ new Date();
+        const now = new Date();
         const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
         return todayStr() === expected;
       });
@@ -610,13 +653,13 @@ import { HolidaySettings } from "./settings.js";
           dashHidden: {},
           dashOrder: [],
           schemaVersion: SCHEMA_VERSION,
-          savedAt: (/* @__PURE__ */ new Date()).toISOString()
+          savedAt: (new Date()).toISOString()
         };
         const rt = JSON.parse(JSON.stringify(payload));
         return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === SCHEMA_VERSION && rt.goals[0].saved === 25;
       });
       t("receipts are per-occurrence only", () => {
-        const ent = __spreadProps(__spreadValues({}, entry), { id: 9, attachment: "base64LEGACY" });
+        const ent = { ...entry, id: 9, attachment: "base64LEGACY" };
         const evsA = expandEntries([ent], 2026, {});
         const ovA = {};
         ovA[evsA[0].id] = { attachment: "base64OVERRIDE" };
@@ -654,18 +697,18 @@ import { HolidaySettings } from "./settings.js";
       });
       t("a payday on a stat holiday is deposited the last banking day before it", () => {
         // Canada Day 2026 is a Wednesday — a working day but not a banking one.
-        const canadaDay = __spreadProps(__spreadValues({}, payroll), { id: 21, startDate: "2026-01-01" });
+        const canadaDay = { ...payroll, id: 21, startDate: "2026-01-01" };
         const jul = onMonth(expandEntries([canadaDay], 2026, {}), 6);
         return jul.day === 1 && jul.depositShifted === true && depStr(jul) === "2026-06-30";
       });
       t("a payday on a holiday Monday steps back past the weekend too", () => {
         // BC Day 2026 is Monday 3 August: back past Sun and Sat to Fri Jul 31.
-        const bcDay = __spreadProps(__spreadValues({}, payroll), { id: 22, startDate: "2026-08-03", recurUnit: "year" });
+        const bcDay = { ...payroll, id: 22, startDate: "2026-08-03", recurUnit: "year" };
         const aug = expandEntries([bcDay], 2026, {})[0];
         return aug.day === 3 && depStr(aug) === "2026-07-31";
       });
       t("an optional BC holiday counts (Boxing Day)", () => {
-        const boxing = __spreadProps(__spreadValues({}, payroll), { id: 23, startDate: "2026-12-28", recurUnit: "year" });
+        const boxing = { ...payroll, id: 23, startDate: "2026-12-28", recurUnit: "year" };
         // 26 Dec 2026 is a Saturday, so Boxing Day is taken Mon 28 Dec and
         // Christmas Day is Fri 25 Dec: the last banking day is Thu 24 Dec.
         const dec = expandEntries([boxing], 2026, {})[0];
@@ -675,14 +718,14 @@ import { HolidaySettings } from "./settings.js";
         // The date a holiday slides off is always a Saturday or a Sunday, so
         // the weekend rule already covered it — a payday on Boxing Day Sat 26
         // Dec 2026 still deposits on Thursday the 24th.
-        const onSat = __spreadProps(__spreadValues({}, payroll), { id: 31, startDate: "2026-12-26", recurUnit: "year" });
+        const onSat = { ...payroll, id: 31, startDate: "2026-12-26", recurUnit: "year" };
         return depStr(expandEntries([onSat], 2026, {})[0]) === "2026-12-24";
       });
       t("the deposit date may fall in the previous month or year", () => {
         // Nothing moves, so this is just a label — no month's totals change.
-        const firstOfMonth = __spreadProps(__spreadValues({}, payroll), { id: 24, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" });
+        const firstOfMonth = { ...payroll, id: 24, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" };
         const aug = onMonth(expandEntries([firstOfMonth], 2026, {}), 7);
-        const nyd = __spreadProps(__spreadValues({}, payroll), { id: 25, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" });
+        const nyd = { ...payroll, id: 25, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" };
         const jan = expandEntries([nyd], 2028, {})[0];
         return aug.month === 7 && aug.day === 1 && depStr(aug) === "2026-07-31" && jan.month === 0 && jan.day === 1 && depStr(jan) === "2027-12-31";
       });
@@ -696,14 +739,14 @@ import { HolidaySettings } from "./settings.js";
         return again.amount === 3e5 && again.day === 15 && again.depositShifted === true;
       });
       t("the rule is income-only, payroll-only and repeating-only", () => {
-        const rentOn15th = __spreadProps(__spreadValues({}, payroll), { id: 26, desc: "Rent", type: "expense" });
-        const payrollExpense = __spreadProps(__spreadValues({}, payroll), { id: 27, desc: "Payroll remittance", type: "expense" });
-        const onceOff = __spreadProps(__spreadValues({}, payroll), { id: 28, repeats: false, startDate: "2026-08-15" });
+        const rentOn15th = { ...payroll, id: 26, desc: "Rent", type: "expense" };
+        const payrollExpense = { ...payroll, id: 27, desc: "Payroll remittance", type: "expense" };
+        const onceOff = { ...payroll, id: 28, repeats: false, startDate: "2026-08-15" };
         return onMonth(expandEntries([rentOn15th], 2026, {}), 7).depositShifted === false && onMonth(expandEntries([payrollExpense], 2026, {}), 7).depositShifted === false && expandEntries([onceOff], 2026, {})[0].depositShifted === false;
       });
       t('"Mel - Payroll" and "PAY ROLL" both read as payroll', () => {
-        const mel = __spreadProps(__spreadValues({}, payroll), { id: 29, desc: "Mel - Payroll" });
-        const spaced = __spreadProps(__spreadValues({}, payroll), { id: 30, desc: "PAY ROLL \u2014 Ken" });
+        const mel = { ...payroll, id: 29, desc: "Mel - Payroll" };
+        const spaced = { ...payroll, id: 30, desc: "PAY ROLL \u2014 Ken" };
         return onMonth(expandEntries([mel], 2026, {}), 7).depositShifted === true && onMonth(expandEntries([spaced], 2026, {}), 7).depositShifted === true;
       });
       t("moving an occurrence by hand re-reads the deposit date from where you put it", () => {
@@ -852,7 +895,7 @@ import { HolidaySettings } from "./settings.js";
         () => Object.keys(holidayYearForEditing(2026)).length === 0
       ));
       t("editing a payroll entry splits on the payday", () => {
-        const res = splitEntryEditFromCurrentMonth([payroll], 20, __spreadProps(__spreadValues({}, payroll), { amount: 26e4 }), new Date(2026, 7, 10));
+        const res = splitEntryEditFromCurrentMonth([payroll], 20, { ...payroll, amount: 26e4 }, new Date(2026, 7, 10));
         if (!res.newId) throw new Error("no split");
         const seg = res.entries.find((e) => e.id === res.newId);
         return seg.startDate === "2026-08-15" && res.entries[0].recurEnd === "2026-08-14";
@@ -945,19 +988,77 @@ import { HolidaySettings } from "./settings.js";
       };
       const noop = () => {
       };
-      renderCheck("EntryForm", React.createElement(EntryForm, { initial: null, onSave: noop, onCancel: noop, categories: ["Housing"] }));
-      renderCheck("OccurrenceEditModal", React.createElement(OccurrenceEditModal, { ev: { id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }, orig: { desc: "T" }, onSave: noop, onCancel: noop, onReset: null }));
-      renderCheck("HelpTip", React.createElement(HelpTip, { label: "Field", text: "Help copy." }));
-      renderCheck("HolidaySettings", React.createElement(HolidaySettings, { holidays: {}, setHolidays: noop, years: [2026], activeYear: 2026 }));
-      renderCheck("UndoToast", React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
-      renderCheck("ReceiptLightbox", React.createElement(ReceiptLightbox, { src: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", onClose: noop }));
-      renderCheck("ContextMenu", React.createElement(ContextMenu, { x: 10, y: 10, items: [{ icon: "\u270E", label: "Edit", action: noop }], onClose: noop }));
-      renderCheck("EntriesView (empty)", React.createElement(EntriesView, { entries: [], setEntries: noop, addEntry: noop, categories: ["A"], activeYear: 2026 }));
-      renderCheck("BudgetView (empty)", React.createElement(BudgetView, { flow: [], openBal: 0, entries: [], setOverride: noop, clearOverride: noop, categories: ["A"], setEntries: noop, addEntry: noop, view: "monthly", setView: noop, monthIdx: 0, setMonthIdx: noop }));
-      renderCheck("ForecastView (empty)", React.createElement(ForecastView, { yearFlows: {}, yearConfigs: [], openBalByYear: {} }));
-      renderCheck("DashboardView (empty)", React.createElement(DashboardView, { flow: [], openBal: 0, yearFlows: {}, yearConfigs: [], alertThreshold: 500, activeYear: 2026 }));
-      renderCheck("PlanView (empty)", React.createElement(PlanView, { flow: [], openBal: 0, entries: [], goals: [], categories: ["A"], alertThreshold: 500, activeYear: 2026 }));
-      renderCheck("BottomNav", React.createElement(BottomNav, { tab: "today", setTab: noop }));
+      renderCheck("EntryForm", <EntryForm
+        initial={null}
+        onSave={noop}
+        onCancel={noop}
+        categories={["Housing"]}
+      />);
+      renderCheck("OccurrenceEditModal", <OccurrenceEditModal
+        ev={{ id: "x", desc: "T", amount: 10, month: 0, day: 1, notes: "", isOverride: false, repeats: true }}
+        orig={{ desc: "T" }}
+        onSave={noop}
+        onCancel={noop}
+        onReset={null}
+      />);
+      renderCheck("HelpTip", <HelpTip label="Field" text="Help copy." />);
+      renderCheck("HolidaySettings", <HolidaySettings
+        holidays={{}}
+        setHolidays={noop}
+        years={[2026]}
+        activeYear={2026}
+      />);
+      renderCheck("UndoToast", <UndoToast entry={{ desc: "Test" }} count={2} onUndo={noop} onDismiss={noop} />);
+      renderCheck("ReceiptLightbox", <ReceiptLightbox
+        src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+        onClose={noop}
+      />);
+      renderCheck("ContextMenu", <ContextMenu
+        x={10}
+        y={10}
+        items={[{ icon: "\u270E", label: "Edit", action: noop }]}
+        onClose={noop}
+      />);
+      renderCheck("EntriesView (empty)", <EntriesView
+        entries={[]}
+        setEntries={noop}
+        addEntry={noop}
+        categories={["A"]}
+        activeYear={2026}
+      />);
+      renderCheck("BudgetView (empty)", <BudgetView
+        flow={[]}
+        openBal={0}
+        entries={[]}
+        setOverride={noop}
+        clearOverride={noop}
+        categories={["A"]}
+        setEntries={noop}
+        addEntry={noop}
+        view="monthly"
+        setView={noop}
+        monthIdx={0}
+        setMonthIdx={noop}
+      />);
+      renderCheck("ForecastView (empty)", <ForecastView yearFlows={{}} yearConfigs={[]} openBalByYear={{}} />);
+      renderCheck("DashboardView (empty)", <DashboardView
+        flow={[]}
+        openBal={0}
+        yearFlows={{}}
+        yearConfigs={[]}
+        alertThreshold={500}
+        activeYear={2026}
+      />);
+      renderCheck("PlanView (empty)", <PlanView
+        flow={[]}
+        openBal={0}
+        entries={[]}
+        goals={[]}
+        categories={["A"]}
+        alertThreshold={500}
+        activeYear={2026}
+      />);
+      renderCheck("BottomNav", <BottomNav tab="today" setTab={noop} />);
       t("goal progress math (pct, projection)", () => {
         const g = { target: 3600, saved: 900, monthly: 300 };
         const pct = Math.min(100, Math.round(g.saved / g.target * 100));
@@ -1058,7 +1159,26 @@ import { HolidaySettings } from "./settings.js";
     }, []);
     const allResults = results.concat(swResults);
     const passed = allResults.filter((r) => r.ok).length;
-    return /* @__PURE__ */ React.createElement("div", { className: "selftest-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "selftest-h2" }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { className: "selftest-count", style: { color: passed === allResults.length ? "var(--greenDk)" : "var(--red)" } }, passed, "/", allResults.length, " checks passed"), allResults.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "selftest-row" }, /* @__PURE__ */ React.createElement("span", { className: "selftest-mark", style: { color: r.ok ? "var(--greenDk)" : "var(--red)" } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { className: "c-text flex-1" }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { className: "selftest-detail" }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, className: "selftest-back-link" }, "\u2190 Back to app"));
+    return <div className="selftest-wrap">
+      <h2 className="selftest-h2">CashFlow Self-Test</h2>
+      <div
+        className="selftest-count"
+        style={{ color: passed === allResults.length ? "var(--greenDk)" : "var(--red)" }}
+      >
+        {passed}
+        /
+        {allResults.length}
+        {" checks passed"}
+      </div>
+      {allResults.map((r, i) => <div key={i} className="selftest-row">
+        <span className="selftest-mark" style={{ color: r.ok ? "var(--greenDk)" : "var(--red)" }}>
+          {r.ok ? "\u2713" : "\u2717"}
+        </span>
+        <span className="c-text flex-1">{r.name}</span>
+        {r.detail && !r.ok && <span className="selftest-detail">{r.detail}</span>}
+      </div>)}
+      <a href={location.pathname} className="selftest-back-link">← Back to app</a>
+    </div>;
   }
   export function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
@@ -1075,24 +1195,29 @@ import { HolidaySettings } from "./settings.js";
       { id: "curve", label: "Curve", icon: "trending-up" },
       { id: "entries", label: "Entries", icon: "grid" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Lenses", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: s.id,
-        "data-active": value === s.id,
+    return <div
+      ref={ref}
+      role="group"
+      aria-label="Lenses"
+      onKeyDown={roving.onKeyDown}
+      className="budget-subtabs budget-subtabs-row"
+    >
+      {tabs.map((s) => <button
+        key={s.id}
+        data-active={value === s.id}
         // data-active styles the pill; aria-pressed is what actually tells a
         // screen reader which sub-tab is showing. Matches the month pills.
-        "aria-pressed": value === s.id,
+        aria-pressed={value === s.id}
         // One tab stop for the strip; arrow keys move within it.
-        tabIndex: value === s.id ? 0 : -1,
-        className: "budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : ""),
-        onClick: () => {
+        tabIndex={value === s.id ? 0 : -1}
+        className={"budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : "")}
+        onClick={() => {
           haptic();
           onChange(s.id);
-        },
-        "aria-label": s.label,
-        title: s.label,
-        style: {
+        }}
+        aria-label={s.label}
+        title={s.label}
+        style={{
           // --stripe is byte-identical to --bg in the light theme, so an
           // inactive pill with border:none had no visible container at all —
           // on mobile, where the labels were hidden too, the tabs read as
@@ -1100,11 +1225,12 @@ import { HolidaySettings } from "./settings.js";
           // surface .cf-pill already uses everywhere else.
           background: value === s.id ? "var(--primary)" : "var(--border)",
           color: value === s.id ? "#fff" : "var(--textMid)"
-        }
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
-    )));
+        }}
+      >
+        <Icon name={s.icon} size={15} style={{ verticalAlign: "middle", flexShrink: 0 }} />
+        <span className="bp-label">{" "}{s.label}</span>
+      </button>)}
+    </div>;
   }
   export function PlanSubTabs({ value, onChange }) {
     const ref = useRef(null);
@@ -1122,24 +1248,29 @@ import { HolidaySettings } from "./settings.js";
       { id: "networth", label: "Net worth", icon: "banknote" },
       { id: "insights", label: "Insights", icon: "sparkle" }
     ];
-    return /* @__PURE__ */ React.createElement("div", { ref, role: "group", "aria-label": "Sub-views", onKeyDown: roving.onKeyDown, className: "budget-subtabs budget-subtabs-row" }, tabs.map((s) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: s.id,
-        "data-active": value === s.id,
+    return <div
+      ref={ref}
+      role="group"
+      aria-label="Sub-views"
+      onKeyDown={roving.onKeyDown}
+      className="budget-subtabs budget-subtabs-row"
+    >
+      {tabs.map((s) => <button
+        key={s.id}
+        data-active={value === s.id}
         // data-active styles the pill; aria-pressed is what actually tells a
         // screen reader which sub-tab is showing. Matches the month pills.
-        "aria-pressed": value === s.id,
+        aria-pressed={value === s.id}
         // One tab stop for the strip; arrow keys move within it.
-        tabIndex: value === s.id ? 0 : -1,
-        className: "budget-subtab-pill budget-subtab-btn",
-        onClick: () => {
+        tabIndex={value === s.id ? 0 : -1}
+        className="budget-subtab-pill budget-subtab-btn"
+        onClick={() => {
           haptic();
           onChange(s.id);
-        },
-        "aria-label": s.label,
-        title: s.label,
-        style: {
+        }}
+        aria-label={s.label}
+        title={s.label}
+        style={{
           // --stripe is byte-identical to --bg in the light theme, so an
           // inactive pill with border:none had no visible container at all —
           // on mobile, where the labels were hidden too, the tabs read as
@@ -1147,9 +1278,10 @@ import { HolidaySettings } from "./settings.js";
           // surface .cf-pill already uses everywhere else.
           background: value === s.id ? "var(--primary)" : "var(--border)",
           color: value === s.id ? "#fff" : "var(--textMid)"
-        }
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 15, style: { verticalAlign: "middle", flexShrink: 0 } }),
-      /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
-    )));
+        }}
+      >
+        <Icon name={s.icon} size={15} style={{ verticalAlign: "middle", flexShrink: 0 }} />
+        <span className="bp-label">{" "}{s.label}</span>
+      </button>)}
+    </div>;
   }

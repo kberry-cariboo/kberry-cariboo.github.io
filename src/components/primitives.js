@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
 import { depositShiftNote, isInflowEvent, signedAmount } from "../lib/dates.js";
 import { fmt, fmtDate } from "../lib/format.js";
 import { CAT_PALETTE, CategoriesContext, DEFAULT_ALERT_THRESHOLD, MONTHS, chipDot, haptic, prefersReducedMotion, railTone, useIsCoarsePointer, useRovingTabs, varianceTitle } from "../lib/app-data.js";
@@ -20,9 +20,10 @@ import { Icon } from "./misc-ui.js";
     // which is exactly what drowns out the two or three amounts that do
     // carry a warning. The hue still identifies the category; it just stops
     // competing with the state colours for attention.
-    return /* @__PURE__ */ React.createElement("span", { className: ("cat-chip " + className).trim(), style: __spreadValues({}, style) },
-      /* @__PURE__ */ React.createElement("i", { className: "cat-dot", style: { background: chipDot(color, ctxCats.chipSurface) }, "aria-hidden": "true" }),
-      category);
+    return <span className={("cat-chip " + className).trim()} style={{ ...style }}>
+      <i className="cat-dot" style={{ background: chipDot(color, ctxCats.chipSurface) }} aria-hidden="true" />
+      {category}
+    </span>;
   };
   // ── One ledger row ──────────────────────────────────────────────────────
   // A dated occurrence looks and behaves the same wherever you meet it: the
@@ -101,90 +102,121 @@ import { Icon } from "./misc-ui.js";
       if (d.dx > 64) { haptic(); onTogglePaid(ev.id); }
       else if (d.dx < -64 && onSwipeLeft) { haptic(); onSwipeLeft(ev); }
     };
-    const row = /* @__PURE__ */ React.createElement("div", {
-      className: "budget-card-row",
-      ref: rowRef,
-      onClick: onOpen ? () => {
+    const row = <div
+      className="budget-card-row"
+      ref={rowRef}
+      onClick={onOpen ? () => {
         if (swallowClick.current) { swallowClick.current = false; return; }
         if (!drag.current) onOpen(ev);
-      } : void 0,
-      onContextMenu: onMenu ? (e) => { e.preventDefault(); onMenu(e, ev); } : void 0,
-      onPointerDown: swipeable ? onDown : void 0,
-      onPointerMove: swipeable ? onMove : void 0,
-      onPointerUp: swipeable ? onUp : void 0,
-      onPointerCancel: swipeable ? onUp : void 0,
-      style: {
+      } : void 0}
+      onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(e, ev); } : void 0}
+      onPointerDown={swipeable ? onDown : void 0}
+      onPointerMove={swipeable ? onMove : void 0}
+      onPointerUp={swipeable ? onUp : void 0}
+      onPointerCancel={swipeable ? onUp : void 0}
+      style={{
         background: selected ? "var(--stripe)" : paid ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
         boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold),
         cursor: onOpen ? "pointer" : "default",
         touchAction: swipeable ? "pan-y" : void 0
-      }
-    },
-      /* @__PURE__ */ React.createElement("button", {
-        onClick: (e) => {
+      }}
+    >
+      <button
+        onClick={(e) => {
           e.stopPropagation();
           haptic();
           if (onToggleSelect && !paid) onToggleSelect(ev.id);
           else onTogglePaid(ev.id);
-        },
-        role: "checkbox",
-        "aria-checked": paid || selected,
-        "aria-label": (paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + rowName,
-        title: paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid",
-        className: "cf-checkbtn budget-card-checkbtn",
-        style: {
+        }}
+        role="checkbox"
+        aria-checked={paid || selected}
+        aria-label={(paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + rowName}
+        title={paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid"}
+        className="cf-checkbtn budget-card-checkbtn"
+        style={{
           border: paid || selected ? "none" : "1.5px solid var(--border)",
           background: paid ? "var(--greenDk)" : selected ? "var(--primary)" : "transparent"
-        }
-      }, paid || selected ? "\u2713" : ""),
-      /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" },
-        /* @__PURE__ */ React.createElement("div", { className: "card-top-row" },
-          /* @__PURE__ */ React.createElement("span", {
-            className: "tx card-desc-span", title: ev.desc,
-            style: { color: dim || "var(--text)", textDecoration: paid ? "line-through" : "none" }
-          }, ev.desc,
-            ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" },
-              /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 }))),
-          ev.category && /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, style: { flexShrink: 0 } })),
-        /* @__PURE__ */ React.createElement("div", {
-          className: "card-bottom-row",
-          style: { justifyContent: dateLabel ? "space-between" : "flex-end" }
-        },
-          dateLabel && /* @__PURE__ */ React.createElement("span", { className: "txl" }, dateLabel,
-            // Direct deposit does not arrive on a weekend or a statutory
+        }}
+      >
+        {paid || selected ? "\u2713" : ""}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="card-top-row">
+          <span
+            className="tx card-desc-span"
+            title={ev.desc}
+            style={{ color: dim || "var(--text)", textDecoration: paid ? "line-through" : "none" }}
+          >
+            {ev.desc}
+            {ev.attachment && <span className="attach-indicator" title="Has receipt">
+              <Icon name="paperclip" size={11} />
+            </span>}
+          </span>
+          {ev.category && <CatChip
+            category={ev.category}
+            categories={categories}
+            categoryColors={categoryColors}
+            style={{ flexShrink: 0 }}
+          />}
+        </div>
+        <div className="card-bottom-row" style={{ justifyContent: dateLabel ? "space-between" : "flex-end" }}>
+          {dateLabel && <span className="txl">
+            {dateLabel}
+            {// Direct deposit does not arrive on a weekend or a statutory
             // holiday. The marker travelled with the budget grid's own row and
             // so was missing from the forecast and from this week on Today —
             // the same payday, marked on one screen and not the next.
-            ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, {
-              icon: "\u21A4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev)
-            })),
-          /* @__PURE__ */ React.createElement("span", { className: "amounts-row-baseline" },
-            /* @__PURE__ */ React.createElement("span", {
-              className: "mno card-signed-amt", title: varianceTitle(ev), style: {
+            ev.depositShifted && <HelpTip
+              icon="↤"
+              variant="mark"
+              label="Deposit date"
+              text={depositShiftNote(ev)}
+            />
+}
+          </span>}
+          <span className="amounts-row-baseline">
+            <span
+              className="mno card-signed-amt"
+              title={varianceTitle(ev)}
+              style={{
                 textDecoration: paid ? "line-through" : "none",
                 color: dim || (ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)")
-              }
-            }, fmt(signed, true)),
-            showBalance && /* @__PURE__ */ React.createElement("span", {
-              className: "mno card-balance-amt", style: {
+              }}
+            >
+              {fmt(signed, true)}
+            </span>
+            {showBalance && <span
+              className="mno card-balance-amt"
+              style={{
                 textDecoration: paid ? "line-through" : "none",
                 color: dim || (ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)")
-              }
-            }, fmt(ev.balance))))),
-      onMenu && /* @__PURE__ */ React.createElement("button", {
-        onClick: (e) => { e.stopPropagation(); onMenu(e, ev); },
-        "aria-label": rowName + " actions", title: ev.desc + " actions",
-        className: "cf-checkbtn row-menu-btn budget-card-menu-btn"
-      }, "\u22EE"));
+              }}
+            >
+              {fmt(ev.balance)}
+            </span>}
+          </span>
+        </div>
+      </div>
+      {onMenu && <button
+        onClick={(e) => { e.stopPropagation(); onMenu(e, ev); }}
+        aria-label={rowName + " actions"}
+        title={ev.desc + " actions"}
+        className="cf-checkbtn row-menu-btn budget-card-menu-btn"
+      >
+        ⋮
+      </button>}
+    </div>;
     if (!swipeable) return row;
     // The panes sit behind the row and are revealed by it moving, so they are
     // decoration for a gesture rather than controls of their own — the tick
     // and the row menu remain the accessible path to both actions.
-    return /* @__PURE__ */ React.createElement("div", { className: "ledger-row-wrap" },
-      /* @__PURE__ */ React.createElement("div", { className: "ledger-row-actions", "aria-hidden": "true" },
-        /* @__PURE__ */ React.createElement("span", { className: "ledger-row-action ledger-row-action--pay" }, paid ? "Unpay" : "Paid"),
-        onSwipeLeft && /* @__PURE__ */ React.createElement("span", { className: "ledger-row-action ledger-row-action--skip" }, "Skip")),
-      row);
+    return <div className="ledger-row-wrap">
+      <div className="ledger-row-actions" aria-hidden="true">
+        <span className="ledger-row-action ledger-row-action--pay">{paid ? "Unpay" : "Paid"}</span>
+        {onSwipeLeft && <span className="ledger-row-action ledger-row-action--skip">Skip</span>}
+      </div>
+      {row}
+    </div>;
   };
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
@@ -212,7 +244,17 @@ import { Icon } from "./misc-ui.js";
           className: "sparkline-svg sparkline-svg--wide" }
       : { width, height, className: "sparkline-svg" };
     const areaPath = area ? path + ` L${pts[pts.length - 1][0].toFixed(1)},${height} L${pts[0][0].toFixed(1)},${height} Z` : null;
-    return /* @__PURE__ */ React.createElement("svg", __spreadProps(__spreadValues({}, svgProps), { role: "presentation", "aria-hidden": "true", focusable: "false" }), areaPath && /* @__PURE__ */ React.createElement("path", { d: areaPath, fill: color, opacity: 0.14, stroke: "none" }), /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: color, strokeWidth: 1.5, vectorEffect: responsive ? "non-scaling-stroke" : void 0 }), !responsive && /* @__PURE__ */ React.createElement("circle", { cx: lastPt[0], cy: lastPt[1], r: 2.5, fill: color }));
+    return <svg {...svgProps} role="presentation" aria-hidden="true" focusable="false">
+      {areaPath && <path d={areaPath} fill={color} opacity={0.14} stroke="none" />}
+      <path
+        d={path}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        vectorEffect={responsive ? "non-scaling-stroke" : void 0}
+      />
+      {!responsive && <circle cx={lastPt[0]} cy={lastPt[1]} r={2.5} fill={color} />}
+    </svg>;
   };
   // Shared row-pagination for grids that used to be internally-scrolling
   // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
@@ -270,66 +312,77 @@ import { Icon } from "./misc-ui.js";
   export const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }) => {
     const { total, totalPages, safePage, start, end } = pageInfo;
     if (total === 0) return null;
-    return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination" + (isMobile ? " grid-pagination--mobile" : ""), "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        value: pageSize,
-        "aria-label": "Rows per page",
-        onChange: (e) => {
+    return <div
+      className={"grid-pagination" + (isMobile ? " grid-pagination--mobile" : "")}
+      data-noprint={true}
+    >
+      <div className="grid-pagination-info">{`${start + 1}–${end} of ${total} ${label}`}</div>
+      <div className="grid-pagination-controls">
+        <label className="grid-pagination-size">
+          Show
+          <select
+            value={pageSize}
+            aria-label="Rows per page"
+            onChange={(e) => {
           const v = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
           setPageSize(v);
-        }
-      },
-      PAGE_SIZE_OPTIONS.map((v) => /* @__PURE__ */ React.createElement("option", { key: v, value: v }, v === "all" ? "All" : v))
-    )), !isMobile && totalPages > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "grid-pagination-nav",
-        onClick: () => setPage((p) => Math.max(0, p - 1)),
-        disabled: safePage === 0,
-        "aria-label": "Previous page"
-      },
-      "‹"
-    ), /* @__PURE__ */ React.createElement("span", { className: "grid-pagination-page" }, `Page ${safePage + 1} of ${totalPages}`), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "grid-pagination-nav",
-        onClick: () => setPage((p) => Math.min(totalPages - 1, p + 1)),
-        disabled: safePage >= totalPages - 1,
-        "aria-label": "Next page"
-      },
-      "›"
-    ))));
+        }}
+          >
+            {PAGE_SIZE_OPTIONS.map((v) => <option key={v} value={v}>{v === "all" ? "All" : v}</option>)}
+          </select>
+        </label>
+        {!isMobile && totalPages > 1 && <>
+          <button
+            className="grid-pagination-nav"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={safePage === 0}
+            aria-label="Previous page"
+          >
+            ‹
+          </button>
+          <span className="grid-pagination-page">{`Page ${safePage + 1} of ${totalPages}`}</span>
+          <button
+            className="grid-pagination-nav"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={safePage >= totalPages - 1}
+            aria-label="Next page"
+          >
+            ›
+          </button>
+        </>}
+      </div>
+    </div>;
   };
   export function TemplatePicker({ templates = [], onSelect }) {
     const [open, setOpen] = useState(false);
     if (!templates.length) return null;
-    return /* @__PURE__ */ React.createElement("div", { className: "relative inline-block" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
-        "aria-haspopup": "menu",
-        className: "cf-btn cf-btn--secondary template-picker-btn"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "clipboard", size: 13 }),
-      "Templates ",
-      open ? "\u25B2" : "\u25BC"
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        // Templates are unique by description (saving one replaces its
-        // namesake), so that is the stable key.
-        key: t.desc || i,
-        onClick: () => {
+    return <div className="relative inline-block">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="cf-btn cf-btn--secondary template-picker-btn"
+      >
+        <Icon name="clipboard" size={13} />
+        {"Templates "}
+        {open ? "\u25B2" : "\u25BC"}
+      </button>
+      {open && <div className="cf-popover">
+        {templates.map((t, i) => <button
+          // Templates are unique by description (saving one replaces its
+          // namesake), so that is the stable key.
+          key={t.desc || i}
+          onClick={() => {
           onSelect(t);
           setOpen(false);
-        },
-        className: "cf-menu-item cf-menu-item--compact template-item"
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "fw-600" }, t.desc),
-      /* @__PURE__ */ React.createElement("span", { className: "template-item-amount" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount))
-    ))));
+        }}
+          className="cf-menu-item cf-menu-item--compact template-item"
+        >
+          <span className="fw-600">{t.desc}</span>
+          <span className="template-item-amount">{isInflowEvent(t) ? "+" : "-"}{fmt(t.amount)}</span>
+        </button>)}
+      </div>}
+    </div>;
   }
   // Drag handle for the mobile bottom sheets, and the swipe-down-to-dismiss
   // gesture that makes it honest. The touch context menu has drawn a handle
@@ -375,25 +428,23 @@ import { Icon } from "./misc-ui.js";
       card.style.transition = "transform 0.18s ease-out";
       card.style.transform = "";
     };
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        ref,
-        className: "sheet-handle",
-        "aria-hidden": "true",
-        onPointerDown: (e) => {
+    return <div
+      ref={ref}
+      className="sheet-handle"
+      aria-hidden="true"
+      onPointerDown={(e) => {
           drag.current = { y: e.clientY, card: cardOf(e.currentTarget) };
           try {
             e.currentTarget.setPointerCapture(e.pointerId);
           } catch (err) {
             // Capture is an enhancement; the drag still tracks without it.
           }
-        },
-        onPointerMove: (e) => {
+        }}
+      onPointerMove={(e) => {
           if (!drag.current) return;
           move(drag.current.card, e.clientY - drag.current.y);
-        },
-        onPointerUp: (e) => {
+        }}
+      onPointerUp={(e) => {
           if (!drag.current) return;
           const dy = e.clientY - drag.current.y;
           const card = drag.current.card;
@@ -406,31 +457,48 @@ import { Icon } from "./misc-ui.js";
             haptic();
             onDismiss();
           }
-        },
-        onPointerCancel: () => {
+        }}
+      onPointerCancel={() => {
           if (!drag.current) return;
           release(drag.current.card);
           drag.current = null;
-        }
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "sheet-handle-bar" })
-    );
+        }}
+    >
+      <div className="sheet-handle-bar" />
+    </div>;
   };
-  export const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
+  export const Card = ({ children, style = {}, className = "", id }) => <div
+    id={id}
+    className={`cf-card ${className}`.trim()}
+    style={style}
+  >
+    {children}
+  </div>;
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
   // `help` puts a HelpTip beside the heading — the section's explanatory
   // paragraph without the paragraph. (Defined below this line but hoisted, as
   // everything in this bundle's shared scope is.)
-  export const SectionTitle = ({ children, action, className, help }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), help && /* @__PURE__ */ React.createElement(HelpTip, { label: typeof children === "string" ? children : "", text: help })), action);
-  export const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onAction,
-      className: "cf-btn cf-btn--primary cf-btn--action"
-    },
-    actionLabel
-  ));
-  export const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
+  export const SectionTitle = ({ children, action, className, help }) => <div
+    className={"cf-row-between " + (className || "mb-12")}
+  >
+    <div className="section-title-wrap">
+      <h2 className="cf-section-title-text">{children}</h2>
+      {help && <HelpTip label={typeof children === "string" ? children : ""} text={help} />}
+    </div>
+    {action}
+  </div>;
+  export const EmptyState = ({ icon, message, actionLabel, onAction }) => <>
+    <div className="empty-state-icon">{icon}</div>
+    <div className="mb-14">{message}</div>
+    {actionLabel && <button onClick={onAction} className="cf-btn cf-btn--primary cf-btn--action">
+      {actionLabel}
+    </button>}
+  </>;
+  export const KpiCard = ({ label, value, color, sub }) => <div className="kpi-card">
+    <div className="kpi-label">{label}</div>
+    <div className="kpi-value" style={color ? { color } : void 0}>{value}</div>
+    {sub && <div className="kpi-sub">{sub}</div>}
+  </div>;
   // Mobile-only "which year am I on" indicator — desktop already shows the
   // year pills in the header, which are hidden on mobile to save space.
   // Tapping it opens the same year switcher the header pills provide.
@@ -443,31 +511,29 @@ import { Icon } from "./misc-ui.js";
     const [ctx, setCtx] = useState(null);
     const cls = "mobile-year-badge" + (inHeader ? " mobile-year-badge--header" : "");
     if (years.length < 2) {
-      return /* @__PURE__ */ React.createElement("div", { className: cls }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }), year);
+      return <div className={cls}><Icon name="calendar" size={12} />{year}</div>;
     }
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: cls + " mobile-year-badge--btn",
-        "aria-label": "Switch year",
-        "aria-haspopup": "menu",
-        onClick: (e) => {
+    return <>
+      <button
+        className={cls + " mobile-year-badge--btn"}
+        aria-label="Switch year"
+        aria-haspopup="menu"
+        onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           setCtx({ x: r.left, y: r.bottom + 4 });
-        }
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 12 }),
-      year,
-      /* @__PURE__ */ React.createElement("span", { className: "mobile-year-badge-caret" }, "▾")
-    ), ctx && /* @__PURE__ */ React.createElement(
-      ContextMenu,
-      {
-        x: ctx.x,
-        y: ctx.y,
-        onClose: () => setCtx(null),
-        items: years.map((y) => ({ icon: y === year ? "✓" : "", label: String(y), action: () => onSelect(y) }))
-      }
-    ));
+        }}
+      >
+        <Icon name="calendar" size={12} />
+        {year}
+        <span className="mobile-year-badge-caret">▾</span>
+      </button>
+      {ctx && <ContextMenu
+        x={ctx.x}
+        y={ctx.y}
+        onClose={() => setCtx(null)}
+        items={years.map((y) => ({ icon: y === year ? "✓" : "", label: String(y), action: () => onSelect(y) }))}
+      />}
+    </>;
   };
   export const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }) => {
     const stripRef = useRef(null);
@@ -504,68 +570,74 @@ import { Icon } from "./misc-ui.js";
     }, [value, matchingMonths]);
     const closeOf = (i) => monthCloses && monthCloses.length === 12 ? monthCloses[i] : null;
     const needsEye = (i) => { const c = closeOf(i); return c != null && c < alertThreshold; };
-    return /* @__PURE__ */ React.createElement("div", { className: "relative" + (noMargin ? "" : " mb-20") }, fade.left && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--left", "aria-hidden": "true" }), fade.right && /* @__PURE__ */ React.createElement("div", { className: "month-picker-fade month-picker-fade--right", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { ref: stripRef, className: "month-picker", role: "group", "aria-label": "Month", onKeyDown: roving.onKeyDown },/* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "month-nav-arrow",
-        onClick: () => onChange(Math.max(0, value - 1)),
-        disabled: value === 0,
-        title: "Previous month (\u2190 key)",
-        "aria-label": "Previous month"
-      },
-      "\u2039"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "month-nav-arrow",
-        onClick: () => onChange(Math.min(11, value + 1)),
-        disabled: value === 11,
-        title: "Next month (\u2192 key)",
-        "aria-label": "Next month"
-      },
-      "\u203A"
-    ), (() => {
-      const cur = (/* @__PURE__ */ new Date()).getMonth();
-      return value !== cur && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          className: "month-today-pill cf-pill--dashed",
-          onClick: () => onChange(cur),
-          title: "Jump to current month",
-          "aria-label": "Jump to current month"
-        },
-        "\u25CF ",
-        MONTHS[cur]
-      );
-    })(), MONTHS.map((m, i) => {
+    return <div className={"relative" + (noMargin ? "" : " mb-20")}>
+      {fade.left && <div className="month-picker-fade month-picker-fade--left" aria-hidden="true" />}
+      {fade.right && <div className="month-picker-fade month-picker-fade--right" aria-hidden="true" />}
+      <div
+        ref={stripRef}
+        className="month-picker"
+        role="group"
+        aria-label="Month"
+        onKeyDown={roving.onKeyDown}
+      >
+        <button
+          className="month-nav-arrow"
+          onClick={() => onChange(Math.max(0, value - 1))}
+          disabled={value === 0}
+          title="Previous month (← key)"
+          aria-label="Previous month"
+        >
+          ‹
+        </button>
+        <button
+          className="month-nav-arrow"
+          onClick={() => onChange(Math.min(11, value + 1))}
+          disabled={value === 11}
+          title="Next month (→ key)"
+          aria-label="Next month"
+        >
+          ›
+        </button>
+        {(() => {
+      const cur = (new Date()).getMonth();
+      return value !== cur && <button
+        className="month-today-pill cf-pill--dashed"
+        onClick={() => onChange(cur)}
+        title="Jump to current month"
+        aria-label="Jump to current month"
+      >
+        {"\u25CF "}
+        {MONTHS[cur]}
+      </button>;
+    })()}
+        {MONTHS.map((m, i) => {
       const isActive = value === i;
       const hasMatch = matchingMonths && matchingMonths.size > 0 && matchingMonths.has(i);
-      return /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          key: m,
-          onClick: () => onChange(i),
-          className: "cf-pill month-pill",
-          "aria-pressed": isActive,
-          tabIndex: isActive ? 0 : -1,
-          "data-active": isActive ? "true" : "false",
-          "data-match": hasMatch ? "true" : "false",
-          title: closeOf(i) == null ? void 0 : "Closing balance " + fmt(closeOf(i)),
-          style: needsEye(i) && !isActive ? { boxShadow: "inset 0 -3px 0 0 " + railTone(closeOf(i), alertThreshold) } : void 0
-        },
-        m,
-        hasMatch && !isActive && /* @__PURE__ */ React.createElement("span", { className: "month-pill-dot" })
-      );
-    }), onAddNextYear && nextYear != null && value >= 10 && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "month-nextyear-pill cf-pill--dashed",
-        onClick: onAddNextYear,
-        title: `Add budget year ${nextYear} — recurring entries carry forward automatically`
-      },
-      "+ Add ",
-      nextYear
-    )));
+      return <button
+        key={m}
+        onClick={() => onChange(i)}
+        className="cf-pill month-pill"
+        aria-pressed={isActive}
+        tabIndex={isActive ? 0 : -1}
+        data-active={isActive ? "true" : "false"}
+        data-match={hasMatch ? "true" : "false"}
+        title={closeOf(i) == null ? void 0 : "Closing balance " + fmt(closeOf(i))}
+        style={needsEye(i) && !isActive ? { boxShadow: "inset 0 -3px 0 0 " + railTone(closeOf(i), alertThreshold) } : void 0}
+      >
+        {m}
+        {hasMatch && !isActive && <span className="month-pill-dot" />}
+      </button>;
+    })}
+        {onAddNextYear && nextYear != null && value >= 10 && <button
+          className="month-nextyear-pill cf-pill--dashed"
+          onClick={onAddNextYear}
+          title={`Add budget year ${nextYear} — recurring entries carry forward automatically`}
+        >
+          {"+ Add "}
+          {nextYear}
+        </button>}
+      </div>
+    </div>;
   };
   // `label` names the group, not the buttons. A dashboard puts five of these
   // on one page and every one of them offers "Line" and "Bar", so on their own
@@ -573,49 +645,65 @@ import { Icon } from "./misc-ui.js";
   // a screen reader hears "Line, button" over and over with no idea which
   // chart it would change. Naming the group is what a role="group" is for: it
   // is announced on entry, and it leaves the button names alone.
-  export const ChartToggle = ({ options, value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { role: "group", "aria-label": label ? label + " view" : void 0, className: "chart-toggle-group" }, options.map((o) => /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      key: o.id,
-      onClick: () => onChange(o.id),
-      className: "chart-toggle-btn",
-      title: o.label,
-      "aria-label": o.label,
-      "aria-pressed": value === o.id
-    },
-    o.icon || o.label
-  )));
+  export const ChartToggle = ({ options, value, onChange, label }) => <div
+    role="group"
+    aria-label={label ? label + " view" : void 0}
+    className="chart-toggle-group"
+  >
+    {options.map((o) => <button
+      key={o.id}
+      onClick={() => onChange(o.id)}
+      className="chart-toggle-btn"
+      title={o.label}
+      aria-label={o.label}
+      aria-pressed={value === o.id}
+    >
+      {o.icon || o.label}
+    </button>)}
+  </div>;
   // Base look lives in .cf-pill; explicitly-passed size props remain inline
   // overrides for the compact dashboard variants.
   // size="sm" applies the .cf-pill--sm modifier — used where the toggle docks
   // into a tight card header (YoY metric, shared-view) instead of one-off
   // fontSize/padding/borderRadius overrides per call site.
   export const PillToggle = ({ options, value, onChange, size }) => {
-    return /* @__PURE__ */ React.createElement("div", { role: "group", className: "cf-row cf-gap-6 cf-wrap" }, options.map((o) => /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: o.id,
-        onClick: () => onChange(o.id),
-        className: "cf-pill" + (size === "sm" ? " cf-pill--sm" : ""),
-        "aria-pressed": value === o.id
-      },
-      o.label
-    )));
+    return <div role="group" className="cf-row cf-gap-6 cf-wrap">
+      {options.map((o) => <button
+        key={o.id}
+        onClick={() => onChange(o.id)}
+        className={"cf-pill" + (size === "sm" ? " cf-pill--sm" : "")}
+        aria-pressed={value === o.id}
+      >
+        {o.label}
+      </button>)}
+    </div>;
   };
   export const ChartTip = ({ active, payload, label }) => {
-    if (!active || !(payload == null ? void 0 : payload.length)) return null;
+    if (!active || !payload?.length) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
-    return /* @__PURE__ */ React.createElement("div", { className: "chart-tip" }, label && /* @__PURE__ */ React.createElement("div", { className: "chart-tip-label" }, label), payload.map((p) => {
+    return <div className="chart-tip">
+      {label && <div className="chart-tip-label">{label}</div>}
+      {payload.map((p) => {
       const isSurplus = p.name === "Surplus" || p.dataKey === "surplus";
       const lbl = isSurplus && p.value < 0 ? "Shortfall" : isSurplus ? "Surplus" : p.name;
       const pct = total > 0 && payload.length > 1 ? (100 * Math.abs(p.value) / total).toFixed(1) : null;
       const val = typeof p.value === "number" ? p.value : 0;
-      return /* @__PURE__ */ React.createElement("div", { key: p.dataKey || p.name, className: "chart-tip-row" }, /* @__PURE__ */ React.createElement("span", { className: "chart-tip-name" }, lbl), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 chart-tip-value", style: {
+      return <div key={p.dataKey || p.name} className="chart-tip-row">
+        <span className="chart-tip-name">{lbl}</span>
+        <span
+          className="cf-text-mono-13 chart-tip-value"
+          style={{
         color: p.color || "#fff"
-      } }, fmt(val), pct && /* @__PURE__ */ React.createElement("span", { className: "chart-tip-pct" }, " ", pct, "%")));
-    }));
+      }}
+        >
+          {fmt(val)}
+          {pct && <span className="chart-tip-pct">{" "}{pct}%</span>}
+        </span>
+      </div>;
+    })}
+    </div>;
   };
-  export const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
+  export const FieldError = ({ msg }) => msg ? <div className="field-error-text">{msg}</div> : null;
   export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
     useEffect(() => {
       const h = (e) => {
@@ -631,10 +719,30 @@ import { Icon } from "./misc-ui.js";
     // default) is for destructive actions (delete/reset); "primary" is for
     // a plain yes/no confirmation of a safe, additive action, where a red
     // button would misrepresent risk.
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: confirmVariant === "danger" ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title }, /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "confirm-dialog-message" }, message), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary", autoFocus: true }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    return <div
+      className="modal-overlay"
+      role={confirmVariant === "danger" ? "alertdialog" : "dialog"}
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div className="modal-card confirm-dialog-card" onClick={(e) => e.stopPropagation()}>
+        <SheetHandle onDismiss={onCancel} />
+        <div className="confirm-dialog-title">{title}</div>
+        <div className="confirm-dialog-message">{message}</div>
+        <div className="cf-row cf-gap-10 justify-end">
+          <button onClick={onCancel} className="cf-btn cf-btn--secondary" autoFocus={true}>Cancel</button>
+          <button
+            onClick={() => {
       haptic();
       onConfirm();
-    }, className: "cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary") }, confirmLabel))));
+    }}
+            className={"cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary")}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>;
   }
   // Field-level help: a small "?" beside a label that shows its explanation on
   // hover, on keyboard focus, and on tap. It replaces the sentences that used
@@ -723,74 +831,73 @@ import { Icon } from "./misc-ui.js";
       };
     }, [open]);
     if (!text) return null;
-    return /* @__PURE__ */ React.createElement(
-      "span",
-      { className: "helptip-wrap", ref: wrapRef },
-      /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          type: "button",
-          className: "helptip-btn" + (variant ? " helptip-btn--" + variant : ""),
-          "aria-label": label ? `Help: ${label}` : "Help",
-          "aria-expanded": open,
-          "aria-describedby": tipId,
-          onClick: (e) => {
+    return <span className="helptip-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={"helptip-btn" + (variant ? " helptip-btn--" + variant : "")}
+        aria-label={label ? `Help: ${label}` : "Help"}
+        aria-expanded={open}
+        aria-describedby={tipId}
+        onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setOpen((o) => !o);
-          },
-          // Rows underneath can own the pointer (the budget grid starts a
-          // drag-to-reschedule on pointerdown) — asking what an icon means
-          // must never begin dragging the thing it sits on.
-          onPointerDown: (e) => e.stopPropagation(),
-          // Mouse only: a touch tap also fires pointerenter, and letting it
-          // through would leave the bubble open with no way to dismiss it
-          // except the click handler that had just closed it.
-          onPointerEnter: (e) => {
+          }}
+        // Rows underneath can own the pointer (the budget grid starts a
+        // drag-to-reschedule on pointerdown) — asking what an icon means
+        // must never begin dragging the thing it sits on.
+        onPointerDown={(e) => e.stopPropagation()}
+        // Mouse only: a touch tap also fires pointerenter, and letting it
+        // through would leave the bubble open with no way to dismiss it
+        // except the click handler that had just closed it.
+        onPointerEnter={(e) => {
             if (e.pointerType === "mouse") setOpen(true);
-          },
-          onPointerLeave: (e) => {
+          }}
+        onPointerLeave={(e) => {
             if (e.pointerType === "mouse") setOpen(false);
-          },
-          onFocus: () => setOpen(true),
-          onBlur: () => setOpen(false)
-        },
-        icon
-      ),
-      /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          id: tipId,
-          role: "tooltip",
-          className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : ""),
-          // Inline so it beats both alignment rules; `right` has to be cleared
-          // too or an end-aligned bubble ends up constrained from both sides
-          // and stretches to fill the gap.
-          style: offset === null ? void 0 : { left: offset + "px", right: "auto" }
-        },
-        text
-      )
-    );
+          }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        {icon}
+      </button>
+      <span
+        id={tipId}
+        role="tooltip"
+        className={"helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : "")}
+        // Inline so it beats both alignment rules; `right` has to be cleared
+        // too or an end-aligned bubble ends up constrained from both sides
+        // and stretches to fill the gap.
+        style={offset === null ? void 0 : { left: offset + "px", right: "auto" }}
+      >
+        {text}
+      </span>
+    </span>;
   }
   // A field label with its help beside it. The tip is a *sibling* of the
   // <label>, never a child: a control inside a label is folded into the field's
   // accessible name, so a help button in there makes the input announce itself
   // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
   // user can't skip. The row keeps the two on one line anyway.
-  export const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => /* @__PURE__ */ React.createElement(
-    "div",
-    { className: "field-label-row" },
-    /* @__PURE__ */ React.createElement("label", { className, htmlFor }, children),
-    help && /* @__PURE__ */ React.createElement(HelpTip, { label: helpLabel, text: help, align: helpAlign })
-  );
-  export const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
-    type: "button",
-    role: "switch",
-    "aria-checked": value,
-    "aria-label": label || void 0,
-    onClick: () => onChange(!value),
-    className: "cf-switch"
-  }, /* @__PURE__ */ React.createElement("div", { className: "cf-switch-knob" })), label && /* @__PURE__ */ React.createElement("span", { onClick: () => onChange(!value), className: "toggle-label" }, label));
+  export const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => <div
+    className="field-label-row"
+  >
+    <label className={className} htmlFor={htmlFor}>{children}</label>
+    {help && <HelpTip label={helpLabel} text={help} align={helpAlign} />}
+  </div>;
+  export const Toggle = ({ value, onChange, label }) => <div className="toggle-row">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      aria-label={label || void 0}
+      onClick={() => onChange(!value)}
+      className="cf-switch"
+    >
+      <div className="cf-switch-knob" />
+    </button>
+    {label && <span onClick={() => onChange(!value)} className="toggle-label">{label}</span>}
+  </div>;
 
   // What a category's total is made of, as a sheet.
   //
@@ -809,67 +916,73 @@ import { Icon } from "./misc-ui.js";
   // one page does not leave a drawer open on the other.
   export const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }) => {
     if (!detail) return null;
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": `The expenses behind ${detail.category}`
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card catd-card" },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onClose }),
-        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, detail.category),
-        // The total again, at the top, because it is the number the reader
+    return <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`The expenses behind ${detail.category}`}
+    >
+      <div className="modal-card catd-card">
+        <SheetHandle onDismiss={onClose} />
+        <div className="modal-title-lg mb-6">{detail.category}</div>
+        {// The total again, at the top, because it is the number the reader
         // pressed and the one every row below has to add up to. Shown even
         // when the category is empty — "$0.00 across 0 payments" is a clearer
         // answer than a missing figure.
-        /* @__PURE__ */ React.createElement("div", { className: "catd-summary" },
-          /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(detail.total)),
-          /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" },
-            `across ${detail.count} ${detail.count === 1 ? "payment" : "payments"} in ${scope}`)
-        ),
-        detail.rows.length === 0
-          ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${scope} is filed under ${detail.category}. If you were expecting something here, it is filed under another category — Flow will show you which.`)
-          : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, detail.rows.map((r) => {
+        <div className="catd-summary">
+          <span className="cf-text-mono-13 catd-summary-amt">{fmt(detail.total)}</span>
+          <span className="catd-summary-sub">
+            {`across ${detail.count} ${detail.count === 1 ? "payment" : "payments"} in ${scope}`}
+          </span>
+        </div>
+}
+        {detail.rows.length === 0
+          ? <div className="catd-none">
+            {`Nothing in ${scope} is filed under ${detail.category}. If you were expecting something here, it is filed under another category — Flow will show you which.`}
+          </div>
+          : <div className="catd-rows">
+            {detail.rows.map((r) => {
               const open = !!openRows[r.key];
-              return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" },
-                /* @__PURE__ */ React.createElement("button", {
-                  type: "button",
-                  className: "catd-row-head",
-                  "aria-expanded": open ? "true" : "false",
+              return <div key={r.key} className="catd-row">
+                <button
+                  type="button"
+                  className="catd-row-head"
+                  aria-expanded={open ? "true" : "false"}
                   // A recurring line is one row saying "26 payments"; the
                   // dates are a level down, for when that is the question.
                   // A line that happened once has nothing to expand to, so it
                   // says its own date instead of offering an empty drawer.
-                  "aria-label": r.count > 1
+                  aria-label={r.count > 1
                     ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments — ${open ? "hide" : "show"} the dates`
-                    : `${r.desc}, ${fmt(r.total)}`,
-                  onClick: () => onToggleRow(r.key)
-                },
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? (open ? "▾" : "▸") : ""),
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-count" },
-                    r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, year)),
-                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
-                ),
-                open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
-                  "div",
-                  { key: o.id || oi, className: "catd-occ" },
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, year)),
-                  // Why this one is not simply the entry's amount. Without it
+                    : `${r.desc}, ${fmt(r.total)}`}
+                  onClick={() => onToggleRow(r.key)}
+                >
+                  <span className="catd-caret" aria-hidden="true">
+                    {r.count > 1 ? (open ? "▾" : "▸") : ""}
+                  </span>
+                  <span className="catd-desc" title={r.desc}>{r.desc}</span>
+                  <span className="catd-count">
+                    {r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, year)}
+                  </span>
+                  <span className="cf-text-mono-13 catd-amt">{fmt(r.total)}</span>
+                </button>
+                {open && r.count > 1 && <div className="catd-occs">
+                  {r.occurrences.map((o, oi) => <div key={o.id || oi} className="catd-occ">
+                    <span className="catd-occ-date">{fmtDate(o.date, year)}</span>
+                    {// Why this one is not simply the entry's amount. Without it
                   // a column of identical figures with one odd number in it
                   // reads as a mistake rather than as an edit somebody made.
-                  o.edited ? /* @__PURE__ */ React.createElement("span", { className: "catd-occ-tag" }, "Edited") : null,
-                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-occ-amt" }, fmt(o.amount))
-                )))
-              );
-            })),
-        /* @__PURE__ */ React.createElement("div", { className: "catd-done-row" }, /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: onClose, className: "cf-btn cf-btn--primary fw-700 btn-pad-24" },
-          "Done"
-        ))
-      )
-    );
+                  o.edited ? <span className="catd-occ-tag">Edited</span> : null
+}
+                    <span className="cf-text-mono-13 catd-occ-amt">{fmt(o.amount)}</span>
+                  </div>)}
+                </div>}
+              </div>;
+            })}
+          </div>}
+        <div className="catd-done-row">
+          <button onClick={onClose} className="cf-btn cf-btn--primary fw-700 btn-pad-24">Done</button>
+        </div>
+      </div>
+    </div>;
   };

@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, createContext, useCallback, useEffect, useState } from "./runtime.js";
+import { createContext, useCallback, useEffect, useState } from "./runtime.js";
 import { DEFAULT_ACCOUNT_ID, DEFAULT_ACCOUNT_NAME, centsToDollars } from "./migrate.js";
 import { parseDate } from "./dates.js";
 import { fmt, roundMoney } from "./format.js";
@@ -250,7 +250,7 @@ import { toast } from "../components/auth-misc.js";
   // from module state: a module variable can't trigger a React re-render, so
   // dots drawn before a theme switch would keep ink computed for the old one.
   // It arrives through CategoriesContext, which re-renders every one of them.
-  export const _chipDotCache = /* @__PURE__ */ new Map();
+  export const _chipDotCache = new Map();
   export function chipDot(hue, surface) {
     const surf = surface || "#FFFFFF";
     const key = hue + "|" + surf;
@@ -293,7 +293,7 @@ import { toast } from "../components/auth-misc.js";
   // report the same finding without a second copy of the arithmetic.
   export function computeSpendingInsight(flow, activeYear) {
     try {
-      const now = /* @__PURE__ */ new Date();
+      const now = new Date();
       if (now.getFullYear() !== activeYear) return null;
       const cm = now.getMonth();
       if (cm === 0) return null;
@@ -319,7 +319,7 @@ import { toast } from "../components/auth-misc.js";
       });
       Object.keys(avgCats).forEach((c) => avgCats[c] /= lookback.length);
       let driver = null, driverDelta = 0;
-      (/* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
+      (new Set([...Object.keys(currCats), ...Object.keys(avgCats)])).forEach((c) => {
         const d = (currCats[c] || 0) - (avgCats[c] || 0);
         if (Math.abs(d) > Math.abs(driverDelta)) {
           driver = c;
@@ -517,7 +517,7 @@ export const RUNWAY_DAYS = 90;
     let moved = 0;
     const ovs = {};
     Object.keys(overridesByYr || {}).forEach((y) => {
-      ovs[y] = __spreadValues({}, overridesByYr[y] || {});
+      ovs[y] = { ...overridesByYr[y] || {} };
     });
     const cleaned = (entries || []).map((e) => {
       if (!e || !e.attachment) return e;
@@ -528,10 +528,10 @@ export const RUNWAY_DAYS = 90;
       ovs[year] = ovs[year] || {};
       const existing = ovs[year][occId] || {};
       if (existing.attachment === void 0) {
-        ovs[year][occId] = __spreadProps(__spreadValues({}, existing), { attachment: e.attachment });
+        ovs[year][occId] = { ...existing, attachment: e.attachment };
       }
       moved++;
-      const copy = __spreadValues({}, e);
+      const copy = { ...e };
       delete copy.attachment;
       return copy;
     });
@@ -829,7 +829,7 @@ export const RUNWAY_DAYS = 90;
   }
   export function simulateDebtStrategy(debts, extra, order) {
     try {
-      let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => __spreadValues({}, d2));
+      let ds = debts.filter((d2) => d2.bal > 0 && d2.pmt > 0).map((d2) => ({ ...d2 }));
       if (!ds.length) return null;
       const sortFn = order === "avalanche" ? (a, b) => b.rate - a.rate || a.bal - b.bal : (a, b) => a.bal - b.bal || b.rate - a.rate;
       let months = 0, totalInterest = 0;
@@ -865,7 +865,7 @@ export const RUNWAY_DAYS = 90;
         timeline.push(roundMoney(ds.reduce((s, d2) => s + d2.bal, 0)));
       }
       if (months >= 600) return null;
-      const d = /* @__PURE__ */ new Date();
+      const d = new Date();
       d.setMonth(d.getMonth() + months);
       return {
         months,

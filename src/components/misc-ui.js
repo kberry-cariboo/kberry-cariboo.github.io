@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, useContext, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { useContext, useEffect, useMemo, useState } from "../lib/runtime.js";
 import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
 import { daysInMonth, depositShiftNote, humanShortDate, parseDate, todayStr } from "../lib/dates.js";
 import { fmt, memberName } from "../lib/format.js";
@@ -38,15 +38,36 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
         setBusy(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "sync-divergence-title" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" },
-      /* @__PURE__ */ React.createElement("div", { id: "sync-divergence-title", className: "settings-header-title mb-8" }, "Two versions of your budget"),
-      /* @__PURE__ */ React.createElement("div", { className: "txm mb-14" }, "This device has changes that were never saved to the cloud", when ? ` (since ${when})` : "", ", and the cloud copy has changed too", cloudWhen ? ` (last saved ${cloudWhen})` : "", ". Keeping one means losing the other, so pick which to keep."),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" },
-        /* @__PURE__ */ React.createElement("button", { onClick: run(onKeepLocal), disabled: busy, className: "cf-btn cf-btn--primary cf-btn--md" }, busy ? "Working\u2026" : "Keep this device's version"),
-        /* @__PURE__ */ React.createElement("button", { onClick: run(onUseCloud), disabled: busy, className: "cf-btn cf-btn--secondary cf-btn--md" }, "Use the cloud version")
-      ),
-      /* @__PURE__ */ React.createElement("div", { className: "txl mt-14" }, "Not sure? Export a backup first from Settings \u2192 Data Backup & Restore \u2014 that saves this device's current version to a file either way.")
-    ));
+    return <div
+      className="modal-overlay"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="sync-divergence-title"
+    >
+      <div className="modal-card profile-modal-card">
+        <div id="sync-divergence-title" className="settings-header-title mb-8">
+          Two versions of your budget
+        </div>
+        <div className="txm mb-14">
+          This device has changes that were never saved to the cloud
+          {when ? ` (since ${when})` : ""}
+          , and the cloud copy has changed too
+          {cloudWhen ? ` (last saved ${cloudWhen})` : ""}
+          . Keeping one means losing the other, so pick which to keep.
+        </div>
+        <div className="cf-row cf-gap-12 cf-wrap">
+          <button onClick={run(onKeepLocal)} disabled={busy} className="cf-btn cf-btn--primary cf-btn--md">
+            {busy ? "Working\u2026" : "Keep this device's version"}
+          </button>
+          <button onClick={run(onUseCloud)} disabled={busy} className="cf-btn cf-btn--secondary cf-btn--md">
+            Use the cloud version
+          </button>
+        </div>
+        <div className="txl mt-14">
+          {"Not sure? Export a backup first from Settings \u2192 Data Backup & Restore \u2014 that saves this device's current version to a file either way."}
+        </div>
+      </div>
+    </div>;
   }
 
   export function ReceiptLightbox({ src, onClose }) {
@@ -58,30 +79,10 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       return () => window.removeEventListener("keydown", h);
     }, [onClose]);
     if (!src) return null;
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        onClick: onClose,
-        className: "receipt-lightbox"
-      },
-      /* @__PURE__ */ React.createElement(
-        "img",
-        {
-          src,
-          alt: "Receipt",
-          className: "receipt-lightbox-img"
-        }
-      ),
-      /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: onClose,
-          "aria-label": "Close",
-          className: "receipt-lightbox-close"
-        },
-        "\u2715"
-      )
-    );
+    return <div onClick={onClose} className="receipt-lightbox">
+      <img src={src} alt="Receipt" className="receipt-lightbox-img" />
+      <button onClick={onClose} aria-label="Close" className="receipt-lightbox-close">✕</button>
+    </div>;
   }
   // The account filter. Only rendered once a household has more than one
   // account — with a single account "All accounts" and "Chequing" are the same
@@ -94,117 +95,290 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   export function AccountFilter({ accounts = [], value = "", onChange = () => {
   } }) {
     if (!Array.isArray(accounts) || accounts.length < 2) return null;
-    return /* @__PURE__ */ React.createElement("div", { className: "account-filter", "data-noprint": true }, /* @__PURE__ */ React.createElement("label", { htmlFor: "account-filter-select", className: "account-filter-label" }, "Account"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "account-filter-select",
-        className: "account-filter-select",
-        value,
-        onChange: (e) => onChange(e.target.value)
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "" }, "All accounts"),
-      accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
-    ));
+    return <div className="account-filter" data-noprint={true}>
+      <label htmlFor="account-filter-select" className="account-filter-label">Account</label>
+      <select
+        id="account-filter-select"
+        className="account-filter-select"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">All accounts</option>
+        {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+      </select>
+    </div>;
   }
   export function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {
       case "plus":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 5v14" }), /* @__PURE__ */ React.createElement("path", { d: "M5 12h14" }));
+        return <svg {...common}><path d="M12 5v14" /><path d="M5 12h14" /></svg>;
       // Points down. A disclosure that opens upward rotates it rather than
       // swapping in a second glyph, so the two states are the same shape.
       case "chevron-down":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9.5 12 15.5 18 9.5" }));
+        return <svg {...common}><path d="M6 9.5 12 15.5 18 9.5" /></svg>;
       case "home":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 11.5 12 4l8 7.5" }), /* @__PURE__ */ React.createElement("path", { d: "M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" }), /* @__PURE__ */ React.createElement("path", { d: "M10 20v-6h4v6" }));
+        return <svg {...common}>
+          <path d="M4 11.5 12 4l8 7.5" />
+          <path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" />
+          <path d="M10 20v-6h4v6" />
+        </svg>;
       case "calendar":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 3, y: 5, width: 18, height: 16, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 3, y1: 10, x2: 21, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 3, x2: 8, y2: 7 }), /* @__PURE__ */ React.createElement("line", { x1: 16, y1: 3, x2: 16, y2: 7 }));
+        return <svg {...common}>
+          <rect x={3} y={5} width={18} height={16} rx={2} />
+          <line x1={3} y1={10} x2={21} y2={10} />
+          <line x1={8} y1={3} x2={8} y2={7} />
+          <line x1={16} y1={3} x2={16} y2={7} />
+        </svg>;
       case "target":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 8 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 4 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 0.6, fill: "currentColor", stroke: "none" }));
+        return <svg {...common}>
+          <circle cx={12} cy={12} r={8} />
+          <circle cx={12} cy={12} r={4} />
+          <circle cx={12} cy={12} r={0.6} fill="currentColor" stroke="none" />
+        </svg>;
       case "sparkle":
-        return /* @__PURE__ */ React.createElement("svg", __spreadProps(__spreadValues({}, common), { fill: "currentColor", stroke: "none" }), /* @__PURE__ */ React.createElement("path", { d: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z" }));
+        return <svg {...common} fill="currentColor" stroke="none">
+          <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z" />
+        </svg>;
       case "settings":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }), [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => /* @__PURE__ */ React.createElement("line", { key: deg, x1: 12, y1: 3.3, x2: 12, y2: 6, transform: `rotate(${deg} 12 12)` })));
+        return <svg {...common}>
+          <circle cx={12} cy={12} r={3} />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => <line
+            key={deg}
+            x1={12}
+            y1={3.3}
+            x2={12}
+            y2={6}
+            transform={`rotate(${deg} 12 12)`}
+          />)}
+        </svg>;
       case "search":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 11, cy: 11, r: 7 }), /* @__PURE__ */ React.createElement("line", { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }));
+        return <svg {...common}>
+          <circle cx={11} cy={11} r={7} />
+          <line x1={21} y1={21} x2={16.65} y2={16.65} />
+        </svg>;
       case "bell":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" }), /* @__PURE__ */ React.createElement("path", { d: "M10.3 19.5a2 2 0 0 0 3.4 0" }));
+        return <svg {...common}>
+          <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" />
+          <path d="M10.3 19.5a2 2 0 0 0 3.4 0" />
+        </svg>;
       case "grid":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 3, y: 3, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 3, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 3, y: 14, width: 7, height: 7, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 14, width: 7, height: 7, rx: 1 }));
+        return <svg {...common}>
+          <rect x={3} y={3} width={7} height={7} rx={1} />
+          <rect x={14} y={3} width={7} height={7} rx={1} />
+          <rect x={3} y={14} width={7} height={7} rx={1} />
+          <rect x={14} y={14} width={7} height={7} rx={1} />
+        </svg>;
       case "day":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 4, y: 4, width: 16, height: 16, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 4, y1: 9.5, x2: 20, y2: 9.5 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 15, r: 1.6, fill: "currentColor", stroke: "none" }));
+        return <svg {...common}>
+          <rect x={4} y={4} width={16} height={16} rx={2} />
+          <line x1={4} y1={9.5} x2={20} y2={9.5} />
+          <circle cx={12} cy={15} r={1.6} fill="currentColor" stroke="none" />
+        </svg>;
       case "scale":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 20, x2: 6, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 20, x2: 12, y2: 4 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 20, x2: 18, y2: 14 }));
+        return <svg {...common}>
+          <line x1={6} y1={20} x2={6} y2={10} />
+          <line x1={12} y1={20} x2={12} y2={4} />
+          <line x1={18} y1={20} x2={18} y2={14} />
+        </svg>;
       case "trending-up":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "3,17 9,11 13,15 21,7" }), /* @__PURE__ */ React.createElement("polyline", { points: "15,7 21,7 21,13" }));
+        return <svg {...common}>
+          <polyline points="3,17 9,11 13,15 21,7" />
+          <polyline points="15,7 21,7 21,13" />
+        </svg>;
       case "file-list":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 2h8l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 13, x2: 16, y2: 13 }), /* @__PURE__ */ React.createElement("line", { x1: 8, y1: 17, x2: 16, y2: 17 }));
+        return <svg {...common}>
+          <path d="M6 2h8l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+          <line x1={8} y1={13} x2={16} y2={13} />
+          <line x1={8} y1={17} x2={16} y2={17} />
+        </svg>;
       case "chart-bar":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 20, x2: 6, y2: 12 }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 20, x2: 12, y2: 5 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 20, x2: 18, y2: 9 }));
+        return <svg {...common}>
+          <line x1={6} y1={20} x2={6} y2={12} />
+          <line x1={12} y1={20} x2={12} y2={5} />
+          <line x1={18} y1={20} x2={18} y2={9} />
+        </svg>;
       case "chart-grouped":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 20, x2: 5, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 20, x2: 9, y2: 14 }), /* @__PURE__ */ React.createElement("line", { x1: 15, y1: 20, x2: 15, y2: 6 }), /* @__PURE__ */ React.createElement("line", { x1: 19, y1: 20, x2: 19, y2: 12 }));
+        return <svg {...common}>
+          <line x1={5} y1={20} x2={5} y2={10} />
+          <line x1={9} y1={20} x2={9} y2={14} />
+          <line x1={15} y1={20} x2={15} y2={6} />
+          <line x1={19} y1={20} x2={19} y2={12} />
+        </svg>;
       case "chart-stacked":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 5, y: 11, width: 5, height: 9 }), /* @__PURE__ */ React.createElement("rect", { x: 5, y: 5, width: 5, height: 6 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 13, width: 5, height: 7 }), /* @__PURE__ */ React.createElement("rect", { x: 14, y: 8, width: 5, height: 5 }));
+        return <svg {...common}>
+          <rect x={5} y={11} width={5} height={9} />
+          <rect x={5} y={5} width={5} height={6} />
+          <rect x={14} y={13} width={5} height={7} />
+          <rect x={14} y={8} width={5} height={5} />
+        </svg>;
       case "chart-line":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "4,17 9,11 14,14 20,6" }));
+        return <svg {...common}><polyline points="4,17 9,11 14,14 20,6" /></svg>;
       case "chart-area":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 19V13l5-5 5 3 6-6v14z", fill: "currentColor", fillOpacity: 0.25 }), /* @__PURE__ */ React.createElement("polyline", { points: "4,13 9,8 14,11 20,5" }));
+        return <svg {...common}>
+          <path d="M4 19V13l5-5 5 3 6-6v14z" fill="currentColor" fillOpacity={0.25} />
+          <polyline points="4,13 9,8 14,11 20,5" />
+        </svg>;
       case "chart-pie":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 8 }), /* @__PURE__ */ React.createElement("path", { d: "M12 4v8l6 5" }));
+        return <svg {...common}><circle cx={12} cy={12} r={8} /><path d="M12 4v8l6 5" /></svg>;
       case "chart-down":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("polyline", { points: "3,7 9,13 13,9 21,17" }), /* @__PURE__ */ React.createElement("polyline", { points: "15,17 21,17 21,11" }));
+        return <svg {...common}>
+          <polyline points="3,7 9,13 13,9 21,17" />
+          <polyline points="15,17 21,17 21,11" />
+        </svg>;
       case "user":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 8, r: 4 }), /* @__PURE__ */ React.createElement("path", { d: "M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" }));
+        return <svg {...common}>
+          <circle cx={12} cy={8} r={4} />
+          <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+        </svg>;
       case "users":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 9, cy: 8, r: 3.2 }), /* @__PURE__ */ React.createElement("path", { d: "M2.5 21c0-3.9 2.9-6 6.5-6s6.5 2.1 6.5 6" }), /* @__PURE__ */ React.createElement("path", { d: "M16 8.5a2.7 2.7 0 1 0 0-5.4" }), /* @__PURE__ */ React.createElement("path", { d: "M17.5 15c2.6.4 4 2 4 6" }));
+        return <svg {...common}>
+          <circle cx={9} cy={8} r={3.2} />
+          <path d="M2.5 21c0-3.9 2.9-6 6.5-6s6.5 2.1 6.5 6" />
+          <path d="M16 8.5a2.7 2.7 0 1 0 0-5.4" />
+          <path d="M17.5 15c2.6.4 4 2 4 6" />
+        </svg>;
       case "key":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 7, cy: 17, r: 4 }), /* @__PURE__ */ React.createElement("path", { d: "M9.5 14.5 20 4" }), /* @__PURE__ */ React.createElement("path", { d: "M17 7l3 3" }), /* @__PURE__ */ React.createElement("path", { d: "M14 10l2 2" }));
+        return <svg {...common}>
+          <circle cx={7} cy={17} r={4} />
+          <path d="M9.5 14.5 20 4" />
+          <path d="M17 7l3 3" />
+          <path d="M14 10l2 2" />
+        </svg>;
       case "lock":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 5, y: 11, width: 14, height: 10, rx: 2 }), /* @__PURE__ */ React.createElement("path", { d: "M8 11V7a4 4 0 0 1 8 0v4" }));
+        return <svg {...common}>
+          <rect x={5} y={11} width={14} height={10} rx={2} />
+          <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+        </svg>;
       case "keyboard":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 6, width: 20, height: 13, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 10, x2: 6.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 10, y1: 10, x2: 10.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 14, y1: 10, x2: 14.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 10, x2: 18.01, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 7, y1: 15, x2: 17, y2: 15 }));
+        return <svg {...common}>
+          <rect x={2} y={6} width={20} height={13} rx={2} />
+          <line x1={6} y1={10} x2={6.01} y2={10} />
+          <line x1={10} y1={10} x2={10.01} y2={10} />
+          <line x1={14} y1={10} x2={14.01} y2={10} />
+          <line x1={18} y1={10} x2={18.01} y2={10} />
+          <line x1={7} y1={15} x2={17} y2={15} />
+        </svg>;
       case "download":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3v12" }), /* @__PURE__ */ React.createElement("polyline", { points: "7,10 12,15 17,10" }), /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 21, x2: 19, y2: 21 }));
+        return <svg {...common}>
+          <path d="M12 3v12" />
+          <polyline points="7,10 12,15 17,10" />
+          <line x1={5} y1={21} x2={19} y2={21} />
+        </svg>;
       case "upload":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 15V3" }), /* @__PURE__ */ React.createElement("polyline", { points: "7,8 12,3 17,8" }), /* @__PURE__ */ React.createElement("line", { x1: 5, y1: 21, x2: 19, y2: 21 }));
+        return <svg {...common}>
+          <path d="M12 15V3" />
+          <polyline points="7,8 12,3 17,8" />
+          <line x1={5} y1={21} x2={19} y2={21} />
+        </svg>;
       case "log-out":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" }), /* @__PURE__ */ React.createElement("polyline", { points: "16,17 21,12 16,7" }), /* @__PURE__ */ React.createElement("line", { x1: 21, y1: 12, x2: 9, y2: 12 }));
+        return <svg {...common}>
+          <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" />
+          <polyline points="16,17 21,12 16,7" />
+          <line x1={21} y1={12} x2={9} y2={12} />
+        </svg>;
       case "clipboard":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 6, y: 4, width: 12, height: 16, rx: 2 }), /* @__PURE__ */ React.createElement("rect", { x: 9, y: 2, width: 6, height: 4, rx: 1 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 11, x2: 15, y2: 11 }), /* @__PURE__ */ React.createElement("line", { x1: 9, y1: 15, x2: 15, y2: 15 }));
+        return <svg {...common}>
+          <rect x={6} y={4} width={12} height={16} rx={2} />
+          <rect x={9} y={2} width={6} height={4} rx={1} />
+          <line x1={9} y1={11} x2={15} y2={11} />
+          <line x1={9} y1={15} x2={15} y2={15} />
+        </svg>;
       case "clock":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "12,7 12,12 15.5,14" }));
+        return <svg {...common}><circle cx={12} cy={12} r={9} /><polyline points="12,7 12,12 15.5,14" /></svg>;
       case "trash":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 7h16" }), /* @__PURE__ */ React.createElement("path", { d: "M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" }), /* @__PURE__ */ React.createElement("path", { d: "M19 7l-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" }), /* @__PURE__ */ React.createElement("line", { x1: 10, y1: 11, x2: 10, y2: 17 }), /* @__PURE__ */ React.createElement("line", { x1: 14, y1: 11, x2: 14, y2: 17 }));
+        return <svg {...common}>
+          <path d="M4 7h16" />
+          <path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+          <path d="M19 7l-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" />
+          <line x1={10} y1={11} x2={10} y2={17} />
+          <line x1={14} y1={11} x2={14} y2={17} />
+        </svg>;
       case "camera":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 14, r: 3.5 }));
+        return <svg {...common}>
+          <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+          <circle cx={12} cy={14} r={3.5} />
+        </svg>;
       case "paperclip":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M20.5 12.5 12.9 20a4.2 4.2 0 0 1-6-6l7.6-7.5a2.8 2.8 0 0 1 4 4L11 18a1.4 1.4 0 0 1-2-2l6.5-6.4" }));
+        return <svg {...common}>
+          <path
+            d="M20.5 12.5 12.9 20a4.2 4.2 0 0 1-6-6l7.6-7.5a2.8 2.8 0 0 1 4 4L11 18a1.4 1.4 0 0 1-2-2l6.5-6.4"
+          />
+        </svg>;
       case "eye":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }));
+        return <svg {...common}>
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+          <circle cx={12} cy={12} r={3} />
+        </svg>;
       case "eye-off":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" }), /* @__PURE__ */ React.createElement("path", { d: "M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" }), /* @__PURE__ */ React.createElement("path", { d: "M14.12 14.12a3 3 0 1 1-4.24-4.24" }), /* @__PURE__ */ React.createElement("line", { x1: 1, y1: 1, x2: 23, y2: 23 }));
+        return <svg {...common}>
+          <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" />
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" />
+          <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+          <line x1={1} y1={1} x2={23} y2={23} />
+        </svg>;
       case "alert-triangle":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M12 3 22 20H2z" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 9, x2: 12, y2: 13.5 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 16.5, r: 0.6, fill: "currentColor", stroke: "none" }));
+        return <svg {...common}>
+          <path d="M12 3 22 20H2z" />
+          <line x1={12} y1={9} x2={12} y2={13.5} />
+          <circle cx={12} cy={16.5} r={0.6} fill="currentColor" stroke="none" />
+        </svg>;
       case "check-circle":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("polyline", { points: "8,12.5 11,15.5 16,9" }));
+        return <svg {...common}>
+          <circle cx={12} cy={12} r={9} />
+          <polyline points="8,12.5 11,15.5 16,9" />
+        </svg>;
       case "help":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9 }), /* @__PURE__ */ React.createElement("path", { d: "M9.4 9.2a2.7 2.7 0 1 1 3.4 3.1c-.6.2-.8.6-.8 1.2v.4" }), /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 16.8, x2: 12, y2: 16.9 }));
+        return <svg {...common}>
+          <circle cx={12} cy={12} r={9} />
+          <path d="M9.4 9.2a2.7 2.7 0 1 1 3.4 3.1c-.6.2-.8.6-.8 1.2v.4" />
+          <line x1={12} y1={16.8} x2={12} y2={16.9} />
+        </svg>;
       case "printer":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M6 9V3h12v6" }), /* @__PURE__ */ React.createElement("rect", { x: 4, y: 9, width: 16, height: 8, rx: 1 }), /* @__PURE__ */ React.createElement("rect", { x: 8, y: 13, width: 8, height: 6 }));
+        return <svg {...common}>
+          <path d="M6 9V3h12v6" />
+          <rect x={4} y={9} width={16} height={8} rx={1} />
+          <rect x={8} y={13} width={8} height={6} />
+        </svg>;
       case "save":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" }), /* @__PURE__ */ React.createElement("path", { d: "M8 3v6h8V3" }), /* @__PURE__ */ React.createElement("path", { d: "M8 21v-7h8v7" }));
+        return <svg {...common}>
+          <path d="M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+          <path d="M8 3v6h8V3" />
+          <path d="M8 21v-7h8v7" />
+        </svg>;
       case "arrow-right":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 4, y1: 12, x2: 20, y2: 12 }), /* @__PURE__ */ React.createElement("polyline", { points: "13,5 20,12 13,19" }));
+        return <svg {...common}>
+          <line x1={4} y1={12} x2={20} y2={12} />
+          <polyline points="13,5 20,12 13,19" />
+        </svg>;
       case "party":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M4 21 14 9" }), /* @__PURE__ */ React.createElement("path", { d: "M15 3l1.5 2.3L19 4l-.7 2.6L21 8l-2.4.8L18 11l-2.1-1.5L14 11l.3-2.6L12 7l2.5-.8L15 3z" }), /* @__PURE__ */ React.createElement("circle", { cx: 5.5, cy: 15, r: 1, fill: "currentColor", stroke: "none" }), /* @__PURE__ */ React.createElement("circle", { cx: 9, cy: 19.5, r: 1, fill: "currentColor", stroke: "none" }));
+        return <svg {...common}>
+          <path d="M4 21 14 9" />
+          <path d="M15 3l1.5 2.3L19 4l-.7 2.6L21 8l-2.4.8L18 11l-2.1-1.5L14 11l.3-2.6L12 7l2.5-.8L15 3z" />
+          <circle cx={5.5} cy={15} r={1} fill="currentColor" stroke="none" />
+          <circle cx={9} cy={19.5} r={1} fill="currentColor" stroke="none" />
+        </svg>;
       case "mountain":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("path", { d: "M3 20 9.5 7l4 6.5L16 10l5 10z" }));
+        return <svg {...common}><path d="M3 20 9.5 7l4 6.5L16 10l5 10z" /></svg>;
       case "snowflake":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("line", { x1: 12, y1: 2, x2: 12, y2: 22 }), /* @__PURE__ */ React.createElement("line", { x1: 4.5, y1: 6.5, x2: 19.5, y2: 17.5 }), /* @__PURE__ */ React.createElement("line", { x1: 4.5, y1: 17.5, x2: 19.5, y2: 6.5 }));
+        return <svg {...common}>
+          <line x1={12} y1={2} x2={12} y2={22} />
+          <line x1={4.5} y1={6.5} x2={19.5} y2={17.5} />
+          <line x1={4.5} y1={17.5} x2={19.5} y2={6.5} />
+        </svg>;
       case "banknote":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 6, width: 20, height: 12, rx: 2 }), /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 3 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 9, x2: 6.01, y2: 9 }), /* @__PURE__ */ React.createElement("line", { x1: 18, y1: 15, x2: 18.01, y2: 15 }));
+        return <svg {...common}>
+          <rect x={2} y={6} width={20} height={12} rx={2} />
+          <circle cx={12} cy={12} r={3} />
+          <line x1={6} y1={9} x2={6.01} y2={9} />
+          <line x1={18} y1={15} x2={18.01} y2={15} />
+        </svg>;
       case "credit-card":
-        return /* @__PURE__ */ React.createElement("svg", common, /* @__PURE__ */ React.createElement("rect", { x: 2, y: 5, width: 20, height: 14, rx: 2 }), /* @__PURE__ */ React.createElement("line", { x1: 2, y1: 10, x2: 22, y2: 10 }), /* @__PURE__ */ React.createElement("line", { x1: 6, y1: 15, x2: 10, y2: 15 }));
+        return <svg {...common}>
+          <rect x={2} y={5} width={20} height={14} rx={2} />
+          <line x1={2} y1={10} x2={22} y2={10} />
+          <line x1={6} y1={15} x2={10} y2={15} />
+        </svg>;
       default:
         return null;
     }
@@ -260,27 +434,34 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       const el = document.getElementById(id);
       if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "section-nav", "data-noprint": true },
-      /* @__PURE__ */ React.createElement("button", {
-        className: "section-nav-btn", onClick: () => { haptic(); setOpen(true); },
-        "aria-haspopup": "dialog", "aria-label": label + ": " + here.title + ". Jump to a section"
-      },
-        /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
-        /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" },
-          sections.length, " sections"),
-        /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev" },
-          /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))),
-      open && /* @__PURE__ */ React.createElement("div", {
-        className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section"
-      },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" },
-          /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setOpen(false) }),
-          /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Jump to a section"),
-          /* @__PURE__ */ React.createElement("div", { className: "section-nav-list" },
-            sections.map((s) => /* @__PURE__ */ React.createElement("button", {
-              key: s.id, className: "section-nav-item", onClick: () => go(s.id),
-              "aria-current": s.id === here.id ? "true" : void 0
-            }, s.title))))));
+    return <div className="section-nav" data-noprint={true}>
+      <button
+        className="section-nav-btn"
+        onClick={() => { haptic(); setOpen(true); }}
+        aria-haspopup="dialog"
+        aria-label={label + ": " + here.title + ". Jump to a section"}
+      >
+        <span className="section-nav-here">{here.title}</span>
+        <span className="section-nav-count">{sections.length}{" sections"}</span>
+        <span className="section-nav-chev"><Icon name="chevron-down" size={15} strokeWidth={2.25} /></span>
+      </button>
+      {open && <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Jump to a section">
+        <div className="modal-card entries-mobilefilters-card">
+          <SheetHandle onDismiss={() => setOpen(false)} />
+          <div className="modal-title-lg">Jump to a section</div>
+          <div className="section-nav-list">
+            {sections.map((s) => <button
+              key={s.id}
+              className="section-nav-item"
+              onClick={() => go(s.id)}
+              aria-current={s.id === here.id ? "true" : void 0}
+            >
+              {s.title}
+            </button>)}
+          </div>
+        </div>
+      </div>}
+    </div>;
   }
   // Every transient notice in the app, in one place, on one scale.
   //
@@ -304,35 +485,53 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       [notices]
     );
     if (!list.length) return null;
-    const row = (n) => /* @__PURE__ */ React.createElement("div", {
-      key: n.id, className: "notice", "data-tone": n.tone, role: n.tone === "critical" ? "alert" : "status"
-    },
-      /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
-        /* @__PURE__ */ React.createElement(Icon, { name: n.icon || "alert-triangle", size: 16 })),
-      /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, n.msg),
-      // Every action is a labelled button, including the one that dismisses.
+    const row = (n) => <div
+      key={n.id}
+      className="notice"
+      data-tone={n.tone}
+      role={n.tone === "critical" ? "alert" : "status"}
+    >
+      <span className="notice-icon" aria-hidden="true">
+        <Icon name={n.icon || "alert-triangle"} size={16} />
+      </span>
+      <span className="notice-msg">{n.msg}</span>
+      {// Every action is a labelled button, including the one that dismisses.
       // A bare "×" on "back up your data" does not say whether it defers the
       // prompt or turns it off, and the words already existed.
-      /* @__PURE__ */ React.createElement("span", { className: "notice-actions" },
-        (n.actions || []).map((a) => /* @__PURE__ */ React.createElement("button", {
-          key: a.label, onClick: a.onClick, "aria-label": a.ariaLabel,
-          className: "cf-btn cf-btn--tiny " + (a.primary ? "cf-btn--primary fw-700" : "cf-btn--secondary")
-        }, a.label))));
+      <span className="notice-actions">
+        {(n.actions || []).map((a) => <button
+          key={a.label}
+          onClick={a.onClick}
+          aria-label={a.ariaLabel}
+          className={"cf-btn cf-btn--tiny " + (a.primary ? "cf-btn--primary fw-700" : "cf-btn--secondary")}
+        >
+          {a.label}
+        </button>)}
+      </span>
+}
+    </div>;
     if (list.length === 1) {
-      return /* @__PURE__ */ React.createElement("div", { className: "cf-page notice-stack", "data-noprint": true }, row(list[0]));
+      return <div className="cf-page notice-stack" data-noprint={true}>{row(list[0])}</div>;
     }
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page notice-stack", "data-noprint": true },
-      /* @__PURE__ */ React.createElement("button", {
-        className: "notice notice-summary", "data-tone": list[0].tone,
-        "aria-expanded": open ? "true" : "false", onClick: () => { haptic(); setOpen(!open); }
-      },
-        /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
-          /* @__PURE__ */ React.createElement(Icon, { name: list[0].icon || "alert-triangle", size: 16 })),
-        /* @__PURE__ */ React.createElement("span", { className: "notice-msg" },
-          /* @__PURE__ */ React.createElement("strong", null, list.length, " notices"),
-          " \u2014 ", list[0].plain),
-        /* @__PURE__ */ React.createElement("span", { className: "notice-chev", "aria-hidden": "true" }, open ? "\u2303" : "\u2304")),
-      open && /* @__PURE__ */ React.createElement("div", { className: "notice-stack-body" }, list.map(row)));
+    return <div className="cf-page notice-stack" data-noprint={true}>
+      <button
+        className="notice notice-summary"
+        data-tone={list[0].tone}
+        aria-expanded={open ? "true" : "false"}
+        onClick={() => { haptic(); setOpen(!open); }}
+      >
+        <span className="notice-icon" aria-hidden="true">
+          <Icon name={list[0].icon || "alert-triangle"} size={16} />
+        </span>
+        <span className="notice-msg">
+          <strong>{list.length}{" notices"}</strong>
+          {" \u2014 "}
+          {list[0].plain}
+        </span>
+        <span className="notice-chev" aria-hidden="true">{open ? "\u2303" : "\u2304"}</span>
+      </button>
+      {open && <div className="notice-stack-body">{list.map(row)}</div>}
+    </div>;
   }
   // Four destinations and one action. Settings, Help and the account moved
   // behind the avatar as "You" — they are things you visit occasionally, and
@@ -349,40 +548,44 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       { id: "envelopes", icon: "scale", label: "Envelopes" },
       { id: "plan", icon: "target", label: "Plan" }
     ];
-    return /* @__PURE__ */ React.createElement("nav", { className: "cf-bottomnav", "aria-label": "Primary", "data-noprint": true }, items.map((it) => it.compose ? /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: "compose",
-        onClick: () => {
+    return <nav className="cf-bottomnav" aria-label="Primary" data-noprint={true}>
+      {items.map((it) => it.compose ? <button
+        key="compose"
+        onClick={() => {
           haptic();
           if (onCompose) onCompose();
-        },
-        "aria-label": "Add an entry",
-        className: "bottomnav-btn bottomnav-compose"
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-compose-mark" }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 21 })),
-      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
-    ) : /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: it.id,
-        onClick: () => {
+        }}
+        aria-label="Add an entry"
+        className="bottomnav-btn bottomnav-compose"
+      >
+        <span className="bottomnav-compose-mark"><Icon name={it.icon} size={21} /></span>
+        <span className="bottomnav-label">{it.label}</span>
+      </button> : <button
+      key={it.id}
+      onClick={() => {
           haptic();
           setTab(it.id);
-        },
-        "aria-label": it.label,
-        "aria-current": tab === it.id ? "page" : void 0,
-        className: "bottomnav-btn",
-        style: {
+        }}
+      aria-label={it.label}
+      aria-current={tab === it.id ? "page" : void 0}
+      className="bottomnav-btn"
+      style={{
           color: tab === it.id ? "var(--text)" : "var(--textLt)",
           fontWeight: tab === it.id ? 700 : 500
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-icon-wrap", style: {
+        }}
+    >
+      <span
+        className="bottomnav-icon-wrap"
+        style={{
         background: tab === it.id ? "var(--accentLt)" : "transparent"
-      } }, /* @__PURE__ */ React.createElement(Icon, { name: it.icon, size: 18 }), it.id === "today" && lowAlert && /* @__PURE__ */ React.createElement("span", { className: "bottomnav-alert-dot" })),
-      /* @__PURE__ */ React.createElement("span", { className: "bottomnav-label" }, it.label)
-    )));
+      }}
+      >
+        <Icon name={it.icon} size={18} />
+        {it.id === "today" && lowAlert && <span className="bottomnav-alert-dot" />}
+      </span>
+      <span className="bottomnav-label">{it.label}</span>
+    </button>)}
+    </nav>;
   }
   // "The app says $2,140. What does the bank actually say?"
   //
@@ -440,48 +643,60 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       }
       onConfirm({ actualCents, diff });
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Reconcile to bank" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card oem-card" },
-      /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
-      /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Reconcile to your bank"),
-      /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it."),
-      lastReconciled && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last reconciled ", humanShortDate(lastReconciled), sinceDays !== null && ` \u00b7 ${sinceDays} day${sinceDays === 1 ? "" : "s"} ago`),
-      /* @__PURE__ */ React.createElement("div", { className: "reconcile-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, "This app projects"), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 reconcile-figure" }, fmt(projected))),
-      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "rec-actual" }, "Your bank shows"),
-      /* @__PURE__ */ React.createElement("input", {
-        id: "rec-actual",
-        type: "number",
-        inputMode: "decimal",
-        step: "0.01",
-        autoFocus: true,
-        className: "field-input field-input--mono" + (err ? " field-error" : ""),
-        placeholder: "0.00",
-        value: actual,
-        onChange: (e) => {
+    return <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Reconcile to bank">
+      <div className="modal-card oem-card">
+        <SheetHandle onDismiss={onCancel} />
+        <div className="modal-title-lg">Reconcile to your bank</div>
+        <div className="oem-hint">
+          Enter what your account actually shows today. Anything left over is recorded as a dated adjustment, so today's balance matches reality without rewriting the year behind it.
+        </div>
+        {lastReconciled && <div className="oem-editedby">
+          {"Last reconciled "}
+          {humanShortDate(lastReconciled)}
+          {sinceDays !== null && ` \u00b7 ${sinceDays} day${sinceDays === 1 ? "" : "s"} ago`}
+        </div>}
+        <div className="reconcile-row">
+          <span className="txm">This app projects</span>
+          <span className="cf-text-mono-13 reconcile-figure">{fmt(projected)}</span>
+        </div>
+        <label className="field-label" htmlFor="rec-actual">Your bank shows</label>
+        <input
+          id="rec-actual"
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          autoFocus={true}
+          className={"field-input field-input--mono" + (err ? " field-error" : "")}
+          placeholder="0.00"
+          value={actual}
+          onChange={(e) => {
           setActual(e.target.value);
           if (err) setErr("");
-        },
-        onKeyDown: (e) => {
+        }}
+          onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
             submit();
           }
-        }
-      }),
-      err && /* @__PURE__ */ React.createElement(FieldError, { msg: err }),
-      valid && /* @__PURE__ */ React.createElement(
-        "div",
-        { className: "reconcile-diff" },
-        diff === 0 ? "Already matches \u2014 nothing to adjust." : /* @__PURE__ */ React.createElement(
-          React.Fragment,
-          null,
-          "Adjustment of ",
-          /* @__PURE__ */ React.createElement("strong", { style: { color: diff > 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(diff, true)),
-          ` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`,
-          driftLine && /* @__PURE__ */ React.createElement("div", { className: "reconcile-drift" }, driftLine)
-        )
-      ),
-      /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: submit, disabled: !valid || diff === 0, className: "cf-btn cf-btn--primary" }, "Record adjustment"))
-    ));
+        }}
+        />
+        {err && <FieldError msg={err} />}
+        {valid && <div className="reconcile-diff">
+          {diff === 0 ? "Already matches \u2014 nothing to adjust." : <>
+            {"Adjustment of "}
+            <strong style={{ color: diff > 0 ? "var(--greenDk)" : "var(--red)" }}>{fmt(diff, true)}</strong>
+            {` will be added today under "${reconcileCategory(categories)}". It moves the balance without counting as income or spending.`}
+            {driftLine && <div className="reconcile-drift">{driftLine}</div>}
+          </>}
+        </div>}
+        <div className="oem-footer-row">
+          <button onClick={onCancel} className="cf-btn cf-btn--secondary">Cancel</button>
+          <button onClick={submit} disabled={!valid || diff === 0} className="cf-btn cf-btn--primary">
+            Record adjustment
+          </button>
+        </div>
+      </div>
+    </div>;
   }
   // Where a reconciliation adjustment is filed. "Other" is the default
   // category list's catch-all and the natural home; a household that renamed
@@ -515,7 +730,7 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
     const [actualErr, setActualErr] = useState("");
     const [day, setDay] = useState(String(ev.day));
     const [month, setMonth] = useState(String(ev.month));
-    const evYear = ev.date ? ev.date.getFullYear() : (/* @__PURE__ */ new Date()).getFullYear();
+    const evYear = ev.date ? ev.date.getFullYear() : (new Date()).getFullYear();
     const monthNum = parseInt(month, 10);
     const maxDay = daysInMonth(isNaN(monthNum) ? ev.month : monthNum, evYear);
     const [notes, setNotes] = useState(ev.notes || (orig.notes || ""));
@@ -618,160 +833,226 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       window.addEventListener("keydown", h);
       return () => window.removeEventListener("keydown", h);
     }, [onCancel]);
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": "Edit occurrence"
-      },
-      /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "modal-card oem-card",
-          onClick: (e) => e.stopPropagation()
-        },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onCancel }),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-header-row" }, /* @__PURE__ */ React.createElement("div", { className: "oem-title" }, "Edit \u2014 ", MONTHS[ev.month], " ", ev.day, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21a4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, "aria-label": "Close", className: "cf-close-x" }, "\u2715")),
-        editedBy && editedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "oem-editedby" }, "Last edited by ", editedBy, ev._savedAt ? ` on ${new Date(ev._savedAt).toLocaleDateString()}` : ""),
-        /* @__PURE__ */ React.createElement("div", { className: "oem-hint" }, "Changes apply to this date only.", orig.repeats && onEditEntry && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            onClick: onEditEntry,
-            className: "ai-settings-link"
-          },
-          "Edit the recurring entry instead \u2192"
-        ))),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-desc" }, "Description"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            id: "oem-desc",
-            autoFocus: autoFocusOnDesktop(),
-            className: inpCls(false),
-            value: desc,
-            onChange: (e) => setDesc(e.target.value),
-            onKeyDown: (e) => {
+    return <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Edit occurrence">
+      <div className="modal-card oem-card" onClick={(e) => e.stopPropagation()}>
+        <SheetHandle onDismiss={onCancel} />
+        <div className="oem-header-row">
+          <div className="oem-title">
+            {"Edit \u2014 "}
+            {MONTHS[ev.month]}
+            {" "}
+            {ev.day}
+            {ev.depositShifted && <HelpTip
+              icon="↤"
+              variant="mark"
+              label="Deposit date"
+              text={depositShiftNote(ev)}
+            />}
+          </div>
+          <button onClick={onCancel} aria-label="Close" className="cf-close-x">✕</button>
+        </div>
+        {editedBy && editedBy !== "you" && <div className="oem-editedby">
+          {"Last edited by "}
+          {editedBy}
+          {ev._savedAt ? ` on ${new Date(ev._savedAt).toLocaleDateString()}` : ""}
+        </div>}
+        <div className="oem-hint">
+          Changes apply to this date only.
+          {orig.repeats && onEditEntry && <>
+            {" "}
+            <button type="button" onClick={onEditEntry} className="ai-settings-link">
+              Edit the recurring entry instead →
+            </button>
+          </>}
+        </div>
+        <div className="cf-col cf-gap-14">
+          <div>
+            <label className={lblCls} htmlFor="oem-desc">Description</label>
+            <input
+              id="oem-desc"
+              autoFocus={autoFocusOnDesktop()}
+              className={inpCls(false)}
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              onKeyDown={(e) => {
               if (e.key === "Enter") save();
-            }
-          }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-amount" }, "Amount $", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            id: "oem-amount",
-            type: "number",
-            inputMode: "decimal",
-            step: "0.01",
-            className: inpCls(!!err),
-            value: amount,
-            onChange: (e) => {
+            }}
+            />
+          </div>
+          <div>
+            <label className={lblCls} htmlFor="oem-amount">
+              Amount $
+              <span className="required-mark">*</span>
+            </label>
+            <input
+              id="oem-amount"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              className={inpCls(!!err)}
+              value={amount}
+              onChange={(e) => {
               setAmount(e.target.value);
               setErr("");
-            },
-            onKeyDown: (e) => {
+            }}
+              onKeyDown={(e) => {
               if (e.key === "Enter") save();
-            }
-          }
-        ), err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, err)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { className: lblCls, htmlFor: "oem-actual-amount", helpLabel: "Actual Amount Paid", help: "Leave blank if you paid the scheduled amount. Filling it in records what actually left the account — the running balance and Budget vs Actual follow it, while the scheduled amount above stays as planned for every other date." }, "Actual Amount Paid"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            id: "oem-actual-amount",
-            type: "number",
-            inputMode: "decimal",
-            step: "0.01",
-            placeholder: `Same as scheduled ($${amount || "0.00"})`,
-            className: inpCls(!!actualErr),
-            value: actualAmount,
-            onChange: (e) => {
+            }}
+            />
+            {err && <div className="field-error-text">{err}</div>}
+          </div>
+          <div>
+            <FieldLabel
+              className={lblCls}
+              htmlFor="oem-actual-amount"
+              helpLabel="Actual Amount Paid"
+              help="Leave blank if you paid the scheduled amount. Filling it in records what actually left the account — the running balance and Budget vs Actual follow it, while the scheduled amount above stays as planned for every other date."
+            >
+              Actual Amount Paid
+            </FieldLabel>
+            <input
+              id="oem-actual-amount"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder={`Same as scheduled ($${amount || "0.00"})`}
+              className={inpCls(!!actualErr)}
+              value={actualAmount}
+              onChange={(e) => {
               setActualAmount(e.target.value);
               setActualErr("");
-            },
-            onKeyDown: (e) => {
+            }}
+              onKeyDown={(e) => {
               if (e.key === "Enter") save();
-            }
-          }
-        ), actualErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, actualErr)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement("div", { className: "flex-55" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-month" }, "Month"), /* @__PURE__ */ React.createElement(
-          "select",
-          {
-            id: "oem-month",
-            className: "field-input",
-            value: month,
-            onChange: (e) => {
+            }}
+            />
+            {actualErr && <div className="field-error-text">{actualErr}</div>}
+          </div>
+          <div>
+            <div className="cf-row cf-gap-10">
+              <div className="flex-55">
+                <label className={lblCls} htmlFor="oem-month">Month</label>
+                <select
+                  id="oem-month"
+                  className="field-input"
+                  value={month}
+                  onChange={(e) => {
               setMonth(e.target.value);
               setDayErr("");
-            }
-          },
-          MONTHS.map((mn, mi) => /* @__PURE__ */ React.createElement("option", { key: mn, value: String(mi) }, mn, " ", evYear))
-        )), /* @__PURE__ */ React.createElement("div", { className: "flex-45" }, /* @__PURE__ */ React.createElement(FieldLabel, {
-          className: lblCls,
-          htmlFor: "oem-day",
-          helpLabel: "Day",
-          helpAlign: "end",
-          help: `1–${maxDay} for this month. Setting a date here moves this one occurrence and nothing else — the same as dragging the row to a new date in the grid.`
-        }, "Day", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            id: "oem-day",
-            type: "number",
-            inputMode: "numeric",
-            min: 1,
-            max: maxDay,
-            step: "1",
-            className: inpCls(!!dayErr),
-            value: day,
-            onChange: (e) => {
+            }}
+                >
+                  {MONTHS.map((mn, mi) => <option key={mn} value={String(mi)}>{mn}{" "}{evYear}</option>)}
+                </select>
+              </div>
+              <div className="flex-45">
+                <FieldLabel
+                  className={lblCls}
+                  htmlFor="oem-day"
+                  helpLabel="Day"
+                  helpAlign="end"
+                  help={`1–${maxDay} for this month. Setting a date here moves this one occurrence and nothing else — the same as dragging the row to a new date in the grid.`}
+                >
+                  Day
+                  <span className="required-mark">*</span>
+                </FieldLabel>
+                <input
+                  id="oem-day"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxDay}
+                  step="1"
+                  className={inpCls(!!dayErr)}
+                  value={day}
+                  onChange={(e) => {
               setDay(e.target.value);
               setDayErr("");
-            },
-            onKeyDown: (e) => {
+            }}
+                  onKeyDown={(e) => {
               if (e.key === "Enter") save();
-            }
-          }
-        ))), dayErr ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, dayErr) : monthNum !== ev.month ? (
+            }}
+                />
+              </div>
+            </div>
+            {dayErr ? <div className="field-error-text">{dayErr}</div> : monthNum !== ev.month ? (
           // Kept inline rather than moved into the help tip: this isn't help,
           // it's the consequence of the change the user just made to the month
           // dropdown, and it has to be seen without going looking for it.
-          /* @__PURE__ */ React.createElement("div", { className: "field-hint-text" }, `Moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}`)
-        ) : null),/* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "oem-notes" }, "Notes"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            id: "oem-notes",
-            className: inpCls(false),
-            value: notes,
-            onChange: (e) => setNotes(e.target.value),
-            onKeyDown: (e) => {
+          <div className="field-hint-text">
+            {`Moves this occurrence to ${MONTHS[isNaN(monthNum) ? ev.month : monthNum]}`}
+          </div>
+        ) : null}
+          </div>
+          <div>
+            <label className={lblCls} htmlFor="oem-notes">Notes</label>
+            <input
+              id="oem-notes"
+              className={inpCls(false)}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onKeyDown={(e) => {
               if (e.key === "Enter") save();
-            }
-          }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls }, "Receipt / Photo"), attachment ? /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement(
-          "img",
-          {
-            src: attachment,
-            alt: "attachment",
-            className: "oem-attach-img",
-            onClick: () => setLightbox(true)
-          }
-        ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            onClick: readReceipt,
-            disabled: scanBusy || isOffline || !aiCanRun(apiKey),
-            title: isOffline ? "You're offline — reading a receipt needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
-            className: "cf-btn cf-btn--secondary cf-btn--tiny"
-          },
-          scanBusy ? "Reading…" : "✦ Read receipt"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            onClick: () => setAttachment(null),
-            className: "oem-remove-btn"
-          },
-          "Remove"
-        )), (scanErr || scanNote) && /* @__PURE__ */ React.createElement("div", { className: scanErr ? "field-error-text" : "field-hint-text", style: { flexBasis: "100%" } }, scanErr || scanNote), lightbox && /* @__PURE__ */ React.createElement(ReceiptLightbox, { src: attachment, onClose: () => setLightbox(false) })) : /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { className: "attach-camera attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "camera", size: 14 }), "Take photo", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", capture: "environment", onChange: attachFile, className: "hidden" })), /* @__PURE__ */ React.createElement("label", { className: "attach-label" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 14 }), "From gallery", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", onChange: attachFile, className: "hidden" }))))),
-        (() => {
+            }}
+            />
+          </div>
+          <div>
+            <label className={lblCls}>Receipt / Photo</label>
+            {attachment ? <div className="cf-row cf-gap-12 cf-wrap">
+              <img
+                src={attachment}
+                alt="attachment"
+                className="oem-attach-img"
+                onClick={() => setLightbox(true)}
+              />
+              <div className="cf-row cf-gap-8 cf-wrap">
+                <button
+                  type="button"
+                  onClick={readReceipt}
+                  disabled={scanBusy || isOffline || !aiCanRun(apiKey)}
+                  title={isOffline ? "You're offline — reading a receipt needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0}
+                  className="cf-btn cf-btn--secondary cf-btn--tiny"
+                >
+                  {scanBusy ? "Reading…" : "✦ Read receipt"}
+                </button>
+                <button type="button" onClick={() => setAttachment(null)} className="oem-remove-btn">
+                  Remove
+                </button>
+              </div>
+              {(scanErr || scanNote) && <div
+                className={scanErr ? "field-error-text" : "field-hint-text"}
+                style={{ flexBasis: "100%" }}
+              >
+                {scanErr || scanNote}
+              </div>}
+              {lightbox && <ReceiptLightbox src={attachment} onClose={() => setLightbox(false)} />}
+            </div> : <div
+          className="cf-row cf-gap-8 cf-wrap"
+        >
+          <label className="attach-camera attach-label">
+            <Icon name="camera" size={14} />
+            Take photo
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={attachFile}
+              className="hidden"
+            />
+          </label>
+          <label className="attach-label">
+            <Icon name="paperclip" size={14} />
+            From gallery
+            <input
+              type="file"
+              accept="image/*"
+              onChange={attachFile}
+              className="hidden"
+            />
+          </label>
+        </div>}
+          </div>
+        </div>
+        {(() => {
           // Whichever of Delete/Reset/Skip renders last gets marginRight:auto
           // (the flexbox trick .oem-footer-row's justify-content:flex-end
           // relies on to pin this leading cluster left while Cancel/Save
@@ -779,35 +1060,35 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
           // the row.
           const hasReset = ev.isOverride && onReset;
           const lastLeading = onSkip ? "skip" : hasReset ? "reset" : onDelete ? "delete" : null;
-          return /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onDelete && /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: onDelete,
-              className: "cf-btn cf-btn--danger",
-              style: { marginRight: lastLeading === "delete" ? "auto" : 0 }
-            },
-            "Delete\u2026"
-          ), hasReset && /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: onReset,
-              className: "oem-reset-btn",
-              style: { marginRight: lastLeading === "reset" ? "auto" : 0 }
-            },
-            "\u21BA Reset entry"
-          ), onSkip && /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: onSkip,
-              className: "cf-btn cf-btn--secondary",
-              title: "Remove just this date \u2014 the recurring entry keeps going",
-              style: { marginRight: "auto" }
-            },
-            "\u23ED Skip this date"
-          ), /* @__PURE__ */ React.createElement("button", { onClick: onCancel, className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement("button", { onClick: save, className: "cf-btn cf-btn--primary oem-save-btn" }, "Save"));
-        })()
-      )
-    );
+          return <div className="oem-footer-row">
+            {onDelete && <button
+              onClick={onDelete}
+              className="cf-btn cf-btn--danger"
+              style={{ marginRight: lastLeading === "delete" ? "auto" : 0 }}
+            >
+              Delete…
+            </button>}
+            {hasReset && <button
+              onClick={onReset}
+              className="oem-reset-btn"
+              style={{ marginRight: lastLeading === "reset" ? "auto" : 0 }}
+            >
+              ↺ Reset entry
+            </button>}
+            {onSkip && <button
+              onClick={onSkip}
+              className="cf-btn cf-btn--secondary"
+              title="Remove just this date — the recurring entry keeps going"
+              style={{ marginRight: "auto" }}
+            >
+              ⏭ Skip this date
+            </button>}
+            <button onClick={onCancel} className="cf-btn cf-btn--secondary">Cancel</button>
+            <button onClick={save} className="cf-btn cf-btn--primary oem-save-btn">Save</button>
+          </div>;
+        })()}
+      </div>
+    </div>;
   }
   export function HouseholdOnboardingView({ email, createHousehold, joinHousehold, signOut }) {
     const [mode, setMode] = useState("create");
@@ -835,72 +1116,95 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
         setLoading(false);
       }
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "household-onboard-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-inner" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-header" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "household-onboard-logo" }), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-email" }, "Signed in as ", email)), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-card" }, /* @__PURE__ */ React.createElement("div", { className: "household-onboard-title" }, "One more step"), /* @__PURE__ */ React.createElement("div", { className: "household-onboard-subtitle" }, "Create a new household budget, or join one a family member already set up."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6 justify-center mb-20" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
+    return <div className="household-onboard-wrap">
+      <div className="household-onboard-inner">
+        <div className="household-onboard-header">
+          <img src={LOGO_SRC} alt="CashFlow" className="household-onboard-logo" />
+          <div className="household-onboard-email">{"Signed in as "}{email}</div>
+        </div>
+        <div className="household-onboard-card">
+          <div className="household-onboard-title">One more step</div>
+          <div className="household-onboard-subtitle">
+            Create a new household budget, or join one a family member already set up.
+          </div>
+          <div className="cf-row cf-gap-6 justify-center mb-20">
+            <button
+              onClick={() => {
           setMode("create");
           setError("");
-        },
-        className: "household-mode-btn",
-        style: {
+        }}
+              className="household-mode-btn"
+              style={{
           background: mode === "create" ? "var(--stripe)" : "transparent",
           color: mode === "create" ? "var(--text)" : "var(--textLt)"
-        }
-      },
-      "Create household"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
+        }}
+            >
+              Create household
+            </button>
+            <button
+              onClick={() => {
           setMode("join");
           setError("");
-        },
-        className: "household-mode-btn",
-        style: {
+        }}
+              className="household-mode-btn"
+              style={{
           background: mode === "join" ? "var(--stripe)" : "transparent",
           color: mode === "join" ? "var(--text)" : "var(--textLt)"
-        }
-      },
-      "Join with invite code"
-    )), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-name" }, "Your name"), /* @__PURE__ */ React.createElement("input", {
-      id: "hh-name",
-      type: "text",
-      className: "field-input field-input--lg",
-      value: fullName,
-      onChange: (e) => {
+        }}
+            >
+              Join with invite code
+            </button>
+          </div>
+          <div className="mb-12">
+            <label className="field-label" htmlFor="hh-name">Your name</label>
+            <input
+              id="hh-name"
+              type="text"
+              className="field-input field-input--lg"
+              value={fullName}
+              onChange={(e) => {
         setFullName(e.target.value);
         setError("");
-      },
-      placeholder: "e.g. Ken"
-    })), mode === "join" && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "hh-code" }, "Invite code"), /* @__PURE__ */ React.createElement("input", {
-      id: "hh-code",
-      type: "text",
-      className: "field-input field-input--lg field-input--mono field-input--spaced",
-      value: code,
-      onChange: (e) => {
+      }}
+              placeholder="e.g. Ken"
+            />
+          </div>
+          {mode === "join" && <div className="mb-12">
+            <label className="field-label" htmlFor="hh-code">Invite code</label>
+            <input
+              id="hh-code"
+              type="text"
+              className="field-input field-input--lg field-input--mono field-input--spaced"
+              value={code}
+              onChange={(e) => {
         setCode(e.target.value.toUpperCase());
         setError("");
-      },
-      placeholder: "e.g. 4F9B2C1D"
-    })), error && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm household-onboard-error", "data-tone": "critical", role: "alert" }, error), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: submit,
-        disabled: loading,
-        className: "household-submit-btn",
-        style: {
+      }}
+              placeholder="e.g. 4F9B2C1D"
+            />
+          </div>}
+          {error && <div
+            className="notice notice--sm household-onboard-error"
+            data-tone="critical"
+            role="alert"
+          >
+            {error}
+          </div>}
+          <button
+            onClick={submit}
+            disabled={loading}
+            className="household-submit-btn"
+            style={{
           cursor: loading ? "wait" : "pointer",
           opacity: loading ? 0.7 : 1
-        }
-      },
-      loading ? "One moment…" : mode === "create" ? "Create household" : "Join household"
-    )), /* @__PURE__ */ React.createElement("div", { className: "household-signout-wrap" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: signOut,
-        className: "household-signout-btn"
-      },
-      "Sign out"
-    ))));
+        }}
+          >
+            {loading ? "One moment…" : mode === "create" ? "Create household" : "Join household"}
+          </button>
+        </div>
+        <div className="household-signout-wrap">
+          <button onClick={signOut} className="household-signout-btn">Sign out</button>
+        </div>
+      </div>
+    </div>;
   }

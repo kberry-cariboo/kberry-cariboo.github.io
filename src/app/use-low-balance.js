@@ -6,7 +6,7 @@ import { useLS } from "../lib/app-data.js";
   export function useLowBalance({ activeFlow, viewFlows, activeYear, alertThresh }) {
     const navLowInfo = useMemo(() => {
       try {
-        const now = /* @__PURE__ */ new Date();
+        const now = new Date();
         if (now.getFullYear() !== activeYear || !activeFlow.length) return null;
         const today = new Date(activeYear, now.getMonth(), now.getDate());
         const end = new Date(today);

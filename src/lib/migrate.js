@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId } from "./runtime.js";
+import { genId } from "./runtime.js";
 import { localDateStr } from "./dates.js";
 import { moveEntryAttachmentsToOverrides } from "./app-data.js";
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
@@ -40,10 +40,11 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
     if (!d) return d;
     const at = Number(from) || 0;
     const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
-    const out = __spreadValues({}, d);
+    const out = { ...d };
     if (at < 8) {
       if (Array.isArray(out.entries)) {
-        out.entries = out.entries.map((e) => __spreadProps(__spreadValues({}, e), {
+        out.entries = out.entries.map((e) => ({
+          ...e,
           amount: toCents(e.amount),
           monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
         }));
@@ -55,13 +56,13 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
           nextOvr[year] = {};
           Object.keys(yOvr).forEach((evId) => {
             const o = yOvr[evId] || {};
-            nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+            nextOvr[year][evId] = o.amount !== void 0 ? { ...o, amount: toCents(o.amount) } : o;
           });
         });
         out.overridesByYr = nextOvr;
       }
       if (Array.isArray(out.yearConfigs)) {
-        out.yearConfigs = out.yearConfigs.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) }));
+        out.yearConfigs = out.yearConfigs.map((yc) => ({ ...yc, openingBalance: toCents(yc.openingBalance) }));
       }
       if (out.budgetTargets && typeof out.budgetTargets === "object") {
         const nextTargets = {};
@@ -76,14 +77,16 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
         out.budgetTargets = nextTargets;
       }
       if (Array.isArray(out.goals)) {
-        out.goals = out.goals.map((g) => __spreadProps(__spreadValues({}, g), {
+        out.goals = out.goals.map((g) => ({
+          ...g,
           target: toCents(g.target),
           saved: toCents(g.saved),
           monthly: toCents(g.monthly)
         }));
       }
       if (Array.isArray(out.templates)) {
-        out.templates = out.templates.map((t) => __spreadProps(__spreadValues({}, t), {
+        out.templates = out.templates.map((t) => ({
+          ...t,
           amount: toCents(t.amount),
           monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
         }));
@@ -100,10 +103,11 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
       const nextDebt = {};
       Object.keys(out.debtData).forEach((key) => {
         const d = out.debtData[key] || {};
-        nextDebt[key] = __spreadProps(__spreadValues({}, d), {
+        nextDebt[key] = {
+          ...d,
           balance: d.balance ? toCentsStr(d.balance) : d.balance,
           payment: d.payment ? toCentsStr(d.payment) : d.payment
-        });
+        };
       });
       out.debtData = nextDebt;
     }
@@ -182,7 +186,7 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
           desc: typeof e.desc === "string" ? e.desc : "Untitled",
           type: e.type === "income" ? "income" : "expense",
           amount: isFinite(Number(e.amount)) ? Math.abs(Number(e.amount)) : 0,
-          startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : localDateStr(/* @__PURE__ */ new Date()),
+          startDate: typeof e.startDate === "string" && e.startDate ? e.startDate : localDateStr(new Date()),
           repeats: !!e.repeats,
           recurEvery: parseInt(e.recurEvery) > 0 ? parseInt(e.recurEvery) : 1,
           recurUnit: ["day", "week", "month", "year", "semimonth", "monthend", "monthweekday"].includes(e.recurUnit) ? e.recurUnit : "month",
@@ -200,7 +204,7 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
       const cats = readJSON("cf_categories", null);
       if (Array.isArray(entries) && (Array.isArray(cats) || entries.length > 0)) {
         const used = entries.map((e) => e.category).filter(Boolean);
-        const merged = [.../* @__PURE__ */ new Set([...cats || [], ...used])].sort((a, b) => a.localeCompare(b));
+        const merged = [...new Set([...cats || [], ...used])].sort((a, b) => a.localeCompare(b));
         // never persist an empty list over the useLS default
         if (merged.length > 0) write("cf_categories", merged);
       }
@@ -208,7 +212,8 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
     if (storedVersion < 3) {
       const entries = readJSON("cf_entries", []);
       if (Array.isArray(entries)) {
-        const fixed = entries.map((e) => __spreadProps(__spreadValues({}, e), {
+        const fixed = entries.map((e) => ({
+          ...e,
           monthlyAmounts: e.monthlyAmounts != null ? e.monthlyAmounts : null
         }));
         write("cf_entries", fixed);
@@ -220,12 +225,11 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
           cleaned[year] = {};
           const yearOvr = ovr[year] || {};
           Object.keys(yearOvr).forEach((evId) => {
-            var _a;
             const o = yearOvr[evId] || {};
             cleaned[year][evId] = {
               amount: isFinite(Number(o.amount)) ? Number(o.amount) : void 0,
               notes: typeof o.notes === "string" ? o.notes : void 0,
-              _savedAt: (_a = o._savedAt) != null ? _a : null,
+              _savedAt: o._savedAt ?? null,
               _history: Array.isArray(o._history) ? o._history : []
             };
             Object.keys(cleaned[year][evId]).forEach((k) => {
@@ -292,7 +296,8 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
       const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
       const entries = readJSON("cf_entries", null);
       if (Array.isArray(entries)) {
-        write("cf_entries", entries.map((e) => __spreadProps(__spreadValues({}, e), {
+        write("cf_entries", entries.map((e) => ({
+          ...e,
           amount: toCents(e.amount),
           monthlyAmounts: Array.isArray(e.monthlyAmounts) ? e.monthlyAmounts.map(toCents) : e.monthlyAmounts
         })));
@@ -305,14 +310,14 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
           nextOvr[year] = {};
           Object.keys(yOvr).forEach((evId) => {
             const o = yOvr[evId] || {};
-            nextOvr[year][evId] = o.amount !== void 0 ? __spreadProps(__spreadValues({}, o), { amount: toCents(o.amount) }) : o;
+            nextOvr[year][evId] = o.amount !== void 0 ? { ...o, amount: toCents(o.amount) } : o;
           });
         });
         write("cf_overrides", nextOvr);
       }
       const years = readJSON("cf_years", null);
       if (Array.isArray(years)) {
-        write("cf_years", years.map((yc) => __spreadProps(__spreadValues({}, yc), { openingBalance: toCents(yc.openingBalance) })));
+        write("cf_years", years.map((yc) => ({ ...yc, openingBalance: toCents(yc.openingBalance) })));
       }
       const targets = readJSON("cf_budgtargets", null);
       if (targets && typeof targets === "object") {
@@ -329,7 +334,8 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
       }
       const goals = readJSON("cf_goals", null);
       if (Array.isArray(goals)) {
-        write("cf_goals", goals.map((g) => __spreadProps(__spreadValues({}, g), {
+        write("cf_goals", goals.map((g) => ({
+          ...g,
           target: toCents(g.target),
           saved: toCents(g.saved),
           monthly: toCents(g.monthly)
@@ -337,7 +343,8 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
       }
       const templates = readJSON("cf_templates", null);
       if (Array.isArray(templates)) {
-        write("cf_templates", templates.map((t) => __spreadProps(__spreadValues({}, t), {
+        write("cf_templates", templates.map((t) => ({
+          ...t,
           amount: toCents(t.amount),
           monthlyAmounts: Array.isArray(t.monthlyAmounts) ? t.monthlyAmounts.map(toCents) : t.monthlyAmounts
         })));
@@ -358,10 +365,11 @@ import { moveEntryAttachmentsToOverrides } from "./app-data.js";
         const next = {};
         Object.keys(debt).forEach((key) => {
           const d = debt[key] || {};
-          next[key] = __spreadProps(__spreadValues({}, d), {
+          next[key] = {
+            ...d,
             balance: d.balance ? toCentsStr(d.balance) : d.balance,
             payment: d.payment ? toCentsStr(d.payment) : d.payment
-          });
+          };
         });
         write("cf_debt_data", next);
       }

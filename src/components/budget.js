@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId, safeStorage, useContext, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
+import { genId, safeStorage, useContext, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
 import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
 import { accountIdOf, daysInMonth, depositShiftNote, getMonthSummaries, isInflowEvent, isOutflowEvent, signedAmount, startOfToday } from "../lib/dates.js";
 import { categoryDetail } from "../lib/cat-detail.js";
@@ -10,16 +10,27 @@ import { Icon, OccurrenceEditModal } from "./misc-ui.js";
 import { toast } from "./auth-misc.js";
   // Hoisted out of BudgetView: defining these inside the component made React
   // see a new component type each render and remount their DOM.
-  export const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
-  export const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
+  export const TodayLine = () => <tr key="today-marker">
+    <td colSpan={8} className="today-line-td">
+      <div className="today-line-wrap">
+        <div className="today-line-strip" />
+        <span className="today-label">TODAY</span>
+        <div className="today-line-strip" />
+      </div>
+    </td>
+  </tr>;
+  export const TodayLineCard = () => <div key="today-marker-card" className="today-line-card-wrap">
+    <div className="today-line-strip" />
+    <span className="today-label">TODAY</span>
+    <div className="today-line-strip" />
+  </div>;
   export function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
   }, flowSub = "list", showEnvelopes = false, setFlowSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
-  }, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
+  }, activeYear = (new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
   }, onAddNextYear = null, skippedOccurrences = [] }) {
-    var _a, _b;
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
     const { logActivity, accounts: hhAccounts } = useContext(HouseholdContext);
@@ -29,7 +40,7 @@ import { toast } from "./auth-misc.js";
     // in the combined ledger they are the same description twice, once leaving
     // one account and once arriving in the other.
     const acctTag = (ev) => (hhAccounts || []).length > 1
-      ? /* @__PURE__ */ React.createElement("span", { className: "row-account-tag" }, accountName(hhAccounts, accountIdOf(ev)))
+      ? <span className="row-account-tag">{accountName(hhAccounts, accountIdOf(ev))}</span>
       : null;
     // Envelopes is its own destination, so it wins over whichever lens the
     // Flow tab was last left on.
@@ -87,12 +98,12 @@ import { toast } from "./auth-misc.js";
       setConfirmDelEv(null);
       setShowOccurrenceForm(false);
       setEditingEv(null);
-      toast(`Deleted "${(orig == null ? void 0 : orig.desc) || confirmDelEv.desc}"`);
+      toast(`Deleted "${(orig?.desc) || confirmDelEv.desc}"`);
     };
     const openEntryEdit = (ev) => {
       const orig = entries.find((e) => e.id === ev.entryId);
       if (!orig) return;
-      setEditingEntry(__spreadProps(__spreadValues({}, orig), { _editMonth: ev.month }));
+      setEditingEntry({ ...orig, _editMonth: ev.month });
       setEditingInitial(orig);
       setShowEntryForm(true);
     };
@@ -103,12 +114,12 @@ import { toast } from "./auth-misc.js";
     };
     const handleEntrySave = (data) => {
       if (editingEntry) {
-        let finalData = __spreadProps(__spreadValues({}, data), { id: editingEntry.id });
+        let finalData = { ...data, id: editingEntry.id };
         delete finalData._editMonth;
         if (saveEntryEdit) saveEntryEdit(editingEntry.id, finalData);
         else setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? finalData : e));
       } else if (addEntry) addEntry(data);
-      else setEntries((prev) => [...prev, __spreadProps(__spreadValues({}, data), { id: genId() })]);
+      else setEntries((prev) => [...prev, { ...data, id: genId() }]);
       setShowEntryForm(false);
       setEditingEntry(null);
       setEditingInitial(null);
@@ -173,7 +184,7 @@ import { toast } from "./auth-misc.js";
       });
       return byMonth;
     }, [flow]);
-    const prevYear = (activeYear || (/* @__PURE__ */ new Date()).getFullYear()) - 1;
+    const prevYear = (activeYear || (new Date()).getFullYear()) - 1;
     const [compareYoy, setCompareYoy] = useLS("cf_budgetCompareYoy", false);
     const yoyActive = lens === "list" && compareYoy && prevYearConfigured;
     const prevSummaries = useMemo(() => getMonthSummaries(prevYearFlow, 0), [prevYearFlow]);
@@ -189,7 +200,7 @@ import { toast } from "./auth-misc.js";
       if (!yoyActive) return [];
       const norm = (str) => (str || "").toLowerCase().trim();
       const r2 = (n) => roundMoney(n);
-      const map = /* @__PURE__ */ new Map();
+      const map = new Map();
       const add = (ev, key) => {
         const k = ev.type + "|" + norm(ev.desc);
         const signed = signedAmount(ev);
@@ -203,15 +214,15 @@ import { toast } from "./auth-misc.js";
       };
       flow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "cur"));
       prevYearFlow.filter((ev) => ev.month === monthIdx).forEach((ev) => add(ev, "prev"));
-      const rows = [...map.values()].map((row) => __spreadProps(__spreadValues({}, row), { cur: r2(row.cur), prev: r2(row.prev), delta: r2(row.cur - row.prev) }));
+      const rows = [...map.values()].map((row) => ({ ...row, cur: r2(row.cur), prev: r2(row.prev), delta: r2(row.cur - row.prev) }));
       rows.sort((a, b) => a.day - b.day || (a.desc || "").localeCompare(b.desc || ""));
       return rows;
     }, [yoyActive, flow, prevYearFlow, monthIdx]);
-    const todayDate = /* @__PURE__ */ new Date();
+    const todayDate = new Date();
     const gq = (globalSearch || "").toLowerCase();
     const matchingMonths = useMemo(() => {
-      if (!gq) return /* @__PURE__ */ new Set();
-      const s2 = /* @__PURE__ */ new Set();
+      if (!gq) return new Set();
+      const s2 = new Set();
       flow.filter((ev) => eventMatchesSearch(ev, gq)).forEach((ev) => s2.add(ev.month));
       return s2;
     }, [gq, flow]);
@@ -221,7 +232,7 @@ import { toast } from "./auth-misc.js";
       if (!arr.length) return;
       // "Most recent" month with a match: the latest one up to today (for the
       // current year), falling back to the earliest future match.
-      const nowMo = (/* @__PURE__ */ new Date()).getFullYear() === activeYear ? (/* @__PURE__ */ new Date()).getMonth() : 11;
+      const nowMo = (new Date()).getFullYear() === activeYear ? (new Date()).getMonth() : 11;
       const past = arr.filter((m) => m <= nowMo);
       const target = past.length ? Math.max(...past) : Math.min(...arr);
       if (target !== monthIdx) setMonthIdx(target);
@@ -231,7 +242,7 @@ import { toast } from "./auth-misc.js";
     // Device-local: whether you want the month's four totals open is a
     // property of the screen you are reading on, like the analysis on Today.
     const [monthSummaryOpen, setMonthSummaryOpen] = useLS("cf_month_summary", false);
-    const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
+    const [selIds, setSelIds] = useState(() => new Set());
     const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useLS("cf_budgetPageSize", "all");
     const [mobileLoaded, setMobileLoaded] = useState(1);
@@ -274,7 +285,7 @@ import { toast } from "./auth-misc.js";
       n.has(id) ? n.delete(id) : n.add(id);
       return n;
     });
-    const clearSel = () => setSelIds(/* @__PURE__ */ new Set());
+    const clearSel = () => setSelIds(new Set());
     const markSelectedPaid = () => {
       try {
         const ids = [...selIds].filter((id) => !completed[id]);
@@ -337,7 +348,7 @@ import { toast } from "./auth-misc.js";
     const pagedPeriod2 = monthPg.rows.filter((ev) => ev.day > 14);
     const selTotal = monthEvents.filter((ev) => selIds.has(ev.id)).reduce((sum, ev) => sum + signedAmount(ev), 0);
     const _isCurMonth = todayDate.getMonth() === monthIdx && todayDate.getFullYear() === activeYear;
-    const todayMarkerId = _isCurMonth ? (_b = (_a = monthEvents.find((ev) => ev.day >= todayDate.getDate())) == null ? void 0 : _a.id) != null ? _b : "AFTER_ALL" : null;
+    const todayMarkerId = _isCurMonth ? monthEvents.find((ev) => ev.day >= todayDate.getDate())?.id ?? "AFTER_ALL" : null;
     const isToday = (day) => activeYear === todayDate.getFullYear() && todayDate.getMonth() === monthIdx && todayDate.getDate() === day;
     const isPast = (day) => activeYear < todayDate.getFullYear() || activeYear === todayDate.getFullYear() && (monthIdx < todayDate.getMonth() || monthIdx === todayDate.getMonth() && day < todayDate.getDate());
     const renderEventRow = (ev, i) => {
@@ -350,147 +361,245 @@ import { toast } from "./auth-misc.js";
       const isDone = !!completed[ev.id];
       const isDragging = draggingId === ev.id;
       const isDropTarget = draggingId != null && draggingId !== ev.id && dragOverDay === ev.day;
-      return /* @__PURE__ */ React.createElement(
-        "tr",
-        {
-          key: ev.id,
-          "data-day": ev.day,
-          onClick: () => {
+      return <tr
+        key={ev.id}
+        data-day={ev.day}
+        onClick={() => {
             if (justDraggedRef.current) return;
             openOccurrenceEdit(ev);
-          },
-          onContextMenu: (e) => {
+          }}
+        onContextMenu={(e) => {
             e.preventDefault();
             setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-          },
-          className: "budget-event-tr",
-          style: {
+          }}
+        className="budget-event-tr"
+        style={{
             background: selIds.has(ev.id) ? "var(--stripe)" : isDone ? "var(--doneBg)" : past ? "var(--pastBg)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
             borderBottom: isDropTarget ? "2px solid var(--primary)" : "1px solid var(--border)",
             // Past rows are tinted, not faded — see pastBg in app-data.js.
             // Drag opacity stays: it's a transient gesture, not a way of
             // presenting content you still have to read.
             opacity: isDragging ? 0.4 : 1
-          }
-        },
-        /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-col-checkbox--cell", onClick: (e) => e.stopPropagation(), style: {
+          }}
+      >
+        <td
+          className="budget-col-checkbox budget-col-checkbox--cell"
+          onClick={(e) => e.stopPropagation()}
+          style={{
           background: isDone ? "var(--doneBg)" : selIds.has(ev.id) ? "var(--stripe)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)",
           boxShadow: isDone ? "inset 3px 0 0 0 var(--greenDk)" : "inset 3px 0 0 0 transparent"
-        } }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (e) => {
+        }}
+        >
+          <button
+            onClick={(e) => {
               e.stopPropagation();
               haptic();
               if (isDone) toggleComplete(ev.id);
               else toggleSel(ev.id);
-            },
-            role: "checkbox",
-            "aria-checked": isDone || selIds.has(ev.id),
+            }}
+            role="checkbox"
+            aria-checked={isDone || selIds.has(ev.id)}
             // Named, like the phone card beside it (LedgerRow) and the Entries
             // table's own checkbox — a monthly ledger puts twenty of these on
             // screen, and "Select row" told a screen reader nothing about
             // which row it had landed on.
-            "aria-label": (isDone ? "Mark unpaid: " : selIds.has(ev.id) ? "Deselect: " : "Select: ") + rowName,
-            title: isDone ? "Paid \u2014 click to mark unpaid" : "Select to mark paid",
-            className: "cf-checkbtn budget-row-checkbtn",
-            style: {
+            aria-label={(isDone ? "Mark unpaid: " : selIds.has(ev.id) ? "Deselect: " : "Select: ") + rowName}
+            title={isDone ? "Paid \u2014 click to mark unpaid" : "Select to mark paid"}
+            className="cf-checkbtn budget-row-checkbtn"
+            style={{
               border: isDone || selIds.has(ev.id) ? "none" : "1.5px solid var(--border)",
               background: isDone ? "var(--greenDk)" : selIds.has(ev.id) ? "var(--primary)" : "transparent"
-            }
-          },
-          isDone ? "\u2713" : selIds.has(ev.id) ? "\u2713" : ""
-        )),
-        /* @__PURE__ */ React.createElement(
-          "td",
-          {
-            className: "budget-col-day cf-text-mono-13 budget-day-cell",
-            onPointerDown: (e) => handleDragStart(e, ev),
-            onPointerMove: handleDragMove,
-            onPointerUp: handleDragEnd,
-            onPointerCancel: handleDragEnd,
-            title: "Drag up/down to reschedule within this month",
-            style: {
+            }}
+          >
+            {isDone ? "\u2713" : selIds.has(ev.id) ? "\u2713" : ""}
+          </button>
+        </td>
+        <td
+          className="budget-col-day cf-text-mono-13 budget-day-cell"
+          onPointerDown={(e) => handleDragStart(e, ev)}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+          title="Drag up/down to reschedule within this month"
+          style={{
               color: isDone ? "var(--textLt)" : "var(--textMid)",
               textDecoration: isDone ? "line-through" : "none"
-            }
-          },
-          ev.day,
-          ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "\u21A4", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) }),
-          /* @__PURE__ */ React.createElement("span", { className: "drag-dots" }, "\u283F")
-        ),
-        bCols.map((col) => {
-          if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-desc-cell budget-col-desc budget-desc-td", title: ev.desc, style: {
+            }}
+        >
+          {ev.day}
+          {ev.depositShifted && <HelpTip
+            icon="↤"
+            variant="mark"
+            label="Deposit date"
+            text={depositShiftNote(ev)}
+          />}
+          <span className="drag-dots">⠿</span>
+        </td>
+        {bCols.map((col) => {
+          if (col === "desc") return <td
+            key={col}
+            className="budget-desc-cell budget-col-desc budget-desc-td"
+            title={ev.desc}
+            style={{
             color: isDone ? "var(--textLt)" : "var(--text)",
             textDecoration: isDone ? "line-through" : "none"
-          } }, ev.desc, ev.attachment && /* @__PURE__ */ React.createElement("span", { className: "attach-indicator", title: "Has receipt" }, /* @__PURE__ */ React.createElement(Icon, { name: "paperclip", size: 11 })), ev.isOverride && /* @__PURE__ */ React.createElement("span", { className: "override-mark" }, "\u270E"), acctTag(ev));
-          if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors, className: "text-9" }));
+          }}
+          >
+            {ev.desc}
+            {ev.attachment && <span className="attach-indicator" title="Has receipt">
+              <Icon name="paperclip" size={11} />
+            </span>}
+            {ev.isOverride && <span className="override-mark">✎</span>}
+            {acctTag(ev)}
+          </td>;
+          if (col === "category") return <td key={col} className="budget-col-cat">
+            <CatChip
+              category={ev.category}
+              categories={categories}
+              categoryColors={categoryColors}
+              className="text-9"
+            />
+          </td>;
           if (col === "income") {
             const showHere = isInflowEvent(ev);
-            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
+            return <td
+              key={col}
+              className="budget-col-income cf-text-mono-13 budget-amount-td"
+              title={showHere ? varianceTitle(ev) : void 0}
+              style={{
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--greenDk)",
               textDecoration: isDone ? "line-through" : "none"
-            } }, showHere ? fmt(ev.amount) : "");
+            }}
+            >
+              {showHere ? fmt(ev.amount) : ""}
+            </td>;
           }
           if (col === "expense") {
             const showHere = isOutflowEvent(ev);
-            return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-amount-td", title: showHere ? varianceTitle(ev) : void 0, style: {
+            return <td
+              key={col}
+              className="budget-col-expense cf-text-mono-13 budget-amount-td"
+              title={showHere ? varianceTitle(ev) : void 0}
+              style={{
               color: isDone ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : "var(--text)",
               textDecoration: isDone ? "line-through" : "none"
-            } }, showHere ? fmt(ev.amount) : "");
+            }}
+            >
+              {showHere ? fmt(ev.amount) : ""}
+            </td>;
           }
-          if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: {
+          if (col === "balance") return <td
+            key={col}
+            className="budget-col-balance cf-text-mono-13 budget-balance-td"
+            style={{
             textDecoration: isDone ? "line-through" : "none",
             color: isDone ? "var(--textLt)" : ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
-          } }, fmt(ev.balance));
+          }}
+          >
+            {fmt(ev.balance)}
+          </td>;
           return null;
-        }),
-        /* @__PURE__ */ React.createElement("td", { className: "budget-th-actions", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: (e) => {
+        })}
+        <td className="budget-th-actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
               e.stopPropagation();
               setBudgetCtx({ x: e.clientX, y: e.clientY, ev });
-            },
-            "aria-label": rowName + " actions",
-            title: ev.desc + " actions",
-            className: "cf-checkbtn row-menu-btn"
-          },
-          "⋮"
-        ))
-      );
+            }}
+            aria-label={rowName + " actions"}
+            title={ev.desc + " actions"}
+            className="cf-checkbtn row-menu-btn"
+          >
+            ⋮
+          </button>
+        </td>
+      </tr>;
     };
     const renderPeriodHdr = (label) => (
       // borderLeft on <tr> (not <td>) so the 3px sits OUTSIDE the cell width,
       // matching exactly how data rows position the green/transparent stripe.
-      /* @__PURE__ */ React.createElement("tr", { key: label }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
+      <tr key={label}>
+        <td
+          className="budget-col-checkbox budget-spacer-td"
+          style={{
         background: "var(--navyMid)"
-      } }), /* @__PURE__ */ React.createElement("td", { colSpan: 7, className: "period-hdr-td" }, label))
+      }}
+        />
+        <td colSpan={7} className="period-hdr-td">{label}</td>
+      </tr>
     );
-    const renderPeriodCardHdr = (label) => /* @__PURE__ */ React.createElement("div", { key: label, className: "period-hdr-td" }, label);
-    const renderEventCard = (ev, opts = {}) => /* @__PURE__ */ React.createElement(LedgerRow, {
-      key: ev.id,
-      ev,
-      alertThreshold,
-      paid: !!completed[ev.id],
-      selected: selIds.has(ev.id),
-      past: isPast(ev.day),
+    const renderPeriodCardHdr = (label) => <div key={label} className="period-hdr-td">{label}</div>;
+    const renderEventCard = (ev, opts = {}) => <LedgerRow
+      key={ev.id}
+      ev={ev}
+      alertThreshold={alertThreshold}
+      paid={!!completed[ev.id]}
+      selected={selIds.has(ev.id)}
+      past={isPast(ev.day)}
       // "Day 3" is not how the rest of the app dates a row — the alerts feed
       // and the forecast ledger both print "Sep 3" — and repeated down a
       // phone screen the word is ten copies of something the column header
       // says once on a desktop.
-      dateLabel: opts.hideDayLabel ? null : MONTHS[ev.month] + " " + ev.day,
-      onTogglePaid: toggleComplete,
-      onToggleSelect: toggleSel,
-      onOpen: openOccurrenceEdit,
-      onMenu: (e, row) => setBudgetCtx({ x: e.clientX, y: e.clientY, ev: row }),
-      onSwipeLeft: (row) => skipOccurrence(row),
-      categories,
-      categoryColors
-    });
-    const renderMonthlyMobileCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "openbal-card-row" }, /* @__PURE__ */ React.createElement("span", { className: "lbl" }, "Opening Balance"), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: {
+      dateLabel={opts.hideDayLabel ? null : MONTHS[ev.month] + " " + ev.day}
+      onTogglePaid={toggleComplete}
+      onToggleSelect={toggleSel}
+      onOpen={openOccurrenceEdit}
+      onMenu={(e, row) => setBudgetCtx({ x: e.clientX, y: e.clientY, ev: row })}
+      onSwipeLeft={(row) => skipOccurrence(row)}
+      categories={categories}
+      categoryColors={categoryColors}
+    />;
+    const renderMonthlyMobileCards = () => <Card className="cf-card--flush">
+      <div className="openbal-card-row">
+        <span className="lbl">Opening Balance</span>
+        <span
+          className="mno mno-700"
+          style={{
       color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)"
-    } }, fmt(s.open))), period1.length === 0 && period2.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`) : /* @__PURE__ */ React.createElement(React.Fragment, null, pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`), pagedPeriod1.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLineCard, null), renderEventCard(ev)))), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLineCard, null)), /* @__PURE__ */ React.createElement("div", { className: "monthly-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "totals-label" }, "Monthly Totals"), /* @__PURE__ */ React.createElement("span", { className: "totals-amounts-row" }, /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-green" }, fmt(s.income)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700-coral" }, fmt(s.expense)), /* @__PURE__ */ React.createElement("span", { className: "mno mno-700", style: { color: s.surplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(s.surplus, true)))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
+    }}
+        >
+          {fmt(s.open)}
+        </span>
+      </div>
+      {period1.length === 0 && period2.length === 0 ? <div className="budget-empty-msg">
+        {gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month — matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`}
+      </div> : <
+      >
+        {pagedPeriod1.length > 0 && <>
+          {renderPeriodCardHdr(`${MONTHS[monthIdx]} 1–14`)}
+          {pagedPeriod1.map((ev) => <React.Fragment key={ev.id}>
+            {ev.id === todayMarkerId && <TodayLineCard />}
+            {renderEventCard(ev)}
+          </React.Fragment>)}
+        </>}
+        {pagedPeriod2.length > 0 && <>
+          {renderPeriodCardHdr(`${MONTHS[monthIdx]} 15–${daysInMonth(monthIdx, activeYear)}`)}
+          {pagedPeriod2.map((ev) => <React.Fragment key={ev.id}>
+            {ev.id === todayMarkerId && <TodayLineCard />}
+            {renderEventCard(ev)}
+          </React.Fragment>)}
+        </>}
+        {todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && <TodayLineCard />}
+      </>}
+      <div className="monthly-totals-row">
+        <span className="totals-label">Monthly Totals</span>
+        <span className="totals-amounts-row">
+          <span className="mno mno-700-green">{fmt(s.income)}</span>
+          <span className="mno mno-700-coral">{fmt(s.expense)}</span>
+          <span className="mno mno-700" style={{ color: s.surplus >= 0 ? "var(--mint)" : "var(--coral)" }}>
+            {fmt(s.surplus, true)}
+          </span>
+        </span>
+      </div>
+      <GridPagination
+        pageInfo={monthPg}
+        setPage={setPgPage}
+        pageSize={pgSize}
+        setPageSize={changePageSize}
+        label="events"
+        isMobile={true}
+      />
+    </Card>;
     // ── Calendar ───────────────────────────────────────────────────────────
     // The month laid out as a month, which is the shape people already hold
     // this question in: "what's hitting my account, and when". Replaces Daily,
@@ -533,12 +642,27 @@ import { toast } from "./auth-misc.js";
     }, [monthEvents, s, monthIdx, activeYear, openBal]);
     const calSelected = calSelDay == null ? null : calendar.flat().find((c) => c && c.day === calSelDay) || null;
     const CAL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const renderCalendar = () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement(
-      "div",
-      { className: "cal-grid", role: "grid", "aria-label": `${MONTHS[monthIdx]} ${activeYear}, balance by day` },
-      /* @__PURE__ */ React.createElement("div", { className: "cal-row cal-row--head", role: "row" }, CAL_DOW.map((d) => /* @__PURE__ */ React.createElement("div", { key: d, className: "cal-dow", role: "columnheader" }, /* @__PURE__ */ React.createElement("span", { className: "cal-dow-full" }, d), /* @__PURE__ */ React.createElement("span", { className: "cal-dow-short", "aria-hidden": true }, d[0])))),
-      calendar.map((week, wi) => /* @__PURE__ */ React.createElement("div", { key: wi, className: "cal-row", role: "row" }, week.map((cell, ci) => {
-        if (!cell) return /* @__PURE__ */ React.createElement("div", { key: ci, className: "cal-cell cal-cell--blank", role: "gridcell", "aria-hidden": true });
+    const renderCalendar = () => <>
+      <Card className="cf-card--flush">
+        <div
+          className="cal-grid"
+          role="grid"
+          aria-label={`${MONTHS[monthIdx]} ${activeYear}, balance by day`}
+        >
+          <div className="cal-row cal-row--head" role="row">
+            {CAL_DOW.map((d) => <div key={d} className="cal-dow" role="columnheader">
+              <span className="cal-dow-full">{d}</span>
+              <span className="cal-dow-short" aria-hidden={true}>{d[0]}</span>
+            </div>)}
+          </div>
+          {calendar.map((week, wi) => <div key={wi} className="cal-row" role="row">
+            {week.map((cell, ci) => {
+        if (!cell) return <div
+          key={ci}
+          className="cal-cell cal-cell--blank"
+          role="gridcell"
+          aria-hidden={true}
+        />;
         const low = cell.balance < 0 ? "neg" : cell.balance < alertThreshold ? "warn" : "";
         const today = isToday(cell.day);
         const openDay = calSelDay === cell.day;
@@ -546,59 +670,137 @@ import { toast } from "./auth-misc.js";
         // out a day number, a stack of amounts and a balance as loose text
         // gives no clue which day they belong to.
         const label = `${MONTHS[monthIdx]} ${cell.day}` + (today ? ", today" : "") + ", " + (cell.events.length === 0 ? "nothing scheduled" : `${cell.events.length} event${cell.events.length === 1 ? "" : "s"}, net ${fmt(cell.net, true)}`) + `, balance ${fmt(cell.balance)}` + (low === "neg" ? ", overdrawn" : low === "warn" ? ", below your alert threshold" : "");
-        return /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            key: ci,
-            type: "button",
-            role: "gridcell",
-            className: "cal-cell" + (low ? " cal-cell--" + low : "") + (today ? " cal-cell--today" : "") + (openDay ? " cal-cell--open" : "") + (cell.events.length === 0 ? " cal-cell--quiet" : ""),
-            "aria-label": label,
-            "aria-pressed": openDay,
-            onClick: () => {
+        return <button
+          key={ci}
+          type="button"
+          role="gridcell"
+          className={"cal-cell" + (low ? " cal-cell--" + low : "") + (today ? " cal-cell--today" : "") + (openDay ? " cal-cell--open" : "") + (cell.events.length === 0 ? " cal-cell--quiet" : "")}
+          aria-label={label}
+          aria-pressed={openDay}
+          onClick={() => {
               haptic();
               setCalSelDay(openDay ? null : cell.day);
-            }
-          },
-          /* @__PURE__ */ React.createElement("span", { className: "cal-daynum" }, cell.day),
-          /* @__PURE__ */ React.createElement("span", { className: "cal-bal mno" }, fmt(cell.balance)),
-          /* @__PURE__ */ React.createElement("span", { className: "cal-events" }, cell.events.slice(0, 3).map((ev) => /* @__PURE__ */ React.createElement("span", { key: ev.id, className: "cal-ev" + (completed[ev.id] ? " cal-ev--done" : ""), title: `${ev.desc} ${fmt(signedAmount(ev), true)}` }, /* @__PURE__ */ React.createElement("span", { className: "cal-ev-dot", style: { background: getCatColor(ev.category, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "cal-ev-desc" }, ev.desc), /* @__PURE__ */ React.createElement("span", { className: "cal-ev-amt mno" }, fmt(signedAmount(ev), true)))), cell.events.length > 3 && /* @__PURE__ */ React.createElement("span", { className: "cal-ev-more" }, "+", cell.events.length - 3, " more")),
-          // The phone cell has no room for the lines above; it gets a dot per
+            }}
+        >
+          <span className="cal-daynum">{cell.day}</span>
+          <span className="cal-bal mno">{fmt(cell.balance)}</span>
+          <span className="cal-events">
+            {cell.events.slice(0, 3).map((ev) => <span
+              key={ev.id}
+              className={"cal-ev" + (completed[ev.id] ? " cal-ev--done" : "")}
+              title={`${ev.desc} ${fmt(signedAmount(ev), true)}`}
+            >
+              <span
+                className="cal-ev-dot"
+                style={{ background: getCatColor(ev.category, categories, categoryColors) }}
+              />
+              <span className="cal-ev-desc">{ev.desc}</span>
+              <span className="cal-ev-amt mno">{fmt(signedAmount(ev), true)}</span>
+            </span>)}
+            {cell.events.length > 3 && <span className="cal-ev-more">+{cell.events.length - 3}{" more"}</span>}
+          </span>
+          {// The phone cell has no room for the lines above; it gets a dot per
           // event (capped) and the same tint, and opens the day below on tap.
-          cell.events.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "cal-dots", "aria-hidden": true }, cell.events.slice(0, 4).map((ev) => /* @__PURE__ */ React.createElement("span", { key: ev.id, className: "cal-dot", style: { background: getCatColor(ev.category, categories, categoryColors) } })))
-        );
-      })))
-    )), calSelected && /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush mt-16" }, /* @__PURE__ */ React.createElement("div", { className: "cal-day-hdr" }, /* @__PURE__ */ React.createElement("span", null, MONTHS[monthIdx], " ", calSelected.day, /* @__PURE__ */ React.createElement("span", { className: "cal-day-bal mno" }, "balance ", fmt(calSelected.balance))), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cf-btn cf-btn--secondary cf-btn--tiny", onClick: () => setCalSelDay(null) }, "Close")), calSelected.events.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, "Nothing scheduled on this day.") : calSelected.events.map((ev) => renderEventCard(ev, { hideDayLabel: true }))));
+          cell.events.length > 0 && <span className="cal-dots" aria-hidden={true}>
+            {cell.events.slice(0, 4).map((ev) => <span
+              key={ev.id}
+              className="cal-dot"
+              style={{ background: getCatColor(ev.category, categories, categoryColors) }}
+            />)}
+          </span>
+}
+        </button>;
+      })}
+          </div>)}
+        </div>
+      </Card>
+      {calSelected && <Card className="cf-card--flush mt-16">
+        <div className="cal-day-hdr">
+          <span>
+            {MONTHS[monthIdx]}
+            {" "}
+            {calSelected.day}
+            <span className="cal-day-bal mno">{"balance "}{fmt(calSelected.balance)}</span>
+          </span>
+          <button
+            type="button"
+            className="cf-btn cf-btn--secondary cf-btn--tiny"
+            onClick={() => setCalSelDay(null)}
+          >
+            Close
+          </button>
+        </div>
+        {calSelected.events.length === 0 ? <div className="budget-empty-msg">
+          Nothing scheduled on this day.
+        </div> : calSelected.events.map((ev) => renderEventCard(ev, { hideDayLabel: true }))}
+      </Card>}
+    </>;
     const renderYoyCompare = () => {
       const deltaCls = (d) => d > 0 ? "yoy-delta-pos" : d < 0 ? "yoy-delta-neg" : "";
-      const amtCell = (v) => v === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(v, true);
+      const amtCell = (v) => v === 0 ? <span className="c-textLt">—</span> : fmt(v, true);
       const totCur = yoyRows.reduce((a, r) => a + r.cur, 0);
       const totPrev = yoyRows.reduce((a, r) => a + r.prev, 0);
       const totDelta = roundMoney((totCur - totPrev));
-      return /* @__PURE__ */ React.createElement(
-        Card,
-        { className: "cf-card--flush yoy-card" },
-        /* @__PURE__ */ React.createElement("div", { className: "yoy-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "yoy-title" }, `${MONTHS[monthIdx]} ${activeYear} vs ${MONTHS[monthIdx]} ${prevYear}`)),
-        !prevHasData ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, `No ${prevYear} entries to compare against.`) : yoyRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "budget-empty-msg" }, `No entries in ${MONTHS[monthIdx]} for either year.`) : /* @__PURE__ */ React.createElement(
-          "div",
-          { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Year-over-year comparison table" },
-          /* @__PURE__ */ React.createElement(
-            "table",
-            { className: "forecast-table yoy-table" },
-            /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "yoy-th-desc" }, "Description"), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-cat" }, "Category"), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, prevYear), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, activeYear), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num" }, "Δ"))),
-            /* @__PURE__ */ React.createElement("tbody", null, yoyRows.map((r, i) => /* @__PURE__ */ React.createElement(
-              "tr",
-              { key: r.type + "|" + r.desc + "|" + i, className: "yoy-tr" },
-              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", title: r.desc }, r.desc, r.prev === 0 && r.cur !== 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"), r.cur === 0 && r.prev !== 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Dropped")),
-              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.category, categories, categoryColors, className: "text-9" })),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, amtCell(r.prev)),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, amtCell(r.cur)),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + deltaCls(r.delta) }, r.delta === 0 ? /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "—") : fmt(r.delta, true))
-            ))),
-            /* @__PURE__ */ React.createElement("tfoot", null, /* @__PURE__ */ React.createElement("tr", { className: "yoy-foot" }, /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc" }, "Net"), /* @__PURE__ */ React.createElement("td", null), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, fmt(totPrev, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num" }, fmt(totCur, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + deltaCls(totDelta) }, fmt(totDelta, true))))
-          )
-        )
-      );
+      return <Card className="cf-card--flush yoy-card">
+        <div className="yoy-header-row">
+          <span className="yoy-title">
+            {`${MONTHS[monthIdx]} ${activeYear} vs ${MONTHS[monthIdx]} ${prevYear}`}
+          </span>
+        </div>
+        {!prevHasData ? <div className="budget-empty-msg">{`No ${prevYear} entries to compare against.`}</div> : yoyRows.length === 0 ? <div
+          className="budget-empty-msg"
+        >
+          {`No entries in ${MONTHS[monthIdx]} for either year.`}
+        </div> : <div
+          className="hscroll"
+          tabIndex={0}
+          role="region"
+          aria-label="Year-over-year comparison table"
+        >
+          <table className="forecast-table yoy-table">
+            <thead>
+              <tr className="thead-row">
+                <th className="yoy-th-desc">Description</th>
+                <th className="yoy-th-cat">Category</th>
+                <th className="yoy-th-num">{prevYear}</th>
+                <th className="yoy-th-num">{activeYear}</th>
+                <th className="yoy-th-num">Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yoyRows.map((r, i) => <tr key={r.type + "|" + r.desc + "|" + i} className="yoy-tr">
+                <td className="yoy-td-desc" title={r.desc}>
+                  {r.desc}
+                  {r.prev === 0 && r.cur !== 0 && <span className="yoy-tag yoy-tag--new">New</span>}
+                  {r.cur === 0 && r.prev !== 0 && <span className="yoy-tag yoy-tag--gone">Dropped</span>}
+                </td>
+                <td className="yoy-td-cat">
+                  <CatChip
+                    category={r.category}
+                    categories={categories}
+                    categoryColors={categoryColors}
+                    className="text-9"
+                  />
+                </td>
+                <td className="cf-text-mono-13 yoy-num">{amtCell(r.prev)}</td>
+                <td className="cf-text-mono-13 yoy-num">{amtCell(r.cur)}</td>
+                <td className={"cf-text-mono-13 yoy-num " + deltaCls(r.delta)}>
+                  {r.delta === 0 ? <span className="c-textLt">—</span> : fmt(r.delta, true)}
+                </td>
+              </tr>)}
+            </tbody>
+            <tfoot>
+              <tr className="yoy-foot">
+                <td className="yoy-td-desc">Net</td>
+                <td />
+                <td className="cf-text-mono-13 yoy-num">{fmt(totPrev, true)}</td>
+                <td className="cf-text-mono-13 yoy-num">{fmt(totCur, true)}</td>
+                <td className={"cf-text-mono-13 yoy-num " + deltaCls(totDelta)}>{fmt(totDelta, true)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>}
+      </Card>;
     };
     const touchStart = useRef(null);
     const handleTouchStart = (e) => {
@@ -631,161 +833,216 @@ import { toast } from "./auth-misc.js";
       setEditingEntry(null);
       setEditingInitial(null);
     };
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "cf-page",
-        onTouchStart: handleTouchStart,
-        onTouchEnd: handleTouchEnd
-      },
-      selIds.size > 0 && lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-bulkbar budget-bulkbar--accent" }, /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-count" }, selIds.size, " selected"), /* @__PURE__ */ React.createElement("span", { className: "budget-bulkbar-total" }, fmt(selTotal, true)), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: markSelectedPaid,
-          className: "budget-bulk-markpaid-btn"
-        },
-        "\u2713 Mark paid (",
-        MONTHS[monthIdx],
-        ")"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: clearSel,
-          "aria-label": "Clear selection",
-          className: "budget-bulk-clear-btn"
-        },
-        "Clear"
-      )),
-      /* @__PURE__ */ React.createElement(
-        MonthPicker,
-        {
-          value: monthIdx,
-          onChange: (v) => {
+    return <div className="cf-page" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {selIds.size > 0 && lens === "list" && <div className="budget-bulkbar budget-bulkbar--accent">
+        <span className="budget-bulkbar-count">{selIds.size}{" selected"}</span>
+        <span className="budget-bulkbar-total">{fmt(selTotal, true)}</span>
+        <button onClick={markSelectedPaid} className="budget-bulk-markpaid-btn">
+          ✓ Mark paid (
+          {MONTHS[monthIdx]}
+          )
+        </button>
+        <button onClick={clearSel} aria-label="Clear selection" className="budget-bulk-clear-btn">
+          Clear
+        </button>
+      </div>}
+      <MonthPicker
+        value={monthIdx}
+        onChange={(v) => {
             setMonthIdx(v);
-          },
-          noMargin: false,
-          // Which months close below the alert threshold, so the strip marks
-          // them rather than making you open each one to find out.
-          monthCloses: summaries.map((m) => m.close),
-          alertThreshold,
-          matchingMonths: true && gq ? matchingMonths : null,
-          onAddNextYear,
-          nextYear: onAddNextYear ? activeYear + 1 : null
-        }
-      ),
-      (lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 12, style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", null, skippedThisMonth.length, " occurrence", skippedThisMonth.length !== 1 ? "s" : "", " skipped in ", MONTHS[monthIdx], ":"), skippedThisMonth.map((s) => /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          key: s.occId,
-          className: "cf-row cf-gap-6",
-          style: { background: "var(--bgCard)", border: "1px solid var(--amber)", borderRadius: 6, padding: "2px 8px", alignItems: "center" }
-        },
-        s.desc, " (", s.day, ")",
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => restoreSkipped(s.occId),
-            "aria-label": `Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`,
-            title: "Restore this occurrence",
-            className: "link-btn-sm"
-          },
-          "↺"
-        )
-      )))),
-      lens === "list" && showSwipeCoach && /* @__PURE__ */ React.createElement("div", { className: "swipe-coach", "data-noprint": true }, /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(Icon, { name: "arrow-right", size: 13, style: { flexShrink: 0 } }), "Tip: swipe left or right on the grid to change months"), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: dismissSwipeCoach,
-          className: "gotit-btn"
-        },
-        "Got it"
-      )),
-      gq && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering by "', globalSearch, '" \u2014 ', monthEvents.length, " match", monthEvents.length !== 1 ? "es" : "", ". Clear search to see all entries."),
-      // Surplus/Shortfall is the month's balance movement, so when the month
+          }}
+        noMargin={false}
+        // Which months close below the alert threshold, so the strip marks
+        // them rather than making you open each one to find out.
+        monthCloses={summaries.map((m) => m.close)}
+        alertThreshold={alertThreshold}
+        matchingMonths={true && gq ? matchingMonths : null}
+        onAddNextYear={onAddNextYear}
+        nextYear={onAddNextYear ? activeYear + 1 : null}
+      />
+      {(lens === "list" || lens === "calendar") && skippedThisMonth.length > 0 && <div
+        className="notice notice--sm"
+        data-tone="warn"
+        role="status"
+        data-noprint={true}
+      >
+        <div className="cf-row cf-gap-8 cf-wrap" style={{ alignItems: "center" }}>
+          <Icon name="clock" size={12} style={{ flexShrink: 0 }} />
+          <span>
+            {skippedThisMonth.length}
+            {" occurrence"}
+            {skippedThisMonth.length !== 1 ? "s" : ""}
+            {" skipped in "}
+            {MONTHS[monthIdx]}
+            :
+          </span>
+          {skippedThisMonth.map((s) => <span
+            key={s.occId}
+            className="cf-row cf-gap-6"
+            style={{ background: "var(--bgCard)", border: "1px solid var(--amber)", borderRadius: 6, padding: "2px 8px", alignItems: "center" }}
+          >
+            {s.desc}
+            {" ("}
+            {s.day}
+            )
+            <button
+              onClick={() => restoreSkipped(s.occId)}
+              aria-label={`Restore ${s.desc} on ${MONTHS[s.month]} ${s.day}`}
+              title="Restore this occurrence"
+              className="link-btn-sm"
+            >
+              ↺
+            </button>
+          </span>)}
+        </div>
+      </div>}
+      {lens === "list" && showSwipeCoach && <div className="swipe-coach" data-noprint={true}>
+        <span className="cf-row cf-gap-6">
+          <Icon name="arrow-right" size={13} style={{ flexShrink: 0 }} />
+          Tip: swipe left or right on the grid to change months
+        </span>
+        <button onClick={dismissSwipeCoach} className="gotit-btn">Got it</button>
+      </div>}
+      {gq && <div className="notice notice--sm" data-tone="warn" role="status">
+        <Icon name="search" size={12} style={{ marginRight: 4, verticalAlign: -2 }} />
+        Filtering by "
+        {globalSearch}
+        {'" \u2014 '}
+        {monthEvents.length}
+        {" match"}
+        {monthEvents.length !== 1 ? "es" : ""}
+        . Clear search to see all entries.
+      </div>}
+      {// Surplus/Shortfall is the month's balance movement, so when the month
       // holds transfers it deliberately differs from Total Income minus Total
       // Expenses sitting beside it — those two exclude transfers by design.
       // The card says so in its sub-line rather than leaving the reader to
       // find a gap they can't account for; the year-over-year delta gives up
       // its place for that, which only happens in months that have transfers.
-      lens !== "bva" && /* @__PURE__ */ React.createElement("div", { className: "month-summary" },
-        // Two-thirds of a phone screen went by before the first ledger row,
+      lens !== "bva" && <div className="month-summary">
+        {// Two-thirds of a phone screen went by before the first ledger row,
         // and the biggest single item was this: four tiles in a 2x2 grid,
         // ~200px, above the rows they summarise. The line states the month's
         // answer; the tiles are one tap under it, with the year-over-year
         // deltas and the transfer note they carry.
-        /* @__PURE__ */ React.createElement("button", {
-          className: "month-summary-line", "aria-expanded": monthSummaryOpen ? "true" : "false",
-          onClick: () => { haptic(); setMonthSummaryOpen(!monthSummaryOpen); }
-        },
-          /* @__PURE__ */ React.createElement("span", { className: "month-summary-lead" },
-            /* @__PURE__ */ React.createElement("strong", {
-              className: "cf-text-mono-13",
-              style: { color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }
-            }, fmt(s.surplus, true)),
-            s.surplus >= 0 ? " surplus" : " shortfall"),
-          /* @__PURE__ */ React.createElement("span", { className: "month-summary-close" },
-            "closes ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(s.close))),
-          /* @__PURE__ */ React.createElement("span", {
-            className: "month-summary-chev" + (monthSummaryOpen ? " month-summary-chev--open" : "")
-          }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))),
-        monthSummaryOpen && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Income", value: fmt(s.income), color: "var(--greenDk)", sub: yoyDeltaSub(s.income, ps.income) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Total Expenses", value: fmt(s.expense), color: "var(--text)", sub: yoyDeltaSub(s.expense, ps.expense) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Surplus/Shortfall", value: fmt(s.surplus, true), color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus) }), /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(s.close), color: s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }))),
-      lens === "list" && /* @__PURE__ */ React.createElement("div", { className: "budget-list-lens" }, /* @__PURE__ */ React.createElement("div", { className: "budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end") }, prevYearConfigured && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
+        <button
+          className="month-summary-line"
+          aria-expanded={monthSummaryOpen ? "true" : "false"}
+          onClick={() => { haptic(); setMonthSummaryOpen(!monthSummaryOpen); }}
+        >
+          <span className="month-summary-lead">
+            <strong
+              className="cf-text-mono-13"
+              style={{ color: s.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+            >
+              {fmt(s.surplus, true)}
+            </strong>
+            {s.surplus >= 0 ? " surplus" : " shortfall"}
+          </span>
+          <span className="month-summary-close">
+            {"closes "}
+            <strong className="cf-text-mono-13">{fmt(s.close)}</strong>
+          </span>
+          <span className={"month-summary-chev" + (monthSummaryOpen ? " month-summary-chev--open" : "")}>
+            <Icon name="chevron-down" size={15} strokeWidth={2.25} />
+          </span>
+        </button>
+}
+        {monthSummaryOpen && <div className="kpi-grid">
+          <KpiCard
+            label="Total Income"
+            value={fmt(s.income)}
+            color="var(--greenDk)"
+            sub={yoyDeltaSub(s.income, ps.income)}
+          />
+          <KpiCard
+            label="Total Expenses"
+            value={fmt(s.expense)}
+            color="var(--text)"
+            sub={yoyDeltaSub(s.expense, ps.expense)}
+          />
+          <KpiCard
+            label="Surplus/Shortfall"
+            value={fmt(s.surplus, true)}
+            color={s.surplus >= 0 ? "var(--greenDk)" : "var(--red)"}
+            sub={s.transfersIn || s.transfersOut ? `incl. ${fmt(s.transfersIn - s.transfersOut, true)} transfers` : yoyDeltaSub(s.surplus, ps.surplus)}
+          />
+          <KpiCard
+            label="Closing Balance"
+            value={fmt(s.close)}
+            color={s.close < 0 ? "var(--red)" : s.close < alertThreshold ? "var(--amberInk)" : "var(--text)"}
+          />
+        </div>}
+      </div>
+}
+      {lens === "list" && <div className="budget-list-lens">
+        <div className={"budget-toolbar-row" + (prevYearConfigured ? "" : " budget-toolbar-row--end")}>
+          {prevYearConfigured && <button
+            onClick={() => {
             haptic();
             setCompareYoy((v) => !v);
-          },
-          "aria-pressed": compareYoy,
-          title: `Compare ${MONTHS[monthIdx]} ${activeYear} with ${prevYear}`,
-          "data-noprint": true,
-          className: "cf-btn cf-btn--secondary cf-btn--sm cf-btn--iconrow-sm" + (compareYoy ? " yoy-toggle-active" : "")
-        },
-        /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 12 }),
-        `Compare ${prevYear}`
-      ), /* @__PURE__ */ React.createElement(
-        ExportBar,
-        {
-          onAdd: openAddEntry,
-          onCSV: () => {
+          }}
+            aria-pressed={compareYoy}
+            title={`Compare ${MONTHS[monthIdx]} ${activeYear} with ${prevYear}`}
+            data-noprint={true}
+            className={"cf-btn cf-btn--secondary cf-btn--sm cf-btn--iconrow-sm" + (compareYoy ? " yoy-toggle-active" : "")}
+          >
+            <Icon name="chart-grouped" size={12} />
+            {`Compare ${prevYear}`}
+          </button>}
+          <ExportBar
+            onAdd={openAddEntry}
+            onCSV={() => {
             const rows = monthEvents.map((ev) => [`${MONTHS[monthIdx]} ${ev.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)]);
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Monthly.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
-          },
-          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)
-        }
-      )), yoyActive && renderYoyCompare(), isMobile ? renderMonthlyMobileCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Monthly budget table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table budget-monthly-table" }, (() => {
+          }}
+            onPrint={() => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Monthly)`)}
+          />
+        </div>
+        {yoyActive && renderYoyCompare()}
+        {isMobile ? renderMonthlyMobileCards() : <Card className="cf-card--flush">
+          <div
+            className="hscroll hscroll--paged"
+            tabIndex={0}
+            role="region"
+            aria-label="Monthly budget table"
+          >
+            <table className="forecast-table budget-monthly-table">
+              {(() => {
         const allIds = [...pagedPeriod1, ...pagedPeriod2].map((e) => e.id);
-        return /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("th", { className: "budget-col-checkbox budget-th-checkbox", "aria-label": "Select all rows" }, (() => {
+        return <thead>
+          <tr className="thead-row">
+            <th className="budget-col-checkbox budget-th-checkbox" aria-label="Select all rows">
+              {(() => {
           const allSel = allIds.length > 0 && allIds.every((id) => selIds.has(id));
           const someSel = allIds.some((id) => selIds.has(id));
-          return /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: () => {
+          return <button
+            onClick={() => {
                 if (allSel) clearSel();
                 else setSelIds(new Set(allIds));
-              },
-              role: "checkbox",
-              "aria-checked": allSel,
-              "aria-label": allSel ? "Deselect all rows" : "Select all rows",
-              title: allSel ? "Deselect all" : "Select all",
-              className: "budget-selectall-btn",
-              style: {
+              }}
+            role="checkbox"
+            aria-checked={allSel}
+            aria-label={allSel ? "Deselect all rows" : "Select all rows"}
+            title={allSel ? "Deselect all" : "Select all"}
+            className="budget-selectall-btn"
+            style={{
                 border: allSel ? "none" : "1.5px solid rgba(255,255,255,0.4)",
                 background: allSel ? "var(--navy)" : someSel ? "rgba(255,255,255,0.25)" : "transparent",
                 boxShadow: allSel ? "0 0 0 1.5px #fff" : "none"
-              }
-            },
-            allSel ? "\u2713" : someSel ? "\u2013" : ""
-          );
-        })()), /* @__PURE__ */ React.createElement("th", { className: "budget-col-day budget-th-day" }, "Day"), bCols.map((col) => /* @__PURE__ */ React.createElement(
-          "th",
-          {
-            key: col,
-            draggable: !isCoarsePointer,
-            tabIndex: 0,
-            "aria-label": `${BUDGET_COL_LABELS[col]} column${isCoarsePointer ? "" : " — press left or right arrow to reorder"}`,
-            onKeyDown: (e) => {
+              }}
+          >
+            {allSel ? "\u2713" : someSel ? "\u2013" : ""}
+          </button>;
+        })()}
+            </th>
+            <th className="budget-col-day budget-th-day">Day</th>
+            {bCols.map((col) => <th
+              key={col}
+              draggable={!isCoarsePointer}
+              tabIndex={0}
+              aria-label={`${BUDGET_COL_LABELS[col]} column${isCoarsePointer ? "" : " — press left or right arrow to reorder"}`}
+              onKeyDown={(e) => {
               if (e.key === "ArrowLeft") {
                 e.preventDefault();
                 moveBCol(col, -1);
@@ -793,33 +1050,77 @@ import { toast } from "./auth-misc.js";
                 e.preventDefault();
                 moveBCol(col, 1);
               }
-            },
-            onDragStart: () => onBColDragStart(col),
-            onDragOver: (e) => onBColDragOver(e, col),
-            onDrop: () => onBColDrop(col),
-            className: (col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`) + " budget-th-col",
-            style: {
+            }}
+              onDragStart={() => onBColDragStart(col)}
+              onDragOver={(e) => onBColDragOver(e, col)}
+              onDrop={() => onBColDrop(col)}
+              className={(col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`) + " budget-th-col"}
+              style={{
               textAlign: ["income", "expense", "balance"].includes(col) ? "right" : "left",
               background: dragOverBCol === col ? "#3d5570" : "var(--navy)"
-            }
-          },
-          BUDGET_COL_LABELS[col]
-        )), /* @__PURE__ */ React.createElement("th", { className: "budget-th-actions", "aria-label": "Actions" })));
-      })(), /* @__PURE__ */ React.createElement("tbody", null, /* @__PURE__ */ React.createElement("tr", { className: "openbal-row" },
-      // No background of their own: .openbal-row paints the row, and these two
+            }}
+            >
+              {BUDGET_COL_LABELS[col]}
+            </th>)}
+            <th className="budget-th-actions" aria-label="Actions" />
+          </tr>
+        </thead>;
+      })()}
+              <tbody>
+                <tr className="openbal-row">
+                  {// No background of their own: .openbal-row paints the row, and these two
       // were left painting --amberLt from an earlier design where the whole
       // row was amber. Against the row's --stripe that is a 68px cream block
       // at its head, in both themes. The totals row below does the same thing
       // with --navy on a navy row, which is why only this one shows a seam.
-      /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td" }),
-      /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td" }), bCols.map((col) => {
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-balance-td", style: { color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(s.open));
-        if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-label-cell" }, "Opening Balance");
+      <td className="budget-col-checkbox budget-spacer-td" />
+}
+                  <td className="budget-col-day budget-day-spacer-td" />
+                  {bCols.map((col) => {
+        if (col === "balance") return <td
+          key={col}
+          className="budget-col-balance cf-text-mono-13 budget-balance-td"
+          style={{ color: s.open < 0 ? "var(--red)" : s.open < alertThreshold ? "var(--amberInk)" : "var(--text)" }}
+        >
+          {fmt(s.open)}
+        </td>;
+        if (col === "desc") return <td key={col} className="budget-col-desc budget-label-cell">
+          Opening Balance
+        </td>;
         const cls = col === "category" ? "budget-col-cat budget-col-category" : `budget-col-${col}`;
-        return /* @__PURE__ */ React.createElement("td", { key: col, className: `${cls} pad-8-14` });
-      }), /* @__PURE__ */ React.createElement("td", { className: "budget-th-actions" })), pagedPeriod1.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`), pagedPeriod1.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), pagedPeriod2.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, activeYear)}`), pagedPeriod2.map((ev, i) => /* @__PURE__ */ React.createElement(React.Fragment, { key: ev.id }, ev.id === todayMarkerId && /* @__PURE__ */ React.createElement(TodayLine, null), renderEventRow(ev, i)))), period1.length === 0 && period2.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "budget-empty-msg" }, gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`)), todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && /* @__PURE__ */ React.createElement(TodayLine, null), /* @__PURE__ */ React.createElement("tr", { className: "budget-totals-row" }, /* @__PURE__ */ React.createElement("td", { className: "budget-col-checkbox budget-spacer-td", style: {
+        return <td key={col} className={`${cls} pad-8-14`} />;
+      })}
+                  <td className="budget-th-actions" />
+                </tr>
+                {pagedPeriod1.length > 0 && <>
+                  {renderPeriodHdr(`${MONTHS[monthIdx]} 1\u201314`)}
+                  {pagedPeriod1.map((ev, i) => <React.Fragment key={ev.id}>
+                    {ev.id === todayMarkerId && <TodayLine />}
+                    {renderEventRow(ev, i)}
+                  </React.Fragment>)}
+                </>}
+                {pagedPeriod2.length > 0 && <>
+                  {renderPeriodHdr(`${MONTHS[monthIdx]} 15\u2013${daysInMonth(monthIdx, activeYear)}`)}
+                  {pagedPeriod2.map((ev, i) => <React.Fragment key={ev.id}>
+                    {ev.id === todayMarkerId && <TodayLine />}
+                    {renderEventRow(ev, i)}
+                  </React.Fragment>)}
+                </>}
+                {period1.length === 0 && period2.length === 0 && <tr>
+                  <td colSpan={8} className="budget-empty-msg">
+                    {gq ? `No entries match "${globalSearch}" in ${MONTHS[monthIdx]}. Try another month \u2014 matching months are marked above.` : `No entries scheduled for ${MONTHS[monthIdx]} ${activeYear}.`}
+                  </td>
+                </tr>}
+                {todayMarkerId === "AFTER_ALL" && monthPg.safePage === monthPg.totalPages - 1 && <TodayLine />}
+                <tr className="budget-totals-row">
+                  <td
+                    className="budget-col-checkbox budget-spacer-td"
+                    style={{
         background: "var(--navy)"
-      } }), /* @__PURE__ */ React.createElement("td", { className: "budget-col-day budget-day-spacer-td", style: { background: "var(--navy)" } }), bCols.map((col) => {
+      }}
+                  />
+                  <td className="budget-col-day budget-day-spacer-td" style={{ background: "var(--navy)" }} />
+                  {bCols.map((col) => {
         // The In and Out cells sum what the columns above them actually show,
         // transfers included — this is the ledger's own footer, not the
         // activity totals. They used to print s.income/s.expense, which leave
@@ -827,83 +1128,116 @@ import { toast } from "./auth-misc.js";
         // transfer out showed a $5,180 column of figures under a $4,680
         // total. The Surplus cell is the balance movement, so the three cells
         // reconcile with each other and with the Closing Balance above.
-        if (col === "desc") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-desc budget-totals-label" }, "Monthly Totals");
-        if (col === "category") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-cat budget-col-category pad-10-14" });
-        if (col === "income") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-income cf-text-mono-13 budget-totals-amt", style: { color: "var(--mint)" } }, fmt(s.income + s.transfersIn));
-        if (col === "expense") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-expense cf-text-mono-13 budget-totals-amt", style: { color: "var(--coral)" } }, fmt(s.expense + s.transfersOut));
-        if (col === "balance") return /* @__PURE__ */ React.createElement("td", { key: col, className: "budget-col-balance cf-text-mono-13 budget-totals-amt", style: { color: s.surplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(s.surplus, true));
+        if (col === "desc") return <td key={col} className="budget-col-desc budget-totals-label">
+          Monthly Totals
+        </td>;
+        if (col === "category") return <td
+          key={col}
+          className="budget-col-cat budget-col-category pad-10-14"
+        />;
+        if (col === "income") return <td
+          key={col}
+          className="budget-col-income cf-text-mono-13 budget-totals-amt"
+          style={{ color: "var(--mint)" }}
+        >
+          {fmt(s.income + s.transfersIn)}
+        </td>;
+        if (col === "expense") return <td
+          key={col}
+          className="budget-col-expense cf-text-mono-13 budget-totals-amt"
+          style={{ color: "var(--coral)" }}
+        >
+          {fmt(s.expense + s.transfersOut)}
+        </td>;
+        if (col === "balance") return <td
+          key={col}
+          className="budget-col-balance cf-text-mono-13 budget-totals-amt"
+          style={{ color: s.surplus >= 0 ? "var(--mint)" : "var(--coral)" }}
+        >
+          {fmt(s.surplus, true)}
+        </td>;
         return null;
-      }), /* @__PURE__ */ React.createElement("td", { className: "budget-th-actions" })))), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: monthPg, setPage: setPgPage, pageSize: pgSize, setPageSize: changePageSize, label: "events" }))), showEntryForm && /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "modal-overlay",
-          role: "dialog",
-          "aria-modal": "true",
-          "aria-label": "Entry form"
-        },
-        /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => {
+      })}
+                  <td className="budget-th-actions" />
+                </tr>
+              </tbody>
+            </table>
+            <GridPagination
+              pageInfo={monthPg}
+              setPage={setPgPage}
+              pageSize={pgSize}
+              setPageSize={changePageSize}
+              label="events"
+            />
+          </div>
+        </Card>}
+        {showEntryForm && <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Entry form"
+        >
+          <div className="modal-card entryform-modal-card" onClick={(e) => e.stopPropagation()}>
+            <SheetHandle
+              onDismiss={() => {
           setShowEntryForm(false);
           setEditingEntry(null);
-        } }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, editingEntry ? "Edit Entry" : "Add Entry"), /* @__PURE__ */ React.createElement(
-          EntryForm,
-          {
-            initial: editingInitial || editingEntry,
-            onSave: handleEntrySave,
-            onCancel: () => {
+        }}
+            />
+            <div className="modal-title-lg">{editingEntry ? "Edit Entry" : "Add Entry"}</div>
+            <EntryForm
+              initial={editingInitial || editingEntry}
+              onSave={handleEntrySave}
+              onCancel={() => {
               setShowEntryForm(false);
               setEditingEntry(null);
-            },
-            categories,
-            apiKey,
-            isOffline,
-            templates,
-            onSaveTemplate: (t) => {
+            }}
+              categories={categories}
+              apiKey={apiKey}
+              isOffline={isOffline}
+              templates={templates}
+              onSaveTemplate={(t) => {
               setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t]);
-            }
-          }
-        ))
-      ), showOccurrenceForm && editingEv && /* @__PURE__ */ React.createElement(
-        OccurrenceEditModal,
-        {
-          apiKey,
-          isOffline,
-          categories,
-          ev: editingEv,
-          orig: entries.find((e) => e.id === editingEv.entryId) || {},
-          onSave: handleOccurrenceSave,
-          onCancel: () => {
+            }}
+            />
+          </div>
+        </div>}
+        {showOccurrenceForm && editingEv && <OccurrenceEditModal
+          apiKey={apiKey}
+          isOffline={isOffline}
+          categories={categories}
+          ev={editingEv}
+          orig={entries.find((e) => e.id === editingEv.entryId) || {}}
+          onSave={handleOccurrenceSave}
+          onCancel={() => {
             setShowOccurrenceForm(false);
             setEditingEv(null);
-          },
-          onReset: clearOverride ? () => {
+          }}
+          onReset={clearOverride ? () => {
             clearOverride(editingEv.id);
             setShowOccurrenceForm(false);
             setEditingEv(null);
-          } : null,
-          onDelete: () => requestDeleteEntry(editingEv),
-          onEditEntry: () => {
+          } : null}
+          onDelete={() => requestDeleteEntry(editingEv)}
+          onEditEntry={() => {
             const ev = editingEv;
             setShowOccurrenceForm(false);
             setEditingEv(null);
             openEntryEdit(ev);
-          },
-          onSkip: editingEv.repeats ? () => skipOccurrence(editingEv) : null
-        }
-      ), confirmDelEv && /* @__PURE__ */ React.createElement(
-        ConfirmDialog,
-        {
-          title: "Delete Entry?",
-          message: confirmDelEv.repeats ? `This permanently removes "${confirmDelEv.desc}" and every scheduled occurrence in all months — not just this one.` : `This permanently removes "${confirmDelEv.desc}".`,
-          onConfirm: confirmDeleteEntry,
-          onCancel: () => setConfirmDelEv(null)
-        }
-      ), budgetCtx && /* @__PURE__ */ React.createElement(
-        ContextMenu,
-        {
-          x: budgetCtx.x,
-          y: budgetCtx.y,
-          onClose: () => setBudgetCtx(null),
-          items: [
+          }}
+          onSkip={editingEv.repeats ? () => skipOccurrence(editingEv) : null}
+        />}
+        {confirmDelEv && <ConfirmDialog
+          title="Delete Entry?"
+          message={confirmDelEv.repeats ? `This permanently removes "${confirmDelEv.desc}" and every scheduled occurrence in all months — not just this one.` : `This permanently removes "${confirmDelEv.desc}".`}
+          onConfirm={confirmDeleteEntry}
+          onCancel={() => setConfirmDelEv(null)}
+        />}
+        {budgetCtx && <ContextMenu
+          x={budgetCtx.x}
+          y={budgetCtx.y}
+          onClose={() => setBudgetCtx(null)}
+          items={[
             {
               icon: completed[budgetCtx.ev.id] ? "\u2610" : "\u2611",
               label: completed[budgetCtx.ev.id] ? "Mark incomplete" : "Mark complete",
@@ -933,27 +1267,27 @@ import { toast } from "./auth-misc.js";
             } }] : [],
             "---",
             { icon: "\u2715", label: "Delete entry", action: () => requestDeleteEntry(budgetCtx.ev), danger: true }
-          ]
-        }
-      )),
-      lens === "calendar" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
-        ExportBar,
-        {
-          onAdd: openAddEntry,
-          onCSV: () => {
+          ]}
+        />}
+      </div>}
+      {lens === "calendar" && <>
+        <div className="forecast-exportbar-row">
+          <ExportBar
+            onAdd={openAddEntry}
+            onCSV={() => {
             const rows = calendar.flat().filter(Boolean).flatMap((d) => d.events.map((ev) => [`${MONTHS[monthIdx]} ${d.day}`, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(d.balance)]));
             downloadCSV(`CashFlow_Budget_${MONTHS[monthIdx]}_Calendar.csv`, rows, ["Date", "Description", "Category", "Income", "Expense", "Balance"]);
-          },
-          onPrint: () => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Calendar)`)
-        }
-      )), renderCalendar()),
-      bvaCtxMenu && /* @__PURE__ */ React.createElement(
-        ContextMenu,
-        {
-          x: bvaCtxMenu.x,
-          y: bvaCtxMenu.y,
-          onClose: () => setBvaCtxMenu(null),
-          items: [
+          }}
+            onPrint={() => printView(`CashFlow Budget - ${MONTHS[monthIdx]} (Calendar)`)}
+          />
+        </div>
+        {renderCalendar()}
+      </>}
+      {bvaCtxMenu && <ContextMenu
+        x={bvaCtxMenu.x}
+        y={bvaCtxMenu.y}
+        onClose={() => setBvaCtxMenu(null)}
+        items={[
             { icon: "\u{1F50D}", label: "Show the expenses", action: () => openBvaDetail(bvaCtxMenu.cat) },
             { icon: "\u270E", label: "Edit target", action: () => {
               setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
@@ -964,40 +1298,41 @@ import { toast } from "./auth-misc.js";
             // over, so a toast per save would be noise. A removal leaves
             // nothing behind to correct from.
             { icon: "\u2715", label: "Remove target", action: () => {
-              const bk = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+              const bk = `${activeYear || (new Date()).getFullYear()}:${monthIdx}`;
               const prevTargets = budgetTargets, removedCat = bvaCtxMenu.cat;
               pushUndo(`Target for "${removedCat}" removed`, () => setBudgetTargets(prevTargets));
               logActivity("target", `Removed the ${MONTHS[monthIdx]} target for ${removedCat}`);
               setBudgetTargets((prev) => {
-                const n = __spreadValues({}, prev);
+                const n = { ...prev };
                 if (n[bk]) {
-                  const m = __spreadValues({}, n[bk]);
+                  const m = { ...n[bk] };
                   delete m[bvaCtxMenu.cat];
                   n[bk] = m;
                 }
                 return n;
               });
             }, danger: true }
-          ]
-        }
-      ), /* @__PURE__ */ React.createElement(CategoryDetailSheet, {
-        detail: bvaDetail,
-        openRows: bvaOpenRows,
-        onToggleRow: (key) => setBvaOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [key]: !prev[key] })),
-        onClose: closeBvaDetail,
+          ]}
+      />}
+      <CategoryDetailSheet
+        detail={bvaDetail}
+        openRows={bvaOpenRows}
+        onToggleRow={(key) => setBvaOpenRows((prev) => ({ ...prev, [key]: !prev[key] }))}
+        onClose={closeBvaDetail}
         // A month, where Today's widget asks about a year. Same sheet, and
         // the only thing that changes is the sentence under the total.
-        scope: `${MONTHS[monthIdx]} ${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}`,
-        year: activeYear
-      }), showBvaModal && (() => {
-        const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
+        scope={`${MONTHS[monthIdx]} ${activeYear || (new Date()).getFullYear()}`}
+        year={activeYear}
+      />
+      {showBvaModal && (() => {
+        const bKey = `${activeYear || (new Date()).getFullYear()}:${monthIdx}`;
         const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
         const saveBva = () => {
           const t = dollarsToCents(bvaModalData.target);
           if (!bvaModalData.cat || t < 0) return;
           setBudgetTargets((prev) => {
-            const next = __spreadProps(__spreadValues({}, prev), { [bKey]: __spreadProps(__spreadValues({}, prev[bKey] || {}), { [bvaModalData.cat]: t }) });
-            const ro = __spreadValues({}, prev._rollover || {});
+            const next = { ...prev, [bKey]: { ...prev[bKey] || {}, [bvaModalData.cat]: t } };
+            const ro = { ...prev._rollover || {} };
             if (bvaModalData.rollover) ro[bvaModalData.cat] = true;
             else delete ro[bvaModalData.cat];
             next._rollover = ro;
@@ -1006,57 +1341,79 @@ import { toast } from "./auth-misc.js";
           logActivity("target", `${bvaModalData.editCat ? "Changed" : "Set"} the ${MONTHS[monthIdx]} target for ${bvaModalData.cat} to ${fmt(t)}`);
           setShowBvaModal(false);
         };
-        return /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "modal-overlay",
-            role: "dialog",
-            "aria-modal": "true",
-            "aria-label": "Budget target"
-          },
-          /* @__PURE__ */ React.createElement("div", { className: "modal-card confirm-dialog-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, !bvaModalData.editCat ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-            "select",
-            {
-              autoFocus: autoFocusOnDesktop(),
-              value: bvaModalData.cat,
-              onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { cat: e.target.value })),
-              className: "field-input"
-            },
-            /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"),
-            availCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-          )) : /* @__PURE__ */ React.createElement("div", { className: "txm" }, "Category: ", /* @__PURE__ */ React.createElement("strong", { className: "c-text" }, bvaModalData.editCat)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Monthly Budget Target $", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-            "input",
-            {
-              autoFocus: !!bvaModalData.editCat,
-              type: "number",
-              inputMode: "decimal",
-              min: "0",
-              placeholder: "e.g. 1500",
-              className: "field-input field-input--mono",
-              value: bvaModalData.target,
-              onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { target: e.target.value })),
-              onKeyDown: (e) => {
+        return <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Budget target">
+          <div className="modal-card confirm-dialog-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title-lg">
+              {bvaModalData.editCat ? "Edit Budget Target" : "Add Budget Line"}
+            </div>
+            <div className="cf-col cf-gap-14">
+              {!bvaModalData.editCat ? <div>
+                <label className="field-label">Category<span className="required-mark">*</span></label>
+                <select
+                  autoFocus={autoFocusOnDesktop()}
+                  value={bvaModalData.cat}
+                  onChange={(e) => setBvaModalData((p) => ({ ...p, cat: e.target.value }))}
+                  className="field-input"
+                >
+                  <option value="">— Select category —</option>
+                  {availCats.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div> : <div className="txm">
+            {"Category: "}
+            <strong className="c-text">{bvaModalData.editCat}</strong>
+          </div>}
+              <div>
+                <label className="field-label">
+                  Monthly Budget Target $
+                  <span className="required-mark">*</span>
+                </label>
+                <input
+                  autoFocus={!!bvaModalData.editCat}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  placeholder="e.g. 1500"
+                  className="field-input field-input--mono"
+                  value={bvaModalData.target}
+                  onChange={(e) => setBvaModalData((p) => ({ ...p, target: e.target.value }))}
+                  onKeyDown={(e) => {
                 if (e.key === "Enter") saveBva();
-              }
-            }
-          )), /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row" }, /* @__PURE__ */ React.createElement("label", { className: "rollover-label" }, /* @__PURE__ */ React.createElement("input", {
-            type: "checkbox",
-            checked: !!bvaModalData.rollover,
-            onChange: (e) => setBvaModalData((p) => __spreadProps(__spreadValues({}, p), { rollover: e.target.checked })),
-            className: "mt-2"
-          }), /* @__PURE__ */ React.createElement("span", null, "Roll over unspent budget")), /* @__PURE__ */ React.createElement(HelpTip, { label: "Roll over unspent budget", text: "Envelope-style budgeting: anything you didn't spend against this category earlier in the year is added to this month's target, so a quiet month funds a heavy one instead of being lost." }))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-20" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowBvaModal(false),className: "cf-btn cf-btn--secondary" }, "Cancel"), /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: saveBva,
-              disabled: !bvaModalData.cat || !bvaModalData.target,
-              className: "cf-btn cf-btn--primary btn-pad-24"
-            },
-            bvaModalData.editCat ? "Save Target" : "Add Line"
-          )))
-        );
-      })(),
-      lens === "bva" && (() => {
-        const yr = activeYear || (/* @__PURE__ */ new Date()).getFullYear();
+              }}
+                />
+              </div>
+              <div className="checkbox-help-row">
+                <label className="rollover-label">
+                  <input
+                    type="checkbox"
+                    checked={!!bvaModalData.rollover}
+                    onChange={(e) => setBvaModalData((p) => ({ ...p, rollover: e.target.checked }))}
+                    className="mt-2"
+                  />
+                  <span>Roll over unspent budget</span>
+                </label>
+                <HelpTip
+                  label="Roll over unspent budget"
+                  text="Envelope-style budgeting: anything you didn't spend against this category earlier in the year is added to this month's target, so a quiet month funds a heavy one instead of being lost."
+                />
+              </div>
+            </div>
+            <div className="cf-row cf-gap-10 justify-end mt-20">
+              <button onClick={() => setShowBvaModal(false)} className="cf-btn cf-btn--secondary">
+                Cancel
+              </button>
+              <button
+                onClick={saveBva}
+                disabled={!bvaModalData.cat || !bvaModalData.target}
+                className="cf-btn cf-btn--primary btn-pad-24"
+              >
+                {bvaModalData.editCat ? "Save Target" : "Add Line"}
+              </button>
+            </div>
+          </div>
+        </div>;
+      })()}
+      {lens === "bva" && (() => {
+        const yr = activeYear || (new Date()).getFullYear();
         const bKey = `${yr}:${monthIdx}`;
         const targets = budgetTargets[bKey] || {};
         const rollover = budgetTargets._rollover || {};
@@ -1088,32 +1445,43 @@ import { toast } from "./auth-misc.js";
           }
           return roundMoney(carry);
         };
-        const cats = [.../* @__PURE__ */ new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
-        return /* @__PURE__ */ React.createElement(Card, { className: "bva-card" }, /* @__PURE__ */ React.createElement("div", { className: "bva-header-row", style: {
+        const cats = [...new Set([...Object.keys(targets), ...Object.keys(catExpenses)])].sort((a, b) => (catExpenses[b] || 0) - (catExpenses[a] || 0));
+        return <Card className="bva-card">
+          <div
+            className="bva-header-row"
+            style={{
           marginBottom: 12
-        } }, /* @__PURE__ */ React.createElement("span", { className: "bva-header-label" }, "Envelopes \u2014 ", MONTHS[monthIdx]), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
+        }}
+          >
+            <span className="bva-header-label">{"Envelopes \u2014 "}{MONTHS[monthIdx]}</span>
+            <div className="cf-row cf-gap-8">
+              <button
+                onClick={() => {
               setBvaModalData({ cat: "", target: "", editCat: null, rollover: false });
               setShowBvaModal(true);
-            },
-            className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
-          },
-          "+ Add"
-        ))), cats.length > 0 && Object.keys(targets).length === 0 && Object.keys(catExpenses).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-plan-offer" },
-          // A month with spending and no targets. Targets are never raised
+            }}
+                className="cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+          {cats.length > 0 && Object.keys(targets).length === 0 && Object.keys(catExpenses).length > 0 && <div
+            className="bva-plan-offer"
+          >
+            {// A month with spending and no targets. Targets are never raised
           // behind anyone's back any more, so this is the one-tap way to start
           // from what is already scheduled: each month of the year that has no
           // targets gets its own plan, and months someone has set are left alone.
-          /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "No targets for ", MONTHS[monthIdx], " yet."),
-          /* @__PURE__ */ React.createElement("button", {
-            type: "button",
-            className: "cf-btn cf-btn--secondary cf-btn--md",
-            onClick: () => {
+          <span className="c-textMid">{"No targets for "}{MONTHS[monthIdx]}{" yet."}</span>
+}
+            <button
+              type="button"
+              className="cf-btn cf-btn--secondary cf-btn--md"
+              onClick={() => {
               const before = budgetTargets;
               setBudgetTargets((prev) => {
-                const next = __spreadValues({}, prev);
+                const next = { ...prev };
                 for (let mi = 0; mi < 12; mi++) {
                   const key = `${yr}:${mi}`;
                   if (next[key] && Object.keys(next[key]).length) continue;
@@ -1127,17 +1495,24 @@ import { toast } from "./auth-misc.js";
                 return next;
               });
               pushUndo(`Targets set from the ${yr} plan`, () => setBudgetTargets(before));
-            }
-          }, "Use the plan as targets")
-        ), /* @__PURE__ */ React.createElement("div", { className: "bva-body" }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
-          icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, className: "c-textLt" }),
-          message: "No budget lines yet. Track a category against a monthly target.",
-          actionLabel: "+ Add Budget Line",
-          onAction: () => {
+            }}
+            >
+              Use the plan as targets
+            </button>
+          </div>}
+          <div className="bva-body">
+            {cats.length === 0 && <div className="bva-empty-wrap">
+              <EmptyState
+                icon={<Icon name="target" size={26} className="c-textLt" />}
+                message="No budget lines yet. Track a category against a monthly target."
+                actionLabel="+ Add Budget Line"
+                onAction={() => {
             setBvaModalData({ cat: "", target: "", editCat: null, rollover: false });
             setShowBvaModal(true);
-          }
-        })), cats.map((cat) => {
+          }}
+              />
+            </div>}
+            {cats.map((cat) => {
           // `actual` stays the month's whole plan — spent and still scheduled —
           // because that is what can go over; `spent` is the part already gone.
           const actual = roundMoney((catExpenses[cat] || 0));
@@ -1151,60 +1526,99 @@ import { toast } from "./auth-misc.js";
           const color = !over ? "color-mix(in srgb, var(--primary) 45%, transparent)" : diff <= 5000 ? "var(--amberInk)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
           const spentPct = target > 0 ? Math.min(spent / target * 100, pct) : 0;
-          return /* @__PURE__ */ React.createElement(
-            "div",
-            {
-              key: cat,
-              onContextMenu: (e) => {
+          return <div
+            key={cat}
+            onContextMenu={(e) => {
                 e.preventDefault();
                 setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target: baseTarget });
-              },
-              className: "context-menu-cursor"
-            },
-            /* @__PURE__ */ React.createElement("button", {
-              type: "button",
-              className: "bva-row-open",
-              onClick: () => openBvaDetail(cat),
-              "aria-label": `${cat}, ${fmt(spent)} spent${scheduled > 0 ? ", " + fmt(scheduled) + " scheduled" : ""}${target > 0 ? ", of " + fmt(target) : ""} \u2014 show the expenses behind it`
-            }),
-            /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 1, minWidth: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
+              }}
+            className="context-menu-cursor"
+          >
+            <button
+              type="button"
+              className="bva-row-open"
+              onClick={() => openBvaDetail(cat)}
+              aria-label={`${cat}, ${fmt(spent)} spent${scheduled > 0 ? ", " + fmt(scheduled) + " scheduled" : ""}${target > 0 ? ", of " + fmt(target) : ""} \u2014 show the expenses behind it`}
+            />
+            <div className="bva-row">
+              <CatChip
+                category={cat}
+                categories={categories}
+                categoryColors={categoryColors}
+                style={{ fontSize: 9, flexShrink: 1, minWidth: 0 }}
+              />
+              <div className="bva-amounts">
+                <span
+                  className="cf-text-mono-13 bva-actual-amt"
+                  style={{
               color: over ? color : "var(--text)"
-            } }, fmt(spent)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
-              className: "bva-set-target",
-              onClick: (e) => {
+            }}
+                >
+                  {fmt(spent)}
+                </span>
+                {target > 0 ? <span className="bva-target cf-text-mono-13">{"/ "}{fmt(target)}</span> : <button
+                  className="bva-set-target"
+                  onClick={(e) => {
                 e.stopPropagation();
                 setBvaModalData({ cat, target: "", editCat: cat, rollover: !!(budgetTargets._rollover || {})[cat] });
                 setShowBvaModal(true);
-              }
-            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), scheduled > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-scheduled-note" }, "+ ", fmt(scheduled), " scheduled"), target > 0 && (over ? /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + (scheduled > 0 ? " over plan" : " over")) : /* @__PURE__ */ React.createElement("span", { className: "left-note" }, diff === 0 ? (scheduled > 0 ? "All planned" : "Fully spent") : fmt(roundMoney(target - actual)) + (scheduled > 0 ? " unplanned" : " left")))),
-            // The kebab is a sibling of .bva-amounts, not a child of it: the
+              }}
+                >
+                  Set a target
+                </button>}
+                {carry > 0 && <span className="carry-note">{"incl. "}{fmt(carry)}{" carried"}</span>}
+                {scheduled > 0 && <span className="bva-scheduled-note">
+                  {"+ "}
+                  {fmt(scheduled)}
+                  {" scheduled"}
+                </span>}
+                {target > 0 && (over ? <span className="over-note" style={{ color }}>
+                  {fmt(diff) + (scheduled > 0 ? " over plan" : " over")}
+                </span> : <span
+                  className="left-note"
+                >
+                  {diff === 0 ? (scheduled > 0 ? "All planned" : "Fully spent") : fmt(roundMoney(target - actual)) + (scheduled > 0 ? " unplanned" : " left")}
+                </span>)}
+              </div>
+              {// The kebab is a sibling of .bva-amounts, not a child of it: the
             // amounts group wraps to a second line on a phone once the actual,
             // the target and an overage all have to fit, and a row action that
             // wraps with them ends up orphaned on its own line.
-            /* @__PURE__ */ React.createElement(
-              "button",
-              {
-                onClick: (e) => {
+            <button
+              onClick={(e) => {
                   e.stopPropagation();
                   setBvaCtxMenu({ x: e.clientX, y: e.clientY, cat, target: baseTarget });
-                },
-                "aria-label": `Edit ${cat} budget target`,
-                className: "cf-checkbtn row-menu-btn"
-              },
-              "\u22EE"
-            )),
-            // Two segments on one track: solid for what has gone, hatched for
+                }}
+              aria-label={`Edit ${cat} budget target`}
+              className="cf-checkbtn row-menu-btn"
+            >
+              ⋮
+            </button>
+}
+            </div>
+            {// Two segments on one track: solid for what has gone, hatched for
             // what is booked but has not happened yet.
-            target > 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
+            target > 0 && <div className="bva-progress-track">
+              <div
+                className="bva-progress-fill"
+                style={{
               width: `${spentPct}%`,
               background: color
-            } }), pct > spentPct && /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill bva-progress-fill--scheduled", style: {
+            }}
+              />
+              {pct > spentPct && <div
+                className="bva-progress-fill bva-progress-fill--scheduled"
+                style={{
               left: `${spentPct}%`,
               width: `${pct - spentPct}%`,
               "--bva-fill": color
-            } }))
-          );
-        }), cats.length > 0 && (() => {
+            }}
+              />}
+            </div>
+}
+          </div>;
+        })}
+            {cats.length > 0 && (() => {
           const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
           const totalSpent = roundMoney(cats.reduce((s2, c) => s2 + Math.min(catSpent[c] || 0, catExpenses[c] || 0), 0));
           const totalScheduled = roundMoney(totalActual - totalSpent);
@@ -1212,10 +1626,35 @@ import { toast } from "./auth-misc.js";
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
-          return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
+          return <div className="bva-totals-row">
+            <span className="bva-total-label">Total</span>
+            <div className="cf-row cf-gap-8">
+              <span
+                className="cf-text-mono-13 fw-700"
+                style={{
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalSpent)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), totalScheduled > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-scheduled-note" }, "+ ", fmt(totalScheduled), " scheduled"), totalTarget > 0 && (tOver ? /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + (totalScheduled > 0 ? " over plan" : " over")) : /* @__PURE__ */ React.createElement("span", { className: "total-over-note left-note" }, tDiff === 0 ? (totalScheduled > 0 ? "All planned" : "Fully spent") : fmt(roundMoney(totalTarget - totalActual)) + (totalScheduled > 0 ? " unplanned" : " left")))));
-        })()));
-      })()
-    );
+          }}
+              >
+                {fmt(totalSpent)}
+              </span>
+              {totalTarget > 0 && <span className="cf-text-mono-13 c-textMid">{"/ "}{fmt(totalTarget)}</span>}
+              {totalScheduled > 0 && <span className="bva-scheduled-note">
+                {"+ "}
+                {fmt(totalScheduled)}
+                {" scheduled"}
+              </span>}
+              {totalTarget > 0 && (tOver ? <span className="total-over-note" style={{ color: tColor }}>
+                {fmt(tDiff) + (totalScheduled > 0 ? " over plan" : " over")}
+              </span> : <span
+                className="total-over-note left-note"
+              >
+                {tDiff === 0 ? (totalScheduled > 0 ? "All planned" : "Fully spent") : fmt(roundMoney(totalTarget - totalActual)) + (totalScheduled > 0 ? " unplanned" : " left")}
+              </span>)}
+            </div>
+          </div>;
+        })()}
+          </div>
+        </Card>;
+      })()}
+    </div>;
   }

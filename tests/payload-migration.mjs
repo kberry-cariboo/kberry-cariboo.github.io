@@ -22,23 +22,12 @@
 // converts it. Extend BY_VERSION whenever a migration step is added.
 //
 // Runs standalone — no browser, no database:  node tests/payload-migration.mjs
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { loadSrc } from './load-src.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = readFileSync(join(ROOT, 'src/lib/migrate.js'), 'utf8');
-const runtime = readFileSync(join(ROOT, 'src/lib/runtime.js'), 'utf8');
-
-// migrate.js is a fragment of the app's single shared scope, not a module. Give
-// it the real runtime.js (the esbuild spread helpers and genId it leans on),
-// stub the two app helpers migrateData needs but this function doesn't, and hand
-// back what the test asserts against. Deliberately the real source rather than a
-// copy: a migration step added to migrate.js and not to BY_VERSION below should
-// fail here, not pass against a stale duplicate.
-// The source is ES modules; loadSrc bundles these (and what they import) and
-// runs them against the stand-ins passed here.
+// Deliberately the real migrate.js rather than a copy: a migration step added
+// there and not to BY_VERSION below should fail here, not pass against a stale
+// duplicate. loadSrc bundles it (and what it imports) and runs it against the
+// stand-ins passed here.
 const load = (_React, localStorage) => loadSrc(['src/lib/migrate.js'], { localStorage });
 const noHook = () => { throw new Error('payload migration must not need React'); };
 // migrate.js runs migrateData() at module scope. It has nothing to do here, but

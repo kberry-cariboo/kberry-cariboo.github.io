@@ -11,9 +11,8 @@ import { toast } from "../components/auth-misc.js";
     useEffect(() => {
       const TAB_KEYS = { "1": "today", "2": "flow", "3": "envelopes", "4": "plan" };
       const handler = (e) => {
-        var _a2, _b;
-        const tag = (((_a2 = e.target) == null ? void 0 : _a2.tagName) || "").toLowerCase();
-        const isInput = tag === "input" || tag === "textarea" || tag === "select" || ((_b = e.target) == null ? void 0 : _b.isContentEditable);
+        const tag = ((e.target?.tagName) || "").toLowerCase();
+        const isInput = tag === "input" || tag === "textarea" || tag === "select" || (e.target?.isContentEditable);
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");

@@ -16,8 +16,17 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 // head (service worker registration, CF_VERSION, the error screen) and tail.
 // It is the build's one dependency (package.json, pinned exactly).
 const esbuild = require("esbuild");
+// Components are written in JSX, compiled to React.createElement against the
+// vendored React global (there is no automatic runtime to import).
+const JSX_OPTIONS = {
+  loader: { ".js": "jsx" },
+  jsx: "transform",
+  jsxFactory: "React.createElement",
+  jsxFragment: "React.Fragment",
+};
 function bundleApp() {
   const res = esbuild.buildSync({
+    ...JSX_OPTIONS,
     entryPoints: [path.join(ROOT, "src/main.js")],
     bundle: true,
     format: "iife",
@@ -140,7 +149,7 @@ function build() {
   buildServiceWorker(withCsp);
 }
 
-module.exports = { ROOT, read, bundleApp };
+module.exports = { ROOT, read, bundleApp, JSX_OPTIONS };
 // Only build when run directly (`node build.js`); tests require this module for
 // bundleApp and must not trigger a build as a side effect of `require`.
 if (require.main === module) build();

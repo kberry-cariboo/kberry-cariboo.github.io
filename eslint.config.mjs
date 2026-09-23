@@ -62,7 +62,7 @@ export default [
   },
   {
     files: ["src/**/*.js"],
-    languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: browserGlobals },
+    languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: browserGlobals, parserOptions: { ecmaFeatures: { jsx: true } } },
     rules: Object.assign({}, CORRECTNESS, {
       "no-undef": "error",
       "no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
@@ -71,7 +71,7 @@ export default [
   {
     // The service worker is a classic script with the worker's own globals.
     files: ["src/sw.js"],
-    languageOptions: { ecmaVersion: "latest", sourceType: "script", globals: {
+    languageOptions: { ecmaVersion: "latest", sourceType: "script", parserOptions: { ecmaFeatures: { jsx: false } }, globals: {
       self: "readonly", caches: "readonly", fetch: "readonly", Request: "readonly", Response: "readonly",
       URL: "readonly", clients: "readonly", console: "readonly", Promise: "readonly" } },
     rules: Object.assign({}, CORRECTNESS, { "no-undef": "error" })

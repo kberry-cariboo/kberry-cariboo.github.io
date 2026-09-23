@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
 import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
 import { parseDate, todayStr } from "../lib/dates.js";
 import { memberName, moneySymbol } from "../lib/format.js";
@@ -8,7 +8,6 @@ import { FieldError, FieldLabel, SheetHandle, TemplatePicker, Toggle } from "./p
 import { Icon } from "./misc-ui.js";
 import { toast } from "./auth-misc.js";
   export function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
-    var _a, _b, _c, _d, _e;
     // Off the household context rather than a prop: the form is opened from
     // six places and threading the account list through all of them is how one
     // of them ends up without it.
@@ -49,25 +48,26 @@ import { toast } from "./auth-misc.js";
       // entry becomes two movements — out of one account, into the other.
       toAccountId: ""
     };
-    const [f, setF] = useState(initial ? __spreadProps(__spreadValues({}, initial), {
+    const [f, setF] = useState(initial ? {
+      ...initial,
       // Money is cents at rest; this form's fields are plain dollar text the
       // whole time it's open, converted back to cents only in handleSave.
       amount: String(centsToDollars(initial.amount)),
       monthlyAmounts: Array.isArray(initial.monthlyAmounts) ? initial.monthlyAmounts.map(centsToDollars) : null,
-      recurEvery: (_a = initial.recurEvery) != null ? _a : 1,
-      recurUnit: (_b = initial.recurUnit) != null ? _b : "month",
-      recurDays: (_c = initial.recurDays) != null ? _c : [],
+      recurEvery: initial.recurEvery ?? 1,
+      recurUnit: initial.recurUnit ?? "month",
+      recurDays: initial.recurDays ?? [],
       recurNth: Number.isFinite(initial.recurNth) ? initial.recurNth : 1,
       bankingDay: initial.bankingDay === true ? "yes" : initial.bankingDay === false ? "no" : "",
-      recurEnd: (_d = initial.recurEnd) != null ? _d : "",
-      repeats: (_e = initial.repeats) != null ? _e : false,
+      recurEnd: initial.recurEnd ?? "",
+      repeats: initial.repeats ?? false,
       transferDirection: initial.transferDirection || "out",
       accountId: initial.accountId || "",
       toAccountId: initial.toAccountId || ""
-    }) : blank);
+    } : blank);
     const [errors, setErrors] = useState({});
-    const [showMonthly, setShowMonthly] = useState(!!(initial == null ? void 0 : initial.monthlyAmounts));
-    const set = (patch) => setF((p) => __spreadValues(__spreadValues({}, p), patch));
+    const [showMonthly, setShowMonthly] = useState(!!initial?.monthlyAmounts);
+    const set = (patch) => setF((p) => ({ ...p, ...patch }));
     const [nlText, setNlText] = useState("");
     const [nlBusy, setNlBusy] = useState(false);
     const [nlErr, setNlErr] = useState("");
@@ -189,7 +189,8 @@ import { toast } from "./auth-misc.js";
     const handleSave = () => {
       if (!validate()) return;
       const maDollars = showMonthly ? f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0) : null;
-      onSave(__spreadProps(__spreadValues({}, f), {
+      onSave({
+        ...f,
         amount: dollarsToCents(f.amount),
         recurEvery: parseInt(f.recurEvery) || 1,
         monthlyAmounts: maDollars ? maDollars.map((v) => dollarsToCents(v)) : null,
@@ -204,8 +205,8 @@ import { toast } from "./auth-misc.js";
         toAccountId: f.type === "transfer" && f.toAccountId && f.toAccountId !== (f.accountId || (accounts[0] || {}).id) ? f.toAccountId : void 0,
         // "monthweekday" keeps exactly one weekday (the schedule names one);
         // "week" keeps the start day plus any extras the user ticked.
-        recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [.../* @__PURE__ */ new Set([startWD, ...f.recurDays])].sort() : []
-      }));
+        recurDays: f.recurUnit === "monthweekday" ? [f.recurDays[0] != null ? f.recurDays[0] : startWD || 0] : f.recurUnit === "week" && startWD !== null ? [...new Set([startWD, ...f.recurDays])].sort() : []
+      });
     };
     // Who added this entry, when the household has more than one person in it
     // and it wasn't you. The id has round-tripped as `userId` since entries
@@ -216,37 +217,48 @@ import { toast } from "./auth-misc.js";
     const inpCls = (hasErr) => "field-input" + (hasErr ? " field-error" : "");
     const lblCls = "field-label";
     const summary = recurSummary();
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, addedBy && addedBy !== "you" && /* @__PURE__ */ React.createElement("div", { className: "entry-addedby" }, "Added by ", addedBy), !initial && /* @__PURE__ */ React.createElement("div", { className: "mb-12" },
-      /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "entry-nl" }, "Describe it (optional)"),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
-        /* @__PURE__ */ React.createElement("input", {
-          id: "entry-nl",
-          className: "field-input",
-          style: { flex: "1 1 220px" },
-          placeholder: "hydro $180 every second Tuesday",
-          value: nlText,
-          disabled: nlBusy,
-          onChange: (e) => setNlText(e.target.value),
-          onKeyDown: (e) => {
+    return <>
+      {addedBy && addedBy !== "you" && <div className="entry-addedby">{"Added by "}{addedBy}</div>}
+      {!initial && <div className="mb-12">
+        <label className="field-label" htmlFor="entry-nl">Describe it (optional)</label>
+        <div className="cf-row cf-gap-8 cf-wrap">
+          <input
+            id="entry-nl"
+            className="field-input"
+            style={{ flex: "1 1 220px" }}
+            placeholder="hydro $180 every second Tuesday"
+            value={nlText}
+            disabled={nlBusy}
+            onChange={(e) => setNlText(e.target.value)}
+            onKeyDown={(e) => {
             // Enter inside a form would otherwise submit it; here it should
             // run the parse the user is obviously asking for.
             if (e.key === "Enter") {
               e.preventDefault();
               if (!nlBusy && nlText.trim() && !isOffline && aiCanRun(apiKey)) fillFromText();
             }
-          }
-        }),
-        /* @__PURE__ */ React.createElement("button", {
-          type: "button",
-          onClick: fillFromText,
-          disabled: nlBusy || !nlText.trim() || isOffline || !aiCanRun(apiKey),
-          title: isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
-          className: "cf-btn cf-btn--secondary"
-        }, nlBusy ? "Reading…" : "✦ Fill in")
-      ),
-      (nlErr || nlNote) && /* @__PURE__ */ React.createElement("div", { className: nlErr ? "field-error-text" : "field-hint-text" }, nlErr || nlNote)
-    ), templates.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(TemplatePicker, { templates, onSelect: (t) => {
-      setF((p) => __spreadProps(__spreadValues({}, p), {
+          }}
+          />
+          <button
+            type="button"
+            onClick={fillFromText}
+            disabled={nlBusy || !nlText.trim() || isOffline || !aiCanRun(apiKey)}
+            title={isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0}
+            className="cf-btn cf-btn--secondary"
+          >
+            {nlBusy ? "Reading…" : "✦ Fill in"}
+          </button>
+        </div>
+        {(nlErr || nlNote) && <div className={nlErr ? "field-error-text" : "field-hint-text"}>
+          {nlErr || nlNote}
+        </div>}
+      </div>}
+      {templates.length > 0 && <div className="mb-12">
+        <TemplatePicker
+          templates={templates}
+          onSelect={(t) => {
+      setF((p) => ({
+        ...p,
         desc: t.desc,
         type: t.type,
         amount: String(centsToDollars(t.amount)),
@@ -257,164 +269,347 @@ import { toast } from "./auth-misc.js";
         recurDays: t.recurDays || [],
         notes: t.notes || ""
       }));
-    } })), /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-desc" }, "Description", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "ef-desc",
-        autoFocus: autoFocusOnDesktop(),
-        className: inpCls(errors.desc),
-        value: f.desc,
-        placeholder: "e.g. Mortgage payment",
-        onChange: (e) => {
+    }}
+        />
+      </div>}
+      <div className="mb-12">
+        <label className={lblCls} htmlFor="ef-desc">
+          Description
+          <span className="required-mark">*</span>
+        </label>
+        <input
+          id="ef-desc"
+          autoFocus={autoFocusOnDesktop()}
+          className={inpCls(errors.desc)}
+          value={f.desc}
+          placeholder="e.g. Mortgage payment"
+          onChange={(e) => {
           set({ desc: e.target.value });
-          if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
-        }
-      }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount (" + moneySymbol().trim() + ")", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "ef-amount",
-        type: "number",
-        inputMode: "decimal",
-        step: "0.01",
-        min: "0",
-        className: inpCls(errors.amount),
-        value: f.amount,
-        placeholder: "0.00",
-        onChange: (e) => {
+          if (errors.desc) setErrors((p) => ({ ...p, desc: void 0 }));
+        }}
+        />
+        <FieldError msg={errors.desc} />
+      </div>
+      <div className="entry-form-row2">
+        <div>
+          <label className={lblCls} htmlFor="ef-type">Type</label>
+          <select
+            id="ef-type"
+            className={inpCls(false)}
+            value={f.type}
+            onChange={(e) => set({ type: e.target.value })}
+          >
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+            <option value="transfer">Transfer</option>
+          </select>
+          {f.type === "transfer" && !f.toAccountId && <select
+            aria-label="Transfer direction"
+            className={inpCls(false) + " mt-6"}
+            value={f.transferDirection}
+            onChange={(e) => set({ transferDirection: e.target.value })}
+          >
+            <option value="out">Money out of this account</option>
+            <option value="in">Money into this account</option>
+          </select>}
+        </div>
+        <div>
+          <label className={lblCls} htmlFor="ef-amount">
+            {"Amount (" + moneySymbol().trim() + ")"}
+            <span className="required-mark">*</span>
+          </label>
+          <input
+            id="ef-amount"
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min="0"
+            className={inpCls(errors.amount)}
+            value={f.amount}
+            placeholder="0.00"
+            onChange={(e) => {
           set({ amount: e.target.value });
-          if (errors.amount) setErrors((p) => __spreadProps(__spreadValues({}, p), { amount: void 0 }));
-        }
-      }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.amount })), accounts.length > 1 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, {
-      htmlFor: "ef-account",
-      className: lblCls,
-      helpLabel: "Account",
-      help: "Which of your accounts this money moves in. A transfer can also name a second account to move it into, which makes it one entry and two movements \u2014 out of the first, into the second \u2014 so the household total is unchanged and each account\u2019s own balance is right."
-    }, f.type === "transfer" ? "From account" : "Account"), /* @__PURE__ */ React.createElement("select", {
-      id: "ef-account",
-      className: inpCls(false),
-      value: f.accountId || (accounts[0] || {}).id || "",
-      onChange: (e) => set({ accountId: e.target.value, toAccountId: f.toAccountId === e.target.value ? "" : f.toAccountId })
-    }, accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))), f.type === "transfer" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: lblCls + " mt-10", htmlFor: "ef-to-account" }, "To account"), /* @__PURE__ */ React.createElement("select", {
-      id: "ef-to-account",
-      className: inpCls(false),
-      value: f.toAccountId,
-      onChange: (e) => set({ toAccountId: e.target.value })
-    }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Outside these accounts \u2014"), accounts.filter((a) => a.id !== (f.accountId || (accounts[0] || {}).id)).map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-category" }, "Category", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement("select", { id: "ef-category", className: inpCls(errors.category), value: f.category, onChange: (e) => {
+          if (errors.amount) setErrors((p) => ({ ...p, amount: void 0 }));
+        }}
+          />
+          <FieldError msg={errors.amount} />
+        </div>
+        {accounts.length > 1 && <div>
+          <FieldLabel
+            htmlFor="ef-account"
+            className={lblCls}
+            helpLabel="Account"
+            help="Which of your accounts this money moves in. A transfer can also name a second account to move it into, which makes it one entry and two movements — out of the first, into the second — so the household total is unchanged and each account’s own balance is right."
+          >
+            {f.type === "transfer" ? "From account" : "Account"}
+          </FieldLabel>
+          <select
+            id="ef-account"
+            className={inpCls(false)}
+            value={f.accountId || (accounts[0] || {}).id || ""}
+            onChange={(e) => set({ accountId: e.target.value, toAccountId: f.toAccountId === e.target.value ? "" : f.toAccountId })}
+          >
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          {f.type === "transfer" && <>
+            <label className={lblCls + " mt-10"} htmlFor="ef-to-account">To account</label>
+            <select
+              id="ef-to-account"
+              className={inpCls(false)}
+              value={f.toAccountId}
+              onChange={(e) => set({ toAccountId: e.target.value })}
+            >
+              <option value="">— Outside these accounts —</option>
+              {accounts.filter((a) => a.id !== (f.accountId || (accounts[0] || {}).id)).map((a) => <option
+                key={a.id}
+                value={a.id}
+              >
+                {a.name}
+              </option>)}
+            </select>
+          </>}
+        </div>}
+        <div>
+          <label className={lblCls} htmlFor="ef-category">
+            Category
+            <span className="required-mark">*</span>
+          </label>
+          <select
+            id="ef-category"
+            className={inpCls(errors.category)}
+            value={f.category}
+            onChange={(e) => {
       set({ category: e.target.value });
-      if (errors.category) setErrors((p) => __spreadProps(__spreadValues({}, p), { category: void 0 }));
-    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Select category \u2014"), [...categories].sort((a, b) => a.localeCompare(b)).map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.category }))), /* @__PURE__ */ React.createElement("div", { className: "entry-form-date-row" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-160" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-date" }, "Date", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "ef-date",
-        type: "date",
-        className: inpCls(errors.startDate),
-        value: f.startDate,
-        onChange: (e) => {
+      if (errors.category) setErrors((p) => ({ ...p, category: void 0 }));
+    }}
+          >
+            <option value="">— Select category —</option>
+            {[...categories].sort((a, b) => a.localeCompare(b)).map((c) => <option key={c} value={c}>
+              {c}
+            </option>)}
+          </select>
+          <FieldError msg={errors.category} />
+        </div>
+      </div>
+      <div className="entry-form-date-row">
+        <div className="min-w-160">
+          <label className={lblCls} htmlFor="ef-date">Date<span className="required-mark">*</span></label>
+          <input
+            id="ef-date"
+            type="date"
+            className={inpCls(errors.startDate)}
+            value={f.startDate}
+            onChange={(e) => {
           setStartDate(e.target.value);
-          if (errors.startDate) setErrors((p) => __spreadProps(__spreadValues({}, p), { startDate: void 0 }));
-        }
-      }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.startDate })), /* @__PURE__ */ React.createElement("div", { className: "repeats-toggle-row" }, /* @__PURE__ */ React.createElement(Toggle, { value: f.repeats, onChange: (v) => set({ repeats: v }), label: "Repeats" }), f.repeats && summary && /* @__PURE__ */ React.createElement("span", { className: "recur-summary-chip" }, summary))), f.repeats && /* @__PURE__ */ React.createElement("div", { className: "recur-panel" }, /* @__PURE__ */ React.createElement("div", { className: "recur-panel-heading" }, "Recurrence Settings"), /* @__PURE__ */ React.createElement("div", { className: "recur-grid-2" }, f.recurUnit !== "semimonth" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-every" }, "Every"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "ef-recur-every",
-        type: "number",
-        inputMode: "decimal",
-        min: "1",
-        max: "99",
-        className: inpCls(errors.recurEvery),
-        value: f.recurEvery,
-        onChange: (e) => {
+          if (errors.startDate) setErrors((p) => ({ ...p, startDate: void 0 }));
+        }}
+          />
+          <FieldError msg={errors.startDate} />
+        </div>
+        <div className="repeats-toggle-row">
+          <Toggle value={f.repeats} onChange={(v) => set({ repeats: v })} label="Repeats" />
+          {f.repeats && summary && <span className="recur-summary-chip">{summary}</span>}
+        </div>
+      </div>
+      {f.repeats && <div className="recur-panel">
+        <div className="recur-panel-heading">Recurrence Settings</div>
+        <div className="recur-grid-2">
+          {f.recurUnit !== "semimonth" && <div>
+            <label className={lblCls} htmlFor="ef-recur-every">Every</label>
+            <input
+              id="ef-recur-every"
+              type="number"
+              inputMode="decimal"
+              min="1"
+              max="99"
+              className={inpCls(errors.recurEvery)}
+              value={f.recurEvery}
+              onChange={(e) => {
           const every = parseInt(e.target.value) || 1;
           set(
             f.recurUnit === "week" && every > 1 ? { recurEvery: every, recurDays: startWD !== null ? [startWD] : [] } : { recurEvery: every }
           );
-        }
-      }
-    )), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" } }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-recur-unit" }, "Period"), /* @__PURE__ */ React.createElement("select", { id: "ef-recur-unit", className: inpCls(false), value: f.recurUnit, onChange: (e) => setUnit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "day" }, "Day(s)"), /* @__PURE__ */ React.createElement("option", { value: "week" }, "Week(s)"), /* @__PURE__ */ React.createElement("option", { value: "semimonth" }, "Semi-monthly (1st & 15th)"), /* @__PURE__ */ React.createElement("option", { value: "month" }, "Month(s)"), /* @__PURE__ */ React.createElement("option", { value: "monthend" }, "Monthly \u2014 last day"), /* @__PURE__ */ React.createElement("option", { value: "monthweekday" }, "Monthly \u2014 nth weekday"), /* @__PURE__ */ React.createElement("option", { value: "year" }, "Year(s)")))), f.recurUnit === "monthweekday" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
-      className: lblCls,
-      helpLabel: "Which weekday",
-      help: "A month with only four of the chosen weekday has no fifth one, so a \u201c5th\u201d entry simply doesn\u2019t occur in those months. Pick \u201cLast\u201d for the one that should always land in the final week."
-    }, "Which weekday"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement("select", { "aria-label": "Which occurrence in the month", className: inpCls(false), style: { flex: "0 1 130px" }, value: String(f.recurNth), onChange: (e) => set({ recurNth: parseInt(e.target.value, 10) }) }, [[1, "First"], [2, "Second"], [3, "Third"], [4, "Fourth"], [5, "Fifth"], [-1, "Last"]].map(([v, lbl]) => /* @__PURE__ */ React.createElement("option", { key: v, value: String(v) }, lbl))), /* @__PURE__ */ React.createElement("select", { "aria-label": "Weekday", className: inpCls(false), style: { flex: "0 1 150px" }, value: String(f.recurDays[0] != null ? f.recurDays[0] : startWD || 0), onChange: (e) => set({ recurDays: [parseInt(e.target.value, 10)] }) }, WEEKDAYS.map((wd, i) => /* @__PURE__ */ React.createElement("option", { key: wd, value: String(i) }, wd))))), f.recurUnit === "week" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
-      className: lblCls,
-      helpLabel: "Weekdays",
-      help: f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."
-    }, f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"), /* @__PURE__ */ React.createElement("div", { className: "weekday-btn-row" }, WEEKDAYS.map((wd, i) => {
+        }}
+            />
+          </div>}
+          <div style={{ gridColumn: f.recurUnit === "semimonth" ? "1 / -1" : "auto" }}>
+            <label className={lblCls} htmlFor="ef-recur-unit">Period</label>
+            <select
+              id="ef-recur-unit"
+              className={inpCls(false)}
+              value={f.recurUnit}
+              onChange={(e) => setUnit(e.target.value)}
+            >
+              <option value="day">Day(s)</option>
+              <option value="week">Week(s)</option>
+              <option value="semimonth">{"Semi-monthly (1st & 15th)"}</option>
+              <option value="month">Month(s)</option>
+              <option value="monthend">Monthly — last day</option>
+              <option value="monthweekday">Monthly — nth weekday</option>
+              <option value="year">Year(s)</option>
+            </select>
+          </div>
+        </div>
+        {f.recurUnit === "monthweekday" && <div className="mb-10">
+          <FieldLabel
+            className={lblCls}
+            helpLabel="Which weekday"
+            help="A month with only four of the chosen weekday has no fifth one, so a “5th” entry simply doesn’t occur in those months. Pick “Last” for the one that should always land in the final week."
+          >
+            Which weekday
+          </FieldLabel>
+          <div className="cf-row cf-gap-8 cf-wrap">
+            <select
+              aria-label="Which occurrence in the month"
+              className={inpCls(false)}
+              style={{ flex: "0 1 130px" }}
+              value={String(f.recurNth)}
+              onChange={(e) => set({ recurNth: parseInt(e.target.value, 10) })}
+            >
+              {[[1, "First"], [2, "Second"], [3, "Third"], [4, "Fourth"], [5, "Fifth"], [-1, "Last"]].map(([v, lbl]) => <option
+                key={v}
+                value={String(v)}
+              >
+                {lbl}
+              </option>)}
+            </select>
+            <select
+              aria-label="Weekday"
+              className={inpCls(false)}
+              style={{ flex: "0 1 150px" }}
+              value={String(f.recurDays[0] != null ? f.recurDays[0] : startWD || 0)}
+              onChange={(e) => set({ recurDays: [parseInt(e.target.value, 10)] })}
+            >
+              {WEEKDAYS.map((wd, i) => <option key={wd} value={String(i)}>{wd}</option>)}
+            </select>
+          </div>
+        </div>}
+        {f.recurUnit === "week" && <div className="mb-10">
+          <FieldLabel
+            className={lblCls}
+            helpLabel="Weekdays"
+            help={f.recurEvery > 1 ? `Every ${f.recurEvery} weeks always lands on ${startWD !== null ? WEEKDAYS[startWD] : "the start day"}, so the weekdays are fixed. Change the start date to move it.` : startWD !== null ? `${WEEKDAYS[startWD]} is locked to your start date. Add more weekdays to repeat several times a week — “every Monday and Thursday” is one entry.` : "Choose the weekdays this repeats on."}
+          >
+            {f.recurEvery > 1 ? "Fixed to start day" : "Weekday(s)"}
+          </FieldLabel>
+          <div className="weekday-btn-row">
+            {WEEKDAYS.map((wd, i) => {
       const isAnch = i === startWD, isSel = f.recurDays.includes(i) || isAnch, isLock = isAnch || f.recurEvery > 1;
-      return /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          key: wd,
-          onClick: () => !isLock && toggleWD(i),
-          className: "weekday-btn",
-          style: {
+      return <button
+        key={wd}
+        onClick={() => !isLock && toggleWD(i)}
+        className="weekday-btn"
+        style={{
             cursor: isLock ? "default" : "pointer",
             border: isAnch ? `2px solid var(--amber)` : "none",
             background: isSel ? isAnch ? "var(--primary)" : "var(--navyLt)" : "var(--border)",
             color: isSel ? "#fff" : "var(--textMid)",
             opacity: !isSel && isLock ? 0.4 : 1
-          }
-        },
-        wd.slice(0, 2)
-      );
-    }))), f.recurUnit === "semimonth" && /* @__PURE__ */ React.createElement("div", { className: "recur-semimonth-desc" }, "Occurs on day ", /* @__PURE__ */ React.createElement("strong", null, (startD == null ? void 0 : startD.getDate()) || 1), " and day ", /* @__PURE__ */ React.createElement("strong", null, Math.min(((startD == null ? void 0 : startD.getDate()) || 1) + 14, 28)), " of each month."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { className: lblCls, htmlFor: "ef-recur-until", helpLabel: "Until", help: "Leave blank to recur indefinitely. A date here is the last one the entry can land on — a loan that finishes in September stops generating occurrences after it." }, "Until (optional)"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "ef-recur-until",
-        type: "date",
-        className: inpCls(errors.recurEnd),
-        value: f.recurEnd,
-        min: f.startDate,
-        onChange: (e) => {
+          }}
+      >
+        {wd.slice(0, 2)}
+      </button>;
+    })}
+          </div>
+        </div>}
+        {f.recurUnit === "semimonth" && <div className="recur-semimonth-desc">
+          {"Occurs on day "}
+          <strong>{(startD?.getDate()) || 1}</strong>
+          {" and day "}
+          <strong>{Math.min(((startD?.getDate()) || 1) + 14, 28)}</strong>
+          {" of each month."}
+        </div>}
+        <div>
+          <FieldLabel
+            className={lblCls}
+            htmlFor="ef-recur-until"
+            helpLabel="Until"
+            help="Leave blank to recur indefinitely. A date here is the last one the entry can land on — a loan that finishes in September stops generating occurrences after it."
+          >
+            Until (optional)
+          </FieldLabel>
+          <input
+            id="ef-recur-until"
+            type="date"
+            className={inpCls(errors.recurEnd)}
+            value={f.recurEnd}
+            min={f.startDate}
+            onChange={(e) => {
           set({ recurEnd: e.target.value });
-          if (errors.recurEnd) setErrors((p) => __spreadProps(__spreadValues({}, p), { recurEnd: void 0 }));
-        }
-      }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.recurEnd })), f.repeats && f.type === "income" && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement(FieldLabel, {
-      htmlFor: "ef-banking-day",
-      helpLabel: "Banking days",
-      help: "Money paid in by direct deposit doesn\u2019t land on a day the banks are shut \u2014 a payday falling on a weekend or a statutory holiday is in the account on the last banking day before it. The occurrence stays on its own date in the budget either way; only the deposit date it is marked with changes. Left on \u201cDecide from the description\u201d, anything whose description reads as payroll gets the rule."
-    }, "Deposit date"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "ef-banking-day",
-        className: inpCls(false),
-        value: f.bankingDay,
-        onChange: (e) => set({ bankingDay: e.target.value })
-      },
-      /* @__PURE__ */ React.createElement("option", { value: "" }, "Decide from the description"),
-      /* @__PURE__ */ React.createElement("option", { value: "yes" }, "Paid the last banking day before"),
-      /* @__PURE__ */ React.createElement("option", { value: "no" }, "Paid on the date shown")
-    )), f.recurUnit === "month" && /* @__PURE__ */ React.createElement("div", { className: "monthly-toggle-wrap" }, /* @__PURE__ */ React.createElement(
-      Toggle,
-      {
-        value: showMonthly,
-        onChange: (v) => {
+          if (errors.recurEnd) setErrors((p) => ({ ...p, recurEnd: void 0 }));
+        }}
+          />
+          <FieldError msg={errors.recurEnd} />
+        </div>
+        {f.repeats && f.type === "income" && <div className="mb-10">
+          <FieldLabel
+            htmlFor="ef-banking-day"
+            helpLabel="Banking days"
+            help="Money paid in by direct deposit doesn’t land on a day the banks are shut — a payday falling on a weekend or a statutory holiday is in the account on the last banking day before it. The occurrence stays on its own date in the budget either way; only the deposit date it is marked with changes. Left on “Decide from the description”, anything whose description reads as payroll gets the rule."
+          >
+            Deposit date
+          </FieldLabel>
+          <select
+            id="ef-banking-day"
+            className={inpCls(false)}
+            value={f.bankingDay}
+            onChange={(e) => set({ bankingDay: e.target.value })}
+          >
+            <option value="">Decide from the description</option>
+            <option value="yes">Paid the last banking day before</option>
+            <option value="no">Paid on the date shown</option>
+          </select>
+        </div>}
+        {f.recurUnit === "month" && <div className="monthly-toggle-wrap">
+          <Toggle
+            value={showMonthly}
+            onChange={(v) => {
           setShowMonthly(v);
           if (!v) set({ monthlyAmounts: null });
-        },
-        label: "Amount varies by month"
-      }
-    ), showMonthly && /* @__PURE__ */ React.createElement("div", { className: "mt-10" }, [0, 1].map((row) => /* @__PURE__ */ React.createElement("div", { key: row, className: "monthly-amounts-grid", style: { marginBottom: row === 0 ? 8 : 0 } }, MONTHS.slice(row * 6, row * 6 + 6).map((m, i) => {
+        }}
+            label="Amount varies by month"
+          />
+          {showMonthly && <div className="mt-10">
+            {[0, 1].map((row) => <div
+              key={row}
+              className="monthly-amounts-grid"
+              style={{ marginBottom: row === 0 ? 8 : 0 }}
+            >
+              {MONTHS.slice(row * 6, row * 6 + 6).map((m, i) => {
       const mi = row * 6 + i;
-      return /* @__PURE__ */ React.createElement("div", { key: m }, /* @__PURE__ */ React.createElement("div", { className: "month-amt-label" }, m), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "number",
-          inputMode: "decimal",
-          step: "0.01",
-          className: "month-amt-input",
-          value: (f.monthlyAmounts || Array(12).fill(f.amount || 0))[mi] || "",
-          onChange: (ev) => {
+      return <div key={m}>
+        <div className="month-amt-label">{m}</div>
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          className="month-amt-input"
+          value={(f.monthlyAmounts || Array(12).fill(f.amount || 0))[mi] || ""}
+          onChange={(ev) => {
             const ma = [...f.monthlyAmounts || Array(12).fill(parseFloat(f.amount) || 0)];
             ma[mi] = parseFloat(ev.target.value) || 0;
             set({ monthlyAmounts: ma });
-          }
-        }
-      ));
-    })))))), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-notes" }, "Notes"), /* @__PURE__ */ React.createElement("input", { id: "ef-notes", className: inpCls(false), value: f.notes, placeholder: "Optional", onChange: (e) => set({ notes: e.target.value }) })), /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" }, onSaveTemplate && /* @__PURE__ */ React.createElement("button", { onClick: () => {
+          }}
+        />
+      </div>;
+    })}
+            </div>)}
+          </div>}
+        </div>}
+      </div>}
+      <div className="mb-16">
+        <label className={lblCls} htmlFor="ef-notes">Notes</label>
+        <input
+          id="ef-notes"
+          className={inpCls(false)}
+          value={f.notes}
+          placeholder="Optional"
+          onChange={(e) => set({ notes: e.target.value })}
+        />
+      </div>
+      <div className="oem-footer-row">
+        {onSaveTemplate && <button
+          onClick={() => {
       const amt = dollarsToCents(f.amount);
       onSaveTemplate({
         desc: f.desc,
@@ -428,7 +623,20 @@ import { toast } from "./auth-misc.js";
         notes: f.notes
       });
       toast(`Template "${f.desc || "Untitled"}" saved${templates.some((t) => t.desc === f.desc) ? " (replaced existing)" : ""}`);
-    }, className: "ef-save-template", title: "Save as Template" }, /* @__PURE__ */ React.createElement(Icon, { name: "save", size: 13 }), /* @__PURE__ */ React.createElement("span", { className: "ef-save-template-full" }, "Save as Template"), /* @__PURE__ */ React.createElement("span", { className: "ef-save-template-short" }, "Template")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary entry-form-save-btn", onClick: handleSave }, "Save Entry")));
+    }}
+          className="ef-save-template"
+          title="Save as Template"
+        >
+          <Icon name="save" size={13} />
+          <span className="ef-save-template-full">Save as Template</span>
+          <span className="ef-save-template-short">Template</span>
+        </button>}
+        <button className="cf-btn cf-btn--secondary" onClick={onCancel}>Cancel</button>
+        <button className="cf-btn cf-btn--primary entry-form-save-btn" onClick={handleSave}>
+          Save Entry
+        </button>
+      </div>
+    </>;
   }
   // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
@@ -447,31 +655,25 @@ import { toast } from "./auth-misc.js";
       return () => window.removeEventListener("keydown", h);
     }, [show, onClose]);
     if (!show) return null;
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": "Add entry"
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card entryform-modal-card", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: onClose }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Add Entry"), /* @__PURE__ */ React.createElement(
-        EntryForm,
-        {
-          initial: null,
-          onSave: (data) => {
+    return <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add entry">
+      <div className="modal-card entryform-modal-card" onClick={(e) => e.stopPropagation()}>
+        <SheetHandle onDismiss={onClose} />
+        <div className="modal-title-lg">Add Entry</div>
+        <EntryForm
+          initial={null}
+          onSave={(data) => {
             onSave(data);
             onClose();
-          },
-          onCancel: onClose,
-          categories,
-          apiKey,
-          isOffline,
-          templates,
-          onSaveTemplate: (t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])
-        }
-      ))
-    );
+          }}
+          onCancel={onClose}
+          categories={categories}
+          apiKey={apiKey}
+          isOffline={isOffline}
+          templates={templates}
+          onSaveTemplate={(t) => setTemplates && setTemplates((prev) => [...prev.filter((x) => x.desc !== t.desc), t])}
+        />
+      </div>
+    </div>;
   }
   export function ContextMenu({ x, y, items, onClose }) {
     const menuRef = useRef(null);
@@ -513,53 +715,37 @@ import { toast } from "./auth-misc.js";
     }, [isTouch]);
     const ax = pos.x, ay = pos.y;
     if (isTouch) {
-      return /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "ctx-menu-backdrop",
-          onClick: onClose,
-          onContextMenu: (e) => e.preventDefault()
-        },
-        /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            ref: menuRef,
-            className: "modal-card ctx-menu-sheet",
-            onClick: (e) => e.stopPropagation()
-          },
-          /* @__PURE__ */ React.createElement("div", { className: "ctx-menu-handle" }),
-          items.map((item, i) => item === "---" ? /* @__PURE__ */ React.createElement("div", { key: i, className: "ctx-menu-divider--touch" }) : /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              key: i,
-              onClick: () => {
+      return <div className="ctx-menu-backdrop" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
+        <div ref={menuRef} className="modal-card ctx-menu-sheet" onClick={(e) => e.stopPropagation()}>
+          <div className="ctx-menu-handle" />
+          {items.map((item, i) => item === "---" ? <div key={i} className="ctx-menu-divider--touch" /> : <button
+            key={i}
+            onClick={() => {
                 item.action();
                 onClose();
-              },
-              className: "ctx-menu-item--touch",
-              style: {
+              }}
+            className="ctx-menu-item--touch"
+            style={{
                 color: item.danger ? "var(--red)" : "var(--text)"
-              }
-            },
-            /* @__PURE__ */ React.createElement("span", { className: "ctx-menu-icon--touch" }, item.icon),
-            item.label
-          ))
-        )
-      );
+              }}
+          >
+            <span className="ctx-menu-icon--touch">{item.icon}</span>
+            {item.label}
+          </button>)}
+        </div>
+      </div>;
     }
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        ref: menuRef,
-        className: "ctx-menu-desktop",
-        role: "menu",
-        style: { left: ax, top: ay },
-        onContextMenu: (e) => e.preventDefault(),
-        onClick: (e) => e.stopPropagation(),
-        // The menu opened but never took focus, so it was mouse-only: no
-        // arrow keys, Enter did nothing, and Tab walked the page *behind* it.
-        // Escape only appeared to work because that handler is on window.
-        onKeyDown: (e) => {
+    return <div
+      ref={menuRef}
+      className="ctx-menu-desktop"
+      role="menu"
+      style={{ left: ax, top: ay }}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={(e) => e.stopPropagation()}
+      // The menu opened but never took focus, so it was mouse-only: no
+      // arrow keys, Enter did nothing, and Tab walked the page *behind* it.
+      // Escape only appeared to work because that handler is on window.
+      onKeyDown={(e) => {
           const btns = menuRef.current ? [...menuRef.current.querySelectorAll("button")] : [];
           if (!btns.length) return;
           const at = btns.indexOf(document.activeElement);
@@ -577,28 +763,26 @@ import { toast } from "./auth-misc.js";
             e.preventDefault();
             go(e.shiftKey ? at - 1 : at + 1);
           }
-        }
-      },
-      items.map(
-        (item, i) => item === "---" ? /* @__PURE__ */ React.createElement("div", { key: i, className: "ctx-menu-divider" }) : /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            key: i,
-            role: "menuitem",
-            onClick: () => {
+        }}
+    >
+      {items.map(
+        (item, i) => item === "---" ? <div key={i} className="ctx-menu-divider" /> : <button
+          key={i}
+          role="menuitem"
+          onClick={() => {
               item.action();
               onClose();
-            },
-            className: "ctx-menu-item",
-            style: {
+            }}
+          className="ctx-menu-item"
+          style={{
               color: item.danger ? "var(--red)" : "var(--text)"
-            }
-          },
-          /* @__PURE__ */ React.createElement("span", { className: "ctx-menu-icon" }, item.icon),
-          item.label
-        )
-      )
-    );
+            }}
+        >
+          <span className="ctx-menu-icon">{item.icon}</span>
+          {item.label}
+        </button>
+      )}
+    </div>;
   }
   // `inline` renders the options in flow instead of as a floating popover.
   // Inside the mobile filter sheet the popover was absolutely positioned in a
@@ -623,46 +807,55 @@ import { toast } from "./auth-misc.js";
     }, []);
     const allSel = selected.length === 0;
     const label2 = allSel ? label : `${label} (${selected.length})`;
-    return /* @__PURE__ */ React.createElement("div", { ref, className: "relative shrink-0" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
-        className: "filter-pill-btn",
-        style: {
+    return <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="filter-pill-btn"
+        style={{
           border: "1.5px solid " + (allSel ? "var(--border)" : "var(--primary)"),
           background: allSel ? "var(--bgCard)" : "rgba(28,43,58,0.07)",
           color: allSel ? "var(--text)" : "var(--primary)",
           fontWeight: allSel ? 400 : 600
-        }
-      },
-      label2,
-      /* @__PURE__ */ React.createElement("span", {
-        className: "filter-pill-chevron" + (open ? " filter-pill-chevron--open" : "")
-      }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 13, strokeWidth: 2.25 }))
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "") }, /* @__PURE__ */ React.createElement(
-      "label",
-      {
-        className: "filter-pill-all-row"
-      },
-      /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: allSel, onChange: () => onChange([]), className: "filter-pill-checkbox" }),
-      // Was `"All " + label + "s"`, which rendered "All Categorys" and
+        }}
+      >
+        {label2}
+        <span className={"filter-pill-chevron" + (open ? " filter-pill-chevron--open" : "")}>
+          <Icon name="chevron-down" size={13} strokeWidth={2.25} />
+        </span>
+      </button>
+      {open && <div className={"filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "")}>
+        <label className="filter-pill-all-row">
+          <input
+            type="checkbox"
+            checked={allSel}
+            onChange={() => onChange([])}
+            className="filter-pill-checkbox"
+          />
+          {// Was `"All " + label + "s"`, which rendered "All Categorys" and
       // "All Statuss". The plural is a property of the label, not something
       // to derive from it.
       allLabel || `All ${label}`
-    ), options.map((o) => {
+}
+        </label>
+        {options.map((o) => {
       const sel = selected.includes(o.value);
-      return /* @__PURE__ */ React.createElement(
-        "label",
-        {
-          key: o.value,
-          className: "filter-pill-option-row",
-          style: {
+      return <label
+        key={o.value}
+        className="filter-pill-option-row"
+        style={{
             background: sel ? "rgba(28,43,58,0.05)" : "transparent"
-          }
-        },
-        /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: sel, onChange: () => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value]), className: "filter-pill-checkbox" }),
-        o.label
-      );
-    })));
+          }}
+      >
+        <input
+          type="checkbox"
+          checked={sel}
+          onChange={() => onChange(sel ? selected.filter((x) => x !== o.value) : [...selected, o.value])}
+          className="filter-pill-checkbox"
+        />
+        {o.label}
+      </label>;
+    })}
+      </div>}
+    </div>;
   }

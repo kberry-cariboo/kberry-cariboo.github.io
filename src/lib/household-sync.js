@@ -120,12 +120,12 @@ import { toast } from "../components/auth-misc.js";
   export const HOUSEHOLD_FIELDS = [
     { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
     { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, toStorage: stripOverrideAttachments },
-    { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true },
+    { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true },
     { key: "categories", storage: "cf_categories", initial: () => DEFAULT_CATEGORIES, kind: "array", backup: true },
     { key: "categoryColors", storage: "cf_category_colors", initial: () => DEFAULT_CATEGORY_COLORS, kind: "object", backup: true },
     // The default must track the cf_years row above — a hardcoded year left
     // fresh installs pointed at an empty year once the calendar rolled over.
-    { key: "activeYear", storage: "cf_activeYear", initial: () => (/* @__PURE__ */ new Date()).getFullYear(), kind: "truthy", backup: true },
+    { key: "activeYear", storage: "cf_activeYear", initial: () => (new Date()).getFullYear(), kind: "truthy", backup: true },
     { key: "alertThreshold", storage: "cf_alertThresh", initial: () => DEFAULT_ALERT_THRESHOLD, kind: "value", backup: true },
     // What the household owns, for the net worth figure. Debts are already
     // known (debtData) and the projection already knows what is in the
@@ -306,13 +306,13 @@ import { toast } from "../components/auth-misc.js";
     return HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
       acc[f.key] = values[f.key];
       return acc;
-    }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
+    }, { schemaVersion: SCHEMA_VERSION, exportedAt: (new Date()).toISOString() });
   }
   // Downloads it, and records the date only when the download started — the
   // reminder coming back is a far smaller problem than a backup that wasn't.
   export function exportHouseholdBackup(values) {
     const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
-    if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
+    if (!downloadBlob(`CashFlow_Backup_${localDateStr(new Date())}.json`, blob)) return false;
     safeStorage.set("cf_last_backup", String(Date.now()));
     return true;
   }
@@ -394,8 +394,7 @@ import { toast } from "../components/auth-misc.js";
         }
       });
       return () => {
-        var _a;
-        (_a = sub == null ? void 0 : sub.subscription) == null ? void 0 : _a.unsubscribe();
+        sub?.subscription?.unsubscribe();
       };
     }, [refreshMembership]);
     const createHousehold = useCallback(async (fullName) => {
@@ -583,7 +582,7 @@ import { toast } from "../components/auth-misc.js";
     const initialized = useRef(false);
     const loadAttempted = useRef(false);
     const markUnsaved = useCallback(() => {
-      if (!readMarker(UNSAVED_KEY)) writeMarker(UNSAVED_KEY, (/* @__PURE__ */ new Date()).toISOString());
+      if (!readMarker(UNSAVED_KEY)) writeMarker(UNSAVED_KEY, (new Date()).toISOString());
       setUnsaved(true);
     }, []);
     const clearUnsaved = useCallback(() => {
@@ -726,7 +725,7 @@ import { toast } from "../components/auth-misc.js";
     };
     const buildPayload = useCallback(() => {
       const out = normaliseFields(values);
-      out.savedAt = (/* @__PURE__ */ new Date()).toISOString();
+      out.savedAt = (new Date()).toISOString();
       return out;
     }, [values]);
     // A fingerprint of everything that gets synced, with savedAt removed — it
@@ -872,7 +871,7 @@ import { toast } from "../components/auth-misc.js";
         // from the server.
         fetchPendingReceipts();
         setStatus("ok");
-        setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+        setMsg("Synced " + (new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
         loadAttempted.current = true;
@@ -925,7 +924,7 @@ import { toast } from "../components/auth-misc.js";
         // place so the retry still sees a difference and goes through.
         syncedSig.current = sigOf(payload);
         setStatus("ok");
-        setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+        setMsg("Saved " + (new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
         // Another member's save landed since this device last loaded —
@@ -1054,7 +1053,7 @@ import { toast } from "../components/auth-misc.js";
       initialized.current = true;
       setDivergence(null);
       setStatus("ok");
-      setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+      setMsg("Synced " + (new Date()).toLocaleTimeString());
       toast("Using the cloud version. This device's unsaved changes were discarded.", "error");
     }, [divergence, applyPayload, clearUnsaved, fetchPendingReceipts]);
 

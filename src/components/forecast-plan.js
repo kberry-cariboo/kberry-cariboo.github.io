@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, safeStorage, useCallback, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { safeStorage, useCallback, useEffect, useMemo, useState } from "../lib/runtime.js";
 import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
 import { depositShiftNote, getMonthSummaries, isInflowEvent, isOutflowEvent, signedAmount } from "../lib/dates.js";
 import { ExportBar, downloadCSV, fmt, fmtAxisK, fmtDate, moneySymbol, printView, roundMoney } from "../lib/format.js";
@@ -25,7 +25,7 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
     };
     // Snapshot once: a fresh Date each render changes the memo dependency's
     // identity and would recompute futureEvents on every render.
-    const today = useMemo(() => /* @__PURE__ */ new Date(), []);
+    const today = useMemo(() => new Date(), []);
     const horizons = [30, 60, 90];
     const gq2 = (globalSearch || "").toLowerCase();
     const futureEvents = useMemo(() => {
@@ -35,7 +35,7 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       yearConfigs.forEach((yc) => {
         const flow = yearFlows[yc.year] || [];
         flow.forEach((ev) => {
-          if (ev.date >= today && ev.date <= end) all.push(__spreadProps(__spreadValues({}, ev), { year: yc.year }));
+          if (ev.date >= today && ev.date <= end) all.push({ ...ev, year: yc.year });
         });
       });
       return all.sort((a, b) => a.date - b.date);
@@ -122,7 +122,7 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       }
       // Last event of a day wins: the list is date-sorted, so the final write
       // for a key is that day's closing balance.
-      const closeOf = /* @__PURE__ */ new Map();
+      const closeOf = new Map();
       events.forEach((ev) => closeOf.set(dayStart(ev.date).getTime(), ev.balance));
       const out = [];
       for (let i = 0; i <= horizon; i++) {
@@ -151,7 +151,7 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       // question is "how far apart do these two get, and when", which is a
       // comparison you cannot make across two sets of axes.
       const alt = curveFrom(scenarioEvents, scenarioFlows);
-      return base.map((p, i) => __spreadProps(__spreadValues({}, p), { scenario: alt[i] ? alt[i].balance : p.balance }));
+      return base.map((p, i) => ({ ...p, scenario: alt[i] ? alt[i].balance : p.balance }));
     }, [curveFrom, futureEvents, yearFlows, scenarioEvents, scenarioFlows]);
     // What a scenario can vary. One-time entries are already a decision made on
     // a date; "what if I dropped this" is a question about the things that keep
@@ -201,107 +201,299 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
     // slack. Editing still isn't offered here — Forecast projects across year
     // boundaries and the override machinery is year-scoped — so a row opens
     // nothing; the checkbox is the whole interaction.
-    const renderForecastCards = () => /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, pagedEvents.map((ev) => /* @__PURE__ */ React.createElement(LedgerRow, {
-      key: ev.id,
-      ev,
-      alertThreshold,
-      paid: !!completed[ev.id],
-      dateLabel: fmtDate(ev.date, today.getFullYear()),
-      onTogglePaid: toggleComplete,
-      categories,
-      categoryColors
-    })), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page forecast-page" }, /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-label" }, horizon, "-Day Forecast"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" }, /* @__PURE__ */ React.createElement(PillToggle, { options: horizons.map((h) => ({ id: h, label: h + " days" })), value: horizon, onChange: setHorizon }))), /* @__PURE__ */ React.createElement("div", { className: "txm forecast-sub" }, "Rolling cash flow from today"), gq2 && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 12, style: { marginRight: 4, verticalAlign: -2 } }), 'Filtering forecast by "', globalSearch, '" \u2014 ', futureEvents.length, " match", futureEvents.length !== 1 ? "es" : "")), /* @__PURE__ */ React.createElement(Card, { className: "mb-16 forecast-setup" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, "What if\u2026"), /* @__PURE__ */ React.createElement(HelpTip, { label: "What if", text: "Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device \u2014 it is a question, not a plan." })), /* @__PURE__ */ React.createElement(Toggle, { value: scenarioOn, onChange: setScenarioOn, label: "Try a change" })), scenarioOn && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mt-8 mb-12" }, "Pick the recurring entries to change. The forecast below draws both."), /* @__PURE__ */ React.createElement("div", { className: "scenario-list" }, recurringEntries.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No recurring entries to vary yet.") : recurringEntries.map((e) => {
+    const renderForecastCards = () => <Card className="cf-card--flush">
+      {pagedEvents.map((ev) => <LedgerRow
+        key={ev.id}
+        ev={ev}
+        alertThreshold={alertThreshold}
+        paid={!!completed[ev.id]}
+        dateLabel={fmtDate(ev.date, today.getFullYear())}
+        onTogglePaid={toggleComplete}
+        categories={categories}
+        categoryColors={categoryColors}
+      />)}
+      <GridPagination
+        pageInfo={pgInfo}
+        pageSize={pgSize}
+        setPageSize={changePageSize}
+        label="events"
+        isMobile={true}
+      />
+    </Card>;
+    return <div className="cf-page forecast-page">
+      <Card className="mb-16 forecast-setup">
+        <div className="forecast-header-row">
+          <span className="forecast-label">{horizon}-Day Forecast</span>
+          <div className="cf-row cf-gap-8 cf-wrap">
+            <PillToggle
+              options={horizons.map((h) => ({ id: h, label: h + " days" }))}
+              value={horizon}
+              onChange={setHorizon}
+            />
+          </div>
+        </div>
+        <div className="txm forecast-sub">Rolling cash flow from today</div>
+        {gq2 && <div className="notice notice--sm" data-tone="warn" role="status">
+          <Icon name="search" size={12} style={{ marginRight: 4, verticalAlign: -2 }} />
+          Filtering forecast by "
+          {globalSearch}
+          {'" \u2014 '}
+          {futureEvents.length}
+          {" match"}
+          {futureEvents.length !== 1 ? "es" : ""}
+        </div>}
+      </Card>
+      <Card className="mb-16 forecast-setup">
+        <div className="cf-row-between cf-gap-10 cf-wrap">
+          <div className="section-title-wrap">
+            <h2 className="cf-section-title-text">What if…</h2>
+            <HelpTip
+              label="What if"
+              text="Try a change without making it. Drop a recurring entry or put a different amount on it, and the dashed line on the chart below shows where the balance would go instead. Nothing here touches your budget, and it stays on this device — it is a question, not a plan."
+            />
+          </div>
+          <Toggle value={scenarioOn} onChange={setScenarioOn} label="Try a change" />
+        </div>
+        {scenarioOn && <>
+          <div className="txm mt-8 mb-12">
+            Pick the recurring entries to change. The forecast below draws both.
+          </div>
+          <div className="scenario-list">
+            {recurringEntries.length === 0 ? <div className="italic-hint">
+              No recurring entries to vary yet.
+            </div> : recurringEntries.map((e) => {
       const adj = (scenarioAdj || {})[e.id];
       const dropped = !!(adj && adj.drop);
       const amt = adj && Number.isFinite(adj.amount) ? adj.amount : e.amount;
       const setAdj = (next) => setScenarioAdj((prev) => {
-        const out = __spreadValues({}, prev || {});
+        const out = { ...prev || {} };
         if (next) out[e.id] = next;
         else delete out[e.id];
         return out;
       });
-      return /* @__PURE__ */ React.createElement("div", { key: e.id, className: "scenario-row" + (adj ? " scenario-row--on" : "") }, /* @__PURE__ */ React.createElement("span", { className: "tx scenario-desc", title: e.desc }, e.desc), /* @__PURE__ */ React.createElement(CatChip, { category: e.category, categories, categoryColors, style: { fontSize: 9, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6 shrink-0" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
-        type: "number",
-        inputMode: "decimal",
-        step: "0.01",
-        "aria-label": `New amount for ${e.desc}`,
-        className: "field-input field-input--mono scenario-amt",
-        disabled: dropped,
-        value: centsToDollars(amt),
-        onChange: (ev) => {
+      return <div key={e.id} className={"scenario-row" + (adj ? " scenario-row--on" : "")}>
+        <span className="tx scenario-desc" title={e.desc}>{e.desc}</span>
+        <CatChip
+          category={e.category}
+          categories={categories}
+          categoryColors={categoryColors}
+          style={{ fontSize: 9, flexShrink: 0 }}
+        />
+        <span className="cf-row cf-gap-6 shrink-0">
+          <span className="dollar-sm">{moneySymbol()}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            aria-label={`New amount for ${e.desc}`}
+            className="field-input field-input--mono scenario-amt"
+            disabled={dropped}
+            value={centsToDollars(amt)}
+            onChange={(ev) => {
           const v = dollarsToCents(ev.target.value);
           setAdj(v === e.amount ? null : { amount: v });
-        }
-      }), /* @__PURE__ */ React.createElement("button", {
-        type: "button",
-        "aria-pressed": dropped,
-        title: dropped ? "Put it back" : "Drop it from the scenario",
-        className: "cf-btn cf-btn--secondary cf-btn--micro",
-        onClick: () => setAdj(dropped ? null : { drop: true })
-      }, dropped ? "Restore" : "Drop")));
-    })), scenarioDelta ? /* @__PURE__ */ React.createElement("div", { className: "scenario-summary" }, /* @__PURE__ */ React.createElement("div", null, "In ", horizon, " days you would end ", /* @__PURE__ */ React.createElement("strong", { style: { color: scenarioDelta.end >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(scenarioDelta.end, true)), " on where you are heading now."), /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, "The low point moves to ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(scenarioDelta.lowAlt)), " \u2014 ", /* @__PURE__ */ React.createElement("strong", { style: { color: scenarioDelta.low >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(scenarioDelta.low, true)), "."), Object.keys(scenarioAdj || {}).length > 0 && /* @__PURE__ */ React.createElement("button", { type: "button", className: "cf-btn cf-btn--secondary cf-btn--tiny mt-10", onClick: () => setScenarioAdj({}) }, "Clear the scenario")) : /* @__PURE__ */ React.createElement("div", { className: "italic-hint mt-10" }, "Change an amount or drop an entry, and the comparison appears here."))), futureEvents.length > 0 && /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "forecast-chart-label" }, "Projected balance, day by day"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
-      AreaChart,
-      {
-        data: curve,
-        // Room above the plot for the low-point marker's caption, which is
-        // drawn just outside the top of the plotting area.
-        margin: { top: 22, right: 8, bottom: 0, left: 4 },
-        ariaLabel: `Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}.` + (scenarioDelta ? ` A second, dashed line shows the what-if scenario: it ends ${fmt(scenarioDelta.end, true)} on that, with its low at ${fmt(scenarioDelta.lowAlt)}.` : "") + " The table below lists every event behind it."
-      },
-      /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
-      /* @__PURE__ */ React.createElement(XAxis, { dataKey: "day", interval: 0, tickFormatter: (v, i) => curve[i] ? curve[i].tick : "", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
-      /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }),
-      /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
-      /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }),
-      // The threshold the danger banner is counting against, drawn where the
+        }}
+          />
+          <button
+            type="button"
+            aria-pressed={dropped}
+            title={dropped ? "Put it back" : "Drop it from the scenario"}
+            className="cf-btn cf-btn--secondary cf-btn--micro"
+            onClick={() => setAdj(dropped ? null : { drop: true })}
+          >
+            {dropped ? "Restore" : "Drop"}
+          </button>
+        </span>
+      </div>;
+    })}
+          </div>
+          {scenarioDelta ? <div className="scenario-summary">
+            <div>
+              {"In "}
+              {horizon}
+              {" days you would end "}
+              <strong style={{ color: scenarioDelta.end >= 0 ? "var(--greenDk)" : "var(--red)" }}>
+                {fmt(scenarioDelta.end, true)}
+              </strong>
+              {" on where you are heading now."}
+            </div>
+            <div className="mt-4">
+              {"The low point moves to "}
+              <strong className="cf-text-mono-13">{fmt(scenarioDelta.lowAlt)}</strong>
+              {" \u2014 "}
+              <strong style={{ color: scenarioDelta.low >= 0 ? "var(--greenDk)" : "var(--red)" }}>
+                {fmt(scenarioDelta.low, true)}
+              </strong>
+              .
+            </div>
+            {Object.keys(scenarioAdj || {}).length > 0 && <button
+              type="button"
+              className="cf-btn cf-btn--secondary cf-btn--tiny mt-10"
+              onClick={() => setScenarioAdj({})}
+            >
+              Clear the scenario
+            </button>}
+          </div> : <div
+            className="italic-hint mt-10"
+          >
+            Change an amount or drop an entry, and the comparison appears here.
+          </div>}
+        </>}
+      </Card>
+      {futureEvents.length > 0 && <Card className="mb-16">
+        <div className="forecast-chart-label">Projected balance, day by day</div>
+        <div className="pb-28">
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart
+              data={curve}
+              // Room above the plot for the low-point marker's caption, which is
+              // drawn just outside the top of the plotting area.
+              margin={{ top: 22, right: 8, bottom: 0, left: 4 }}
+              ariaLabel={`Chart of the projected balance for each of the next ${horizon} days. It opens at ${fmt(curve[0].balance)} and ends at ${fmt(curve[curve.length - 1].balance)}` + (lowPoint && lowPoint.index > 0 ? `, dipping to a low of ${fmt(lowPoint.balance)} on ${fmtDate(lowPoint.date, null)}` : "") + `. Your alert threshold is ${fmt(alertThreshold)}.` + (scenarioDelta ? ` A second, dashed line shows the what-if scenario: it ends ${fmt(scenarioDelta.end, true)} on that, with its low at ${fmt(scenarioDelta.lowAlt)}.` : "") + " The table below lists every event behind it."}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis
+                dataKey="day"
+                interval={0}
+                tickFormatter={(v, i) => curve[i] ? curve[i].tick : ""}
+                tick={DASH_AXIS_TICK_X}
+                tickMargin={4}
+              />
+              <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+              <Tooltip content={ChartTip} />
+              <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+              {// The threshold the danger banner is counting against, drawn where the
       // curve can be read against it rather than described underneath.
-      /* @__PURE__ */ React.createElement(ReferenceLine, { y: alertThreshold, stroke: "var(--amberInk)", strokeDasharray: "5 4", label: `Alert ${fmt(alertThreshold)}` }),
-      lowPoint && lowPoint.index > 0 && /* @__PURE__ */ React.createElement(ReferenceLine, { x: lowPoint.index, stroke: lowPoint.balance < 0 ? "var(--red)" : "var(--amberInk)", strokeDasharray: "2 3", label: `Low ${fmt(lowPoint.balance)} \u00b7 ${fmtDate(lowPoint.date, null)}` }),
-      /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "balance", name: scenarioEvents ? "As it stands" : "Balance", stroke: "var(--text)", strokeWidth: 2, fill: "var(--text)", fillOpacity: 0.1, dot: false }),
-      // Drawn as a line, not a second filled area: two overlapping fills read
+      <ReferenceLine
+        y={alertThreshold}
+        stroke="var(--amberInk)"
+        strokeDasharray="5 4"
+        label={`Alert ${fmt(alertThreshold)}`}
+      />
+}
+              {lowPoint && lowPoint.index > 0 && <ReferenceLine
+                x={lowPoint.index}
+                stroke={lowPoint.balance < 0 ? "var(--red)" : "var(--amberInk)"}
+                strokeDasharray="2 3"
+                label={`Low ${fmt(lowPoint.balance)} \u00b7 ${fmtDate(lowPoint.date, null)}`}
+              />}
+              <Area
+                type="monotone"
+                dataKey="balance"
+                name={scenarioEvents ? "As it stands" : "Balance"}
+                stroke="var(--text)"
+                strokeWidth={2}
+                fill="var(--text)"
+                fillOpacity={0.1}
+                dot={false}
+              />
+              {// Drawn as a line, not a second filled area: two overlapping fills read
       // as a third colour where they cross, which is the region that matters.
-      scenarioEvents && /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "scenario", name: "What-if", stroke: "var(--accent)", strokeWidth: 2, strokeDasharray: "6 4", dot: false }),
-      scenarioEvents && /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } })
-    )))), /* @__PURE__ */ React.createElement("div", { className: "forecast-exportbar-row" }, /* @__PURE__ */ React.createElement(
-      ExportBar,
-      {
-        onAdd: addEntry ? () => setShowAddEntry(true) : null,
-        onCSV: futureEvents.length === 0 ? null : () => {
+      scenarioEvents && <Line
+        type="monotone"
+        dataKey="scenario"
+        name="What-if"
+        stroke="var(--accent)"
+        strokeWidth={2}
+        strokeDasharray="6 4"
+        dot={false}
+      />
+}
+              {scenarioEvents && <Legend wrapperStyle={{ fontSize: 12 }} />}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>}
+      <div className="forecast-exportbar-row">
+        <ExportBar
+          onAdd={addEntry ? () => setShowAddEntry(true) : null}
+          onCSV={futureEvents.length === 0 ? null : () => {
           const rows = searchedEvents.map((ev) => {
             const dateStr = fmtDate(ev.date, null);
             return [dateStr, ev.desc, ev.category, isInflowEvent(ev) ? centsToDollars(ev.amount) : "", isOutflowEvent(ev) ? centsToDollars(ev.amount) : "", centsToDollars(ev.balance)];
           });
           downloadCSV(`CashFlow_Forecast_${horizon}day.csv`, rows, ["Date", "Description", "Category", "In", "Out", "Balance"]);
-        },
-        onPrint: futureEvents.length === 0 ? null : () => printView(`CashFlow Forecast - ${horizon} Days`)
-      }
-    )), /* @__PURE__ */ React.createElement(
-      AddEntryModal,
-      {
-        show: showAddEntry,
-        onClose: () => setShowAddEntry(false),
-        onSave: addEntry || (() => {}),
-        categories,
-        apiKey,
-        isOffline,
-        templates,
-        setTemplates
-      }
-    ), futureEvents.length === 0 && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("p", { className: "forecast-empty-text" }, "No upcoming events in the next ", horizon, " days.")), futureEvents.length > 0 && (isMobile ? renderForecastCards() : /* @__PURE__ */ React.createElement(Card, { className: "cf-card--flush" }, /* @__PURE__ */ React.createElement("div", { className: "hscroll hscroll--paged", tabIndex: 0, role: "region", "aria-label": "Forecast table" }, /* @__PURE__ */ React.createElement("table", { className: "forecast-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Date", "Description", "Category", "In", "Out", "Balance", "vs Target"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: (h === "Category" ? "forecast-col-cat " : "") + (h === "vs Target" ? "forecast-conf-col " : "") + "forecast-th", style: {
+        }}
+          onPrint={futureEvents.length === 0 ? null : () => printView(`CashFlow Forecast - ${horizon} Days`)}
+        />
+      </div>
+      <AddEntryModal
+        show={showAddEntry}
+        onClose={() => setShowAddEntry(false)}
+        onSave={addEntry || (() => {})}
+        categories={categories}
+        apiKey={apiKey}
+        isOffline={isOffline}
+        templates={templates}
+        setTemplates={setTemplates}
+      />
+      {futureEvents.length === 0 && <Card>
+        <p className="forecast-empty-text">{"No upcoming events in the next "}{horizon}{" days."}</p>
+      </Card>}
+      {futureEvents.length > 0 && (isMobile ? renderForecastCards() : <Card className="cf-card--flush">
+        <div className="hscroll hscroll--paged" tabIndex={0} role="region" aria-label="Forecast table">
+          <table className="forecast-table">
+            <thead>
+              <tr className="thead-row">
+                {["Date", "Description", "Category", "In", "Out", "Balance", "vs Target"].map((h, i) => <th
+                  key={h}
+                  className={(h === "Category" ? "forecast-col-cat " : "") + (h === "vs Target" ? "forecast-conf-col " : "") + "forecast-th"}
+                  style={{
       textAlign: i >= 3 ? "right" : "left"
-    } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, pagedEvents.map((ev, i) => {
+    }}
+                >
+                  {h}
+                </th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {pagedEvents.map((ev, i) => {
       const dateStr = fmtDate(ev.date, today.getFullYear());
-      return /* @__PURE__ */ React.createElement("tr", { key: ev.id, className: "forecast-tr", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, dateStr, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell", style: { maxWidth: 180 } }, ev.desc), /* @__PURE__ */ React.createElement("td", { className: "forecast-col-cat" }, /* @__PURE__ */ React.createElement(CatChip, { category: ev.category, categories, categoryColors })), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-income" }, isInflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-expense" }, isOutflowEvent(ev) ? fmt(ev.amount) : ""), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 forecast-td-balance", style: {
+      return <tr
+        key={ev.id}
+        className="forecast-tr"
+        style={{ background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" }}
+      >
+        <td className="forecast-td-date">
+          {dateStr}
+          {ev.depositShifted && <HelpTip
+            icon="↤"
+            variant="mark"
+            label="Deposit date"
+            text={depositShiftNote(ev)}
+          />}
+        </td>
+        <td className="forecast-desc-cell" style={{ maxWidth: 180 }}>{ev.desc}</td>
+        <td className="forecast-col-cat">
+          <CatChip category={ev.category} categories={categories} categoryColors={categoryColors} />
+        </td>
+        <td className="cf-text-mono-13 forecast-td-income">{isInflowEvent(ev) ? fmt(ev.amount) : ""}</td>
+        <td className="cf-text-mono-13 forecast-td-expense">{isOutflowEvent(ev) ? fmt(ev.amount) : ""}</td>
+        <td
+          className="cf-text-mono-13 forecast-td-balance"
+          style={{
         color: ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)",
         background: ev.balance < 0 ? "var(--redLt)" : ev.balance < alertThreshold ? "var(--amberLt)" : "transparent"
-      } }, fmt(ev.balance)), (() => {
+      }}
+        >
+          {fmt(ev.balance)}
+        </td>
+        {(() => {
         const m = ev.month;
         const cat = ev.category;
         const yr = ev.year;
         const target = (budgetTargets[`${yr}:${m}`] || {})[cat] || 0;
-        if (ev.type !== "expense") return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: isInflowEvent(ev) ? "Money in — budget targets cover spending only" : "Transfers sit outside the budget target system" }, "\u2014"));
-        if (!target) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `No monthly budget target set for ${cat}` }, "\u2014"));
+        if (ev.type !== "expense") return <td className="forecast-conf-col">
+          <span
+            className="c-textLt"
+            title={isInflowEvent(ev) ? "Money in — budget targets cover spending only" : "Transfers sit outside the budget target system"}
+          >
+            —
+          </span>
+        </td>;
+        if (!target) return <td className="forecast-conf-col">
+          <span className="c-textLt" title={`No monthly budget target set for ${cat}`}>—</span>
+        </td>;
         // Where this occurrence leaves the category's month, not what this one
         // occurrence is worth on its own — see catMtdById.
         const mtd = catMtdById[ev.id] != null ? catMtdById[ev.id] : ev.amount;
@@ -317,11 +509,52 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
         // Derived from the rounded ratio so the ✓ boundary is exactly where it
         // was: 100.4% of target still rounds to 100 and still reads ✓.
         const over = pct - 100;
-        if (over <= 0) return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "c-textLt", title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target` }, "\u2713"));
+        if (over <= 0) return <td className="forecast-conf-col">
+          <span
+            className="c-textLt"
+            title={`${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target`}
+          >
+            ✓
+          </span>
+        </td>;
         const color = over <= 20 ? "var(--amberInk)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement("td", { className: "forecast-conf-col" }, /* @__PURE__ */ React.createElement("span", { className: "forecast-conf-pct", style: { color }, title: `${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target, ${fmt(mtd - target)} over` }, "+", over, "%"));
-      })());
-    })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far past its month\u2019s budget target this occurrence leaves its category. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "+1\u201320%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "more than +20%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
+        return <td className="forecast-conf-col">
+          <span
+            className="forecast-conf-pct"
+            style={{ color }}
+            title={`${cat} in ${MONTHS[m]}: ${fmt(mtd)} of the ${fmt(target)} target, ${fmt(mtd - target)} over`}
+          >
+            +
+            {over}
+            %
+          </span>
+        </td>;
+      })()}
+      </tr>;
+    })}
+            </tbody>
+          </table>
+        </div>
+        <div className="forecast-legend">
+          {"vs Target \u2014 how far past its month\u2019s budget target this occurrence leaves its category. "}
+          <span className="c-textLt">✓</span>
+          {" within target \u00b7 "}
+          <span style={{ color: "var(--amberInk)", fontWeight: 600 }}>+1–20%</span>
+          {" slightly over \u00b7 "}
+          <span style={{ color: "var(--red)", fontWeight: 600 }}>more than +20%</span>
+          {" well over \u00b7 "}
+          <span className="c-textLt">—</span>
+          {" money in, or no target set"}
+        </div>
+        <GridPagination
+          pageInfo={pgInfo}
+          pageSize={pgSize}
+          setPageSize={changePageSize}
+          label="events"
+          isMobile={true}
+        />
+      </Card>)}
+    </div>;
   }
   export function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
@@ -332,43 +565,69 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
     if (done) return null;
     const steps = [
       // Step 0: Opening balance
-      /* @__PURE__ */ React.createElement("div", { key: "s0" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-step-icon wizard-icon--primary" }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-title" }, "Welcome to CashFlow!"), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-subtitle wizard-step-subtitle--lh" }, "Let's set up your budget in 3 quick steps. First, what's your current bank balance?"), /* @__PURE__ */ React.createElement("div", { className: "wizard-amount-row" }, /* @__PURE__ */ React.createElement("span", { className: "wizard-dollar-lg" }, moneySymbol()), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "number",
-          inputMode: "decimal",
-          placeholder: "e.g. 5000.00",
-          value: openBal,
-          onChange: (e) => setOpenBal(e.target.value),
-          autoFocus: true,
-          className: "wizard-openbal-input"
-        }
-      )), /* @__PURE__ */ React.createElement("div", { className: "wizard-btn-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      <div key="s0">
+        <div className="wizard-step-icon wizard-icon--primary"><Icon name="banknote" size={34} /></div>
+        <div className="wizard-step-title">Welcome to CashFlow!</div>
+        <div className="wizard-step-subtitle wizard-step-subtitle--lh">
+          Let's set up your budget in 3 quick steps. First, what's your current bank balance?
+        </div>
+        <div className="wizard-amount-row">
+          <span className="wizard-dollar-lg">{moneySymbol()}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            placeholder="e.g. 5000.00"
+            value={openBal}
+            onChange={(e) => setOpenBal(e.target.value)}
+            autoFocus={true}
+            className="wizard-openbal-input"
+          />
+        </div>
+        <div className="wizard-btn-row">
+          <button
+            onClick={() => {
         const v = dollarsToCents(openBal);
-        setYearConfigs((prev) => prev.map((yc, i) => i === 0 ? __spreadProps(__spreadValues({}, yc), { openingBalance: v }) : yc));
+        setYearConfigs((prev) => prev.map((yc, i) => i === 0 ? { ...yc, openingBalance: v } : yc));
         setStep(1);
-      }, className: "cf-btn cf-btn--primary wizard-next-btn" }, "Next \u2192"), /* @__PURE__ */ React.createElement("button", { onClick: () => setDone(true), className: "cf-btn cf-btn--secondary cf-btn--wide" }, "Skip"))),
+      }}
+            className="cf-btn cf-btn--primary wizard-next-btn"
+          >
+            Next →
+          </button>
+          <button onClick={() => setDone(true)} className="cf-btn cf-btn--secondary cf-btn--wide">
+            Skip
+          </button>
+        </div>
+      </div>,
       // Step 1: First income
-      /* @__PURE__ */ React.createElement("div", { key: "s1" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-step-icon wizard-icon--green" }, /* @__PURE__ */ React.createElement(Icon, { name: "banknote", size: 34 })), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-title" }, "Add your first income"), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-subtitle" }, `What's your main source of income? (e.g. "Payroll")`), /* @__PURE__ */ React.createElement("div", { className: "wizard-field-stack" }, /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          placeholder: "Description e.g. Payroll",
-          value: income.desc,
-          autoFocus: true,
-          onChange: (e) => setIncome((p) => __spreadProps(__spreadValues({}, p), { desc: e.target.value })),
-          className: "wizard-text-input"
-        }
-      ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, moneySymbol()), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "number",
-          inputMode: "decimal",
-          placeholder: "Amount",
-          value: income.amount,
-          className: "cf-text-mono-13 wizard-amount-input",
-          onChange: (e) => setIncome((p) => __spreadProps(__spreadValues({}, p), { amount: e.target.value }))
-        }
-      ))), /* @__PURE__ */ React.createElement("div", { className: "wizard-btn-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setStep(0), className: "cf-btn cf-btn--secondary cf-btn--wide" }, "\u2190 Back"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      <div key="s1">
+        <div className="wizard-step-icon wizard-icon--green"><Icon name="banknote" size={34} /></div>
+        <div className="wizard-step-title">Add your first income</div>
+        <div className="wizard-step-subtitle">{`What's your main source of income? (e.g. "Payroll")`}</div>
+        <div className="wizard-field-stack">
+          <input
+            placeholder="Description e.g. Payroll"
+            value={income.desc}
+            autoFocus={true}
+            onChange={(e) => setIncome((p) => ({ ...p, desc: e.target.value }))}
+            className="wizard-text-input"
+          />
+          <div className="cf-row cf-gap-8">
+            <span className="c-textMid">{moneySymbol()}</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="Amount"
+              value={income.amount}
+              className="cf-text-mono-13 wizard-amount-input"
+              onChange={(e) => setIncome((p) => ({ ...p, amount: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="wizard-btn-row">
+          <button onClick={() => setStep(0)} className="cf-btn cf-btn--secondary cf-btn--wide">← Back</button>
+          <button
+            onClick={() => {
         if (income.desc.trim() && income.amount) {
           addEntry({
             desc: income.desc.trim(),
@@ -380,41 +639,54 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
             recurUnit: "semimonth",
             recurDays: [],
             recurEnd: "",
-            startDate: (/* @__PURE__ */ new Date()).getFullYear() + "-01-01",
+            startDate: (new Date()).getFullYear() + "-01-01",
             notes: "Added during setup"
           });
         }
         setStep(2);
-      }, className: "cf-btn cf-btn--primary wizard-next-btn" }, income.desc.trim() && income.amount ? "Next \u2192" : "Skip \u2192"))),
+      }}
+            className="cf-btn cf-btn--primary wizard-next-btn"
+          >
+            {income.desc.trim() && income.amount ? "Next \u2192" : "Skip \u2192"}
+          </button>
+        </div>
+      </div>,
       // Step 2: First expense
-      /* @__PURE__ */ React.createElement("div", { key: "s2" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-step-icon wizard-icon--red" }, /* @__PURE__ */ React.createElement(Icon, { name: "credit-card", size: 34 })), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-title" }, "Add your first expense"), /* @__PURE__ */ React.createElement("div", { className: "wizard-step-subtitle" }, `What's a recurring expense? (e.g. "Mortgage", "Rent")`), /* @__PURE__ */ React.createElement("div", { className: "wizard-field-stack" }, /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          placeholder: "Description e.g. Mortgage",
-          value: expense.desc,
-          autoFocus: true,
-          onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { desc: e.target.value })),
-          className: "wizard-text-input"
-        }
-      ), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, moneySymbol()), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "number",
-          inputMode: "decimal",
-          placeholder: "Monthly amount",
-          value: expense.amount,
-          className: "cf-text-mono-13 wizard-amount-input",
-          onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { amount: e.target.value }))
-        }
-      )), /* @__PURE__ */ React.createElement(
-        "select",
-        {
-          value: expense.category,
-          onChange: (e) => setExpense((p) => __spreadProps(__spreadValues({}, p), { category: e.target.value })),
-          className: "wizard-text-input"
-        },
-        categories.filter((c) => c !== "Income").map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-      )), /* @__PURE__ */ React.createElement("div", { className: "wizard-btn-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setStep(1), className: "cf-btn cf-btn--secondary cf-btn--wide" }, "\u2190 Back"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      <div key="s2">
+        <div className="wizard-step-icon wizard-icon--red"><Icon name="credit-card" size={34} /></div>
+        <div className="wizard-step-title">Add your first expense</div>
+        <div className="wizard-step-subtitle">{`What's a recurring expense? (e.g. "Mortgage", "Rent")`}</div>
+        <div className="wizard-field-stack">
+          <input
+            placeholder="Description e.g. Mortgage"
+            value={expense.desc}
+            autoFocus={true}
+            onChange={(e) => setExpense((p) => ({ ...p, desc: e.target.value }))}
+            className="wizard-text-input"
+          />
+          <div className="cf-row cf-gap-8">
+            <span className="c-textMid">{moneySymbol()}</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="Monthly amount"
+              value={expense.amount}
+              className="cf-text-mono-13 wizard-amount-input"
+              onChange={(e) => setExpense((p) => ({ ...p, amount: e.target.value }))}
+            />
+          </div>
+          <select
+            value={expense.category}
+            onChange={(e) => setExpense((p) => ({ ...p, category: e.target.value }))}
+            className="wizard-text-input"
+          >
+            {categories.filter((c) => c !== "Income").map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="wizard-btn-row">
+          <button onClick={() => setStep(1)} className="cf-btn cf-btn--secondary cf-btn--wide">← Back</button>
+          <button
+            onClick={() => {
         if (expense.desc.trim() && expense.amount) {
           addEntry({
             desc: expense.desc.trim(),
@@ -426,26 +698,58 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
             recurUnit: "month",
             recurDays: [],
             recurEnd: "",
-            startDate: (/* @__PURE__ */ new Date()).getFullYear() + "-01-01",
+            startDate: (new Date()).getFullYear() + "-01-01",
             notes: "Added during setup"
           });
         }
         setDone(true);
         setTab("flow");
-      }, className: "wizard-finish-btn" }, expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish")))
+      }}
+            className="wizard-finish-btn"
+          >
+            {expense.desc.trim() && expense.amount ? "Finish \u2713" : "Skip & Finish"}
+          </button>
+        </div>
+      </div>
     ];
-    return /* @__PURE__ */ React.createElement(Card, { className: "wizard-card" }, /* @__PURE__ */ React.createElement("div", { className: "wizard-dots-row" }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "wizard-dot", style: {
+    return <Card className="wizard-card">
+      <div className="wizard-dots-row">
+        {[0, 1, 2].map((i) => <div
+          key={i}
+          className="wizard-dot"
+          style={{
       background: i <= step ? "var(--primary)" : "var(--border)"
-    } }))), steps[step]);
+    }}
+        />)}
+      </div>
+      {steps[step]}
+    </Card>;
   }
   export function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
     return React.createElement(React.Fragment, null, ...parts.map(
-      (p, i) => i % 2 === 1 ? React.createElement("strong", { key: i }, p) : p
+      (p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p
     ));
   }
   // Hoisted out of AIInsightsView (was remounted every parent render).
-  export const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, className: "vizrow-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-toprow" }, /* @__PURE__ */ React.createElement("span", { className: "txm vizrow-label" }, label), /* @__PURE__ */ React.createElement("span", { className: "mno vizrow-value" }, value, sub && /* @__PURE__ */ React.createElement("span", { className: "vizrow-sub" }, " ", sub))), /* @__PURE__ */ React.createElement("div", { className: "vizrow-track" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-fill", style: { width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor } })));
+  export const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => <div
+    title={rowTitle || void 0}
+    className="vizrow-wrap"
+  >
+    <div className="vizrow-toprow">
+      <span className="txm vizrow-label">{label}</span>
+      <span className="mno vizrow-value">
+        {value}
+        {sub && <span className="vizrow-sub">{" "}{sub}</span>}
+      </span>
+    </div>
+    <div className="vizrow-track">
+      <div
+        className="vizrow-fill"
+        style={{ width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor }}
+      />
+    </div>
+  </div>;
   export function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, isOffline = false, setTab = () => {
   } }) {
     const [loading, setLoading] = useState(false);
@@ -488,11 +792,10 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       }
     }, [activeYear]);
     const saveReport = (saved) => {
-      safeStorage.set(CACHE_KEY, JSON.stringify({ report: saved, ts: (/* @__PURE__ */ new Date()).toISOString() }));
+      safeStorage.set(CACHE_KEY, JSON.stringify({ report: saved, ts: (new Date()).toISOString() }));
     };
     const buildContext = () => {
-      var _a;
-      const now = /* @__PURE__ */ new Date();
+      const now = new Date();
       const summaries = getMonthSummaries(flow, openBal);
       const currentMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
       // Goals and debt-tracker data come in as props (single source of truth
@@ -557,7 +860,7 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       const totalSurplus = ytdMonths.reduce((s, m) => s + m.surplus, 0);
       const avgMonthly = ytdMonths.length ? totalExp / ytdMonths.length : 0;
       const savingsRate = totalIncome > 0 ? (totalIncome - totalExp) / totalIncome * 100 : 0;
-      const closingBal = ((_a = summaries[currentMonth]) == null ? void 0 : _a.close) || openBal;
+      const closingBal = (summaries[currentMonth]?.close) || openBal;
       const lowestBal = Math.min(...summaries.slice(0, currentMonth + 1).map((m) => m.close));
       return {
         year: activeYear,
@@ -627,7 +930,6 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       };
     })();
     const runAssessment = async () => {
-      var _a;
       if (!aiCanRun(apiKey)) {
         setErr("No API key configured. Please add your Anthropic API key in Settings \u2192 General.");
         return;
@@ -660,7 +962,7 @@ ${ctx.incomeCategories.map((c) => `  ${c.category}: ${fmt(c.total)}`).join("\n")
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
 ${ctx.debtObligations.map((d) => `  ${d.category}: ${fmt(d.ytdPaid)}`).join("\n")}` : "No debt categories identified."}
 
-${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
+${(ctx.debtTrackerItems?.length) ? `DEBT TRACKER (user-entered balances & rates):
 ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance ${fmt(d.balance)}, Rate ${d.rate}%, Payment ${fmt(d.monthlyPayment)}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
@@ -684,7 +986,7 @@ Fill every field of the response schema. Rules:
         });
         setReport(data);
         setTruncated(cut);
-        setLastRun(/* @__PURE__ */ new Date());
+        setLastRun(new Date());
         saveReport(data);
       } catch (e) {
         setErr(aiErrorMessage(e));
@@ -739,35 +1041,100 @@ Fill every field of the response schema. Rules:
     const sectionViz = (t) => {
       const c = vizCtx;
       if (!c) return null;
-      const wrap = (kids) => /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, kids);
+      const wrap = (kids) => <div className="mb-14">{kids}</div>;
       if (t === "Spending Analysis" && c.topExpenseCategories.length) {
         const rows = c.topExpenseCategories.slice(0, 5);
         const max = rows[0].total || 1;
-        return wrap(rows.map((r) => /* @__PURE__ */ React.createElement(VizRow, { key: r.category, label: r.category, fillPct: r.total / max * 100, fillColor: "var(--accent)", value: fmt(r.total), sub: r.pctOfExpenses + "%", rowTitle: `${r.category}: ${fmt(r.total)} (${r.pctOfExpenses}% of expenses)` })));
+        return wrap(rows.map((r) => <VizRow
+          key={r.category}
+          label={r.category}
+          fillPct={r.total / max * 100}
+          fillColor="var(--accent)"
+          value={fmt(r.total)}
+          sub={r.pctOfExpenses + "%"}
+          rowTitle={`${r.category}: ${fmt(r.total)} (${r.pctOfExpenses}% of expenses)`}
+        />));
       }
       if (t === "Income Analysis" && c.incomeCategories.length) {
         const rows = c.incomeCategories.slice(0, 5);
         const max = rows[0].total || 1;
-        return wrap(rows.map((r) => /* @__PURE__ */ React.createElement(VizRow, { key: r.category, label: r.category, fillPct: r.total / max * 100, fillColor: "var(--greenDk)", value: fmt(r.total), rowTitle: `${r.category}: ${fmt(r.total)} YTD` })));
+        return wrap(rows.map((r) => <VizRow
+          key={r.category}
+          label={r.category}
+          fillPct={r.total / max * 100}
+          fillColor="var(--greenDk)"
+          value={fmt(r.total)}
+          rowTitle={`${r.category}: ${fmt(r.total)} YTD`}
+        />));
       }
       if (t === "Budget Performance" && c.budgetVsActual.length) {
         const rows = c.budgetVsActual.slice(0, 5);
-        return wrap(rows.map((r) => /* @__PURE__ */ React.createElement(VizRow, { key: r.category, label: r.category, fillPct: r.target > 0 ? r.actual / r.target * 100 : 100, fillColor: r.variance > 0 ? "var(--red)" : "var(--greenDk)", value: fmt(r.actual), sub: `/ ${fmt(r.target)} \u00B7 ${r.variance > 0 ? "over" : "under"} by ${fmt(Math.abs(r.variance))}`, rowTitle: `${r.category}: actual ${fmt(r.actual)} vs target ${fmt(r.target)}` })));
+        return wrap(rows.map((r) => <VizRow
+          key={r.category}
+          label={r.category}
+          fillPct={r.target > 0 ? r.actual / r.target * 100 : 100}
+          fillColor={r.variance > 0 ? "var(--red)" : "var(--greenDk)"}
+          value={fmt(r.actual)}
+          sub={`/ ${fmt(r.target)} \u00B7 ${r.variance > 0 ? "over" : "under"} by ${fmt(Math.abs(r.variance))}`}
+          rowTitle={`${r.category}: actual ${fmt(r.actual)} vs target ${fmt(r.target)}`}
+        />));
       }
       if (t === "Debt Management" && (c.debtTrackerItems.length || c.debtObligations.length)) {
         if (c.debtTrackerItems.length) {
           const max = Math.max(...c.debtTrackerItems.map((d) => d.balance), 1);
-          return wrap(c.debtTrackerItems.map((d) => /* @__PURE__ */ React.createElement(VizRow, { key: d.name, label: d.name + (d.rate ? ` \u00B7 ${d.rate}%` : ""), fillPct: d.balance / max * 100, fillColor: "var(--accent)", value: fmt(d.balance), sub: d.monthlyPayment ? `\u00B7 ${fmt(d.monthlyPayment)}/mo` : "", rowTitle: `${d.name}: balance ${fmt(d.balance)} at ${d.rate}%` })));
+          return wrap(c.debtTrackerItems.map((d) => <VizRow
+            key={d.name}
+            label={d.name + (d.rate ? ` \u00B7 ${d.rate}%` : "")}
+            fillPct={d.balance / max * 100}
+            fillColor="var(--accent)"
+            value={fmt(d.balance)}
+            sub={d.monthlyPayment ? `\u00B7 ${fmt(d.monthlyPayment)}/mo` : ""}
+            rowTitle={`${d.name}: balance ${fmt(d.balance)} at ${d.rate}%`}
+          />));
         }
         const max = Math.max(...c.debtObligations.map((d) => d.ytdPaid), 1);
-        return wrap(c.debtObligations.slice(0, 5).map((d) => /* @__PURE__ */ React.createElement(VizRow, { key: d.category, label: d.category, fillPct: d.ytdPaid / max * 100, fillColor: "var(--accent)", value: fmt(d.ytdPaid), sub: "paid YTD", rowTitle: `${d.category}: ${fmt(d.ytdPaid)} paid YTD` })));
+        return wrap(c.debtObligations.slice(0, 5).map((d) => <VizRow
+          key={d.category}
+          label={d.category}
+          fillPct={d.ytdPaid / max * 100}
+          fillColor="var(--accent)"
+          value={fmt(d.ytdPaid)}
+          sub="paid YTD"
+          rowTitle={`${d.category}: ${fmt(d.ytdPaid)} paid YTD`}
+        />));
       }
       if (t === "Savings Goals" && c.savingsGoals.length) {
-        return wrap(c.savingsGoals.map((g) => /* @__PURE__ */ React.createElement(VizRow, { key: g.name, label: g.name, fillPct: g.pct, fillColor: "var(--greenDk)", value: g.pct + "%", sub: `${fmt(g.saved)} / ${fmt(g.target)}`, rowTitle: `${g.name}: ${fmt(g.saved)} of ${fmt(g.target)} (${g.pct}%)` })));
+        return wrap(c.savingsGoals.map((g) => <VizRow
+          key={g.name}
+          label={g.name}
+          fillPct={g.pct}
+          fillColor="var(--greenDk)"
+          value={g.pct + "%"}
+          sub={`${fmt(g.saved)} / ${fmt(g.target)}`}
+          rowTitle={`${g.name}: ${fmt(g.saved)} of ${fmt(g.target)} (${g.pct}%)`}
+        />));
       }
       if (t === "Cash Flow & Risk" && c.monthlyBreakdown.length) {
         const maxAbs = Math.max(...c.monthlyBreakdown.map((m) => Math.abs(m.surplus)), 1);
-        return /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, /* @__PURE__ */ React.createElement("div", { className: "cashflow-chart-label" }, "Monthly surplus (above line) / shortfall (below line)"), /* @__PURE__ */ React.createElement("div", { className: "cashflow-bars-row" }, c.monthlyBreakdown.map((m) => /* @__PURE__ */ React.createElement("div", { key: m.month, title: `${m.month}: ${fmt(m.surplus, true)}`, className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "cashflow-bar-container" }, /* @__PURE__ */ React.createElement("div", { className: "cashflow-zero-line" }), /* @__PURE__ */ React.createElement("div", { className: "cashflow-bar", style: { background: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)", height: Math.max(2, Math.round(Math.abs(m.surplus) / maxAbs * 26)), bottom: m.surplus >= 0 ? "50%" : "auto", top: m.surplus < 0 ? "50%" : "auto" } })), /* @__PURE__ */ React.createElement("div", { className: "cashflow-month-label" }, m.month[0])))));
+        return <div className="mb-14">
+          <div className="cashflow-chart-label">Monthly surplus (above line) / shortfall (below line)</div>
+          <div className="cashflow-bars-row">
+            {c.monthlyBreakdown.map((m) => <div
+              key={m.month}
+              title={`${m.month}: ${fmt(m.surplus, true)}`}
+              className="flex-1 min-w-0"
+            >
+              <div className="cashflow-bar-container">
+                <div className="cashflow-zero-line" />
+                <div
+                  className="cashflow-bar"
+                  style={{ background: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)", height: Math.max(2, Math.round(Math.abs(m.surplus) / maxAbs * 26)), bottom: m.surplus >= 0 ? "50%" : "auto", top: m.surplus < 0 ? "50%" : "auto" }}
+                />
+              </div>
+              <div className="cashflow-month-label">{m.month[0]}</div>
+            </div>)}
+          </div>
+        </div>;
       }
       return null;
     };
@@ -779,144 +1146,226 @@ Fill every field of the response schema. Rules:
     const canRun = aiCanRun(apiKey);
     const disabled = loading || !canRun || isOffline;
     const blockedReason = isOffline ? "You're offline — generating an assessment needs a connection." : !canRun ? "AI features aren't set up yet." : "";
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page" },
-      /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
-        /* @__PURE__ */ React.createElement("div", { className: "ai-header-row" },
-          /* @__PURE__ */ React.createElement("div", null,
-            /* @__PURE__ */ React.createElement("div", { className: "ai-title" }, "✦ AI Financial Assessment — ", activeYear),
-            // Only before there is a report. Once one exists this sentence is
+    return <div className="cf-page">
+      <Card className="mb-20">
+        <div className="ai-header-row">
+          <div>
+            <div className="ai-title">{"✦ AI Financial Assessment — "}{activeYear}</div>
+            {// Only before there is a report. Once one exists this sentence is
             // describing something the reader is already looking at, and it
             // costs three lines above it on a phone.
-            !report && /* @__PURE__ */ React.createElement("div", { className: "ai-subtitle" }, "Claude reviews your ", activeYear, " budget data and provides personalised suggestions on spending, debt, cash flow and financial health.")
-          ),
-          lastRun && /* @__PURE__ */ React.createElement("div", { className: "ai-lastrun" }, "Last run: ", lastRun.toLocaleTimeString())
-        ),
-        blockedReason && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "warn", role: "status" },
-          /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement(Icon, { name: isOffline ? "alert-triangle" : "key", size: 16 })),
-          /* @__PURE__ */ React.createElement("div", { className: "txm notice-msg" }, blockedReason, !canRun && !isOffline && /* @__PURE__ */ React.createElement(React.Fragment, null, " Add your Anthropic API key in", " ",
-            /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("you"), className: "ai-settings-link" }, "Settings → General"),
-            ", or deploy the ai-proxy Edge Function so this household shares one server-side key."
-          ))
-        ),
-        canRun && /* @__PURE__ */ React.createElement("div", { className: "ai-disclaimer-row" },
-          /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })),
-          /* @__PURE__ */ React.createElement("span", null, proxyReady ? "Running this sends your budget data to Claude through your project's ai-proxy function. Your API key stays on the server." : "Running this sends your budget data and API key straight to Anthropic from this browser.")
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-actionrow" },
-          /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: runAssessment,
-              disabled,
-              title: blockedReason || void 0,
-              className: "ai-generate-btn",
-              style: {
+            !report && <div className="ai-subtitle">
+              {"Claude reviews your "}
+              {activeYear}
+              {" budget data and provides personalised suggestions on spending, debt, cash flow and financial health."}
+            </div>
+}
+          </div>
+          {lastRun && <div className="ai-lastrun">{"Last run: "}{lastRun.toLocaleTimeString()}</div>}
+        </div>
+        {blockedReason && <div className="notice notice--sm" data-tone="warn" role="status">
+          <span className="notice-icon" aria-hidden="true">
+            <Icon name={isOffline ? "alert-triangle" : "key"} size={16} />
+          </span>
+          <div className="txm notice-msg">
+            {blockedReason}
+            {!canRun && !isOffline && <>
+              {" Add your Anthropic API key in"}
+              {" "}
+              <button onClick={() => setTab("you")} className="ai-settings-link">Settings → General</button>
+              , or deploy the ai-proxy Edge Function so this household shares one server-side key.
+            </>}
+          </div>
+        </div>}
+        {canRun && <div className="ai-disclaimer-row">
+          <span className="ai-disclaimer-icon"><Icon name="key" size={12} /></span>
+          <span>
+            {proxyReady ? "Running this sends your budget data to Claude through your project's ai-proxy function. Your API key stays on the server." : "Running this sends your budget data and API key straight to Anthropic from this browser."}
+          </span>
+        </div>}
+        <div className="ai-actionrow">
+          <button
+            onClick={runAssessment}
+            disabled={disabled}
+            title={blockedReason || void 0}
+            className="ai-generate-btn"
+            style={{
                 cursor: disabled ? "not-allowed" : "pointer",
                 background: disabled ? "var(--border)" : "var(--primary)",
                 color: disabled ? "var(--textMid)" : "#fff"
-              }
-            },
-            loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "ai-spinner" }, "⟳"), " Analysing your finances…") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", null, "✦"), " Generate AI Assessment")
-          ),
-          report && /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: () => {
+              }}
+          >
+            {loading ? <><span className="ai-spinner">⟳</span>{" Analysing your finances…"}</> : <
+            >
+              <span>✦</span>
+              {" Generate AI Assessment"}
+            </>}
+          </button>
+          {report && <button
+            onClick={() => {
                 setReport(null);
                 setTruncated(false);
                 setLastRun(null);
                 safeStorage.remove(CACHE_KEY);
-              },
-              className: "cf-btn cf-btn--secondary cf-btn--wide"
-            },
-            "Clear"
-          )
-        ),
-
-        err && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "critical", role: "alert" }, "⚠ ", err),
-        truncated && /* @__PURE__ */ React.createElement("div", { className: "notice notice--sm", "data-tone": "critical", role: "status" }, "⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.")
-      ),
-      loading && /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-wrap" }, AI_SECTIONS.slice(0, 5).map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.key }, /* @__PURE__ */ React.createElement("div", { className: "ai-skeleton-title" }), [80, 100, 65, 90].map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-skeleton-line", style: { width: `${w}%` } }))))),
-      reportSections && !loading && /* @__PURE__ */ React.createElement(React.Fragment, null,
-        /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks ai-quicklinks" }, reportSections.map((section) => {
+              }}
+            className="cf-btn cf-btn--secondary cf-btn--wide"
+          >
+            Clear
+          </button>}
+        </div>
+        {err && <div className="notice notice--sm" data-tone="critical" role="alert">{"⚠ "}{err}</div>}
+        {truncated && <div className="notice notice--sm" data-tone="critical" role="status">
+          ⚠ Claude ran out of room before finishing this report — some sections may be short. Re-run to try again.
+        </div>}
+      </Card>
+      {loading && <div className="ai-skeleton-wrap">
+        {AI_SECTIONS.slice(0, 5).map((s) => <Card key={s.key}>
+          <div className="ai-skeleton-title" />
+          {[80, 100, 65, 90].map((w, i) => <div
+            key={i}
+            className="ai-skeleton-line"
+            style={{ width: `${w}%` }}
+          />)}
+        </Card>)}
+      </div>}
+      {reportSections && !loading && <>
+        <div className="settings-quicklinks ai-quicklinks">
+          {reportSections.map((section) => {
           const anchorId = slugifySection(section.title);
-          return /* @__PURE__ */ React.createElement(
-            "a",
-            {
-              key: anchorId,
-              href: `#${anchorId}`,
-              onClick: (e) => {
+          return <a
+            key={anchorId}
+            href={`#${anchorId}`}
+            onClick={(e) => {
                 e.preventDefault();
                 const el = document.getElementById(anchorId);
                 if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-              },
-              className: "quicklink-pill"
-            },
-            section.title
-          );
-        })),
-        // The score is a field on the response now, not something scraped back
+              }}
+            className="quicklink-pill"
+          >
+            {section.title}
+          </a>;
+        })}
+        </div>
+        {// The score is a field on the response now, not something scraped back
         // out of the prose with a regex that had to guess between "8/10" and
         // "Score: 8".
         Number.isFinite(report.score) && (() => {
           const score = Math.max(1, Math.min(10, Math.round(report.score)));
           const color = score >= 7 ? "var(--greenDk)" : score >= 4 ? "var(--amberInk)" : "var(--red)";
-          return /* @__PURE__ */ React.createElement("div", { className: "ai-score-badge", style: { border: `2px solid ${color}`, boxShadow: `0 0 0 4px ${color}22` } },
-            /* @__PURE__ */ React.createElement("div", { className: "ai-score-number", style: { color } }, score, /* @__PURE__ */ React.createElement("span", { className: "ai-score-outof" }, "/10")),
-            /* @__PURE__ */ React.createElement("div", null,
-              /* @__PURE__ */ React.createElement("div", { className: "ai-score-label" }, "Financial Health Score"),
-              /* @__PURE__ */ React.createElement("div", { className: "txm" }, report.score_rationale || (score >= 8 ? "Strong financial position — keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention — see action items below." : "Significant financial stress detected — prioritise the action items."))
-            )
-          );
-        })(),
-        vizCtx && /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" },
-          /* @__PURE__ */ React.createElement(KpiCard, { label: "Savings Rate", value: vizCtx.savingsRatePct + "%", color: vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)", sub: vizCtx.reportingWindow }),
-          /* @__PURE__ */ React.createElement(KpiCard, { label: "YTD Surplus", value: fmt(vizCtx.totalSurplus, true), color: vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)", sub: `${fmt(vizCtx.totalIncome)} in · ${fmt(vizCtx.totalExpenses)} out` }),
-          /* @__PURE__ */ React.createElement(KpiCard, { label: "Lowest Balance", value: fmt(vizCtx.lowestBalance), color: vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)", sub: "this period" }),
-          /* @__PURE__ */ React.createElement(KpiCard, { label: "Closing Balance", value: fmt(vizCtx.closingBalance), color: "var(--text)", sub: "current month" })
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-report-grid" }, reportSections.map((section) => /* @__PURE__ */ React.createElement(
-          Card,
-          { key: section.key, id: slugifySection(section.title), className: "ai-section-card", style: { gridColumn: section.wide ? "1 / -1" : "auto" } },
-          /* @__PURE__ */ React.createElement("div", { className: "ai-section-header" },
-            /* @__PURE__ */ React.createElement("span", { style: { color: sectionColor[section.title] || "var(--primary)" } }, /* @__PURE__ */ React.createElement(Icon, { name: sectionIcon[section.title] || "clipboard", size: 20 })),
-            /* @__PURE__ */ React.createElement("div", { className: "ai-section-title", style: { color: sectionColor[section.title] || "var(--primary)" } }, section.title)
-          ),
-          sectionViz(section.title),
-          // Items are plain sentences from a schema-constrained reply, so the
+          return <div
+            className="ai-score-badge"
+            style={{ border: `2px solid ${color}`, boxShadow: `0 0 0 4px ${color}22` }}
+          >
+            <div className="ai-score-number" style={{ color }}>
+              {score}
+              <span className="ai-score-outof">/10</span>
+            </div>
+            <div>
+              <div className="ai-score-label">Financial Health Score</div>
+              <div className="txm">
+                {report.score_rationale || (score >= 8 ? "Strong financial position — keep building on this foundation." : score >= 6 ? "Good foundation with clear areas for improvement." : score >= 4 ? "Several areas need attention — see action items below." : "Significant financial stress detected — prioritise the action items.")}
+              </div>
+            </div>
+          </div>;
+        })()
+}
+        {vizCtx && <div className="kpi-grid-4">
+          <KpiCard
+            label="Savings Rate"
+            value={vizCtx.savingsRatePct + "%"}
+            color={vizCtx.savingsRatePct >= 0 ? "var(--greenDk)" : "var(--red)"}
+            sub={vizCtx.reportingWindow}
+          />
+          <KpiCard
+            label="YTD Surplus"
+            value={fmt(vizCtx.totalSurplus, true)}
+            color={vizCtx.totalSurplus >= 0 ? "var(--greenDk)" : "var(--red)"}
+            sub={`${fmt(vizCtx.totalIncome)} in · ${fmt(vizCtx.totalExpenses)} out`}
+          />
+          <KpiCard
+            label="Lowest Balance"
+            value={fmt(vizCtx.lowestBalance)}
+            color={vizCtx.lowestBalance < 0 ? "var(--red)" : "var(--text)"}
+            sub="this period"
+          />
+          <KpiCard
+            label="Closing Balance"
+            value={fmt(vizCtx.closingBalance)}
+            color="var(--text)"
+            sub="current month"
+          />
+        </div>}
+        <div className="ai-report-grid">
+          {reportSections.map((section) => <Card
+            key={section.key}
+            id={slugifySection(section.title)}
+            className="ai-section-card"
+            style={{ gridColumn: section.wide ? "1 / -1" : "auto" }}
+          >
+            <div className="ai-section-header">
+              <span style={{ color: sectionColor[section.title] || "var(--primary)" }}>
+                <Icon name={sectionIcon[section.title] || "clipboard"} size={20} />
+              </span>
+              <div
+                className="ai-section-title"
+                style={{ color: sectionColor[section.title] || "var(--primary)" }}
+              >
+                {section.title}
+              </div>
+            </div>
+            {sectionViz(section.title)}
+            {// Items are plain sentences from a schema-constrained reply, so the
           // markdown handling this used to do — stripping **bold**, spotting
           // "1." and "- " prefixes, detecting indentation — has nothing left to
           // parse. Numbering comes from the section definition instead of from
           // characters the model happened to emit.
-          section.items.map((text, li) => section.numbered ? /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-numbered-row" },
-            /* @__PURE__ */ React.createElement("div", { className: "ai-numbered-badge" }, li + 1),
-            /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, /* @__PURE__ */ React.createElement(BoldText, { text }))
-          ) : (() => {
+          section.items.map((text, li) => section.numbered ? <div key={li} className="ai-numbered-row">
+            <div className="ai-numbered-badge">{li + 1}</div>
+            <div className="ai-item-text"><BoldText text={text} /></div>
+          </div> : (() => {
             const isWarning = /(over budget|exceeded|shortfall|risk|concern|warning|negative|debt|danger|critical|problem|unsustainable)/i.test(text);
             const isPositive = /(well|strong|excellent|good|under budget|saving|positive|recommendation)/i.test(text);
-            return /* @__PURE__ */ React.createElement("div", { key: li, className: "ai-bullet-row", style: { marginBottom: 8 } },
-              /* @__PURE__ */ React.createElement("div", { className: "ai-bullet-dot", style: { width: 6, height: 6, background: isWarning ? "var(--amberInk)" : isPositive ? "var(--greenDk)" : "var(--navyLt)", marginTop: 7 } }),
-              /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, /* @__PURE__ */ React.createElement(BoldText, { text }))
-            );
+            return <div key={li} className="ai-bullet-row" style={{ marginBottom: 8 }}>
+              <div
+                className="ai-bullet-dot"
+                style={{ width: 6, height: 6, background: isWarning ? "var(--amberInk)" : isPositive ? "var(--greenDk)" : "var(--navyLt)", marginTop: 7 }}
+              />
+              <div className="ai-item-text"><BoldText text={text} /></div>
+            </div>;
           })())
-        ))),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-footer-disclaimer" }, "AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.")
-      ),
-      !report && !loading && !err && /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement("div", { className: "ai-empty-wrap" },
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "sparkle", size: 40 })),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-title" }, canRun ? "Ready to analyse your finances" : "What an assessment covers"),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-desc" }, canRun ? /* @__PURE__ */ React.createElement(React.Fragment, null, "Click ", /* @__PURE__ */ React.createElement("strong", null, "Generate AI Assessment"), ". Claude will review") : "Once AI is set up, Claude will review", " your income, expenses, debt obligations, budget performance and cash flow for ", activeYear, " and provide personalised recommendations."),
-        /* @__PURE__ */ React.createElement("div", { className: "ai-empty-feature-grid" }, [
+}
+          </Card>)}
+        </div>
+        <div className="ai-footer-disclaimer">
+          AI assessment generated by Claude. This is not professional financial advice. Always consult a certified financial planner for major decisions.
+        </div>
+      </>}
+      {!report && !loading && !err && <Card>
+        <div className="ai-empty-wrap">
+          <div className="ai-empty-icon"><Icon name="sparkle" size={40} /></div>
+          <div className="ai-empty-title">
+            {canRun ? "Ready to analyse your finances" : "What an assessment covers"}
+          </div>
+          <div className="ai-empty-desc">
+            {canRun ? <>{"Click "}<strong>Generate AI Assessment</strong>. Claude will review</> : "Once AI is set up, Claude will review"}
+            {" your income, expenses, debt obligations, budget performance and cash flow for "}
+            {activeYear}
+            {" and provide personalised recommendations."}
+          </div>
+          <div className="ai-empty-feature-grid">
+            {[
           { icon: "chart-bar", label: "Executive Summary" },
           { icon: "banknote", label: "Income Analysis" },
           { icon: "chart-down", label: "Spending Analysis" },
           { icon: "credit-card", label: "Debt Management" },
           { icon: "target", label: "Budget vs Actual" },
           { icon: "check-circle", label: "Priority Actions" }
-        ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, className: "ai-feature-card" },
-          /* @__PURE__ */ React.createElement("div", { className: "ai-feature-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })),
-          /* @__PURE__ */ React.createElement("div", { className: "ai-feature-label" }, label)
-        )))
-      ))
-    );
+        ].map(({ icon, label }) => <div key={label} className="ai-feature-card">
+          <div className="ai-feature-icon"><Icon name={icon} size={20} /></div>
+          <div className="ai-feature-label">{label}</div>
+        </div>)}
+          </div>
+        </div>
+      </Card>}
+    </div>;
   }

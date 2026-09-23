@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, useMemo } from "../lib/runtime.js";
+import { useMemo } from "../lib/runtime.js";
 import { setHolidayRegion, setStoredHolidays } from "../lib/holidays.js";
 import { accountIdOf, buildYearFlows, computeFlow } from "../lib/dates.js";
 import { accountOpenings, useLS } from "../lib/app-data.js";
@@ -41,7 +41,7 @@ import { accountOpenings, useLS } from "../lib/app-data.js";
         const adj = scenarioAdj[e.id];
         if (!adj) out.push(e);
         else if (adj.drop) return out;
-        else out.push(__spreadProps(__spreadValues({}, e), { amount: Number.isFinite(adj.amount) ? adj.amount : e.amount }));
+        else out.push({ ...e, amount: Number.isFinite(adj.amount) ? adj.amount : e.amount });
         return out;
       }, []);
     }, [entries, scenarioAdj, scenarioActive]);
@@ -51,12 +51,11 @@ import { accountOpenings, useLS } from "../lib/app-data.js";
     }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const openBalOf = (flowsByYear, firstOpening) => {
-      var _a2, _b, _c, _d;
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
-      if (idx <= 0) return firstOpening !== void 0 ? firstOpening : (_b = (_a2 = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _a2.openingBalance) != null ? _b : 0;
+      if (idx <= 0) return firstOpening !== void 0 ? firstOpening : yearConfigs.find((yc) => yc.year === activeYear)?.openingBalance ?? 0;
       const prevFlow = flowsByYear[sortedConfigs[idx - 1].year];
-      if ((prevFlow == null ? void 0 : prevFlow.length) > 0) return prevFlow[prevFlow.length - 1].balance;
-      return firstOpening !== void 0 ? firstOpening : (_d = (_c = yearConfigs.find((yc) => yc.year === activeYear)) == null ? void 0 : _c.openingBalance) != null ? _d : 0;
+      if (prevFlow?.length > 0) return prevFlow[prevFlow.length - 1].balance;
+      return firstOpening !== void 0 ? firstOpening : yearConfigs.find((yc) => yc.year === activeYear)?.openingBalance ?? 0;
     };
     // ── The account filter ───────────────────────────────────────────────
     // Combined is the default and always available: every view shows the

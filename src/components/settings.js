@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId, useContext, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
+import { genId, useContext, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
 import { centsToDollars, dollarsToCents, migrateHouseholdPayload } from "../lib/migrate.js";
 import { DEFAULT_HOLIDAY_REGION, HOLIDAY_REGIONS, fetchHolidayYear, holidayRegion, holidayRowsForYear, holidayYearForEditing, isYearStored, mergeFetchedHolidays } from "../lib/holidays.js";
 import { accountIdOf, isInflowEvent, parseDate, signedAmount } from "../lib/dates.js";
@@ -27,77 +27,97 @@ import { toast } from "./auth-misc.js";
         ? "Below zero from " + dateLabel(ep.start)
         : "Below your " + fmt(alertThreshold) + " buffer from " + dateLabel(ep.start);
       const series = ep.events.map((e) => e.balance);
-      return /* @__PURE__ */ React.createElement("button", {
-        key: ep.id,
-        type: "button",
-        className: "episode",
-        "data-tone": ep.tone,
-        onClick: gotoForecast
-      },
-        /* @__PURE__ */ React.createElement("div", { className: "episode-head" },
-          /* @__PURE__ */ React.createElement("span", { className: "episode-title" }, headline),
-          /* @__PURE__ */ React.createElement("span", { className: "episode-days" },
-            ep.openEnded ? ep.days + "+ days" : ep.days + " days")),
-        /* @__PURE__ */ React.createElement("div", { className: "episode-low" },
-          /* @__PURE__ */ React.createElement("span", { className: "episode-low-amt" }, fmt(ep.low.balance)),
-          /* @__PURE__ */ React.createElement("span", { className: "episode-low-when" },
-            "lowest on ", dateLabel(ep.low))),
-        series.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "episode-spark", "aria-hidden": "true" },
-          /* @__PURE__ */ React.createElement(Sparkline, {
-            data: series, responsive: true, area: true, height: 34,
-            color: worst ? "var(--red)" : "var(--amberInk)"
-          })),
-        /* @__PURE__ */ React.createElement("div", { className: "episode-facts" },
-          // The one number that answers "what do I do about it".
-          /* @__PURE__ */ React.createElement("span", null,
-            /* @__PURE__ */ React.createElement("strong", null, fmt(ep.shortfall)),
-            " more would clear it"),
-          /* @__PURE__ */ React.createElement("span", null, ep.openEnded
+      return <button key={ep.id} type="button" className="episode" data-tone={ep.tone} onClick={gotoForecast}>
+        <div className="episode-head">
+          <span className="episode-title">{headline}</span>
+          <span className="episode-days">{ep.openEnded ? ep.days + "+ days" : ep.days + " days"}</span>
+        </div>
+        <div className="episode-low">
+          <span className="episode-low-amt">{fmt(ep.low.balance)}</span>
+          <span className="episode-low-when">{"lowest on "}{dateLabel(ep.low)}</span>
+        </div>
+        {series.length > 1 && <div className="episode-spark" aria-hidden="true">
+          <Sparkline
+            data={series}
+            responsive={true}
+            area={true}
+            height={34}
+            color={worst ? "var(--red)" : "var(--amberInk)"}
+          />
+        </div>}
+        <div className="episode-facts">
+          {// The one number that answers "what do I do about it".
+          <span><strong>{fmt(ep.shortfall)}</strong>{" more would clear it"}</span>
+}
+          <span>
+            {ep.openEnded
             ? "Still below at the end of the 90 days"
-            : "Back above on " + dateLabel(ep.recover))),
-        // What takes it under — the entries on the crossing day itself, not
+            : "Back above on " + dateLabel(ep.recover)}
+          </span>
+        </div>
+        {// What takes it under — the entries on the crossing day itself, not
         // every entry that happens while it is already under.
-        ep.trigger.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "episode-trigger" },
-          ep.trigger.length === 1 ? "Takes it under: " : "Take it under: ",
-          ep.trigger.map((t, i) => /* @__PURE__ */ React.createElement("span", { key: t.id },
-            i > 0 ? ", " : "", /* @__PURE__ */ React.createElement("strong", null, t.desc),
-            " ", fmt(signedAmount(t))))),
-        /* @__PURE__ */ React.createElement("span", { className: "episode-cta" }, "See it on the forecast →"));
+        ep.trigger.length > 0 && <div className="episode-trigger">
+          {ep.trigger.length === 1 ? "Takes it under: " : "Take it under: "}
+          {ep.trigger.map((t, i) => <span key={t.id}>
+            {i > 0 ? ", " : ""}
+            <strong>{t.desc}</strong>
+            {" "}
+            {fmt(signedAmount(t))}
+          </span>)}
+        </div>
+}
+        <span className="episode-cta">See it on the forecast →</span>
+      </button>;
     };
 
     const nothing = episodes.length === 0 && findings.length === 0;
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page alerts-page" },
-      /* @__PURE__ */ React.createElement("div", { className: "alerts-head" },
-        /* @__PURE__ */ React.createElement("h2", { className: "alerts-title" },
-          episodes.length === 0 ? "Nothing to flag"
+    return <div className="cf-page alerts-page">
+      <div className="alerts-head">
+        <h2 className="alerts-title">
+          {episodes.length === 0 ? "Nothing to flag"
             : episodes.length === 1 ? "1 thing to watch"
-            : episodes.length + " things to watch"),
-        /* @__PURE__ */ React.createElement("span", { className: "alerts-sub" },
-          "Next 90 days · buffer ", fmt(alertThreshold),
-          " · ",
-          /* @__PURE__ */ React.createElement("a", { href: "#/you/threshold", className: "link-primary" }, "change"))),
-      nothing && /* @__PURE__ */ React.createElement("div", { className: "alerts-clear" },
-        /* @__PURE__ */ React.createElement("span", { className: "alerts-clear-icon", "aria-hidden": "true" },
-          /* @__PURE__ */ React.createElement(Icon, { name: "check-circle", size: 30 })),
-        /* @__PURE__ */ React.createElement("span", { className: "alerts-clear-title" }, "All clear"),
-        /* @__PURE__ */ React.createElement("span", { className: "txl" },
-          "Your balance stays above ", fmt(alertThreshold), " for the next 90 days.")),
-      episodes.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "episode-list" },
-        episodes.map(renderEpisode)),
-      // Everything else the app has worked out and would otherwise only say on
+            : episodes.length + " things to watch"}
+        </h2>
+        <span className="alerts-sub">
+          {"Next 90 days · buffer "}
+          {fmt(alertThreshold)}
+          {" · "}
+          <a href="#/you/threshold" className="link-primary">change</a>
+        </span>
+      </div>
+      {nothing && <div className="alerts-clear">
+        <span className="alerts-clear-icon" aria-hidden="true"><Icon name="check-circle" size={30} /></span>
+        <span className="alerts-clear-title">All clear</span>
+        <span className="txl">
+          {"Your balance stays above "}
+          {fmt(alertThreshold)}
+          {" for the next 90 days."}
+        </span>
+      </div>}
+      {episodes.length > 0 && <div className="episode-list">{episodes.map(renderEpisode)}</div>}
+      {// Everything else the app has worked out and would otherwise only say on
       // the one screen that computes it. "Centralised" has to mean you can come
       // here and see the lot, not just the balance warnings.
-      findings.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null,
-        /* @__PURE__ */ React.createElement("h3", { className: "alerts-group-title" }, "Worth knowing"),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8" }, findings.map((f) =>
-          /* @__PURE__ */ React.createElement("button", {
-            key: f.id, type: "button", className: "notice notice--sm alerts-finding",
-            "data-tone": f.tone, onClick: () => { window.location.hash = "#/" + f.route; }
-          },
-            /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" },
-              /* @__PURE__ */ React.createElement(Icon, { name: f.icon, size: 14 })),
-            /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, f.text),
-            /* @__PURE__ */ React.createElement("span", { className: "alert-row-cta" }, "→"))))));
+      findings.length > 0 && <>
+        <h3 className="alerts-group-title">Worth knowing</h3>
+        <div className="cf-col cf-gap-8">
+          {findings.map((f) =>
+          <button
+            key={f.id}
+            type="button"
+            className="notice notice--sm alerts-finding"
+            data-tone={f.tone}
+            onClick={() => { window.location.hash = "#/" + f.route; }}
+          >
+            <span className="notice-icon" aria-hidden="true"><Icon name={f.icon} size={14} /></span>
+            <span className="notice-msg">{f.text}</span>
+            <span className="alert-row-cta">→</span>
+          </button>)}
+        </div>
+      </>
+}
+    </div>;
   }
   // Delivery hour choices for background push. Labelled in 12-hour form
   // because that's how the alert time reads on the phone that receives it.
@@ -138,7 +158,7 @@ import { toast } from "./auth-misc.js";
   // are different kinds of trust.
   export function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
   } }) {
-    const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (/* @__PURE__ */ new Date()).getFullYear()));
+    const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (new Date()).getFullYear()));
     const [form, setForm] = useState(null);
     const [err, setErr] = useState("");
     const [busy, setBusy] = useState(false);
@@ -153,7 +173,7 @@ import { toast } from "./auth-misc.js";
     const stored = isYearStored(year, holidays);
     const manualCount = rows.filter((r) => r.source === "manual").length;
     const writeYear = (days) => {
-      setHolidays((prev) => __spreadProps(__spreadValues({}, prev), { [year]: days }));
+      setHolidays((prev) => ({ ...prev, [year]: days }));
     };
     const startAdd = () => {
       setErr("");
@@ -206,133 +226,194 @@ import { toast } from "./auth-misc.js";
     };
     const sourceChip = (source) => {
       const label = source === "manual" ? "Added here" : source === "published" ? "Published" : "Built-in";
-      return /* @__PURE__ */ React.createElement("span", { className: "holiday-chip holiday-chip--" + source }, label);
+      return <span className={"holiday-chip holiday-chip--" + source}>{label}</span>;
     };
-    const weekdayOf = (dateStr) => WEEKDAYS[(parseDate(dateStr) || /* @__PURE__ */ new Date()).getDay()];
-    return /* @__PURE__ */ React.createElement(
-      Card,
-      { id: "sec-holidays", className: "mb-20" },
-      /* @__PURE__ */ React.createElement(SectionTitle, { help: "Payroll that falls on one of these is marked in the budget with the day it is actually deposited — the last banking day before. The list starts from British Columbia's rules, including the two the province lists as optional; fetch a year to replace it with the published dates, or add and edit dates yourself." }, "Statutory Holidays"),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap mb-12" }, years.map((y) => /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          key: y,
-          onClick: () => {
+    const weekdayOf = (dateStr) => WEEKDAYS[(parseDate(dateStr) || new Date()).getDay()];
+    return <Card id="sec-holidays" className="mb-20">
+      <SectionTitle
+        help="Payroll that falls on one of these is marked in the budget with the day it is actually deposited — the last banking day before. The list starts from British Columbia's rules, including the two the province lists as optional; fetch a year to replace it with the published dates, or add and edit dates yourself."
+      >
+        Statutory Holidays
+      </SectionTitle>
+      <div className="cf-row cf-gap-8 cf-wrap mb-12">
+        {years.map((y) => <button
+          key={y}
+          onClick={() => {
             setYear(y);
             setForm(null);
             setFetchMsg("");
             setErr("");
-          },
-          className: "holiday-year-pill",
-          "aria-pressed": y === year,
-          "data-active": y === year
-        },
-        y
-      ))),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "txm", htmlFor: "holiday-region" }, "Province or territory"), /* @__PURE__ */ React.createElement("select", {
-        id: "holiday-region",
-        className: "field-input settings-input",
-        style: { flex: "0 1 240px" },
-        value: holidayRegionCode,
-        onChange: (e) => setHolidayRegionCode(e.target.value)
-      }, HOLIDAY_REGIONS.map((r) => /* @__PURE__ */ React.createElement("option", { key: r.code, value: r.code }, r.name)))),
-      /* @__PURE__ */ React.createElement("div", { className: "txl mb-12" }, rows.length, " date", rows.length === 1 ? "" : "s", " for ", year, " \u00b7 ", stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : `computed from ${holidayRegion(holidayRegionCode).name}'s general rules`),
-      !stored && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "The built-in list is worked out from the province's usual rules, so it can differ from a given year's published one \u2014 rules change and one-off days get proclaimed. Fetch below replaces it with what canada-holidays.ca lists, and every date can be edited or removed by hand."),
-      rows.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint mb-12" }, "No holidays for ", year, ". Payroll on a weekday will be treated as deposited that day."),
-      rows.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "holiday-list mb-12" }, rows.map((row) => /* @__PURE__ */ React.createElement(
-        "div",
-        { key: row.date, className: "holiday-row" },
-        /* @__PURE__ */ React.createElement("div", { className: "holiday-date cf-text-mono-13" }, row.date, /* @__PURE__ */ React.createElement("span", { className: "holiday-weekday" }, weekdayOf(row.date))),
-        /* @__PURE__ */ React.createElement("div", { className: "holiday-name" }, row.name, row.optional && /* @__PURE__ */ React.createElement("span", { className: "holiday-chip holiday-chip--optional" }, "Optional")),
-        sourceChip(row.source),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: () => startEdit(row), className: "cf-btn cf-btn--secondary cf-btn--compact", "aria-label": `Edit ${row.name}` },
-          "Edit"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: () => setConfirmDelete(row), className: "holiday-remove-btn", "aria-label": `Remove ${row.name}` },
-          "Remove"
-        ))
-      ))),
-      form && /* @__PURE__ */ React.createElement(
-        "div",
-        { className: "holiday-form mb-12" },
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" },
-          /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "holiday-date" }, "Date"), /* @__PURE__ */ React.createElement("input", {
-            id: "holiday-date",
-            type: "date",
-            className: "field-input",
-            value: form.date,
-            onChange: (e) => {
-              setForm((f) => __spreadProps(__spreadValues({}, f), { date: e.target.value }));
+          }}
+          className="holiday-year-pill"
+          aria-pressed={y === year}
+          data-active={y === year}
+        >
+          {y}
+        </button>)}
+      </div>
+      <div className="cf-row cf-gap-8 cf-wrap mb-12">
+        <label className="txm" htmlFor="holiday-region">Province or territory</label>
+        <select
+          id="holiday-region"
+          className="field-input settings-input"
+          style={{ flex: "0 1 240px" }}
+          value={holidayRegionCode}
+          onChange={(e) => setHolidayRegionCode(e.target.value)}
+        >
+          {HOLIDAY_REGIONS.map((r) => <option key={r.code} value={r.code}>{r.name}</option>)}
+        </select>
+      </div>
+      <div className="txl mb-12">
+        {rows.length}
+        {" date"}
+        {rows.length === 1 ? "" : "s"}
+        {" for "}
+        {year}
+        {" \u00b7 "}
+        {stored ? `saved in your household${manualCount ? `, ${manualCount} added here` : ""}` : `computed from ${holidayRegion(holidayRegionCode).name}'s general rules`}
+      </div>
+      {!stored && <div className="italic-hint mb-12">
+        The built-in list is worked out from the province's usual rules, so it can differ from a given year's published one — rules change and one-off days get proclaimed. Fetch below replaces it with what canada-holidays.ca lists, and every date can be edited or removed by hand.
+      </div>}
+      {rows.length === 0 && <div className="italic-hint mb-12">
+        {"No holidays for "}
+        {year}
+        . Payroll on a weekday will be treated as deposited that day.
+      </div>}
+      {rows.length > 0 && <div className="holiday-list mb-12">
+        {rows.map((row) => <div key={row.date} className="holiday-row">
+          <div className="holiday-date cf-text-mono-13">
+            {row.date}
+            <span className="holiday-weekday">{weekdayOf(row.date)}</span>
+          </div>
+          <div className="holiday-name">
+            {row.name}
+            {row.optional && <span className="holiday-chip holiday-chip--optional">Optional</span>}
+          </div>
+          {sourceChip(row.source)}
+          <div className="cf-row cf-gap-6">
+            <button
+              onClick={() => startEdit(row)}
+              className="cf-btn cf-btn--secondary cf-btn--compact"
+              aria-label={`Edit ${row.name}`}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setConfirmDelete(row)}
+              className="holiday-remove-btn"
+              aria-label={`Remove ${row.name}`}
+            >
+              Remove
+            </button>
+          </div>
+        </div>)}
+      </div>}
+      {form && <div className="holiday-form mb-12">
+        <div className="cf-row cf-gap-10 cf-wrap">
+          <div>
+            <FieldLabel htmlFor="holiday-date">Date</FieldLabel>
+            <input
+              id="holiday-date"
+              type="date"
+              className="field-input"
+              value={form.date}
+              onChange={(e) => {
+              setForm((f) => ({ ...f, date: e.target.value }));
               setErr("");
-            }
-          })),
-          /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement(FieldLabel, { htmlFor: "holiday-name" }, "Name"), /* @__PURE__ */ React.createElement("input", {
-            id: "holiday-name",
-            className: "field-input",
-            placeholder: "e.g. Family Day",
-            value: form.name,
-            onChange: (e) => {
-              setForm((f) => __spreadProps(__spreadValues({}, f), { name: e.target.value }));
+            }}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <FieldLabel htmlFor="holiday-name">Name</FieldLabel>
+            <input
+              id="holiday-name"
+              className="field-input"
+              placeholder="e.g. Family Day"
+              value={form.name}
+              onChange={(e) => {
+              setForm((f) => ({ ...f, name: e.target.value }));
               setErr("");
-            },
-            onKeyDown: (e) => {
+            }}
+              onKeyDown={(e) => {
               if (e.key === "Enter") saveForm();
-            }
-          }))
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "checkbox-help-row mt-10" }, /* @__PURE__ */ React.createElement("label", { className: "goal-checkbox-label" }, /* @__PURE__ */ React.createElement("input", {
-          type: "checkbox",
-          className: "checkbox-16",
-          checked: !!form.optional,
-          onChange: (e) => setForm((f) => __spreadProps(__spreadValues({}, f), { optional: e.target.checked }))
-        }), "Optional holiday"), /* @__PURE__ */ React.createElement(HelpTip, { label: "Optional holiday", text: "BC lists Easter Monday and Boxing Day as optional — not every employer or bank observes them. They still count for the deposit date here; the label is so you can tell them apart." })),
-        err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mt-8", role: "alert" }, err),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: saveForm, className: "cf-btn cf-btn--primary cf-btn--md" },
-          form.mode === "add" ? "Add holiday" : "Save holiday"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: () => {
+            }}
+            />
+          </div>
+        </div>
+        <div className="checkbox-help-row mt-10">
+          <label className="goal-checkbox-label">
+            <input
+              type="checkbox"
+              className="checkbox-16"
+              checked={!!form.optional}
+              onChange={(e) => setForm((f) => ({ ...f, optional: e.target.checked }))}
+            />
+            Optional holiday
+          </label>
+          <HelpTip
+            label="Optional holiday"
+            text="BC lists Easter Monday and Boxing Day as optional — not every employer or bank observes them. They still count for the deposit date here; the label is so you can tell them apart."
+          />
+        </div>
+        {err && <div className="field-error-text mt-8" role="alert">{err}</div>}
+        <div className="cf-row cf-gap-8 mt-12">
+          <button onClick={saveForm} className="cf-btn cf-btn--primary cf-btn--md">
+            {form.mode === "add" ? "Add holiday" : "Save holiday"}
+          </button>
+          <button
+            onClick={() => {
             setForm(null);
             setErr("");
-          }, className: "cf-btn cf-btn--secondary cf-btn--md" },
-          "Cancel"
-        ))
-      ),
-      /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 cf-wrap" },
-        !form && /* @__PURE__ */ React.createElement("button", { onClick: startAdd, className: "cf-btn cf-btn--secondary cf-btn--md" }, "+ Add holiday"),
-        /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setConfirmFetch(true),
-            disabled: busy || isOffline,
-            title: isOffline ? "You're offline — fetching the published list needs a connection." : void 0,
-            className: "cf-btn cf-btn--secondary cf-btn--md"
-          },
-          busy ? "Fetching\u2026" : `Fetch ${year} for ${holidayRegion(holidayRegionCode).code} from canada-holidays.ca`
-        ),
-        stored && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmReset(true), className: "cf-btn cf-btn--secondary cf-btn--md" }, "Reset to built-in")
-      ),
-      /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, fetchMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: { color: fetchMsg.startsWith("\u2705") ? "var(--greenDk)" : "var(--red)" } }, fetchMsg)),
-      confirmFetch && /* @__PURE__ */ React.createElement(ConfirmDialog, {
-        title: `Fetch ${year} holidays?`,
-        message: `Replaces the published dates for ${year} with what canada-holidays.ca lists for ${holidayRegion(holidayRegionCode).name}, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`,
-        confirmLabel: "Fetch",
-        confirmVariant: "primary",
-        onConfirm: runFetch,
-        onCancel: () => setConfirmFetch(false)
-      }),
-      confirmReset && /* @__PURE__ */ React.createElement(ConfirmDialog, {
-        title: `Reset ${year} to the built-in rules?`,
-        message: `Drops your stored list for ${year}, including anything added or edited by hand, and goes back to the dates the app works out from British Columbia's rules.`,
-        confirmLabel: "Reset",
-        onConfirm: () => {
+          }}
+            className="cf-btn cf-btn--secondary cf-btn--md"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>}
+      <div className="cf-row cf-gap-8 cf-wrap">
+        {!form && <button onClick={startAdd} className="cf-btn cf-btn--secondary cf-btn--md">
+          + Add holiday
+        </button>}
+        <button
+          onClick={() => setConfirmFetch(true)}
+          disabled={busy || isOffline}
+          title={isOffline ? "You're offline — fetching the published list needs a connection." : void 0}
+          className="cf-btn cf-btn--secondary cf-btn--md"
+        >
+          {busy ? "Fetching\u2026" : `Fetch ${year} for ${holidayRegion(holidayRegionCode).code} from canada-holidays.ca`}
+        </button>
+        {stored && <button
+          onClick={() => setConfirmReset(true)}
+          className="cf-btn cf-btn--secondary cf-btn--md"
+        >
+          Reset to built-in
+        </button>}
+      </div>
+      <div role="status" aria-live="polite">
+        {fetchMsg && <div
+          className="backup-msg"
+          style={{ color: fetchMsg.startsWith("\u2705") ? "var(--greenDk)" : "var(--red)" }}
+        >
+          {fetchMsg}
+        </div>}
+      </div>
+      {confirmFetch && <ConfirmDialog
+        title={`Fetch ${year} holidays?`}
+        message={`Replaces the published dates for ${year} with what canada-holidays.ca lists for ${holidayRegion(holidayRegionCode).name}, including its optional holidays.${manualCount ? ` The ${manualCount} date${manualCount === 1 ? "" : "s"} you added here are kept.` : ""} Published dates you removed earlier will come back.`}
+        confirmLabel="Fetch"
+        confirmVariant="primary"
+        onConfirm={runFetch}
+        onCancel={() => setConfirmFetch(false)}
+      />}
+      {confirmReset && <ConfirmDialog
+        title={`Reset ${year} to the built-in rules?`}
+        message={`Drops your stored list for ${year}, including anything added or edited by hand, and goes back to the dates the app works out from British Columbia's rules.`}
+        confirmLabel="Reset"
+        onConfirm={() => {
           setHolidays((prev) => {
-            const next = __spreadValues({}, prev);
+            const next = { ...prev };
             delete next[year];
             delete next[String(year)];
             return next;
@@ -340,20 +421,20 @@ import { toast } from "./auth-misc.js";
           setConfirmReset(false);
           setFetchMsg("");
           toast(`${year} reset to the built-in holidays`);
-        },
-        onCancel: () => setConfirmReset(false)
-      }),
-      confirmDelete && /* @__PURE__ */ React.createElement(ConfirmDialog, {
-        title: "Remove this holiday?",
-        message: `${confirmDelete.name} on ${confirmDelete.date} stops counting as a closed day, so payroll dated then will show as deposited that day.`,
-        confirmLabel: "Remove",
-        onConfirm: () => {
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />}
+      {confirmDelete && <ConfirmDialog
+        title="Remove this holiday?"
+        message={`${confirmDelete.name} on ${confirmDelete.date} stops counting as a closed day, so payroll dated then will show as deposited that day.`}
+        confirmLabel="Remove"
+        onConfirm={() => {
           removeDate(confirmDelete.date);
           setConfirmDelete(null);
-        },
-        onCancel: () => setConfirmDelete(null)
-      })
-    );
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />}
+    </Card>;
   }
   export function SettingsView({ youSub = null, setYouSub = () => {
   }, categories, setCategories, categoryColors = {}, setCategoryColors = () => {
@@ -442,7 +523,14 @@ import { toast } from "./auth-misc.js";
           ? "You leave this household (what you added stays for the others) and your sign-in is deleted. This can't be undone."
           : "You're this household's only member, so the household and everything in it is deleted along with your sign-in. Export a backup first if you might want it. This can't be undone.", "Delete my account", "danger"]
       }[lifecycle.kind];
-      return React.createElement(ConfirmDialog, { title: copy[0], message: copy[1], confirmLabel: copy[2], confirmVariant: copy[3], onConfirm: runLifecycle, onCancel: () => setLifecycle(null) });
+      return <ConfirmDialog
+        title={copy[0]}
+        message={copy[1]}
+        confirmLabel={copy[2]}
+        confirmVariant={copy[3]}
+        onConfirm={runLifecycle}
+        onCancel={() => setLifecycle(null)}
+      />;
     };
     const [inviteBusy, setInviteBusy] = useState(false);
     const [memberMsg, setMemberMsg] = useState("");
@@ -526,7 +614,7 @@ import { toast } from "./auth-misc.js";
       }
     };
     const sortedYears = [...yearConfigs].sort((a, b) => a.year - b.year);
-    const nextYear = (yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : (/* @__PURE__ */ new Date()).getFullYear()) + 1;
+    const nextYear = (yearConfigs.length ? Math.max(...yearConfigs.map((yc) => yc.year)) : (new Date()).getFullYear()) + 1;
     const addYear = () => {
       const y = nextYear;
       if (yearConfigs.find((yc) => yc.year === y)) {
@@ -553,7 +641,6 @@ import { toast } from "./auth-misc.js";
       setYearMsg(`Year ${y} added — ${prevYear} is untouched.${parts.length ? ` ${parts.join(", ")}.` : ""} Recurring entries without an end date carry forward automatically.`);
     };
     const delYear = (yr) => {
-      var _a;
       if (yearConfigs.length <= 1) {
         setYearMsg("Cannot delete the only year.");
         return;
@@ -561,11 +648,11 @@ import { toast } from "./auth-misc.js";
       const prevConfigs = yearConfigs, prevOverrides = overridesByYr, prevActive = activeYear;
       setYearConfigs((prev) => prev.filter((yc) => yc.year !== yr));
       setOverridesByYr((prev) => {
-        const n = __spreadValues({}, prev);
+        const n = { ...prev };
         delete n[yr];
         return n;
       });
-      if (activeYear === yr) setActiveYear(((_a = sortedYears.find((yc) => yc.year !== yr)) == null ? void 0 : _a.year) || sortedYears[0].year);
+      if (activeYear === yr) setActiveYear((sortedYears.find((yc) => yc.year !== yr)?.year) || sortedYears[0].year);
       logActivity("year", `Removed budget year ${yr}, and the per-date edits made in it`);
       setYearMsg(`Year ${yr} removed.`);
       // The year's per-occurrence edits go with it, and they are not
@@ -578,7 +665,7 @@ import { toast } from "./auth-misc.js";
         setYearMsg("");
       });
     };
-    const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? __spreadProps(__spreadValues({}, yc), { openingBalance: val }) : yc));
+    const updateOpenBal = (yr, val) => setYearConfigs((prev) => prev.map((yc) => yc.year === yr ? { ...yc, openingBalance: val } : yc));
     const [catMsg, setCatMsg] = useState("");
     const addCat = () => {
       const v = newCat.trim();
@@ -591,7 +678,7 @@ import { toast } from "./auth-misc.js";
         return;
       }
       setCategories((p) => [...p, v]);
-      if (newCatColor) setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [v]: newCatColor }));
+      if (newCatColor) setCategoryColors((p) => ({ ...p, [v]: newCatColor }));
       setNewCat("");
       setNewCatColor(null);
       setCatMsg("");
@@ -610,7 +697,7 @@ import { toast } from "./auth-misc.js";
       setCategories((p) => p.filter((_, j) => j !== i));
       setCategoryColors((p) => {
         if (!p[name]) return p;
-        const n = __spreadValues({}, p);
+        const n = { ...p };
         delete n[name];
         return n;
       });
@@ -648,7 +735,7 @@ import { toast } from "./auth-misc.js";
       const prevEntries = entries, prevTemplates = templates, prevTargets = budgetTargets;
       setCategories((p) => p.map((c, i) => i === editIdx ? v : c));
       setCategoryColors((p) => {
-        const n = __spreadValues({}, p);
+        const n = { ...p };
         const color = editColor !== null ? editColor : n[oldName];
         if (renamed) delete n[oldName];
         if (color) n[v] = color;
@@ -656,8 +743,8 @@ import { toast } from "./auth-misc.js";
         return n;
       });
       if (renamed) {
-        setEntries((p) => p.map((e) => e.category === oldName ? __spreadProps(__spreadValues({}, e), { category: v }) : e));
-        setTemplates((p) => (Array.isArray(p) ? p : []).map((t) => t.category === oldName ? __spreadProps(__spreadValues({}, t), { category: v }) : t));
+        setEntries((p) => p.map((e) => e.category === oldName ? { ...e, category: v } : e));
+        setTemplates((p) => (Array.isArray(p) ? p : []).map((t) => t.category === oldName ? { ...t, category: v } : t));
         // Targets are keyed "YYYY:M" -> { category: cents }, plus the reserved
         // _rollover map of category -> true. Both are keyed by the name.
         setBudgetTargets((p) => {
@@ -666,7 +753,7 @@ import { toast } from "./auth-misc.js";
           for (const k of Object.keys(p || {})) {
             const m = p[k];
             if (!m || typeof m !== "object" || !(oldName in m)) { next[k] = m; continue; }
-            const copy = __spreadValues({}, m);
+            const copy = { ...m };
             copy[v] = copy[oldName];
             delete copy[oldName];
             next[k] = copy;
@@ -727,28 +814,51 @@ import { toast } from "./auth-misc.js";
     // one is a link, and the section bar and index strip are both gone — a
     // directory needs no index.
     const SETTINGS_PAGES = {
-      years: { title: "Budget years", value: () => sortedYears.map((y) => y.year).join(", "), render: () => React.createElement(Card, { id: "sec-years", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget Years"), sortedYears.map((yc) => {
-      var _a;
-      return /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "year-row", style: {
+      years: { title: "Budget years", value: () => sortedYears.map((y) => y.year).join(", "), render: () => <Card
+        id="sec-years"
+        className="mb-20"
+      >
+        <SectionTitle>Budget Years</SectionTitle>
+        {sortedYears.map((yc) => {
+      return <div
+        key={yc.year}
+        className="year-row"
+        style={{
         background: activeYear === yc.year ? "var(--stripe)" : "var(--bg)",
         border: `1px solid ${activeYear === yc.year ? "var(--primary)" : "var(--border)"}`
-      } }, /* @__PURE__ */ React.createElement("span", { className: "year-number" }, yc.year), sortedYears[0].year === yc.year && /* @__PURE__ */ React.createElement("div", { className: "year-openbal" }, /* @__PURE__ */ React.createElement("span", { className: "openbal-label" }, "Opening balance"), /* @__PURE__ */ React.createElement("span", { className: "txm" }, moneySymbol()), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "number",
-          inputMode: "decimal",
-          step: "0.01",
-          className: "cf-text-mono-13 openbal-input",
-          // "Opening balance" next to it is a span, not a label — name the
-          // field per-year so it's unambiguous when several years are listed.
-          "aria-label": `Opening balance for ${yc.year}`,
-          value: centsToDollars(yc.openingBalance),
-          onChange: (e) => updateOpenBal(yc.year, dollarsToCents(e.target.value))
-        }
-      )), sortedYears[0].year !== yc.year && /* @__PURE__ */ React.createElement("span", { className: "txl flex-1" }, "Carries forward from ", (_a = sortedYears[sortedYears.indexOf(yc) - 1]) == null ? void 0 : _a.year), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), className: "cf-checkbtn year-active-btn", style: {
+      }}
+      >
+        <span className="year-number">{yc.year}</span>
+        {sortedYears[0].year === yc.year && <div className="year-openbal">
+          <span className="openbal-label">Opening balance</span>
+          <span className="txm">{moneySymbol()}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            className="cf-text-mono-13 openbal-input"
+            // "Opening balance" next to it is a span, not a label — name the
+            // field per-year so it's unambiguous when several years are listed.
+            aria-label={`Opening balance for ${yc.year}`}
+            value={centsToDollars(yc.openingBalance)}
+            onChange={(e) => updateOpenBal(yc.year, dollarsToCents(e.target.value))}
+          />
+        </div>}
+        {sortedYears[0].year !== yc.year && <span className="txl flex-1">
+          {"Carries forward from "}
+          {sortedYears[sortedYears.indexOf(yc) - 1]?.year}
+        </span>}
+        <button
+          onClick={() => setActiveYear(yc.year)}
+          className="cf-checkbtn year-active-btn"
+          style={{
         background: activeYear === yc.year ? "var(--primary)" : "transparent",
         color: activeYear === yc.year ? "#fff" : "var(--textMid)"
-      } }, activeYear === yc.year ? "Active" : "Switch"), (() => {
+      }}
+        >
+          {activeYear === yc.year ? "Active" : "Switch"}
+        </button>
+        {(() => {
         const nextY = yc.year + 1;
         const hasNext = yearConfigs.some((y) => y.year === nextY);
         const hasTargets = Object.keys(budgetTargets || {}).some((k) => k.startsWith(yc.year + ":"));
@@ -763,102 +873,149 @@ import { toast } from "./auth-misc.js";
           const parts = yearRollforwardParts(plan.counts, yc.year);
           setYearMsg(parts.length ? `\u2705 ${yc.year} \u2192 ${nextY}: ${parts.join(", ")}. Anything you edited in ${nextY} was left alone.` : `\u2705 ${nextY} already matches ${yc.year} \u2014 nothing to change.`);
         };
-        return hasNext && (hasTargets || hasSingles || hasOvs) && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setConfirmCopyYear({ year: yc.year, nextY, run: runCopy }),
-            title: `Sync ${yc.year} into ${nextY} \u2014 adds missing budget targets and one-time entries, updates unedited copies, never touches anything edited in ${nextY}`,
-            className: "copy-year-btn"
-          },
-          "Copy \u2192",
-          nextY
-        );
-      })(), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        return hasNext && (hasTargets || hasSingles || hasOvs) && <button
+          onClick={() => setConfirmCopyYear({ year: yc.year, nextY, run: runCopy })}
+          title={`Sync ${yc.year} into ${nextY} \u2014 adds missing budget targets and one-time entries, updates unedited copies, never touches anything edited in ${nextY}`}
+          className="copy-year-btn"
+        >
+          Copy →
+          {nextY}
+        </button>;
+      })()}
+        <button
+          onClick={() => {
         if (yearConfigs.length <= 1) {
           setYearMsg("Cannot delete the only year.");
           return;
         }
         setConfirmDelYear(yc.year);
-      }, className: "cf-btn cf-btn--danger cf-btn--yearremove" }, "Remove"));
-    }), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement("button", { onClick: addYear, className: "cf-btn cf-btn--primary cf-btn--md" }, `+ Add ${nextYear}`)), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "txm mt-8" }, yearMsg)), confirmDelYear !== null && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: `Remove budget year ${confirmDelYear}?`,
-        message: `Budget year ${confirmDelYear} will be removed from the app, along with any per-occurrence edits made in ${confirmDelYear}. Entries and budget targets are not deleted.`,
-        confirmLabel: "Remove Year",
-        onConfirm: () => {
+      }}
+          className="cf-btn cf-btn--danger cf-btn--yearremove"
+        >
+          Remove
+        </button>
+      </div>;
+    })}
+        <div className="cf-row cf-gap-8 mt-12">
+          <button onClick={addYear} className="cf-btn cf-btn--primary cf-btn--md">
+            {`+ Add ${nextYear}`}
+          </button>
+        </div>
+        <div role="status" aria-live="polite">
+          {yearMsg && <div className="txm mt-8">{yearMsg}</div>}
+        </div>
+        {confirmDelYear !== null && <ConfirmDialog
+          title={`Remove budget year ${confirmDelYear}?`}
+          message={`Budget year ${confirmDelYear} will be removed from the app, along with any per-occurrence edits made in ${confirmDelYear}. Entries and budget targets are not deleted.`}
+          confirmLabel="Remove Year"
+          onConfirm={() => {
           delYear(confirmDelYear);
           setConfirmDelYear(null);
-        },
-        onCancel: () => setConfirmDelYear(null)
-      }
-    ), confirmCopyYear !== null && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: `Copy ${confirmCopyYear.year} into ${confirmCopyYear.nextY}?`,
-        message: `Missing budget targets and one-time entries from ${confirmCopyYear.year} will be added to ${confirmCopyYear.nextY}, and unedited copies will be updated to match. Anything you've already edited in ${confirmCopyYear.nextY} is left alone.`,
-        confirmLabel: "Copy",
-        confirmVariant: "primary",
-        onConfirm: () => {
+        }}
+          onCancel={() => setConfirmDelYear(null)}
+        />}
+        {confirmCopyYear !== null && <ConfirmDialog
+          title={`Copy ${confirmCopyYear.year} into ${confirmCopyYear.nextY}?`}
+          message={`Missing budget targets and one-time entries from ${confirmCopyYear.year} will be added to ${confirmCopyYear.nextY}, and unedited copies will be updated to match. Anything you've already edited in ${confirmCopyYear.nextY} is left alone.`}
+          confirmLabel="Copy"
+          confirmVariant="primary"
+          onConfirm={() => {
           confirmCopyYear.run();
           setConfirmCopyYear(null);
-        },
-        onCancel: () => setConfirmCopyYear(null)
-      }
-    )) },
-      accounts: { title: "Accounts", value: () => accounts.length + (accounts.length === 1 ? " account" : " accounts"), render: () => React.createElement(Card, { id: "sec-accounts", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Where the household\u2019s money lives. A credit card is an ordinary account here \u2014 its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget." }, "Accounts"), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, accounts.map((a, i) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "account-row" }, /* @__PURE__ */ React.createElement("input", {
-      "aria-label": `Name of account ${i + 1}`,
-      className: "field-input account-name",
-      value: a.name,
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { name: e.target.value }) : x)),
-      // Recorded on blur, not on every keystroke: a rename would otherwise
-      // write one log line per character typed.
-      onFocus: (e) => {
+        }}
+          onCancel={() => setConfirmCopyYear(null)}
+        />}
+      </Card> },
+      accounts: { title: "Accounts", value: () => accounts.length + (accounts.length === 1 ? " account" : " accounts"), render: () => <Card
+        id="sec-accounts"
+        className="mb-20"
+      >
+        <SectionTitle
+          help="Where the household’s money lives. A credit card is an ordinary account here — its balance simply runs below zero. Every view shows all of them added together unless you narrow it with the Account picker above the budget."
+        >
+          Accounts
+        </SectionTitle>
+        <div className="mb-14">
+          {accounts.map((a, i) => <div key={a.id} className="account-row">
+            <input
+              aria-label={`Name of account ${i + 1}`}
+              className="field-input account-name"
+              value={a.name}
+              onChange={(e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? { ...x, name: e.target.value } : x))}
+              // Recorded on blur, not on every keystroke: a rename would otherwise
+              // write one log line per character typed.
+              onFocus={(e) => {
         renamedFrom.current[a.id] = e.target.value;
-      },
-      onBlur: (e) => {
+      }}
+              onBlur={(e) => {
         const was = renamedFrom.current[a.id];
         delete renamedFrom.current[a.id];
         if (was !== void 0 && was !== e.target.value) logActivity("account", `Renamed the account ${was} to ${e.target.value}`);
-      }
-    }), /* @__PURE__ */ React.createElement("select", {
-      "aria-label": `Kind of ${a.name}`,
-      className: "field-input account-kind",
-      value: a.kind || "chequing",
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { kind: e.target.value }) : x))
-    }, ACCOUNT_KINDS.map((k) => /* @__PURE__ */ React.createElement("option", { key: k.id, value: k.id }, k.label))), i === 0 ? /* @__PURE__ */ React.createElement("span", { className: "txl account-opening-note" }, "Opens with the rest \u2014 ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(openingShares[a.id] || 0))) : /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-6" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-sm" }, moneySymbol()), /* @__PURE__ */ React.createElement("input", {
-      type: "number",
-      inputMode: "decimal",
-      step: "0.01",
-      "aria-label": `Opening balance of ${a.name}`,
-      className: "field-input field-input--mono account-opening",
-      value: centsToDollars(Number.isFinite(a.opening) ? a.opening : 0),
-      onChange: (e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? __spreadProps(__spreadValues({}, x), { opening: dollarsToCents(e.target.value) }) : x))
-    })), accounts.length > 1 && i > 0 && /* @__PURE__ */ React.createElement("button", {
-      className: "cf-btn cf-btn--secondary cf-btn--micro",
-      onClick: () => setRemovingAccount(a),
-      "aria-label": `Remove ${a.name}`
-    }, "Remove")))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", {
-      className: "cf-btn cf-btn--secondary cf-btn--md",
-      onClick: () => {
+      }}
+            />
+            <select
+              aria-label={`Kind of ${a.name}`}
+              className="field-input account-kind"
+              value={a.kind || "chequing"}
+              onChange={(e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? { ...x, kind: e.target.value } : x))}
+            >
+              {ACCOUNT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+            </select>
+            {i === 0 ? <span className="txl account-opening-note">
+              {"Opens with the rest \u2014 "}
+              <strong className="cf-text-mono-13">{fmt(openingShares[a.id] || 0)}</strong>
+            </span> : <span
+              className="cf-row cf-gap-6"
+            >
+              <span className="dollar-sm">{moneySymbol()}</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                aria-label={`Opening balance of ${a.name}`}
+                className="field-input field-input--mono account-opening"
+                value={centsToDollars(Number.isFinite(a.opening) ? a.opening : 0)}
+                onChange={(e) => setAccounts((prev) => prev.map((x) => x.id === a.id ? { ...x, opening: dollarsToCents(e.target.value) } : x))}
+              />
+            </span>}
+            {accounts.length > 1 && i > 0 && <button
+              className="cf-btn cf-btn--secondary cf-btn--micro"
+              onClick={() => setRemovingAccount(a)}
+              aria-label={`Remove ${a.name}`}
+            >
+              Remove
+            </button>}
+          </div>)}
+        </div>
+        <div className="cf-row cf-gap-10 cf-wrap">
+          <button
+            className="cf-btn cf-btn--secondary cf-btn--md"
+            onClick={() => {
         setAccounts((prev) => [...prev, { id: genId(), name: "New account", kind: "savings", opening: 0 }]);
         logActivity("account", "Added an account");
-      }
-    }, "+ Add account")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "The first account holds whatever is left of the budget year\u2019s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years."), removingAccount && /* @__PURE__ */ React.createElement(ConfirmDialog, {
-      title: `Remove ${removingAccount.name}?`,
-      message: (() => {
+      }}
+          >
+            + Add account
+          </button>
+        </div>
+        <div className="hint mt-10">
+          The first account holds whatever is left of the budget year’s opening balance once the others are accounted for, so the shares always add up to the one figure you set under Budget Years.
+        </div>
+        {removingAccount && <ConfirmDialog
+          title={`Remove ${removingAccount.name}?`}
+          message={(() => {
         const n = entries.filter((e) => accountIdOf(e) === removingAccount.id).length;
         const t = entries.filter((e) => e.toAccountId === removingAccount.id).length;
         return n + t === 0 ? "Nothing is filed under this account, so removing it changes no figures." : `${n + t} ${n + t === 1 ? "entry moves" : "entries move"} back to ${accountName(accounts, (accounts[0] || {}).id)}. No entry is deleted and no amount changes \u2014 they simply stop being separated out.`;
-      })(),
-      confirmLabel: "Remove",
-      onCancel: () => setRemovingAccount(null),
-      onConfirm: () => {
+      })()}
+          confirmLabel="Remove"
+          onCancel={() => setRemovingAccount(null)}
+          onConfirm={() => {
         // Entries are re-homed rather than deleted: an account is a label on
         // money, and removing the label must not remove the money.
         setEntries((prev) => prev.map((e) => {
           if (accountIdOf(e) !== removingAccount.id && e.toAccountId !== removingAccount.id) return e;
-          const next = __spreadValues({}, e);
+          const next = { ...e };
           if (accountIdOf(e) === removingAccount.id) delete next.accountId;
           if (e.toAccountId === removingAccount.id) delete next.toAccountId;
           return next;
@@ -866,144 +1023,238 @@ import { toast } from "./auth-misc.js";
         setAccounts((prev) => prev.filter((x) => x.id !== removingAccount.id));
         logActivity("account", `Removed the account ${removingAccount.name}`);
         setRemovingAccount(null);
-      }
-    })) },
-      categories: { title: "Categories", value: () => String(categories.length), render: () => React.createElement(Card, { id: "sec-categories", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: (isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with." }, "Manage Categories"), /* @__PURE__ */ React.createElement("div", { className: "mb-16" }, categories.map((cat, i) => /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        key: cat,
-        draggable: true,
-        onDragStart: () => onDragStart(i),
-        onDragOver: (e) => onDragOver(e, i),
-        onDrop: () => onDrop(i),
-        className: "cat-row",
-        style: {
+      }}
+        />}
+      </Card> },
+      categories: { title: "Categories", value: () => String(categories.length), render: () => <Card
+        id="sec-categories"
+        className="mb-20"
+      >
+        <SectionTitle
+          help={(isCoarse ? "Use the arrows to reorder." : "Drag to reorder.") + " Renaming applies to new entries; entries you already have keep the category name they were saved with."}
+        >
+          Manage Categories
+        </SectionTitle>
+        <div className="mb-16">
+          {categories.map((cat, i) => <div
+            key={cat}
+            draggable={true}
+            onDragStart={() => onDragStart(i)}
+            onDragOver={(e) => onDragOver(e, i)}
+            onDrop={() => onDrop(i)}
+            className="cat-row"
+            style={{
           background: dragOverIdx === i ? "var(--stripe)" : "var(--bg)"
-        }
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "drag-handle" }, "\u283F"),
-      editIdx === i ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Category color", className: "color-swatch", style: {
+        }}
+          >
+            <span className="drag-handle">⠿</span>
+            {editIdx === i ? <>
+              <label
+                title="Category color"
+                className="color-swatch"
+                style={{
         background: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors)
-      } }, /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "color",
-          value: editColor !== null ? editColor : getCatColor(cat, categories, categoryColors),
-          onChange: (e) => setEditColor(e.target.value),
-          // Eleven of these on the General page, all announced as an unnamed
-          // "color picker" — the visible label is the swatch itself.
-          "aria-label": `Colour for ${cat}`,
-          className: "color-swatch-input"
-        }
-      )), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          className: "settings-input flex-1",
-          value: editVal,
-          onChange: (e) => setEditVal(e.target.value),
-          onKeyDown: (e) => e.key === "Enter" && saveEdit(),
-          autoFocus: true
-        }
-      ), /* @__PURE__ */ React.createElement("button", { onClick: saveEdit, className: "cf-btn cf-btn--compact cf-btn--primary" }, "Save"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      }}
+              >
+                <input
+                  type="color"
+                  value={editColor !== null ? editColor : getCatColor(cat, categories, categoryColors)}
+                  onChange={(e) => setEditColor(e.target.value)}
+                  // Eleven of these on the General page, all announced as an unnamed
+                  // "color picker" — the visible label is the swatch itself.
+                  aria-label={`Colour for ${cat}`}
+                  className="color-swatch-input"
+                />
+              </label>
+              <input
+                className="settings-input flex-1"
+                value={editVal}
+                onChange={(e) => setEditVal(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+                autoFocus={true}
+              />
+              <button onClick={saveEdit} className="cf-btn cf-btn--compact cf-btn--primary">Save</button>
+              <button
+                onClick={() => {
         setEditIdx(null);
         setEditColor(null);
-      }, className: "cf-btn cf-btn--compact cf-btn--secondary" }, "Cancel"),
-      // Reset and Remove live in here now rather than on every resting row.
+      }}
+                className="cf-btn cf-btn--compact cf-btn--secondary"
+              >
+                Cancel
+              </button>
+              {// Reset and Remove live in here now rather than on every resting row.
       // Five buttons on a row the phone had to wrap made each category 195px
       // tall; these two are the ones you reach for having decided to change
       // this category, which is exactly what opening the editor says.
-      categoryColors[cat] && /* @__PURE__ */ React.createElement("button", {
-        onClick: () => setCategoryColors((prev) => {
-          const next = __spreadValues({}, prev);
+      categoryColors[cat] && <button
+        onClick={() => setCategoryColors((prev) => {
+          const next = { ...prev };
           delete next[cat];
           return next;
-        }),
-        title: "Reset to automatic color",
-        className: "cf-btn cf-btn--compact cf-btn--secondary"
-      }, "Reset colour"),
-      /* @__PURE__ */ React.createElement("button", { onClick: () => delCat(i), className: "cf-btn cf-btn--compact cf-btn--danger" }, "Remove")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { title: "Change color", className: "color-swatch", style: {
+        })}
+        title="Reset to automatic color"
+        className="cf-btn cf-btn--compact cf-btn--secondary"
+      >
+        Reset colour
+      </button>
+}
+              <button onClick={() => delCat(i)} className="cf-btn cf-btn--compact cf-btn--danger">
+                Remove
+              </button>
+            </> : <
+      >
+        <label
+          title="Change color"
+          className="color-swatch"
+          style={{
         background: getCatColor(cat, categories, categoryColors)
-      } }, /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "color",
-          value: getCatColor(cat, categories, categoryColors),
-          onChange: (e) => setCategoryColors((p) => __spreadProps(__spreadValues({}, p), { [cat]: e.target.value })),
-          "aria-label": `Colour for ${cat}`,
-          className: "color-swatch-input"
-        }
-      )), /* @__PURE__ */ React.createElement("button", {
-        className: "cat-open",
-        onClick: () => {
+      }}
+        >
+          <input
+            type="color"
+            value={getCatColor(cat, categories, categoryColors)}
+            onChange={(e) => setCategoryColors((p) => ({ ...p, [cat]: e.target.value }))}
+            aria-label={`Colour for ${cat}`}
+            className="color-swatch-input"
+          />
+        </label>
+        <button
+          className="cat-open"
+          onClick={() => {
           setEditIdx(i);
           setEditVal(cat);
           setEditColor(null);
-        }
-      }, cat), /* @__PURE__ */ React.createElement("div", { className: "cat-actions-row" }, /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} up`, className: "wm-arrow", disabled: i === 0, style: { opacity: i === 0 ? 0.3 : 1 }, onClick: () => moveCat(i, -1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": `Move ${cat} down`, className: "wm-arrow", disabled: i === categories.length - 1, style: { opacity: i === categories.length - 1 ? 0.3 : 1 }, onClick: () => moveCat(i, 1) }, "\u2193")))
-    ))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("label", { title: "Pick a color (optional \u2014 auto-assigned if left default)", className: "color-swatch", style: {
+        }}
+        >
+          {cat}
+        </button>
+        <div className="cat-actions-row">
+          <button
+            aria-label={`Move ${cat} up`}
+            className="wm-arrow"
+            disabled={i === 0}
+            style={{ opacity: i === 0 ? 0.3 : 1 }}
+            onClick={() => moveCat(i, -1)}
+          >
+            ↑
+          </button>
+          <button
+            aria-label={`Move ${cat} down`}
+            className="wm-arrow"
+            disabled={i === categories.length - 1}
+            style={{ opacity: i === categories.length - 1 ? 0.3 : 1 }}
+            onClick={() => moveCat(i, 1)}
+          >
+            ↓
+          </button>
+        </div>
+      </>}
+          </div>)}
+        </div>
+        <div className="cf-row cf-gap-8">
+          <label
+            title="Pick a color (optional — auto-assigned if left default)"
+            className="color-swatch"
+            style={{
       background: newCatColor || "var(--border)"
-    } }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "color",
-        value: newCatColor || "#888888",
-        onChange: (e) => setNewCatColor(e.target.value),
-        "aria-label": "Colour for the new category",
-        className: "color-swatch-input"
-      }
-    )), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "settings-input flex-1",
-        value: newCat,
-        "aria-label": "New category name",
-        placeholder: "New category name\u2026",
-        onChange: (e) => {
+    }}
+          >
+            <input
+              type="color"
+              value={newCatColor || "#888888"}
+              onChange={(e) => setNewCatColor(e.target.value)}
+              aria-label="Colour for the new category"
+              className="color-swatch-input"
+            />
+          </label>
+          <input
+            className="settings-input flex-1"
+            value={newCat}
+            aria-label="New category name"
+            placeholder="New category name…"
+            onChange={(e) => {
           setNewCat(e.target.value);
           if (catMsg) setCatMsg("");
-        },
-        onKeyDown: (e) => e.key === "Enter" && addCat()
-      }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: addCat, className: "cf-btn cf-btn--primary cf-btn--md" }, "+ Add")), catMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt8" }, catMsg)) },
-      money: { title: "Currency & format", value: () => currency + " \xB7 " + locale, render: () => React.createElement(Card, { id: "sec-money", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Changes how every amount in the app is written \u2014 the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are." }, "Currency & Format"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16 cf-wrap" },
-      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-currency" }, "Currency"), /* @__PURE__ */ React.createElement("select", {
-        id: "set-currency",
-        className: "field-input settings-input",
-        style: { minWidth: 220 },
-        value: currency,
-        onChange: (e) => setCurrency(e.target.value)
-      }, CURRENCIES.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.code, value: c.code }, `${c.code} \u2014 ${c.name}`)))),
-      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "set-locale" }, "Number format"), /* @__PURE__ */ React.createElement("select", {
-        id: "set-locale",
-        className: "field-input settings-input",
-        style: { minWidth: 220 },
-        value: locale,
-        onChange: (e) => setLocale(e.target.value)
-      }, NUMBER_LOCALES.map((l) => /* @__PURE__ */ React.createElement("option", { key: l.code, value: l.code }, l.name))))
-    ), /* @__PURE__ */ React.createElement("div", { className: "hint mt-10" }, "One thousand two hundred and change looks like ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(123456)), " \u00b7 a negative is ", /* @__PURE__ */ React.createElement("strong", { className: "cf-text-mono-13" }, fmt(-123456))), /* @__PURE__ */ React.createElement("div", { className: "hint mt-6" }, "Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.")) },
-      holidays: { title: "Statutory holidays", value: () => holidayRegion(holidayRegionCode).code, render: () => React.createElement(HolidaySettings, {
-          holidayRegionCode,
-          setHolidayRegionCode,
-      holidays,
-      setHolidays,
-      isOffline,
-      activeYear,
-      years: [...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (/* @__PURE__ */ new Date()).getFullYear()])].sort()
-    }) },
-      reset: { title: "Target budget reset", value: () => String(activeYear), render: () => React.createElement(Card, { id: "sec-reset", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Target Budget Reset \u2014 ", activeYear), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setConfirmTgtReset(true),
-        className: "reset-targets-btn"
-      },
-      "\u21BA Reset Targets to Actuals"
-    ), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, tgtResetMsg && /* @__PURE__ */ React.createElement("div", { className: "success-text-mt10" }, tgtResetMsg)), confirmTgtReset && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: `Reset all ${activeYear} targets?`,
-        message: `This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`,
-        confirmLabel: "Reset Targets",
-        onConfirm: () => {
+        }}
+            onKeyDown={(e) => e.key === "Enter" && addCat()}
+          />
+          <button onClick={addCat} className="cf-btn cf-btn--primary cf-btn--md">+ Add</button>
+        </div>
+        {catMsg && <div role="alert" className="error-text-mt8">{catMsg}</div>}
+      </Card> },
+      money: { title: "Currency & format", value: () => currency + " \xB7 " + locale, render: () => <Card
+        id="sec-money"
+        className="mb-20"
+      >
+        <SectionTitle
+          help="Changes how every amount in the app is written — the symbol, and where the thousands and decimal separators go. It does not convert anything: the numbers you have entered stay the numbers they are."
+        >
+          {"Currency & Format"}
+        </SectionTitle>
+        <div className="cf-row cf-gap-16 cf-wrap">
+          <div>
+            <label className="field-label" htmlFor="set-currency">Currency</label>
+            <select
+              id="set-currency"
+              className="field-input settings-input"
+              style={{ minWidth: 220 }}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
+              {CURRENCIES.map((c) => <option key={c.code} value={c.code}>
+                {`${c.code} \u2014 ${c.name}`}
+              </option>)}
+            </select>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="set-locale">Number format</label>
+            <select
+              id="set-locale"
+              className="field-input settings-input"
+              style={{ minWidth: 220 }}
+              value={locale}
+              onChange={(e) => setLocale(e.target.value)}
+            >
+              {NUMBER_LOCALES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="hint mt-10">
+          {"One thousand two hundred and change looks like "}
+          <strong className="cf-text-mono-13">{fmt(123456)}</strong>
+          {" \u00b7 a negative is "}
+          <strong className="cf-text-mono-13">{fmt(-123456)}</strong>
+        </div>
+        <div className="hint mt-6">
+          Only currencies with two decimal places are listed. Amounts are stored as whole cents throughout the app, so a currency with none (yen) or three (dinar) would need more than a formatting change.
+        </div>
+      </Card> },
+      holidays: { title: "Statutory holidays", value: () => holidayRegion(holidayRegionCode).code, render: () => <HolidaySettings
+        holidayRegionCode={holidayRegionCode}
+        setHolidayRegionCode={setHolidayRegionCode}
+        holidays={holidays}
+        setHolidays={setHolidays}
+        isOffline={isOffline}
+        activeYear={activeYear}
+        years={[...new Set([...(yearConfigs || []).map((yc) => Number(yc.year)), (new Date()).getFullYear()])].sort()}
+      /> },
+      reset: { title: "Target budget reset", value: () => String(activeYear), render: () => <Card
+        id="sec-reset"
+        className="mb-20"
+      >
+        <SectionTitle>{"Target Budget Reset \u2014 "}{activeYear}</SectionTitle>
+        <button onClick={() => setConfirmTgtReset(true)} className="reset-targets-btn">
+          ↺ Reset Targets to Actuals
+        </button>
+        <div role="status" aria-live="polite">
+          {tgtResetMsg && <div className="success-text-mt10">{tgtResetMsg}</div>}
+        </div>
+        {confirmTgtReset && <ConfirmDialog
+          title={`Reset all ${activeYear} targets?`}
+          message={`This replaces every monthly budget target for ${activeYear} with the actual expense totals per category for each month. Existing targets for ${activeYear} will be overwritten. Other years are unaffected.`}
+          confirmLabel="Reset Targets"
+          onConfirm={() => {
           const prevTargets = budgetTargets;
           const byMonthCat = {};
           (activeFlow || []).filter((ev) => ev.type === "expense").forEach((ev) => {
@@ -1012,7 +1263,7 @@ import { toast } from "./auth-misc.js";
             byMonthCat[key][ev.category] = (byMonthCat[key][ev.category] || 0) + ev.amount;
           });
           setBudgetTargets((prev) => {
-            const next = __spreadValues({}, prev);
+            const next = { ...prev };
             Object.keys(next).forEach((k) => {
               if (k.startsWith(activeYear + ":")) delete next[k];
             });
@@ -1034,123 +1285,200 @@ import { toast } from "./auth-misc.js";
             setBudgetTargets(prevTargets);
             setTgtResetMsg("");
           });
-        },
-        onCancel: () => setConfirmTgtReset(false)
-      }
-    )) },
-      appearance: { title: "Appearance", value: () => darkMode ? "Dark" : "Light", render: () => React.createElement(Card, { id: "sec-appearance", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Appearance"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: darkMode, onChange: setDarkMode, label: "Dark Mode" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, darkMode ? "Dark theme active" : "Light theme active"))) },
-      threshold: { title: "Alert threshold", value: () => fmt(alertThreshold), render: () => React.createElement(Card, { id: "sec-alert", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Alert Threshold"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12" }, /* @__PURE__ */ React.createElement("label", { className: "settings-label", htmlFor: "alert-threshold" }, "Warn when balance drops below"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "dollar-md" }, moneySymbol()), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "alert-threshold",
-        type: "number",
-        inputMode: "decimal",
-        step: "100",
-        min: "0",
-        className: "settings-input w-120",
-        value: centsToDollars(alertThreshold),
-        onChange: (e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))
-      }
-    )))) },
-      notifications: { title: "Notifications", value: () => notifyEnabled ? "On \xB7 " + ((HOUR_OPTIONS.find((h) => h.value === notifyHour) || {}).label || "") : "Off", render: () => React.createElement(Card, { id: "sec-notifications", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Notifications"), !notifSupported ? /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Your browser doesn't support notifications.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: notifyEnabled, onChange: (v) => {
+        }}
+          onCancel={() => setConfirmTgtReset(false)}
+        />}
+      </Card> },
+      appearance: { title: "Appearance", value: () => darkMode ? "Dark" : "Light", render: () => <Card
+        id="sec-appearance"
+        className="mb-20"
+      >
+        <SectionTitle>Appearance</SectionTitle>
+        <div className="cf-row cf-gap-16">
+          <Toggle value={darkMode} onChange={setDarkMode} label="Dark Mode" />
+          <span className="txl">{darkMode ? "Dark theme active" : "Light theme active"}</span>
+        </div>
+      </Card> },
+      threshold: { title: "Alert threshold", value: () => fmt(alertThreshold), render: () => <Card
+        id="sec-alert"
+        className="mb-20"
+      >
+        <SectionTitle>Alert Threshold</SectionTitle>
+        <div className="cf-row cf-gap-12">
+          <label className="settings-label" htmlFor="alert-threshold">Warn when balance drops below</label>
+          <div className="cf-row cf-gap-8">
+            <span className="dollar-md">{moneySymbol()}</span>
+            <input
+              id="alert-threshold"
+              type="number"
+              inputMode="decimal"
+              step="100"
+              min="0"
+              className="settings-input w-120"
+              value={centsToDollars(alertThreshold)}
+              onChange={(e) => setAlertThreshold(Math.max(0, dollarsToCents(e.target.value)))}
+            />
+          </div>
+        </div>
+      </Card> },
+      notifications: { title: "Notifications", value: () => notifyEnabled ? "On \xB7 " + ((HOUR_OPTIONS.find((h) => h.value === notifyHour) || {}).label || "") : "Off", render: () => <Card
+        id="sec-notifications"
+        className="mb-20"
+      >
+        <SectionTitle>Notifications</SectionTitle>
+        {!notifSupported ? <div className="txl">Your browser doesn't support notifications.</div> : <
+        >
+          <div className="cf-row cf-gap-16">
+            <Toggle
+              value={notifyEnabled}
+              onChange={(v) => {
       if (v) enableNotifications();
       else disableNotifications();
-    }, label: "Enable notifications" }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off")), notifPerm === "denied" && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, "Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on."), notifyEnabled && notifPerm === "granted" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap mt-14" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "notify-hour-select", className: "tx" }, "Daily alert time"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "notify-hour-select",
-        value: notifyHour,
-        onChange: (e) => setNotifyHour(parseInt(e.target.value, 10)),
-        className: "autolock-select"
-      },
-      HOUR_OPTIONS.map((h) => /* @__PURE__ */ React.createElement("option", { key: h.value, value: h.value }, h.label))
-    )), /* @__PURE__ */ React.createElement("div", { className: "txl mt-8" }, pushStatusLine(pushState)), pushState.status === "unavailable" && pushState.detail && /* @__PURE__ */ React.createElement("div", { className: "txl mt-4" }, pushState.detail)))) },
-      household: { title: "Household", value: () => members.length + (members.length === 1 ? " member" : " members"), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everyone listed here signs in with their own email and password and shares this budget." }, "Household Members"), members.map((m) => {
+    }}
+              label="Enable notifications"
+            />
+            <span className="txl">
+              {notifPerm === "denied" ? "Blocked by your browser" : notifyEnabled ? "On" : "Off"}
+            </span>
+          </div>
+          {notifPerm === "denied" && <div role="alert" className="error-text-mt6">
+            Notifications are blocked for this site. Enable them in your browser's site settings, then toggle this back on.
+          </div>}
+          {notifyEnabled && notifPerm === "granted" && <>
+            <div className="cf-row cf-gap-12 cf-wrap mt-14">
+              <label htmlFor="notify-hour-select" className="tx">Daily alert time</label>
+              <select
+                id="notify-hour-select"
+                value={notifyHour}
+                onChange={(e) => setNotifyHour(parseInt(e.target.value, 10))}
+                className="autolock-select"
+              >
+                {HOUR_OPTIONS.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+              </select>
+            </div>
+            <div className="txl mt-8">{pushStatusLine(pushState)}</div>
+            {pushState.status === "unavailable" && pushState.detail && <div className="txl mt-4">
+              {pushState.detail}
+            </div>}
+          </>}
+        </>}
+      </Card> },
+      household: { title: "Household", value: () => members.length + (members.length === 1 ? " member" : " members"), render: () => <div
+      >
+        <Card className="mb-20">
+          <SectionTitle
+            help="Everyone listed here signs in with their own email and password and shares this budget."
+          >
+            Household Members
+          </SectionTitle>
+          {members.map((m) => {
       const isEditing = editMemberId === m.user_id;
-      return /* @__PURE__ */ React.createElement("div", { key: m.user_id, className: "member-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, isEditing ? /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          autoFocus: true,
-          "aria-label": "Member name",
-          className: "field-input member-edit-input",
-          value: editMemberVal,
-          onChange: (e) => setEditMemberVal(e.target.value),
-          onKeyDown: (e) => {
+      return <div key={m.user_id} className="member-row">
+        <div className="flex-1-minw160">
+          {isEditing ? <input
+            autoFocus={true}
+            aria-label="Member name"
+            className="field-input member-edit-input"
+            value={editMemberVal}
+            onChange={(e) => setEditMemberVal(e.target.value)}
+            onKeyDown={(e) => {
             if (e.key === "Enter") saveMemberName(m.user_id);
             if (e.key === "Escape") setEditMemberId(null);
-          }
-        }
-      ) : /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, m.full_name || "(no name)", " ", (sessionUser == null ? void 0 : sessionUser.id) === m.user_id && /* @__PURE__ */ React.createElement("span", { className: "you-tag" }, "(You)")), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, m.role === "owner" ? "Owner" : m.role === "viewer" ? "View-only" : "Member", m.disabled ? " \u00b7 Disabled" : "")), isEditing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => saveMemberName(m.user_id),
-          disabled: memberBusy,
-          className: "cf-btn cf-btn--primary cf-btn--xs"
-        },
-        memberBusy ? "Saving\u2026" : "Save"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setEditMemberId(null),
-          disabled: memberBusy,
-          className: "cf-btn cf-btn--secondary cf-btn--xs"
-        },
-        "Cancel"
-      )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
+          }}
+          /> : <div className="tx-sb">
+        {m.full_name || "(no name)"}
+        {" "}
+        {sessionUser?.id === m.user_id && <span className="you-tag">
+          (You)
+        </span>}
+      </div>}
+          <div className="hint mt-2">
+            {m.role === "owner" ? "Owner" : m.role === "viewer" ? "View-only" : "Member"}
+            {m.disabled ? " \u00b7 Disabled" : ""}
+          </div>
+        </div>
+        {isEditing ? <>
+          <button
+            onClick={() => saveMemberName(m.user_id)}
+            disabled={memberBusy}
+            className="cf-btn cf-btn--primary cf-btn--xs"
+          >
+            {memberBusy ? "Saving\u2026" : "Save"}
+          </button>
+          <button
+            onClick={() => setEditMemberId(null)}
+            disabled={memberBusy}
+            className="cf-btn cf-btn--secondary cf-btn--xs"
+          >
+            Cancel
+          </button>
+        </> : <>
+        <button
+          onClick={() => {
             setMemberMsg("");
             setEditMemberId(m.user_id);
             setEditMemberVal(m.full_name || "");
-          },
-          className: "cf-btn cf-btn--secondary cf-btn--xs"
-        },
-        "\u270E Edit"
-      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: async () => {
+          }}
+          className="cf-btn cf-btn--secondary cf-btn--xs"
+        >
+          ✎ Edit
+        </button>
+        {sessionUser?.id !== m.user_id && <button
+          onClick={async () => {
             setMemberMsg("");
             try {
               await setMemberDisabled(m.user_id, !m.disabled);
             } catch (e) {
               setMemberMsg(e.message || "Only the household owner can do this.");
             }
-          },
-          className: (m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger") + " cf-btn--xs"
-        },
-        m.disabled ? "Enable" : "Disable"
-      ), (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && m.role !== "owner" && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: async () => {
+          }}
+          className={(m.disabled ? "cf-btn cf-btn--primary" : "cf-btn cf-btn--danger") + " cf-btn--xs"}
+        >
+          {m.disabled ? "Enable" : "Disable"}
+        </button>}
+        {sessionUser?.id !== m.user_id && m.role !== "owner" && <button
+          onClick={async () => {
             setMemberMsg("");
             try {
               await setMemberRole(m.user_id, m.role === "viewer" ? "member" : "viewer");
             } catch (e) {
               setMemberMsg(e.message || "Only the household owner can do this.");
             }
-          },
-          title: m.role === "viewer"
+          }}
+          title={m.role === "viewer"
             ? "Let this person change the budget again"
-            : "This person keeps seeing everything, and stops being able to change it",
-          className: "cf-btn cf-btn--secondary cf-btn--xs"
-        },
-        m.role === "viewer" ? "Allow changes" : "Make view-only"
-      ), myRole === "owner" && (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && m.role !== "owner" && /* @__PURE__ */ React.createElement(
-        "button",
-        { onClick: () => setLifecycle({ kind: "owner", member: m }), "aria-label": `Make ${m.full_name || "this member"} an owner`, className: "cf-btn cf-btn--secondary cf-btn--xs" },
-        "Make owner"
-      ), myRole === "owner" && (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
-        "button",
-        { onClick: () => setLifecycle({ kind: "remove", member: m }), "aria-label": `Remove ${m.full_name || "this member"} from the household`, className: "cf-btn cf-btn--danger cf-btn--xs" },
-        "Remove"
-      )));
-    }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: async () => {
+            : "This person keeps seeing everything, and stops being able to change it"}
+          className="cf-btn cf-btn--secondary cf-btn--xs"
+        >
+          {m.role === "viewer" ? "Allow changes" : "Make view-only"}
+        </button>}
+        {myRole === "owner" && sessionUser?.id !== m.user_id && m.role !== "owner" && <button
+          onClick={() => setLifecycle({ kind: "owner", member: m })}
+          aria-label={`Make ${m.full_name || "this member"} an owner`}
+          className="cf-btn cf-btn--secondary cf-btn--xs"
+        >
+          Make owner
+        </button>}
+        {myRole === "owner" && sessionUser?.id !== m.user_id && <button
+          onClick={() => setLifecycle({ kind: "remove", member: m })}
+          aria-label={`Remove ${m.full_name || "this member"} from the household`}
+          className="cf-btn cf-btn--danger cf-btn--xs"
+        >
+          Remove
+        </button>}
+      </>}
+      </div>;
+    })}
+          {memberMsg && <div role="alert" className="error-text-mt10">{memberMsg}</div>}
+        </Card>
+        <Card className="mb-20">
+          <SectionTitle
+            help="Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen."
+          >
+            Invite a family member
+          </SectionTitle>
+          <button
+            onClick={async () => {
           setInviteBusy(true);
           try {
             const code = await createInvite();
@@ -1159,27 +1487,60 @@ import { toast } from "./auth-misc.js";
             setMemberMsg(e.message || "Couldn't create an invite code.");
           }
           setInviteBusy(false);
-        },
-        // Inviting seats the newcomer as a writer, so the server refuses a
-        // view-only member; say so here rather than after the press.
-        disabled: inviteBusy || !canWrite,
-        "aria-describedby": canWrite ? void 0 : "invite-viewonly-note",
-        className: "cf-btn cf-btn--primary cf-btn--md"
-      },
-      inviteBusy ? "Generating…" : "Generate invite code"
-    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
-      /* @__PURE__ */ React.createElement(SectionTitle, null, "Leave this household"),
-      /* @__PURE__ */ React.createElement("p", { className: "c-textMid mb-12" }, members.length > 1
+        }}
+            // Inviting seats the newcomer as a writer, so the server refuses a
+            // view-only member; say so here rather than after the press.
+            disabled={inviteBusy || !canWrite}
+            aria-describedby={canWrite ? void 0 : "invite-viewonly-note"}
+            className="cf-btn cf-btn--primary cf-btn--md"
+          >
+            {inviteBusy ? "Generating…" : "Generate invite code"}
+          </button>
+          {!canWrite && <p id="invite-viewonly-note" className="c-textMid mt-8">
+            View-only members can't invite people. Ask the household owner for a code.
+          </p>}
+          {inviteCode && <div className="invite-code-display">{inviteCode}</div>}
+        </Card>
+        <Card className="mb-20">
+          <SectionTitle>Leave this household</SectionTitle>
+          <p className="c-textMid mb-12">
+            {members.length > 1
         ? (myRole === "owner" && !members.some((m) => m.role === "owner" && m.user_id !== (sessionUser && sessionUser.id) && !m.disabled)
           ? "You're its only owner. Make another member an owner first, so the household isn't left without one."
           : "You'll lose access on every device. What you added stays for the others.")
-        : "You're its only member, so leaving deletes the household and everything in it."),
-      /* @__PURE__ */ React.createElement("button", { onClick: () => setLifecycle({ kind: "leave" }), className: "cf-btn cf-btn--danger cf-btn--md" }, members.length > 1 ? "Leave household" : "Leave and delete household"),
-      lifecycleMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, lifecycleMsg)
-    ), lifecycleDialog()) },
-      backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
+        : "You're its only member, so leaving deletes the household and everything in it."}
+          </p>
+          <button
+            onClick={() => setLifecycle({ kind: "leave" })}
+            className="cf-btn cf-btn--danger cf-btn--md"
+          >
+            {members.length > 1 ? "Leave household" : "Leave and delete household"}
+          </button>
+          {lifecycleMsg && <div role="alert" className="error-text-mt10">{lifecycleMsg}</div>}
+        </Card>
+        {lifecycleDialog()}
+      </div> },
+      backup: { title: "Backup & restore", value: () => "", render: () => <>
+        <Card id="sec-backup" className="mb-20">
+          <SectionTitle>{"Data Backup & Restore"}</SectionTitle>
+          <div className="cf-row cf-gap-10 cf-wrap">
+            <button
+              onClick={() => {
       exportHouseholdBackup(houseValues);
-    }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
+    }}
+              className="cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow"
+            >
+              <Icon name="download" size={14} />
+              Export Backup
+            </button>
+            <label className="cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow">
+              <Icon name="upload" size={14} />
+              Import Backup
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -1206,17 +1567,28 @@ import { toast } from "./auth-misc.js";
       reader.onerror = () => setYearMsg("\u274C Couldn't read that file off this device. Try again.");
       reader.readAsText(file);
       e.target.value = "";
-    } }))), /* @__PURE__ */ React.createElement("div", { role: "status", "aria-live": "polite" }, yearMsg && /* @__PURE__ */ React.createElement("div", { className: "backup-msg", style: {
+    }}
+              />
+            </label>
+          </div>
+          <div role="status" aria-live="polite">
+            {yearMsg && <div
+              className="backup-msg"
+              style={{
       color: yearMsg.startsWith("\u2705") ? "var(--greenDk)" : yearMsg.startsWith("\u274C") ? "var(--red)" : "var(--textMid)"
-    } }, yearMsg))), pendingRestore && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: "Restore backup?",
-        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. You can undo it from the notice that appears straight afterwards; after that, it's permanent.`,
-        confirmLabel: "Restore",
-        confirmVariant: "danger",
-        onCancel: () => setPendingRestore(null),
-        onConfirm: () => {
+    }}
+            >
+              {yearMsg}
+            </div>}
+          </div>
+        </Card>
+        {pendingRestore && <ConfirmDialog
+          title="Restore backup?"
+          message={`Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. You can undo it from the notice that appears straight afterwards; after that, it's permanent.`}
+          confirmLabel="Restore"
+          confirmVariant="danger"
+          onCancel={() => setPendingRestore(null)}
+          onConfirm={() => {
           // Everything the restore is about to replace, captured before it
           // does. This is the most destructive action in the app — the dialog
           // says so — and until now it was also the only one with no way back
@@ -1277,47 +1649,119 @@ import { toast } from "./auth-misc.js";
             setYearMsg("\u274C Could not read backup file. Make sure it's a valid CashFlow backup.");
           }
           setPendingRestore(null);
-        }
-      }
-    )) },
-      sync: { title: "Cloud sync", value: () => houseUnsaved ? "Changes pending" : "On", render: () => sbConfigured && household && /* @__PURE__ */ React.createElement(Card, { id: "sec-sync", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "\u2601 Supabase \u2014 Auto Sync"), houseUnsaved && /* @__PURE__ */ React.createElement("div", { role: "status", className: "error-text-mt6 mb-8" }, "This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back \u2014 they won't be overwritten in the meantime."), /* @__PURE__ */ React.createElement("div", { role: "status", className: "sync-status-row", style: {
+        }}
+        />}
+      </> },
+      sync: { title: "Cloud sync", value: () => houseUnsaved ? "Changes pending" : "On", render: () => sbConfigured && household && <Card
+        id="sec-sync"
+        className="mb-20"
+      >
+        <SectionTitle>☁ Supabase — Auto Sync</SectionTitle>
+        {houseUnsaved && <div role="status" className="error-text-mt6 mb-8">
+          This device has changes that haven't reached the cloud yet. They're kept safely on this device and will sync automatically when the connection is back — they won't be overwritten in the meantime.
+        </div>}
+        <div
+          role="status"
+          className="sync-status-row"
+          style={{
       background: houseStatus === "error" ? "var(--redLt)" : "rgba(39,174,115,0.08)",
       border: `1px solid ${houseStatus === "error" ? "var(--red)" : "rgba(39,174,115,0.25)"}`
-    } }, /* @__PURE__ */ React.createElement("div", { className: "sync-icon" }, houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, "Auto-sync active"), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, "Changes save automatically to your household's Supabase project")), houseMsg && /* @__PURE__ */ React.createElement("div", { className: "sync-msg", style: { color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" } }, houseMsg)), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 mt-12" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => houseSave(false),
-        disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 12 }),
-      "Save Now"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => houseLoad(),
-        disabled: houseStatus === "syncing",
-        className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
-      "Reload from Cloud"
-    ))), when: () => !!(sbConfigured && household) },
-      templates: { title: "Entry templates", value: () => String((templates || []).length), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: t.desc || i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
-        className: "cf-btn cf-btn--danger cf-btn--yearremove"
-      },
-      "Remove"
-    ))))) },
-      activity: { title: "Activity", value: () => String((activity || []).length), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Everything anyone in the household has changed, newest first \u2014 entries, single dates, budget targets, goals and debts. Kept for the last 200 changes." }, "Activity"), (activity || []).length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "Nothing yet. Every change anyone makes to the budget shows up here, with who made it.") : (activity || []).map((a) => {
+    }}
+        >
+          <div className="sync-icon">
+            {houseStatus === "error" ? "\u2717" : houseStatus === "syncing" ? "\u27f3" : "\u2601"}
+          </div>
+          <div className="flex-1">
+            <div className="tx-sb">Auto-sync active</div>
+            <div className="hint mt-2">Changes save automatically to your household's Supabase project</div>
+          </div>
+          {houseMsg && <div
+            className="sync-msg"
+            style={{ color: houseStatus === "error" ? "var(--red)" : "var(--greenDk)" }}
+          >
+            {houseMsg}
+          </div>}
+        </div>
+        <div className="cf-row cf-gap-8 mt-12">
+          <button
+            onClick={() => houseSave(false)}
+            disabled={houseStatus === "syncing"}
+            className="cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
+          >
+            <Icon name="upload" size={12} />
+            Save Now
+          </button>
+          <button
+            onClick={() => houseLoad()}
+            disabled={houseStatus === "syncing"}
+            className="cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm"
+          >
+            <Icon name="download" size={12} />
+            Reload from Cloud
+          </button>
+        </div>
+      </Card>, when: () => !!(sbConfigured && household) },
+      templates: { title: "Entry templates", value: () => String((templates || []).length), render: () => <div
+      >
+        <Card className="mb-20">
+          <SectionTitle>Entry Templates</SectionTitle>
+          {(templates || []).length === 0 && <div className="italic-hint">
+            No templates saved yet. Use the entry form to create one.
+          </div>}
+          {(templates || []).map((t, i) => <div key={t.desc || i} className="template-row">
+            <div className="flex-1">
+              <div className="tx-sb">{t.desc}</div>
+              <div className="hint mt-2">
+                {isInflowEvent(t) ? "+" : "-"}
+                {fmt(t.amount)}
+                {" \u00b7 "}
+                {t.category}
+                {t.repeats && <span>{" \u00b7 Recurring"}</span>}
+              </div>
+            </div>
+            <button
+              onClick={() => setTemplates((prev) => prev.filter((_, j) => j !== i))}
+              className="cf-btn cf-btn--danger cf-btn--yearremove"
+            >
+              Remove
+            </button>
+          </div>)}
+        </Card>
+      </div> },
+      activity: { title: "Activity", value: () => String((activity || []).length), render: () => <div>
+        <Card className="mb-20">
+          <SectionTitle
+            help="Everything anyone in the household has changed, newest first — entries, single dates, budget targets, goals and debts. Kept for the last 200 changes."
+          >
+            Activity
+          </SectionTitle>
+          {(activity || []).length === 0 ? <div className="italic-hint">
+            Nothing yet. Every change anyone makes to the budget shows up here, with who made it.
+          </div> : (activity || []).map((a) => {
       const who = memberName(a.by, members, { selfId: sessionUser && sessionUser.id });
-      return /* @__PURE__ */ React.createElement("div", { key: a.id, className: "activity-row" }, /* @__PURE__ */ React.createElement("span", { className: "activity-kind activity-kind--" + a.kind }, ACTIVITY_LABELS[a.kind] || a.kind), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "tx" }, a.what), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, new Date(a.at).toLocaleString(), who ? ` \u00b7 ${who}` : "")));
-    })), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Single dates you have edited in the Budget grid, with the value each one had before. Revert puts an occurrence back to what its entry says." }, "Edited dates \u2014 ", activeYear), (() => {
+      return <div key={a.id} className="activity-row">
+        <span className={"activity-kind activity-kind--" + a.kind}>{ACTIVITY_LABELS[a.kind] || a.kind}</span>
+        <div className="flex-1 min-w-0">
+          <div className="tx">{a.what}</div>
+          <div className="hint mt-2">{new Date(a.at).toLocaleString()}{who ? ` \u00b7 ${who}` : ""}</div>
+        </div>
+      </div>;
+    })}
+        </Card>
+        <Card className="mb-20">
+          <SectionTitle
+            help="Single dates you have edited in the Budget grid, with the value each one had before. Revert puts an occurrence back to what its entry says."
+          >
+            {"Edited dates \u2014 "}
+            {activeYear}
+          </SectionTitle>
+          {(() => {
       const ovrs = overridesByYr[activeYear] || {};
       const rows = Object.entries(ovrs).filter(([, o]) => o && o._savedAt).sort((a, b) => (b[1]._savedAt || "").localeCompare(a[1]._savedAt || "")).slice(0, 20);
       if (rows.length === 0) {
-        return /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No edits yet. Click any row in the Budget view to edit a single date \u2014 it'll appear here.");
+        return <div className="italic-hint">
+          No edits yet. Click any row in the Budget view to edit a single date — it'll appear here.
+        </div>;
       }
       return rows.map(([eventId, ov]) => {
         const parts = eventId.split("-");
@@ -1327,99 +1771,157 @@ import { toast } from "./auth-misc.js";
         const dateLabel = entry && !isNaN(month) && !isNaN(day) ? `${MONTHS[month]} ${day}` : eventId;
         const hist = ov._history || [];
         const isOpen = !!historyOpen[eventId];
-        return /* @__PURE__ */ React.createElement("div", { key: eventId, className: "audit-entry" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1-minw160" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, entry ? entry.desc : "Unknown entry", " \xB7 ", dateLabel), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, ov.amount !== void 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, "Amount \u2192 ", fmt(ov.amount), " "), ov.notes && /* @__PURE__ */ React.createElement(React.Fragment, null, '\xB7 Note: "', ov.notes, '" '), "\xB7 Saved ", new Date(ov._savedAt).toLocaleString(), (() => {
+        return <div key={eventId} className="audit-entry">
+          <div className="cf-row-between cf-gap-10 cf-wrap">
+            <div className="flex-1-minw160">
+              <div className="tx-sb">{entry ? entry.desc : "Unknown entry"}{" \xB7 "}{dateLabel}</div>
+              <div className="hint mt-2">
+                {ov.amount !== void 0 && <>{"Amount \u2192 "}{fmt(ov.amount)}{" "}</>}
+                {ov.notes && <>· Note: "{ov.notes}{'" '}</>}
+                {"\xB7 Saved "}
+                {new Date(ov._savedAt).toLocaleString()}
+                {(() => {
           const who = memberName(ov._by, members, { selfId: sessionUser && sessionUser.id });
           return who ? ` \xB7 by ${who}` : "";
-        })())), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-6" }, hist.length > 0 && /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setHistoryOpen((p) => __spreadProps(__spreadValues({}, p), { [eventId]: !p[eventId] })),
-            className: "cf-btn cf-btn--secondary cf-btn--micro"
-          },
-          isOpen ? "Hide" : "History",
-          " (",
-          hist.length,
-          ")"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setOverridesByYr((prev) => {
-              const yOvs = __spreadValues({}, prev[activeYear] || {});
+        })()}
+              </div>
+            </div>
+            <div className="cf-row cf-gap-6">
+              {hist.length > 0 && <button
+                onClick={() => setHistoryOpen((p) => ({ ...p, [eventId]: !p[eventId] }))}
+                className="cf-btn cf-btn--secondary cf-btn--micro"
+              >
+                {isOpen ? "Hide" : "History"}
+                {" ("}
+                {hist.length}
+                )
+              </button>}
+              <button
+                onClick={() => setOverridesByYr((prev) => {
+              const yOvs = { ...prev[activeYear] || {} };
               delete yOvs[eventId];
-              return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
-            }),
-            className: "revert-btn",
-            title: "Restore the originally scheduled values for this date"
-          },
-          "\u21BA Revert"
-        ))), isOpen && /* @__PURE__ */ React.createElement("div", { className: "history-list" }, [...hist].reverse().map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "history-item-text" }, new Date(h.ts).toLocaleString(), (() => {
+              return { ...prev, [activeYear]: yOvs };
+            })}
+                className="revert-btn"
+                title="Restore the originally scheduled values for this date"
+              >
+                ↺ Revert
+              </button>
+            </div>
+          </div>
+          {isOpen && <div className="history-list">
+            {[...hist].reverse().map((h, i) => <div key={i} className="history-item-text">
+              {new Date(h.ts).toLocaleString()}
+              {(() => {
           const who = memberName(h.by, members, { selfId: sessionUser && sessionUser.id });
           return who ? ` (${who})` : "";
-        })(), " \u2014 previous value:", " ", h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)", h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""))));
+        })()}
+              {" \u2014 previous value:"}
+              {" "}
+              {h.prev && h.prev.amount !== void 0 ? fmt(h.prev.amount) : "(scheduled default)"}
+              {h.prev && h.prev.notes ? ` \xB7 "${h.prev.notes}"` : ""}
+            </div>)}
+          </div>}
+        </div>;
       });
-    })())) },
-      ai: { title: "AI key", value: () => aiApiKey ? "Set" : "Not set", render: () => React.createElement(Card, { id: "sec-ai-key", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "AI Insights \u2014 Anthropic API Key"), /* @__PURE__ */ React.createElement("div", { className: "txl lh-15 mb-12" }, "Get a key at", " ", /* @__PURE__ */ React.createElement(
-      "a",
-      {
-        href: "https://console.anthropic.com",
-        target: "_blank",
-        rel: "noopener noreferrer",
-        className: "link-primary"
-      },
-      "console.anthropic.com"
-    ), "."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: showAiKey ? "text" : "password",
-        "aria-label": "Anthropic API Key",
-        value: aiApiKey,
-        onChange: (e) => setAiApiKey(e.target.value),
-        placeholder: "sk-ant-api03-...",
-        className: "cf-text-mono-13 ai-key-input"
-      }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowAiKey((v) => !v),
-        className: "cf-btn cf-btn--secondary cf-btn--showhide"
-      },
-      showAiKey ? "Hide" : "Show"
-    ), aiApiKey.trim() && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setAiApiKey(""),
-        className: "clear-key-btn"
-      },
-      "Clear key"
-    )), /* @__PURE__ */ React.createElement("div", { className: "key-disclaimer-row" }, /* @__PURE__ */ React.createElement("span", { className: "ai-disclaimer-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 12 })), /* @__PURE__ */ React.createElement("span", null, "Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it."))) },
-      security: { title: "Security", value: () => lockTimeout ? "Lock after " + lockTimeout + "m" : "No auto-lock", render: () => React.createElement(Card, { id: "sec-security", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Security"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "auto-lock-select", className: "tx" }, "Auto-lock when in background"), /* @__PURE__ */ React.createElement(
-      "select",
-      {
-        id: "auto-lock-select",
-        value: lockTimeout,
-        onChange: (e) => setLockTimeout(parseInt(e.target.value, 10)),
-        className: "autolock-select"
-      },
-      /* @__PURE__ */ React.createElement("option", { value: 0 }, "Off"),
-      /* @__PURE__ */ React.createElement("option", { value: 5 }, "After 5 minutes"),
-      /* @__PURE__ */ React.createElement("option", { value: 15 }, "After 15 minutes"),
-      /* @__PURE__ */ React.createElement("option", { value: 30 }, "After 30 minutes")
-    )), sessionUser && (bioEnabled || bioSupported && isCoarse) && /* @__PURE__ */ React.createElement("div", { className: "bio-section" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-16" }, /* @__PURE__ */ React.createElement(Toggle, { value: bioEnabled, onChange: toggleBiometric, label: "Unlock with fingerprint / face" }), bioBusy && /* @__PURE__ */ React.createElement("span", { className: "bio-busy-text" }, "Follow your device's prompt…")), bioEnabled && /* @__PURE__ */ React.createElement("div", { className: "mt-14" }, /* @__PURE__ */ React.createElement(Toggle, { value: lockOnLaunch, onChange: toggleLockOnLaunch, label: "Require fingerprint sign-on when the app opens" })), bioMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt6" }, bioMsg))) },
-      danger: { title: "Danger zone", value: () => "", tone: "danger", render: () => React.createElement(Card, { id: "sec-danger", className: "danger-card" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Danger Zone"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setConfirmWipe(true),
-        className: "cf-btn cf-btn--danger cf-btn--md cf-btn--dangerwide"
-      },
-      /* @__PURE__ */ React.createElement(Icon, { name: "trash", size: 13 }),
-      "Reset Local Cache"
-    ), confirmWipe && /* @__PURE__ */ React.createElement(
-      ConfirmDialog,
-      {
-        title: "Reset local cache?",
-        message: household ? "This clears entries, overrides, categories, templates, budget targets, and saved years cached on this device, then reloads them fresh from Supabase. Your cloud data is not deleted." : "This will permanently delete all entries, overrides, categories, templates, budget targets, and saved years from this device. This cannot be undone.",
-        confirmLabel: "Reset Everything",
-        onConfirm: () => {
+    })()}
+        </Card>
+      </div> },
+      ai: { title: "AI key", value: () => aiApiKey ? "Set" : "Not set", render: () => <Card
+        id="sec-ai-key"
+        className="mb-20"
+      >
+        <SectionTitle>AI Insights — Anthropic API Key</SectionTitle>
+        <div className="txl lh-15 mb-12">
+          Get a key at
+          {" "}
+          <a
+            href="https://console.anthropic.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link-primary"
+          >
+            console.anthropic.com
+          </a>
+          .
+        </div>
+        <div className="cf-row cf-gap-10 cf-wrap">
+          <input
+            type={showAiKey ? "text" : "password"}
+            aria-label="Anthropic API Key"
+            value={aiApiKey}
+            onChange={(e) => setAiApiKey(e.target.value)}
+            placeholder="sk-ant-api03-..."
+            className="cf-text-mono-13 ai-key-input"
+          />
+          <button
+            onClick={() => setShowAiKey((v) => !v)}
+            className="cf-btn cf-btn--secondary cf-btn--showhide"
+          >
+            {showAiKey ? "Hide" : "Show"}
+          </button>
+          {aiApiKey.trim() && <button onClick={() => setAiApiKey("")} className="clear-key-btn">
+            Clear key
+          </button>}
+        </div>
+        <div className="key-disclaimer-row">
+          <span className="ai-disclaimer-icon"><Icon name="key" size={12} /></span>
+          <span>
+            Stored on this device only and sent straight from your browser to Anthropic — anyone who can run script on this page can read it.
+          </span>
+        </div>
+      </Card> },
+      security: { title: "Security", value: () => lockTimeout ? "Lock after " + lockTimeout + "m" : "No auto-lock", render: () => <Card
+        id="sec-security"
+        className="mb-20"
+      >
+        <SectionTitle>Security</SectionTitle>
+        <div className="cf-row cf-gap-12 cf-wrap">
+          <label htmlFor="auto-lock-select" className="tx">Auto-lock when in background</label>
+          <select
+            id="auto-lock-select"
+            value={lockTimeout}
+            onChange={(e) => setLockTimeout(parseInt(e.target.value, 10))}
+            className="autolock-select"
+          >
+            <option value={0}>Off</option>
+            <option value={5}>After 5 minutes</option>
+            <option value={15}>After 15 minutes</option>
+            <option value={30}>After 30 minutes</option>
+          </select>
+        </div>
+        {sessionUser && (bioEnabled || bioSupported && isCoarse) && <div className="bio-section">
+          <div className="cf-row cf-gap-16">
+            <Toggle value={bioEnabled} onChange={toggleBiometric} label="Unlock with fingerprint / face" />
+            {bioBusy && <span className="bio-busy-text">Follow your device's prompt…</span>}
+          </div>
+          {bioEnabled && <div className="mt-14">
+            <Toggle
+              value={lockOnLaunch}
+              onChange={toggleLockOnLaunch}
+              label="Require fingerprint sign-on when the app opens"
+            />
+          </div>}
+          {bioMsg && <div role="alert" className="error-text-mt6">{bioMsg}</div>}
+        </div>}
+      </Card> },
+      danger: { title: "Danger zone", value: () => "", tone: "danger", render: () => <Card
+        id="sec-danger"
+        className="danger-card"
+      >
+        <SectionTitle>Danger Zone</SectionTitle>
+        <button
+          onClick={() => setConfirmWipe(true)}
+          className="cf-btn cf-btn--danger cf-btn--md cf-btn--dangerwide"
+        >
+          <Icon name="trash" size={13} />
+          Reset Local Cache
+        </button>
+        {confirmWipe && <ConfirmDialog
+          title="Reset local cache?"
+          message={household ? "This clears entries, overrides, categories, templates, budget targets, and saved years cached on this device, then reloads them fresh from Supabase. Your cloud data is not deleted." : "This will permanently delete all entries, overrides, categories, templates, budget targets, and saved years from this device. This cannot be undone."}
+          confirmLabel="Reset Everything"
+          onConfirm={() => {
           try {
             // Everything cf_ *except* what belongs to this device rather than
             // to the household. The sweep used to take those too, and none of
@@ -1445,15 +1947,23 @@ import { toast } from "./auth-misc.js";
             // via notifyStorageWriteFailure.
           }
           window.location.reload();
-        },
-        onCancel: () => setConfirmWipe(false)
-      }
-    ), household && /* @__PURE__ */ React.createElement("div", { className: "danger-delete-account" },
-      /* @__PURE__ */ React.createElement("p", { className: "c-textMid" }, "Deleting your account removes your sign-in and your own settings, and takes you out of the household. If you're its only member, the household goes too."),
-      /* @__PURE__ */ React.createElement("button", { onClick: () => setLifecycle({ kind: "delete" }), className: "cf-btn cf-btn--danger cf-btn--md" }, "Delete my account"),
-      lifecycleMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, lifecycleMsg),
-      lifecycleDialog()
-    )) }
+        }}
+          onCancel={() => setConfirmWipe(false)}
+        />}
+        {household && <div className="danger-delete-account">
+          <p className="c-textMid">
+            Deleting your account removes your sign-in and your own settings, and takes you out of the household. If you're its only member, the household goes too.
+          </p>
+          <button
+            onClick={() => setLifecycle({ kind: "delete" })}
+            className="cf-btn cf-btn--danger cf-btn--md"
+          >
+            Delete my account
+          </button>
+          {lifecycleMsg && <div role="alert" className="error-text-mt10">{lifecycleMsg}</div>}
+          {lifecycleDialog()}
+        </div>}
+      </Card> }
     };
     // Grouped by what you came here to do, not alphabetically. The old index
     // strip was alphabetical because it was an index; a directory you read
@@ -1465,39 +1975,46 @@ import { toast } from "./auth-misc.js";
       ["Advanced", ["ai", "security", "danger"]]
     ];
     const openPage = youSub && SETTINGS_PAGES[youSub] ? SETTINGS_PAGES[youSub] : null;
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page settings-page" },
-      openPage ? /* @__PURE__ */ React.createElement("div", { className: "set-detail-head" },
-        /* @__PURE__ */ React.createElement("button", {
-          className: "set-back",
-          onClick: () => { haptic(); setYouSub(null); }
-        }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true" }, "\u2039"), "Settings")
-        // No page title here: every one of these pages already opens with its
-        // own heading, and that heading is the better of the two — it carries
-        // the help tip and the live year ("Target Budget Reset — 2026"). A
-        // second copy above it was just the same words twice.
-      ) : /* @__PURE__ */ React.createElement("div", { className: "set-dir-head" },
-        /* @__PURE__ */ React.createElement("a", { href: "#/help", className: "settings-help-link" },
-          /* @__PURE__ */ React.createElement(Icon, { name: "help", size: 14 }), "Help")),
-      openPage ? /* @__PURE__ */ React.createElement("div", { className: "settings-cards set-detail" }, openPage.render())
-        : /* @__PURE__ */ React.createElement("div", { className: "set-dir" },
-          SETTINGS_GROUPS.map(([groupTitle, ids]) => {
+    return <div className="cf-page settings-page">
+      {openPage ? <div className="set-detail-head">
+        <button className="set-back" onClick={() => { haptic(); setYouSub(null); }}>
+          <span aria-hidden="true">‹</span>
+          Settings
+        </button>
+        {/* No page title here: every one of these pages already opens with its
+            own heading, and that heading is the better of the two — it carries
+            the help tip and the live year ("Target Budget Reset — 2026"). A
+            second copy above it was just the same words twice. */}
+      </div> : <div className="set-dir-head">
+        <a href="#/help" className="settings-help-link"><Icon name="help" size={14} />Help</a>
+      </div>}
+      {openPage ? <div className="settings-cards set-detail">{openPage.render()}</div>
+        : <div className="set-dir">
+          {SETTINGS_GROUPS.map(([groupTitle, ids]) => {
             const rows = ids.filter((id) => SETTINGS_PAGES[id] && (!SETTINGS_PAGES[id].when || SETTINGS_PAGES[id].when()));
             if (!rows.length) return null;
-            return /* @__PURE__ */ React.createElement("div", { key: groupTitle, className: "set-group" },
-              /* @__PURE__ */ React.createElement("h2", { className: "set-group-title" }, groupTitle),
-              /* @__PURE__ */ React.createElement("div", { className: "set-list" }, rows.map((id) => {
+            return <div key={groupTitle} className="set-group">
+              <h2 className="set-group-title">{groupTitle}</h2>
+              <div className="set-list">
+                {rows.map((id) => {
                 const d = SETTINGS_PAGES[id];
                 let val = "";
                 try { val = d.value() || ""; } catch (e) { val = ""; }
-                return /* @__PURE__ */ React.createElement("button", {
-                  key: id,
-                  className: "set-row" + (d.tone === "danger" ? " set-row--danger" : ""),
-                  onClick: () => { haptic(); setYouSub(id); }
-                }, /* @__PURE__ */ React.createElement("span", { className: "set-row-label" }, d.title),
-                   /* @__PURE__ */ React.createElement("span", { className: "set-row-value" }, val),
-                   /* @__PURE__ */ React.createElement("span", { className: "set-row-chev", "aria-hidden": "true" }, "\u203A"));
-              })));
-          })));;
+                return <button
+                  key={id}
+                  className={"set-row" + (d.tone === "danger" ? " set-row--danger" : "")}
+                  onClick={() => { haptic(); setYouSub(id); }}
+                >
+                  <span className="set-row-label">{d.title}</span>
+                  <span className="set-row-value">{val}</span>
+                  <span className="set-row-chev" aria-hidden="true">›</span>
+                </button>;
+              })}
+              </div>
+            </div>;
+          })}
+        </div>}
+    </div>;;
   }
   export class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -1512,14 +2029,13 @@ import { toast } from "./auth-misc.js";
     }
     render() {
       if (this.state.err) {
-        return /* @__PURE__ */ React.createElement("div", { className: "errorboundary-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "errorboundary-title" }, "\u26A0 Something went wrong"), /* @__PURE__ */ React.createElement("pre", { className: "errorboundary-pre" }, this.state.err.message, "\n\n", this.state.err.stack), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => this.setState({ err: null }),
-            className: "errorboundary-retry-btn"
-          },
-          "Try Again"
-        ));
+        return <div className="errorboundary-wrap">
+          <div className="errorboundary-title">⚠ Something went wrong</div>
+          <pre className="errorboundary-pre">{this.state.err.message}{"\n\n"}{this.state.err.stack}</pre>
+          <button onClick={() => this.setState({ err: null })} className="errorboundary-retry-btn">
+            Try Again
+          </button>
+        </div>;
       }
       return this.props.children;
     }

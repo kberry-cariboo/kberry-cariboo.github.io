@@ -19,6 +19,7 @@ import { dirname, join } from 'path';
 
 const require = createRequire(import.meta.url);
 const esbuild = require('esbuild');
+const { JSX_OPTIONS } = require('../build.js');
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Callable, indexable, and constructible to any depth — enough for module-level
@@ -41,6 +42,7 @@ const STUBS = () => ({
 export function loadSrc(files, globals = {}) {
   const entry = files.map((f) => `export * from ${JSON.stringify(join(ROOT, f))};`).join('\n');
   const res = esbuild.buildSync({
+    ...JSX_OPTIONS,
     stdin: { contents: entry, resolveDir: ROOT, sourcefile: 'test-entry.js' },
     bundle: true, format: 'iife', globalName: '__src', write: false, logLevel: 'silent', target: 'es2020',
   });

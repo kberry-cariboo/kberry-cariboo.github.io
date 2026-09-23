@@ -321,11 +321,26 @@ import { SectionNav } from "./misc-ui.js";
   ];
   export function HelpView() {
     const renderBlock = (block, i) => {
-      if (block.p) return /* @__PURE__ */ React.createElement("p", { key: i, className: "help-p" }, block.p);
-      if (block.sub) return /* @__PURE__ */ React.createElement("h3", { key: i, className: "help-sub" }, block.sub);
-      if (block.steps) return /* @__PURE__ */ React.createElement("ol", { key: i, className: "help-steps" }, block.steps.map(([term, desc]) => /* @__PURE__ */ React.createElement("li", { key: term, className: "help-step" }, /* @__PURE__ */ React.createElement("span", { className: "help-term" }, term), /* @__PURE__ */ React.createElement("span", { className: "help-desc" }, desc))));
-      if (block.defs) return /* @__PURE__ */ React.createElement("dl", { key: i, className: "help-defs" }, block.defs.map(([term, desc]) => /* @__PURE__ */ React.createElement(React.Fragment, { key: term }, /* @__PURE__ */ React.createElement("dt", { className: "help-term" }, term), /* @__PURE__ */ React.createElement("dd", { className: "help-desc" }, desc))));
-      if (block.keys) return /* @__PURE__ */ React.createElement("div", { key: i, className: "help-keys" }, block.keys.map(([key, desc]) => /* @__PURE__ */ React.createElement("div", { key, className: "shortcut-row" }, /* @__PURE__ */ React.createElement("span", { className: "txm" }, desc), /* @__PURE__ */ React.createElement("kbd", { className: "cf-text-mono-13 shortcut-kbd" }, key))));
+      if (block.p) return <p key={i} className="help-p">{block.p}</p>;
+      if (block.sub) return <h3 key={i} className="help-sub">{block.sub}</h3>;
+      if (block.steps) return <ol key={i} className="help-steps">
+        {block.steps.map(([term, desc]) => <li key={term} className="help-step">
+          <span className="help-term">{term}</span>
+          <span className="help-desc">{desc}</span>
+        </li>)}
+      </ol>;
+      if (block.defs) return <dl key={i} className="help-defs">
+        {block.defs.map(([term, desc]) => <React.Fragment key={term}>
+          <dt className="help-term">{term}</dt>
+          <dd className="help-desc">{desc}</dd>
+        </React.Fragment>)}
+      </dl>;
+      if (block.keys) return <div key={i} className="help-keys">
+        {block.keys.map(([key, desc]) => <div key={key} className="shortcut-row">
+          <span className="txm">{desc}</span>
+          <kbd className="cf-text-mono-13 shortcut-kbd">{key}</kbd>
+        </div>)}
+      </div>;
       if (block.shot) {
         const [name, caption] = block.shot;
         const size = HELP_SHOTS[name];
@@ -336,33 +351,40 @@ import { SectionNav } from "./misc-ui.js";
         // screenshot of a screen the reader is looking at needs saying once,
         // not twice, so the img itself is decorative and the figcaption
         // carries the words.
-        return /* @__PURE__ */ React.createElement("figure", { key: i, className: "help-shot" }, /* @__PURE__ */ React.createElement(
-          "img",
-          {
-            src: `images/help/${name}.png`,
-            alt: "",
-            loading: "lazy",
-            decoding: "async",
-            width: size ? size.w : void 0,
-            height: size ? size.h : void 0,
-            className: "help-shot-img"
-          }
-        ), /* @__PURE__ */ React.createElement("figcaption", { className: "help-shot-cap" }, caption));
+        return <figure key={i} className="help-shot">
+          <img
+            src={`images/help/${name}.png`}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            width={size ? size.w : void 0}
+            height={size ? size.h : void 0}
+            className="help-shot-img"
+          />
+          <figcaption className="help-shot-cap">{caption}</figcaption>
+        </figure>;
       }
       return null;
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page help-page" }, /* @__PURE__ */ React.createElement(SectionNav, { sections: HELP_SECTIONS.map((s) => ({ id: s.id, title: s.title })), label: "Help" }), /* @__PURE__ */ React.createElement("div", { className: "settings-quicklinks" }, HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(
-      "a",
-      {
-        key: s.id,
-        href: `#${s.id}`,
-        onClick: (e) => {
+    return <div className="cf-page help-page">
+      <SectionNav sections={HELP_SECTIONS.map((s) => ({ id: s.id, title: s.title }))} label="Help" />
+      <div className="settings-quicklinks">
+        {HELP_SECTIONS.map((s) => <a
+          key={s.id}
+          href={`#${s.id}`}
+          onClick={(e) => {
           e.preventDefault();
           const el = document.getElementById(s.id);
           if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-        },
-        className: "quicklink-pill"
-      },
-      s.title
-    ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))));
+        }}
+          className="quicklink-pill"
+        >
+          {s.title}
+        </a>)}
+      </div>
+      {HELP_SECTIONS.map((s) => <Card key={s.id} id={s.id} className="mb-20">
+        <SectionTitle>{s.title}</SectionTitle>
+        {s.blocks.map(renderBlock)}
+      </Card>)}
+    </div>;
   }

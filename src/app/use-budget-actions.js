@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId, useCallback } from "../lib/runtime.js";
+import { genId, useCallback } from "../lib/runtime.js";
 import { remapOccurrenceKeys, signedAmount, splitEntryEditFromCurrentMonth } from "../lib/dates.js";
 import { applyYearRollforward, planYearRollforward, yearRollforwardParts } from "../lib/year-copy.js";
 import { fmt } from "../lib/format.js";
@@ -21,13 +21,13 @@ import { toast } from "../components/auth-misc.js";
     // rather than at the two call sites.
     const pushUndoEntryDelete = useCallback((e) => {
       logActivity("entry", `Deleted ${logDesc(e.desc)} \u2014 ${fmt(signedAmount(e), true)}`);
-      if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => __spreadProps(__spreadValues({}, prev), { [e.copiedFrom]: true }));
+      if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => ({ ...prev, [e.copiedFrom]: true }));
       const shortDesc = String(e.desc || "Entry").slice(0, 30) + (String(e.desc || "").length > 30 ? "\u2026" : "");
       pushUndo(`"${shortDesc}" deleted`, () => {
         setEntries((prev) => [...prev, e]);
         if (e.copiedFrom !== void 0) setDeletedCopyIds((prev) => {
           if (!(e.copiedFrom in prev)) return prev;
-          const next = __spreadValues({}, prev);
+          const next = { ...prev };
           delete next[e.copiedFrom];
           return next;
         });
@@ -38,7 +38,7 @@ import { toast } from "../components/auth-misc.js";
       // signed in. It used to fall back to the number 1 — not anybody's id —
       // and the dashboard's personal view, which keeps entries that are yours
       // or unowned, then hid every entry added before signing in.
-      const entry = __spreadValues(__spreadValues({}, data), sessionUser && sessionUser.id ? { id: genId(), userId: sessionUser.id } : { id: genId() });
+      const entry = { ...data, ...sessionUser && sessionUser.id ? { id: genId(), userId: sessionUser.id } : { id: genId() } };
       setEntries((prev) => [...prev, entry]);
       // Adding an expense used to raise its category's budget target, in
       // every month of every configured year, by what the entry schedules —
@@ -70,7 +70,7 @@ import { toast } from "../components/auth-misc.js";
           return next;
         });
         setCompleted((prev) => remapOccurrenceKeys(prev, editedId, res.newId, res.splitDate));
-        setGoals((prev) => prev.map((g) => g.entryId === editedId ? __spreadProps(__spreadValues({}, g), { entryId: res.newId }) : g));
+        setGoals((prev) => prev.map((g) => g.entryId === editedId ? { ...g, entryId: res.newId } : g));
       }
     };
     // Accepting a drifted-bill suggestion is an ordinary entry edit, and it
@@ -85,7 +85,7 @@ import { toast } from "../components/auth-misc.js";
     const applyDriftFix = (d) => {
       const before = entries.find((e) => e.id === d.entryId);
       if (!before || !d || !Number.isFinite(d.suggested)) return;
-      saveEntryEdit(d.entryId, __spreadProps(__spreadValues({}, before), { amount: d.suggested }));
+      saveEntryEdit(d.entryId, { ...before, amount: d.suggested });
       toast(`${logDesc(before.desc)} updated to ${fmt(d.suggested)} from this month on.`);
     };
     const setOverride = (eventId, patch) => {
@@ -97,15 +97,15 @@ import { toast } from "../components/auth-misc.js";
       const when = parts.length >= 3 ? `${MONTHS[parseInt(parts[parts.length - 2], 10)] || "?"} ${parts[parts.length - 1]}` : "";
       logActivity("override", (patch && patch.skipped ? "Skipped " : "Changed ") + logDesc(src ? src.desc : "an occurrence") + (when ? ` on ${when}` : "") + (patch && patch.amount !== void 0 ? ` \u2014 ${fmt(patch.amount)}` : ""));
       setOverridesByYr((prev) => {
-        const yOvs = __spreadValues({}, prev[activeYear] || {});
+        const yOvs = { ...prev[activeYear] || {} };
         const existing = yOvs[eventId] || {};
-        const history = [...existing._history || [], { ts: (/* @__PURE__ */ new Date()).toISOString(), by: existing._by, prev: __spreadValues({}, existing) }].slice(-10);
+        const history = [...existing._history || [], { ts: (new Date()).toISOString(), by: existing._by, prev: { ...existing } }].slice(-10);
         // Who made this edit, so a shared budget can answer "who moved the
         // rent?". The id is stamped rather than the name: names are editable
         // in Settings, and a stored copy would go stale the moment someone
         // corrected theirs. Every reader resolves it against the member list.
-        yOvs[eventId] = __spreadProps(__spreadValues(__spreadValues({}, existing), patch), { _savedAt: (/* @__PURE__ */ new Date()).toISOString(), _by: (sessionUser == null ? void 0 : sessionUser.id) || void 0, _history: history });
-        return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
+        yOvs[eventId] = { ...existing, ...patch, _savedAt: (new Date()).toISOString(), _by: (sessionUser?.id) || void 0, _history: history };
+        return { ...prev, [activeYear]: yOvs };
       });
     };
     const clearOverride = (eventId) => {
@@ -114,15 +114,15 @@ import { toast } from "../components/auth-misc.js";
       const when = parts.length >= 3 ? `${MONTHS[parseInt(parts[parts.length - 2], 10)] || "?"} ${parts[parts.length - 1]}` : "";
       logActivity("override", `Reverted ${logDesc(src ? src.desc : "an occurrence")}${when ? ` on ${when}` : ""} to its usual value`);
       setOverridesByYr((prev) => {
-        const yOvs = __spreadValues({}, prev[activeYear] || {});
+        const yOvs = { ...prev[activeYear] || {} };
         delete yOvs[eventId];
-        return __spreadProps(__spreadValues({}, prev), { [activeYear]: yOvs });
+        return { ...prev, [activeYear]: yOvs };
       });
     };
     const markOccurrencesPaid = (occIds) => {
       if (!Array.isArray(occIds) || !occIds.length) return;
       setCompleted((prev) => {
-        const next = __spreadValues({}, prev);
+        const next = { ...prev };
         occIds.forEach((id) => {
           next[id] = true;
         });
@@ -131,7 +131,7 @@ import { toast } from "../components/auth-misc.js";
     };
     const toggleComplete = (occId) => {
       setCompleted((prev) => {
-        const next = __spreadValues({}, prev);
+        const next = { ...prev };
         if (next[occId]) delete next[occId];
         else next[occId] = true;
         return next;

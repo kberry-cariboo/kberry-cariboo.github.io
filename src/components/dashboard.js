@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { genId, useEffect, useMemo, useState } from "../lib/runtime.js";
 import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
 import { depositShiftNote, getCurrentBalance, getMonthSummaries, monthlyEquivalent, signedAmount, startOfToday, todayStr } from "../lib/dates.js";
 import { findAmountDrift } from "../lib/drift.js";
@@ -14,7 +14,10 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y, projectPayoffBalances } from "./pla
 import { toast } from "./auth-misc.js";
   // Hoisted out of DashboardView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
-  export const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
+  export const GlanceTile = ({ title, children }) => <div className="glance-tile">
+    <div className="glance-tile-title">{title}</div>
+    {children}
+  </div>;
   // "What changed this month" — the smallest useful AI surface in the app.
   // Everything it reports is computed here from the same flow the rest of the
   // dashboard draws; the model is only asked to say which of the differences
@@ -23,7 +26,7 @@ import { toast } from "./auth-misc.js";
     const [brief, setBrief] = useState(null);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
-    const now = /* @__PURE__ */ new Date();
+    const now = new Date();
     const thisMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
     const CACHE_KEY = `cf_ai_brief_${activeYear}_${thisMonth}`;
     useEffect(() => {
@@ -56,7 +59,7 @@ import { toast } from "./auth-misc.js";
         return o;
       };
       const currCats = byCat(thisMonth), prevCats = byCat(prevMonth);
-      const cats = [.../* @__PURE__ */ new Set([...Object.keys(currCats), ...Object.keys(prevCats)])].map((cat) => ({
+      const cats = [...new Set([...Object.keys(currCats), ...Object.keys(prevCats)])].map((cat) => ({
         cat,
         now: currCats[cat] || 0,
         before: prevCats[cat] || 0,
@@ -108,25 +111,40 @@ import { toast } from "./auth-misc.js";
     // mb-16 like every other full-width widget: .cf-card carries no margin of
     // its own, so the gap before whatever renders next is each widget's own
     // job. Without it this card sat flush against the Monthly Summary heading.
-    return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" },
-      /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" },
-        /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "What changed in ", MONTHS[thisMonth]),
-        /* @__PURE__ */ React.createElement("button", {
-          onClick: run,
-          disabled: busy || isOffline || !aiCanRun(apiKey),
-          title: isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
-          className: "cf-btn cf-btn--secondary cf-btn--tiny"
-        }, busy ? "Thinking…" : brief ? "Refresh" : "✦ Summarise")
-      ),
-      err && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mb-8" }, err),
-      brief ? /* @__PURE__ */ React.createElement(React.Fragment, null,
-        /* @__PURE__ */ React.createElement("div", { className: "txm mb-8", style: { fontWeight: 600 } }, brief.headline),
-        (brief.bullets || []).map((b, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "ai-bullet-row", style: { marginBottom: 6 } },
-          /* @__PURE__ */ React.createElement("div", { className: "ai-bullet-dot", style: { width: 6, height: 6, background: "var(--navyLt)", marginTop: 7 } }),
-          /* @__PURE__ */ React.createElement("div", { className: "ai-item-text" }, b)
-        ))
-      ) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Compare ", MONTHS[thisMonth], " with ", MONTHS[delta.prevMonth], " and have Claude pick out what moved.")
-    );
+    return <Card className="mb-16">
+      <div className="cf-row-between mb-12">
+        <SectionTitle style={{ marginBottom: 0 }}>{"What changed in "}{MONTHS[thisMonth]}</SectionTitle>
+        <button
+          onClick={run}
+          disabled={busy || isOffline || !aiCanRun(apiKey)}
+          title={isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0}
+          className="cf-btn cf-btn--secondary cf-btn--tiny"
+        >
+          {busy ? "Thinking…" : brief ? "Refresh" : "✦ Summarise"}
+        </button>
+      </div>
+      {err && <div className="field-error-text mb-8">{err}</div>}
+      {brief ? <>
+        <div className="txm mb-8" style={{ fontWeight: 600 }}>{brief.headline}</div>
+        {(brief.bullets || []).map((b, i) => <div
+          key={i}
+          className="ai-bullet-row"
+          style={{ marginBottom: 6 }}
+        >
+          <div
+            className="ai-bullet-dot"
+            style={{ width: 6, height: 6, background: "var(--navyLt)", marginTop: 7 }}
+          />
+          <div className="ai-item-text">{b}</div>
+        </div>)}
+      </> : <div className="txl">
+        {"Compare "}
+        {MONTHS[thisMonth]}
+        {" with "}
+        {MONTHS[delta.prevMonth]}
+        {" and have Claude pick out what moved."}
+      </div>}
+    </Card>;
   }
   export function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, viewFlows = null, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
@@ -137,7 +155,6 @@ import { toast } from "./auth-misc.js";
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
   }, dashOrder = [], setDashOrder = () => {
   }, debtData = {}, assets = [] }) {
-    var _a;
     const isMobile = useIsMobile();
     const [showCustomize, setShowCustomize] = useState(false);
     // Every other dismissible dialog in the app closes on Escape — the
@@ -157,7 +174,7 @@ import { toast } from "./auth-misc.js";
     useEffect(() => {
       if (dashHidden.charts || dashHidden.incomeRow) {
         setDashHidden((prev) => {
-          const next = __spreadValues({}, prev);
+          const next = { ...prev };
           if (next.charts) {
             next.balanceChart = 1;
             next.surplusChart = 1;
@@ -314,7 +331,7 @@ import { toast } from "./auth-misc.js";
       : ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"];
     const netTransfers = totalTransfersIn - totalTransfersOut;
     const lowestBal = summaries.length ? Math.min(...summaries.map((m) => m.close)) : 0;
-    const lowestMon = (_a = summaries.find((m) => m.close === lowestBal)) == null ? void 0 : _a.month;
+    const lowestMon = summaries.find((m) => m.close === lowestBal)?.month;
     // One-sentence summaries of what each chart shows, attached to the SVGs as
     // aria-labels. A chart is a picture: without a description it is either
     // silence or, worse, a screen reader spelling out every tick and data
@@ -417,7 +434,7 @@ import { toast } from "./auth-misc.js";
       // appears, which is the question the reader came here with.
       const movers = (kind, now, then) => {
         const out = [];
-        const names = /* @__PURE__ */ new Set([...Object.keys(now), ...Object.keys(then)]);
+        const names = new Set([...Object.keys(now), ...Object.keys(then)]);
         names.forEach((name) => {
           const was = roundMoney(then[name] || 0), is = roundMoney(now[name] || 0);
           const change = roundMoney(is - was);
@@ -427,7 +444,7 @@ import { toast } from "./auth-misc.js";
         return out.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.name.localeCompare(b.name));
       };
       const rows = movers("income", c.inc, p.inc);
-      const catNames = /* @__PURE__ */ new Set([...Object.keys(c.exp), ...Object.keys(p.exp)]);
+      const catNames = new Set([...Object.keys(c.exp), ...Object.keys(p.exp)]);
       catNames.forEach((name) => {
         const now = c.exp[name] || { total: 0, byDesc: {} }, then = p.exp[name] || { total: 0, byDesc: {} };
         const change = roundMoney(now.total - then.total);
@@ -490,7 +507,7 @@ import { toast } from "./auth-misc.js";
     const yoyDetail = yoyDetailYear === null ? null : buildYoyDetail(yoyDetailYear);
     const glance = useMemo(() => {
       try {
-        const now = /* @__PURE__ */ new Date();
+        const now = new Date();
         const isCurrentYear = now.getFullYear() === activeYear;
         const todayM = isCurrentYear ? now.getMonth() : 0, todayD = isCurrentYear ? now.getDate() : 1;
         const balanceNow = getCurrentBalance(flow, openBal, activeYear);
@@ -521,14 +538,14 @@ import { toast } from "./auth-misc.js";
     // "am I all right?" is answered by shape before any figure is read.
     const runway = useMemo(() => {
       try {
-        const now = /* @__PURE__ */ new Date();
+        const now = new Date();
         const isCurrentYear = now.getFullYear() === activeYear;
         const todayM = isCurrentYear ? now.getMonth() : 0, todayD = isCurrentYear ? now.getDate() : 1;
         const start = new Date(activeYear, todayM, todayD);
         // The last event on a day sets that day's closing balance; a quiet day
         // carries the one before it, which is what makes the strip continuous
         // rather than a scatter of the days something happened.
-        const closeByOffset = /* @__PURE__ */ new Map();
+        const closeByOffset = new Map();
         flow.forEach((ev) => {
           const off = Math.round((new Date(activeYear, ev.month, ev.day) - start) / 864e5);
           if (off >= 0 && off <= RUNWAY_DAYS) closeByOffset.set(off, ev.balance);
@@ -611,78 +628,148 @@ import { toast } from "./auth-misc.js";
       [entries, overridesByYr]
     );
     const WIDGET_RENDER = {
-      runway: () => runway && /* @__PURE__ */ React.createElement(Card, { className: "runway-card" },
-        /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Next 90 days"),
-        /* @__PURE__ */ React.createElement("div", {
-          className: "runway-bar",
-          role: "img",
+      runway: () => runway && <Card className="runway-card">
+        <div className="lbl mb-5">Next 90 days</div>
+        <div
+          className="runway-bar"
+          role="img"
           // The strip is a picture of a number, so it says the number: a
           // reader who cannot see the colour still gets the low point, the
           // date it falls on and how much of the horizon is under water.
-          "aria-label": "Projected balance for the next 90 days. Low point " + fmt(runway.low.balance)
+          aria-label={"Projected balance for the next 90 days. Low point " + fmt(runway.low.balance)
             + " on " + MONTHS[runway.low.date.getMonth()] + " " + runway.low.date.getDate() + ". "
             + (runway.negative > 0
               ? runway.negative + (runway.negative === 1 ? " day" : " days") + " projected overdrawn."
               : runway.under > 0
                 ? runway.under + (runway.under === 1 ? " day" : " days") + " below your " + fmt(alertThreshold) + " alert threshold."
-                : "Every day stays above your " + fmt(alertThreshold) + " alert threshold.")
-        }, runway.days.map((d, i) => /* @__PURE__ */ React.createElement("i", {
-          key: i,
-          className: "runway-seg",
-          style: { background: railTone(d.balance, alertThreshold), height: d.height + "%" }
-        }))),
-        /* @__PURE__ */ React.createElement("div", { className: "runway-scale" },
-          /* @__PURE__ */ React.createElement("span", null, "Today"),
-          /* @__PURE__ */ React.createElement("span", null, MONTHS[runway.days[45].date.getMonth()], " ", runway.days[45].date.getDate()),
-          /* @__PURE__ */ React.createElement("span", null, MONTHS[runway.end.getMonth()], " ", runway.end.getDate())),
-        /* @__PURE__ */ React.createElement("div", { className: "runway-note" },
-          runway.negative > 0
-            ? /* @__PURE__ */ React.createElement("span", { className: "runway-note-bad" }, "Projected overdrawn on ", runway.negative, runway.negative === 1 ? " day" : " days")
+                : "Every day stays above your " + fmt(alertThreshold) + " alert threshold.")}
+        >
+          {runway.days.map((d, i) => <i
+            key={i}
+            className="runway-seg"
+            style={{ background: railTone(d.balance, alertThreshold), height: d.height + "%" }}
+          />)}
+        </div>
+        <div className="runway-scale">
+          <span>Today</span>
+          <span>{MONTHS[runway.days[45].date.getMonth()]}{" "}{runway.days[45].date.getDate()}</span>
+          <span>{MONTHS[runway.end.getMonth()]}{" "}{runway.end.getDate()}</span>
+        </div>
+        <div className="runway-note">
+          {runway.negative > 0
+            ? <span className="runway-note-bad">
+              {"Projected overdrawn on "}
+              {runway.negative}
+              {runway.negative === 1 ? " day" : " days"}
+            </span>
             : runway.under > 0
-              ? /* @__PURE__ */ React.createElement("span", { className: "runway-note-warn" }, runway.under, runway.under === 1 ? " day" : " days", " below your ", fmt(alertThreshold), " threshold")
-              : /* @__PURE__ */ React.createElement("span", null, "Above your ", fmt(alertThreshold), " threshold the whole way"))),
-      balanceToday: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Balance today" }, /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
+              ? <span className="runway-note-warn">
+                {runway.under}
+                {runway.under === 1 ? " day" : " days"}
+                {" below your "}
+                {fmt(alertThreshold)}
+                {" threshold"}
+              </span>
+              : <span>{"Above your "}{fmt(alertThreshold)}{" threshold the whole way"}</span>}
+        </div>
+      </Card>,
+      balanceToday: () => <GlanceTile title="Balance today">
+        <div
+          className="glance-value"
+          style={{
         color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amberInk)" : "var(--text)"
-      } }, glance ? fmt(glance.balanceNow) : "\u2014"), glance && addEntry && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          className: "glance-action",
-          onClick: () => setShowReconcile(true),
-          title: "Compare this against your real bank balance and record the difference"
-        },
-        "Reconcile\u2026"
-      )),
-      nextLow: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Next low point" }, glance && glance.low ? /* @__PURE__ */ React.createElement("div", { className: "glance-value", style: {
+      }}
+        >
+          {glance ? fmt(glance.balanceNow) : "\u2014"}
+        </div>
+        {glance && addEntry && <button
+          className="glance-action"
+          onClick={() => setShowReconcile(true)}
+          title="Compare this against your real bank balance and record the difference"
+        >
+          Reconcile…
+        </button>}
+      </GlanceTile>,
+      nextLow: () => <GlanceTile title="Next low point">
+        {glance && glance.low ? <div
+          className="glance-value"
+          style={{
         color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
-      } }, fmt(glance.low.balance), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`)) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
-      dueMonth: () => /* @__PURE__ */ React.createElement(GlanceTile, { title: "Due rest of " + (glance ? glance.month : "month") }, glance ? /* @__PURE__ */ React.createElement("div", { className: "glance-value c-text" }, fmt(glance.due), /* @__PURE__ */ React.createElement("span", { className: "glance-value-sub" }, glance.dueCount, " item", glance.dueCount !== 1 ? "s" : "")) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "\u2014")),
-      drift: () => driftFindings.length > 0 && /* @__PURE__ */ React.createElement(Card, null,
-        /* @__PURE__ */ React.createElement(SectionTitle, {
-          help: "A recurring entry says what you expect to pay. When the amounts you have actually recorded against it keep landing somewhere else, every projection past today is using the wrong figure \u2014 these are the ones far enough out, for long enough, to be worth correcting."
-        }, "Bills that have drifted"),
-        /* @__PURE__ */ React.createElement("div", { className: "drift-list" }, driftFindings.slice(0, 5).map((d) => /* @__PURE__ */ React.createElement("div", { key: d.entryId, className: "drift-row" },
-          /* @__PURE__ */ React.createElement("div", { className: "drift-row-main" },
-            /* @__PURE__ */ React.createElement("div", { className: "drift-desc" }, d.desc),
-            /* @__PURE__ */ React.createElement("div", { className: "hint" },
-              "Entry says ", fmt(d.planned), " \u00b7 last ", d.samples,
-              d.samples === 1 ? " payment" : " payments",
-              " ranged ", fmt(d.low), "\u2013", fmt(d.high))),
-          /* @__PURE__ */ React.createElement("div", { className: "drift-row-figure" },
-            /* @__PURE__ */ React.createElement("div", {
-              className: "drift-suggested",
-              // Direction is the news, so it carries the colour: a bill that
-              // has risen is the one that makes the forecast optimistic.
-              style: { color: d.direction === "up" ? "var(--red)" : "var(--greenDk)" }
-            }, d.direction === "up" ? "\u2191 " : "\u2193 ", fmt(d.suggested)),
-            /* @__PURE__ */ React.createElement("div", { className: "hint" },
-              (d.delta > 0 ? "+" : "\u2212"), fmt(Math.abs(d.delta)), " a time")),
-          /* @__PURE__ */ React.createElement("button", {
-            className: "cf-btn cf-btn--secondary cf-btn--compact",
-            onClick: () => applyDriftFix(d),
-            "aria-label": `Update ${d.desc} to ${fmt(d.suggested)}`
-          }, "Update")))),
-        driftFindings.length > 5 && /* @__PURE__ */ React.createElement("div", { className: "hint mt-8" },
-          "and ", driftFindings.length - 5, " more")),
+      }}
+        >
+          {fmt(glance.low.balance)}
+          <span className="glance-value-sub">
+            {glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`}
+          </span>
+        </div> : <div
+        className="txl"
+      >
+        —
+      </div>}
+      </GlanceTile>,
+      dueMonth: () => <GlanceTile title={"Due rest of " + (glance ? glance.month : "month")}>
+        {glance ? <div className="glance-value c-text">
+          {fmt(glance.due)}
+          <span className="glance-value-sub">
+            {glance.dueCount}
+            {" item"}
+            {glance.dueCount !== 1 ? "s" : ""}
+          </span>
+        </div> : <div
+          className="txl"
+        >
+          —
+        </div>}
+      </GlanceTile>,
+      drift: () => driftFindings.length > 0 && <Card>
+        <SectionTitle
+          help="A recurring entry says what you expect to pay. When the amounts you have actually recorded against it keep landing somewhere else, every projection past today is using the wrong figure — these are the ones far enough out, for long enough, to be worth correcting."
+        >
+          Bills that have drifted
+        </SectionTitle>
+        <div className="drift-list">
+          {driftFindings.slice(0, 5).map((d) => <div key={d.entryId} className="drift-row">
+            <div className="drift-row-main">
+              <div className="drift-desc">{d.desc}</div>
+              <div className="hint">
+                {"Entry says "}
+                {fmt(d.planned)}
+                {" \u00b7 last "}
+                {d.samples}
+                {d.samples === 1 ? " payment" : " payments"}
+                {" ranged "}
+                {fmt(d.low)}
+                –
+                {fmt(d.high)}
+              </div>
+            </div>
+            <div className="drift-row-figure">
+              <div
+                className="drift-suggested"
+                // Direction is the news, so it carries the colour: a bill that
+                // has risen is the one that makes the forecast optimistic.
+                style={{ color: d.direction === "up" ? "var(--red)" : "var(--greenDk)" }}
+              >
+                {d.direction === "up" ? "\u2191 " : "\u2193 "}
+                {fmt(d.suggested)}
+              </div>
+              <div className="hint">{d.delta > 0 ? "+" : "\u2212"}{fmt(Math.abs(d.delta))}{" a time"}</div>
+            </div>
+            <button
+              className="cf-btn cf-btn--secondary cf-btn--compact"
+              onClick={() => applyDriftFix(d)}
+              aria-label={`Update ${d.desc} to ${fmt(d.suggested)}`}
+            >
+              Update
+            </button>
+          </div>)}
+        </div>
+        {driftFindings.length > 5 && <div className="hint mt-8">
+          {"and "}
+          {driftFindings.length - 5}
+          {" more"}
+        </div>}
+      </Card>,
       netWorth: () => {
         const nw = netWorthSummary({
           assets, debtData, cash: getCurrentBalance(flow, openBal, activeYear), asOf: todayStr()
@@ -690,42 +777,74 @@ import { toast } from "./auth-misc.js";
         // Nothing recorded is not a net worth of zero. A tile reading "$0.00"
         // would be a claim about the household rather than an absence of one,
         // so the empty state says what to do instead.
-        return /* @__PURE__ */ React.createElement(GlanceTile, { title: "Net worth" },
-          nw.empty
-            ? /* @__PURE__ */ React.createElement("div", { className: "hint" }, "Nothing recorded yet")
-            : /* @__PURE__ */ React.createElement(React.Fragment, null,
-                /* @__PURE__ */ React.createElement("div", {
-                  className: "glance-value",
-                  style: nw.total < 0 ? { color: "var(--red)" } : void 0
-                }, fmt(nw.total, true)),
-                /* @__PURE__ */ React.createElement("div", { className: "hint" },
-                  fmt(nw.assets + nw.cash), " owned \u00b7 ", fmt(nw.debts), " owed")),
-          /* @__PURE__ */ React.createElement("button", {
-            className: "glance-action",
-            onClick: () => { setTab("plan"); window.location.hash = "#/plan/networth"; },
-            title: "What you own, what is in your accounts, and what you owe"
-          }, nw.empty ? "Add what you own\u2026" : "Details\u2026"));
+        return <GlanceTile title="Net worth">
+          {nw.empty
+            ? <div className="hint">Nothing recorded yet</div>
+            : <>
+              <div className="glance-value" style={nw.total < 0 ? { color: "var(--red)" } : void 0}>
+                {fmt(nw.total, true)}
+              </div>
+              <div className="hint">{fmt(nw.assets + nw.cash)}{" owned \u00b7 "}{fmt(nw.debts)}{" owed"}</div>
+            </>}
+          <button
+            className="glance-action"
+            onClick={() => { setTab("plan"); window.location.hash = "#/plan/networth"; }}
+            title="What you own, what is in your accounts, and what you owe"
+          >
+            {nw.empty ? "Add what you own\u2026" : "Details\u2026"}
+          </button>
+        </GlanceTile>;
       },
-      endingSoon: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+      endingSoon: () => <>
+        {(() => {
         const today = startOfToday();
         const horizon = new Date(today);
         horizon.setDate(horizon.getDate() + 60);
         const ending = entries.filter((e) => {
           if (!e.repeats || !e.recurEnd) return false;
-          const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
+          const d = new Date(e.recurEnd + "T00:00:00");
           return d >= today && d <= horizon;
         }).map((e) => {
           const monthly = monthlyEquivalent(e);
-          const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
-          return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
+          const d = new Date(e.recurEnd + "T00:00:00");
+          return { ...e, monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() };
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
         if (!ending.length) return null;
-        return /* @__PURE__ */ React.createElement("div", { className: "ending-soon-row" }, ending.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, className: "ending-soon-chip", style: {
+        return <div className="ending-soon-row">
+          {ending.map((e) => <div
+            key={e.id}
+            className="ending-soon-chip"
+            style={{
           background: e.type === "expense" ? "var(--greenLt)" : "var(--amberLt)",
           border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)"}33`
-        } }, /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)", display: "inline-flex" } }, e.type === "expense" ? /* @__PURE__ */ React.createElement(Icon, { name: "party", size: 15 }) : /* @__PURE__ */ React.createElement(Icon, { name: "alert-triangle", size: 15 })), /* @__PURE__ */ React.createElement("span", { className: "c-text" }, /* @__PURE__ */ React.createElement("strong", null, e.desc), " ends ", e.endLabel, e.monthly > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)", fontWeight: 700 } }, e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income ", fmt(e.monthly), "/mo")))));
-      })()),
-      upcoming: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+        }}
+          >
+            <span
+              style={{ color: e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)", display: "inline-flex" }}
+            >
+              {e.type === "expense" ? <Icon name="party" size={15} /> : <Icon
+                name="alert-triangle"
+                size={15}
+              />}
+            </span>
+            <span className="c-text">
+              <strong>{e.desc}</strong>
+              {" ends "}
+              {e.endLabel}
+              {e.monthly > 0 && <span
+                style={{ color: e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)", fontWeight: 700 }}
+              >
+                {e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income "}
+                {fmt(e.monthly)}
+                /mo
+              </span>}
+            </span>
+          </div>)}
+        </div>;
+      })()}
+      </>,
+      upcoming: () => <>
+        {(() => {
         const today = startOfToday();
         // The next seven things still outstanding — a count of items, not a
         // window of days. It used to be "everything due in the next seven
@@ -754,15 +873,22 @@ import { toast } from "./auth-misc.js";
         const upcoming = ahead.slice(0, 7);
         if (upcoming.length === 0) return null;
         const lastShown = upcoming[upcoming.length - 1].date;
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-header-row" }, /* @__PURE__ */ React.createElement("span", { className: "upcoming-hdr-label" }, "Upcoming \u2014 Next 7"), /* @__PURE__ */ React.createElement("span", { className: "upcoming-count" },
-          // How far ahead those seven reach. A bare "7 events" beside a
+        return <Card className="mb-16">
+          <div className="upcoming-header-row">
+            <span className="upcoming-hdr-label">Upcoming — Next 7</span>
+            <span className="upcoming-count">
+              {// How far ahead those seven reach. A bare "7 events" beside a
           // heading that says Next 7 tells the reader nothing they cannot
           // already see; the date they run out to is the thing they cannot.
           // When fewer than seven remain, that is the more useful fact.
           upcoming.length < 7
             ? `${upcoming.length} left this year`
             : `through ${lastShown.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-        )), /* @__PURE__ */ React.createElement("div", { className: "upcoming-list" }, upcoming.map((ev) => {
+}
+            </span>
+          </div>
+          <div className="upcoming-list">
+            {upcoming.map((ev) => {
           const d = ev.date;
           const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           const signed = signedAmount(ev);
@@ -771,176 +897,556 @@ import { toast } from "./auth-misc.js";
           const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)";
           const amtColor = isPaid ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : isInc ? "var(--greenDk)" : "var(--text)";
           const barDiv = null;
-          const paidBtn = /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              type: "button",
-              onClick: () => toggleComplete(ev.id),
-              title: isPaid ? "Mark as not paid" : "Mark as paid",
-              "aria-label": (isPaid ? "Mark as not paid: " : "Mark as paid: ") + ev.desc,
-              "aria-pressed": isPaid,
-              className: "cf-checkbtn paid-btn",
-              style: {
+          const paidBtn = <button
+            type="button"
+            onClick={() => toggleComplete(ev.id)}
+            title={isPaid ? "Mark as not paid" : "Mark as paid"}
+            aria-label={(isPaid ? "Mark as not paid: " : "Mark as paid: ") + ev.desc}
+            aria-pressed={isPaid}
+            className="cf-checkbtn paid-btn"
+            style={{
                 border: isPaid ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
                 background: isPaid ? "var(--greenLt)" : "transparent"
-              }
-            },
-            isPaid ? "\u2713" : ""
-          );
+              }}
+          >
+            {isPaid ? "\u2713" : ""}
+          </button>;
           if (isMobile) {
             // The same row this week's occurrences get everywhere else, rail
             // and all — this list used to draw its own, without one.
-            return /* @__PURE__ */ React.createElement(LedgerRow, {
-              key: ev.id,
-              ev,
-              alertThreshold,
-              paid: isPaid,
-              dateLabel: label,
-              onTogglePaid: toggleComplete,
-              categories,
-              categoryColors
-            });
+            return <LedgerRow
+              key={ev.id}
+              ev={ev}
+              alertThreshold={alertThreshold}
+              paid={isPaid}
+              dateLabel={label}
+              onTogglePaid={toggleComplete}
+              categories={categories}
+              categoryColors={categoryColors}
+            />;
           }
-          return /* @__PURE__ */ React.createElement("div", { key: ev.id, style: { opacity: isPaid ? 0.6 : 1 } }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-row" }, /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-left" }, paidBtn, /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-date" }, label, ev.depositShifted && /* @__PURE__ */ React.createElement(HelpTip, { icon: "↤", variant: "mark", label: "Deposit date", text: depositShiftNote(ev) })), /* @__PURE__ */ React.createElement("span", { className: "upcoming-desktop-desc", style: {
+          return <div key={ev.id} style={{ opacity: isPaid ? 0.6 : 1 }}>
+            <div className="upcoming-desktop-row">
+              <div className="upcoming-desktop-left">
+                {paidBtn}
+                <span className="upcoming-desktop-date">
+                  {label}
+                  {ev.depositShifted && <HelpTip
+                    icon="↤"
+                    variant="mark"
+                    label="Deposit date"
+                    text={depositShiftNote(ev)}
+                  />}
+                </span>
+                <span
+                  className="upcoming-desktop-desc"
+                  style={{
             textDecoration: isPaid ? "line-through" : "none"
-          } }, ev.desc),/* @__PURE__ */ React.createElement(CatChip, { category: ev.category, className: "text-9" })), /* @__PURE__ */ React.createElement("div", { className: "upcoming-desktop-amts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+          }}
+                >
+                  {ev.desc}
+                </span>
+                <CatChip category={ev.category} className="text-9" />
+              </div>
+              <div className="upcoming-desktop-amts">
+                <span
+                  className="cf-text-mono-13"
+                  style={{
             color: amtColor
-          } }, isInc ? "+" : "-", fmt(ev.amount)), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+          }}
+                >
+                  {isInc ? "+" : "-"}
+                  {fmt(ev.amount)}
+                </span>
+                <span
+                  className="cf-text-mono-13"
+                  style={{
             color: balColor
-          } }, fmt(ev.balance)))), barDiv);
-        })), ahead.length > upcoming.length && /* @__PURE__ */ React.createElement("div", { className: "upcoming-more-note" }, "Ticking one off brings the next one up \u2014 the ledger has the rest."));
-      })()),
-      monthlyBrief: () => /* @__PURE__ */ React.createElement(MonthlyBriefCard, { flow, activeYear, categories, apiKey, isOffline }),
-      kpis: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpi-grid-4" }, /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Income"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--greenDk)" } }, fmt(totalIncome)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.income), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Annual Expenses"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: "var(--text)" } }, fmt(totalExpense)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.expense), height: 28, width: 64 }))), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Net Surplus/Deficit"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.surplus), height: 28, width: 64 })), netSurplus < 0 && /* @__PURE__ */ React.createElement("div", { className: "kpi-warn-note" }, "\u26A0 Spending exceeds income")), /* @__PURE__ */ React.createElement(Card, { className: "kpi-tile" }, /* @__PURE__ */ React.createElement("div", { className: "lbl mb-5" }, "Lowest Balance"), /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-row" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-spark-value", style: { color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(lowestBal)), /* @__PURE__ */ React.createElement(Sparkline, { data: summaries.map((m) => m.close), height: 28, width: 64 })), /* @__PURE__ */ React.createElement("div", { className: "kpi-sub-note" }, "In ", lowestMon)))),
-      balanceChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-        ChartToggle,
-        {
-          value: balView,
-          onChange: setBalView,
-          label: "Running Balance",
-          options: [{ id: "area", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-area", size: 15 }), label: "Area" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }, { id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }]
-        }
-      ) }, "Running Balance"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, balView === "bar" ? /* @__PURE__ */ React.createElement(BarChart, { data: summaries, ariaLabel: chartAlts.balance, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "close", name: "Balance", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" })))) : balView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, ariaLabel: chartAlts.balance, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, dot: { r: 4, fill: "var(--text)" }, activeDot: { r: 6 } })) : /* @__PURE__ */ React.createElement(AreaChart, { data: summaries, ariaLabel: chartAlts.balance, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--red)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(Area, { type: "monotone", dataKey: "close", name: "Balance", stroke: "var(--text)", strokeWidth: 2.5, fill: "var(--text)", fillOpacity: 0.12, dot: { r: 4, fill: "var(--text)" } })))))),
-      surplusChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-        ChartToggle,
-        {
-          value: surplusView,
-          onChange: setSurplusView,
-          label: "Surplus / Shortfall",
-          options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bar" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
-        }
-      ) }, "Surplus / Shortfall"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, surplusView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, ariaLabel: chartAlts.surplus, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), /* @__PURE__ */ React.createElement(
-        Line,
-        {
-          type: "monotone",
-          dataKey: "surplus",
-          name: "Surplus",
-          stroke: "var(--greenDk)",
-          strokeWidth: 2.5,
-          dot: ({ cx, cy, payload }) => /* @__PURE__ */ React.createElement("circle", { key: cx, cx, cy, r: 4, fill: payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)", stroke: "none" }),
-          activeDot: { r: 6 }
-        }
-      )) : /* @__PURE__ */ React.createElement(BarChart, { data: summaries, ariaLabel: chartAlts.surplus, margin: { top: 4, right: 4, bottom: 0, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)" }), /* @__PURE__ */ React.createElement(Bar, { dataKey: "surplus", name: "Surplus", radius: [4, 4, 0, 0] }, summaries.map((m, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" })))))))),
-      incExpChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-        ChartToggle,
-        {
-          value: incExpView,
-          onChange: setIncExpView,
-          label: "Income vs Expenses",
-          options: [{ id: "grouped", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-grouped", size: 15 }), label: "Grouped" }, { id: "stacked", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-stacked", size: 15 }), label: "Stacked" }, { id: "line", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-line", size: 15 }), label: "Line" }]
-        }
-      ) }, "Income vs Expenses"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, incExpView === "line" ? /* @__PURE__ */ React.createElement(LineChart, { data: summaries, ariaLabel: chartAlts.incExp, margin: { top: 4, right: 4, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "income", name: "Income", stroke: "var(--greenDk)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, endLabel: true }), /* @__PURE__ */ React.createElement(Line, { type: "monotone", dataKey: "expense", name: "Expenses", stroke: "var(--red)", strokeWidth: 2.5, dot: { r: 3 }, activeDot: { r: 5 }, strokeDasharray: "6 4", endLabel: true })) : /* @__PURE__ */ React.createElement(
-        BarChart,
-        {
-          data: summaries,
-          ariaLabel: chartAlts.incExp,
-          margin: { top: 4, right: 4, bottom: 34, left: 4 },
-          barCategoryGap: incExpView === "stacked" ? "20%" : "10%"
-        },
-        /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }),
-        /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }),
-        /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }),
-        /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }),
-        /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }),
-        /* @__PURE__ */ React.createElement(Bar, { dataKey: "income", name: "Income", fill: "var(--greenDk)", radius: incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 }),
-        /* @__PURE__ */ React.createElement(Bar, { dataKey: "expense", name: "Expenses", fill: "var(--red)", radius: [3, 3, 0, 0], stackId: incExpView === "stacked" ? "a" : void 0 })
-      ))))),
-      topCatsChart: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(ChartToggle, { options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }], value: catView, onChange: setCatView, label: "Top Expense Categories" }) }, "Top Expense Categories"), catView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "dash-cat-bar-wrap", tabIndex: 0, role: "group", "aria-label": "Top expense categories, scrollable" }, catTotals.map(([cat, total], i) => {
+          }}
+                >
+                  {fmt(ev.balance)}
+                </span>
+              </div>
+            </div>
+            {barDiv}
+          </div>;
+        })}
+          </div>
+          {ahead.length > upcoming.length && <div className="upcoming-more-note">
+            Ticking one off brings the next one up — the ledger has the rest.
+          </div>}
+        </Card>;
+      })()}
+      </>,
+      monthlyBrief: () => <MonthlyBriefCard
+        flow={flow}
+        activeYear={activeYear}
+        categories={categories}
+        apiKey={apiKey}
+        isOffline={isOffline}
+      />,
+      kpis: () => <>
+        <div className="kpi-grid-4">
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Annual Income</div>
+            <div className="kpi-spark-row">
+              <div className="kpi-spark-value" style={{ color: "var(--greenDk)" }}>{fmt(totalIncome)}</div>
+              <Sparkline data={summaries.map((m) => m.income)} height={28} width={64} />
+            </div>
+          </Card>
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Annual Expenses</div>
+            <div className="kpi-spark-row">
+              <div className="kpi-spark-value" style={{ color: "var(--text)" }}>{fmt(totalExpense)}</div>
+              <Sparkline data={summaries.map((m) => m.expense)} height={28} width={64} />
+            </div>
+          </Card>
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Net Surplus/Deficit</div>
+            <div className="kpi-spark-row">
+              <div
+                className="kpi-spark-value"
+                style={{ color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+              >
+                {fmt(netSurplus, true)}
+              </div>
+              <Sparkline data={summaries.map((m) => m.surplus)} height={28} width={64} />
+            </div>
+            {netSurplus < 0 && <div className="kpi-warn-note">⚠ Spending exceeds income</div>}
+          </Card>
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Lowest Balance</div>
+            <div className="kpi-spark-row">
+              <div
+                className="kpi-spark-value"
+                style={{ color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" }}
+              >
+                {fmt(lowestBal)}
+              </div>
+              <Sparkline data={summaries.map((m) => m.close)} height={28} width={64} />
+            </div>
+            <div className="kpi-sub-note">{"In "}{lowestMon}</div>
+          </Card>
+        </div>
+      </>,
+      balanceChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={balView}
+              onChange={setBalView}
+              label="Running Balance"
+              options={[{ id: "area", icon: <Icon name="chart-area" size={15} />, label: "Area" }, { id: "line", icon: <Icon
+                name="chart-line"
+                size={15}
+              />, label: "Line" }, { id: "bar", icon: <Icon
+                name="chart-bar"
+                size={15}
+              />, label: "Bar" }]}
+            />}
+          >
+            Running Balance
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              {balView === "bar" ? <BarChart
+                data={summaries}
+                ariaLabel={chartAlts.balance}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+                <Bar dataKey="close" name="Balance" radius={[4, 4, 0, 0]}>
+                  {summaries.map((m, i) => <Cell
+                    key={i}
+                    fill={m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)"}
+                  />)}
+                </Bar>
+              </BarChart> : balView === "line" ? <LineChart
+                data={summaries}
+                ariaLabel={chartAlts.balance}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="close"
+                  name="Balance"
+                  stroke="var(--text)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "var(--text)" }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart> : <AreaChart
+                data={summaries}
+                ariaLabel={chartAlts.balance}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+                <Area
+                  type="monotone"
+                  dataKey="close"
+                  name="Balance"
+                  stroke="var(--text)"
+                  strokeWidth={2.5}
+                  fill="var(--text)"
+                  fillOpacity={0.12}
+                  dot={{ r: 4, fill: "var(--text)" }}
+                />
+              </AreaChart>}
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </>,
+      surplusChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={surplusView}
+              onChange={setSurplusView}
+              label="Surplus / Shortfall"
+              options={[{ id: "bar", icon: <Icon name="chart-bar" size={15} />, label: "Bar" }, { id: "line", icon: <Icon
+                name="chart-line"
+                size={15}
+              />, label: "Line" }]}
+            />}
+          >
+            Surplus / Shortfall
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              {surplusView === "line" ? <LineChart
+                data={summaries}
+                ariaLabel={chartAlts.surplus}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--textLt)" strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="surplus"
+                  name="Surplus"
+                  stroke="var(--greenDk)"
+                  strokeWidth={2.5}
+                  dot={({ cx, cy, payload }) => <circle
+                    key={cx}
+                    cx={cx}
+                    cy={cy}
+                    r={4}
+                    fill={payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)"}
+                    stroke="none"
+                  />}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart> : <BarChart
+        data={summaries}
+        ariaLabel={chartAlts.surplus}
+        margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+        <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+        <Tooltip content={ChartTip} />
+        <ReferenceLine y={0} stroke="var(--textLt)" />
+        <Bar dataKey="surplus" name="Surplus" radius={[4, 4, 0, 0]}>
+          {summaries.map((m, i) => <Cell key={i} fill={m.surplus >= 0 ? "var(--greenDk)" : "var(--red)"} />)}
+        </Bar>
+      </BarChart>}
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </>,
+      incExpChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={incExpView}
+              onChange={setIncExpView}
+              label="Income vs Expenses"
+              options={[{ id: "grouped", icon: <Icon name="chart-grouped" size={15} />, label: "Grouped" }, { id: "stacked", icon: <Icon
+                name="chart-stacked"
+                size={15}
+              />, label: "Stacked" }, { id: "line", icon: <Icon
+                name="chart-line"
+                size={15}
+              />, label: "Line" }]}
+            />}
+          >
+            Income vs Expenses
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              {incExpView === "line" ? <LineChart
+                data={summaries}
+                ariaLabel={chartAlts.incExp}
+                margin={{ top: 4, right: 4, bottom: 34, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  name="Income"
+                  stroke="var(--greenDk)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  endLabel={true}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expense"
+                  name="Expenses"
+                  stroke="var(--red)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  strokeDasharray="6 4"
+                  endLabel={true}
+                />
+              </LineChart> : <BarChart
+                data={summaries}
+                ariaLabel={chartAlts.incExp}
+                margin={{ top: 4, right: 4, bottom: 34, left: 4 }}
+                barCategoryGap={incExpView === "stacked" ? "20%" : "10%"}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar
+                  dataKey="income"
+                  name="Income"
+                  fill="var(--greenDk)"
+                  radius={incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0]}
+                  stackId={incExpView === "stacked" ? "a" : void 0}
+                />
+                <Bar
+                  dataKey="expense"
+                  name="Expenses"
+                  fill="var(--red)"
+                  radius={[3, 3, 0, 0]}
+                  stackId={incExpView === "stacked" ? "a" : void 0}
+                />
+              </BarChart>}
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </>,
+      topCatsChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              options={[{ id: "bar", icon: <Icon name="chart-bar" size={15} />, label: "Bars" }, { id: "pie", icon: <Icon
+                name="chart-pie"
+                size={15}
+              />, label: "Pie" }]}
+              value={catView}
+              onChange={setCatView}
+              label="Top Expense Categories"
+            />}
+          >
+            Top Expense Categories
+          </SectionTitle>
+          {catView === "bar" && <div
+            className="dash-cat-bar-wrap"
+            tabIndex={0}
+            role="group"
+            aria-label="Top expense categories, scrollable"
+          >
+            {catTotals.map(([cat, total], i) => {
         const pct = total / totalExpense * 100;
-        return /* @__PURE__ */ React.createElement("button", {
-          key: cat,
-          type: "button",
-          className: "dash-cat-open",
-          onClick: () => openCatDetail(cat),
+        return <button
+          key={cat}
+          type="button"
+          className="dash-cat-open"
+          onClick={() => openCatDetail(cat)}
           // The row reads as a label and an amount; neither says what
           // pressing it does, and a screen reader gets only those two.
-          "aria-label": `${cat}, ${fmt(total)} \u2014 show the expenses behind it`
-        }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: {
+          aria-label={`${cat}, ${fmt(total)} \u2014 show the expenses behind it`}
+        >
+          <div className="label-amt-row">
+            <span className="tx">{cat}</span>
+            <span className="cf-text-mono-13 amt-mid-600">{fmt(total)}</span>
+          </div>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{
           width: `${pct}%`,
           background: getCatColor(cat, categories, categoryColors)
-        } })));
-      })), catView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, { ariaLabel: chartAlts.cats }, /* @__PURE__ */ React.createElement(
-        Pie,
-        {
-          data: catPieData,
-          cx: "50%",
-          cy: "50%",
-          outerRadius: 80,
-          dataKey: "value",
-          nameKey: "name",
-          label: ({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%",
-          labelLine: false,
-          // A slice opens the same breakdown a bar does.
-          onClick: (d) => d && d.name && openCatDetail(d.name),
-          className: "dash-cat-slice",
-          // A wedge has no accessible name and its visible label is a
-          // percentage, so the slice says the category and the amount — the
-          // same sentence the bar's button says.
-          sliceLabel: (sl) => `${sl.name}, ${fmt(sl.value)} \u2014 show the expenses behind it`
-        },
-        catTotals.map(([cat], i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: getCatColor(cat, categories, categoryColors) }))
-      ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))), catView === "table" && /* @__PURE__ */ React.createElement("table", { className: "dash-cat-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "dash-cat-table-hdr-row" }, ["Category", "Amount", "% of Spend"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-cat-th", style: {
+        }}
+            />
+          </div>
+        </button>;
+      })}
+          </div>}
+          {catView === "pie" && <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              <PieChart ariaLabel={chartAlts.cats}>
+                <Pie
+                  data={catPieData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%"}
+                  labelLine={false}
+                  // A slice opens the same breakdown a bar does.
+                  onClick={(d) => d && d.name && openCatDetail(d.name)}
+                  className="dash-cat-slice"
+                  // A wedge has no accessible name and its visible label is a
+                  // percentage, so the slice says the category and the amount — the
+                  // same sentence the bar's button says.
+                  sliceLabel={(sl) => `${sl.name}, ${fmt(sl.value)} \u2014 show the expenses behind it`}
+                >
+                  {catTotals.map(([cat], i) => <Cell
+                    key={i}
+                    fill={getCatColor(cat, categories, categoryColors)}
+                  />)}
+                </Pie>
+                <Tooltip
+                  formatter={(v) => fmt(v)}
+                  contentStyle={{ fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>}
+          {catView === "table" && <table className="dash-cat-table">
+            <thead>
+              <tr className="dash-cat-table-hdr-row">
+                {["Category", "Amount", "% of Spend"].map((h, i) => <th
+                  key={h}
+                  className="dash-cat-th"
+                  style={{
         textAlign: i === 0 ? "left" : "right"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, catTotals.map(([cat, total], i) => /* @__PURE__ */ React.createElement("tr", {
-        key: cat,
-        className: "dash-cat-tr dash-cat-tr--open",
-        tabIndex: 0,
-        role: "button",
-        "aria-label": `${cat}, ${fmt(total)} \u2014 show the expenses behind it`,
-        onClick: () => openCatDetail(cat),
-        onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCatDetail(cat); } }
-      }, /* @__PURE__ */ React.createElement("td", { className: "dash-cat-td" }, /* @__PURE__ */ React.createElement("div", { className: "dash-cat-dot", style: { background: getCatColor(cat, categories, categoryColors) } }), /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-amt-td" }, fmt(total)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-cat-pct-td" }, totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0, "%"))))))),
-      incomeSources: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(
-        ChartToggle,
-        {
-          value: incView,
-          onChange: setIncView,
-          label: "Income Sources",
-          options: [{ id: "bar", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-bar", size: 15 }), label: "Bars" }, { id: "pie", icon: /* @__PURE__ */ React.createElement(Icon, { name: "chart-pie", size: 15 }), label: "Pie" }]
-        }
-      ) }, "Income Sources"), incView === "bar" && /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-8 mt-4" }, incTotals.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "debt-empty-wrap" }, "No income entries"), incTotals.map(([cat, total], i) => {
+      }}
+                >
+                  {h}
+                </th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {catTotals.map(([cat, total], i) => <tr
+                key={cat}
+                className="dash-cat-tr dash-cat-tr--open"
+                tabIndex={0}
+                role="button"
+                aria-label={`${cat}, ${fmt(total)} \u2014 show the expenses behind it`}
+                onClick={() => openCatDetail(cat)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCatDetail(cat); } }}
+              >
+                <td className="dash-cat-td">
+                  <div
+                    className="dash-cat-dot"
+                    style={{ background: getCatColor(cat, categories, categoryColors) }}
+                  />
+                  <span className="tx">{cat}</span>
+                </td>
+                <td className="cf-text-mono-13 dash-cat-amt-td">{fmt(total)}</td>
+                <td className="cf-text-mono-13 dash-cat-pct-td">
+                  {totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0}
+                  %
+                </td>
+              </tr>)}
+            </tbody>
+          </table>}
+        </Card>
+      </>,
+      incomeSources: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={incView}
+              onChange={setIncView}
+              label="Income Sources"
+              options={[{ id: "bar", icon: <Icon name="chart-bar" size={15} />, label: "Bars" }, { id: "pie", icon: <Icon
+                name="chart-pie"
+                size={15}
+              />, label: "Pie" }]}
+            />}
+          >
+            Income Sources
+          </SectionTitle>
+          {incView === "bar" && <div className="cf-col cf-gap-8 mt-4">
+            {incTotals.length === 0 && <div className="debt-empty-wrap">No income entries</div>}
+            {incTotals.map(([cat, total], i) => {
         const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
-        return /* @__PURE__ */ React.createElement("div", { key: cat }, /* @__PURE__ */ React.createElement("div", { className: "label-amt-row" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, cat), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 amt-mid-600" }, fmt(total))), /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "progress-fill", style: { width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] } })));
-      })), incView === "pie" && /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(PieChart, { ariaLabel: chartAlts.inc }, /* @__PURE__ */ React.createElement(
-        Pie,
-        {
-          data: incPieData,
-          cx: "50%",
-          cy: "50%",
-          outerRadius: 75,
-          dataKey: "value",
-          nameKey: "name",
-          label: ({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : "",
-          labelLine: true
-        },
-        incTotals.map((_, i) => /* @__PURE__ */ React.createElement(Cell, { key: i, fill: CAT_PALETTE[i % CAT_PALETTE.length] }))
-      ), /* @__PURE__ */ React.createElement(Tooltip, { formatter: (v) => fmt(v), contentStyle: { fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" } })))))),
-      bvaYear: () => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Card, null, /* @__PURE__ */ React.createElement(SectionTitle, null, "Budget vs Actual \u2014 ", activeYear), (() => {
-        const _now = /* @__PURE__ */ new Date();
+        return <div key={cat}>
+          <div className="label-amt-row">
+            <span className="tx">{cat}</span>
+            <span className="cf-text-mono-13 amt-mid-600">{fmt(total)}</span>
+          </div>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{ width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] }}
+            />
+          </div>
+        </div>;
+      })}
+          </div>}
+          {incView === "pie" && <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              <PieChart ariaLabel={chartAlts.inc}>
+                <Pie
+                  data={incPieData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={75}
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : ""}
+                  labelLine={true}
+                >
+                  {incTotals.map((_, i) => <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />)}
+                </Pie>
+                <Tooltip
+                  formatter={(v) => fmt(v)}
+                  contentStyle={{ fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>}
+        </Card>
+      </>,
+      bvaYear: () => <>
+        <Card>
+          <SectionTitle>{"Budget vs Actual \u2014 "}{activeYear}</SectionTitle>
+          {(() => {
+        const _now = new Date();
         const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
-        return _lm >= 0 ? /* @__PURE__ */ React.createElement("div", { className: "bva-subtitle" }, MONTHS[0], "\u2013", MONTHS[_lm], " ", activeYear, " \xB7 year-to-date \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono text-10" }, "spent / budget")) : null;
-      })(), (() => {
-        const now = /* @__PURE__ */ new Date();
+        return _lm >= 0 ? <div className="bva-subtitle">
+          {MONTHS[0]}
+          –
+          {MONTHS[_lm]}
+          {" "}
+          {activeYear}
+          {" \xB7 year-to-date \xB7 "}
+          <span className="cf-text-mono text-10">spent / budget</span>
+        </div> : null;
+      })()}
+          {(() => {
+        const now = new Date();
         const isCurrentYear = now.getFullYear() === activeYear;
         const isPastYear = now.getFullYear() > activeYear;
         const lastMonth = isPastYear ? 11 : isCurrentYear ? now.getMonth() : -1;
@@ -958,9 +1464,15 @@ import { toast } from "./auth-misc.js";
             targetByCat[cat] = (targetByCat[cat] || 0) + (Number(monthTargets[cat]) || 0);
           });
         });
-        const cats = [.../* @__PURE__ */ new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
+        const cats = [...new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
         if (cats.length === 0) {
-          return /* @__PURE__ */ React.createElement("div", { className: "bva-empty-state" }, /* @__PURE__ */ React.createElement("div", { className: "bva-empty-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26 })), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-title" }, "No budget targets set yet"), /* @__PURE__ */ React.createElement("div", { className: "bva-empty-body" }, 'Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.'));
+          return <div className="bva-empty-state">
+            <div className="bva-empty-icon"><Icon name="target" size={26} /></div>
+            <div className="bva-empty-title">No budget targets set yet</div>
+            <div className="bva-empty-body">
+              Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.
+            </div>
+          </div>;
         }
         const rows = cats.map((c) => {
           const actual = roundMoney((actualByCat[c] || 0));
@@ -976,16 +1488,68 @@ import { toast } from "./auth-misc.js";
         const tDiff = roundMoney((totalActual - totalTarget));
         const tOver = totalTarget > 0 && tDiff > 0;
         const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
-        return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bva-rows-wrap", tabIndex: 0, role: "group", "aria-label": "Budget vs actual by category, scrollable" }, rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.cat }, /* @__PURE__ */ React.createElement("div", { className: "dash-bva-row-hdr" }, /* @__PURE__ */ React.createElement(CatChip, { category: r.cat, categories, categoryColors, className: "text-9" }), /* @__PURE__ */ React.createElement("div", { className: "dash-bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13", style: {
+        return <>
+          <div
+            className="bva-rows-wrap"
+            tabIndex={0}
+            role="group"
+            aria-label="Budget vs actual by category, scrollable"
+          >
+            {rows.map((r) => <div key={r.cat}>
+              <div className="dash-bva-row-hdr">
+                <CatChip
+                  category={r.cat}
+                  categories={categories}
+                  categoryColors={categoryColors}
+                  className="text-9"
+                />
+                <div className="dash-bva-amounts">
+                  <span
+                    className="cf-text-mono-13"
+                    style={{
           color: r.over ? r.color : "var(--text)"
-        } }, fmt(r.actual)), r.target > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(r.target)), r.over && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: r.color } }, fmt(r.diff) + " over"))), r.target > 0 && /* @__PURE__ */ React.createElement("div", { className: "progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
+        }}
+                  >
+                    {fmt(r.actual)}
+                  </span>
+                  {r.target > 0 && <span className="cf-text-mono-13 c-textMid">{"/ "}{fmt(r.target)}</span>}
+                  {r.over && <span className="over-note" style={{ color: r.color }}>
+                    {fmt(r.diff) + " over"}
+                  </span>}
+                </div>
+              </div>
+              {r.target > 0 && <div className="progress-track">
+                <div
+                  className="bva-progress-fill"
+                  style={{
           width: `${r.pct}%`,
           background: r.color
-        } }))))), /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
+        }}
+                />
+              </div>}
+            </div>)}
+          </div>
+          <div className="bva-totals-row">
+            <span className="bva-total-label">Total</span>
+            <div className="cf-row cf-gap-8">
+              <span
+                className="cf-text-mono-13 fw-700"
+                style={{
           color: tOver ? tColor : "var(--text)"
-        } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), tOver && /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color: tColor } }, fmt(tDiff) + " over"))));
-      })())),
-      debtSnap: () => /* @__PURE__ */ React.createElement(React.Fragment, null, (() => {
+        }}
+              >
+                {fmt(totalActual)}
+              </span>
+              {totalTarget > 0 && <span className="cf-text-mono-13 c-textMid">{"/ "}{fmt(totalTarget)}</span>}
+              {tOver && <span className="over-note" style={{ color: tColor }}>{fmt(tDiff) + " over"}</span>}
+            </div>
+          </div>
+        </>;
+      })()}
+        </Card>
+      </>,
+      debtSnap: () => <>
+        {(() => {
         const dData = debtData && typeof debtData === "object" ? debtData : {};
         const dkw = [
           "debt",
@@ -1036,7 +1600,13 @@ import { toast } from "./auth-misc.js";
         const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
         if (configuredDebts.length === 0) return null;
         const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
-        return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-header-row" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Debt Snapshot"), /* @__PURE__ */ React.createElement("div", { className: "cf-text-mono-13 debt-item-bal" }, "Total: ", fmt(totalBalance))), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-10" }, configuredDebts.map(([key, v]) => {
+        return <Card className="mb-16">
+          <div className="debtsnap-header-row">
+            <SectionTitle>Debt Snapshot</SectionTitle>
+            <div className="cf-text-mono-13 debt-item-bal">{"Total: "}{fmt(totalBalance)}</div>
+          </div>
+          <div className="cf-col cf-gap-10">
+            {configuredDebts.map(([key, v]) => {
           const bal = parseFloat(v.balance) || 0;
           const rate = parseFloat(v.rate) || 0;
           const isManual = key.startsWith("manual_");
@@ -1046,59 +1616,113 @@ import { toast } from "./auth-misc.js";
           const monthsLeft = bal > 0 && pmt > 0 && !(r > 0 && pmt <= bal * r) ? r > 0 ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
           const totalInterest = monthsLeft && r > 0 ? roundMoney((pmt * monthsLeft - bal)) : null;
           const payoffDate = monthsLeft ? (() => {
-            const d = /* @__PURE__ */ new Date();
+            const d = new Date();
             d.setMonth(d.getMonth() + monthsLeft);
             return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
           })() : null;
           const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
           const payoffTrend = monthsLeft > 1 ? projectPayoffBalances(bal, rate, pmt, monthsLeft) : null;
-          return /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-row-top" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "tx" }, label), rate > 0 && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-apr-badge" }, rate, "% APR")), /* @__PURE__ */ React.createElement("div", { className: "debtsnap-amounts" }, payoffTrend && /* @__PURE__ */ React.createElement("span", { title: "Projected balance decline to payoff", style: { display: "inline-flex", verticalAlign: "middle", marginRight: 2 } }, /* @__PURE__ */ React.createElement(Sparkline, { data: payoffTrend, color: "var(--red)", height: 18, width: 44 })), /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 debt-item-bal" }, fmt(bal)), payoffDate && /* @__PURE__ */ React.createElement("span", { className: "debtsnap-payoff" }, "\u2713 ", payoffDate), totalInterest != null && /* @__PURE__ */ React.createElement("span", { className: "text-10 c-textLt" }, "+", fmt(totalInterest), " int."))), /* @__PURE__ */ React.createElement("div", { className: "progress-track--clip" }, /* @__PURE__ */ React.createElement("div", { className: "debtsnap-progress-fill", style: {
+          return <div key={key}>
+            <div className="debtsnap-row-top">
+              <div className="cf-row cf-gap-8">
+                <span className="tx">{label}</span>
+                {rate > 0 && <span className="debtsnap-apr-badge">{rate}% APR</span>}
+              </div>
+              <div className="debtsnap-amounts">
+                {payoffTrend && <span
+                  title="Projected balance decline to payoff"
+                  style={{ display: "inline-flex", verticalAlign: "middle", marginRight: 2 }}
+                >
+                  <Sparkline data={payoffTrend} color="var(--red)" height={18} width={44} />
+                </span>}
+                <span className="cf-text-mono-13 debt-item-bal">{fmt(bal)}</span>
+                {payoffDate && <span className="debtsnap-payoff">{"\u2713 "}{payoffDate}</span>}
+                {totalInterest != null && <span className="text-10 c-textLt">
+                  +
+                  {fmt(totalInterest)}
+                  {" int."}
+                </span>}
+              </div>
+            </div>
+            <div className="progress-track--clip">
+              <div
+                className="debtsnap-progress-fill"
+                style={{
             width: `${pct}%`,
             background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amberInk)" : "var(--greenDk)"
-          } })), pmt > 0 && (() => {
-            var _a2;
+          }}
+              />
+            </div>
+            {pmt > 0 && (() => {
             const evs = autoAllEvs[key] || [];
-            const perOcc = ((_a2 = evs[0]) == null ? void 0 : _a2.amount) || 0;
+            const perOcc = (evs[0]?.amount) || 0;
             const timesYr = evs.length;
             const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
-            return /* @__PURE__ */ React.createElement("div", { className: "debtsnap-freq-note" }, perOcc && label2 ? /* @__PURE__ */ React.createElement(React.Fragment, null, fmt(perOcc), " ", label2, " \xB7 ") : "", fmt(pmt), "/mo");
-          })());
-        })));
-      })()),
-      summary: () => /* @__PURE__ */ React.createElement(Card, { className: "card-flat summary-card" },
-      // The heading and the export toolbar used to sit on the page ground
+            return <div className="debtsnap-freq-note">
+              {perOcc && label2 ? <>{fmt(perOcc)}{" "}{label2}{" \xB7 "}</> : ""}
+              {fmt(pmt)}
+              /mo
+            </div>;
+          })()}
+          </div>;
+        })}
+          </div>
+        </Card>;
+      })()}
+      </>,
+      summary: () => <Card className="card-flat summary-card">
+        {// The heading and the export toolbar used to sit on the page ground
       // above a white table, so one widget read as two things: a label
       // floating over a card. They are inside it now, in a padded header,
       // and the table keeps the card's zero padding so its rows still run
       // to the edges.
-      /* @__PURE__ */ React.createElement("div", { className: "summary-head" },
-        React.createElement(SectionTitle, { className: "mb-12" }, "Monthly Summary"),
-        React.createElement("div", { className: "summary-toolbar-row" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10" }, /* @__PURE__ */ React.createElement(
-          ChartToggle,
-          {
-            value: summaryView,
-            onChange: setSummaryView,
-            label: "Monthly Summary",
-            options: [{ id: "table", icon: /* @__PURE__ */ React.createElement(Icon, { name: "file-list", size: 15 }), label: "Table" }, { id: "heat", icon: /* @__PURE__ */ React.createElement(Icon, { name: "grid", size: 15 }), label: "Heatmap" }]
-          }
-        )), /* @__PURE__ */ React.createElement(
-          ExportBar,
-          {
-            onCSV: () => downloadCSV(
+      <div className="summary-head">
+        <SectionTitle className="mb-12">Monthly Summary</SectionTitle>
+        <div className="summary-toolbar-row">
+          <div className="cf-row cf-gap-10">
+            <ChartToggle
+              value={summaryView}
+              onChange={setSummaryView}
+              label="Monthly Summary"
+              options={[{ id: "table", icon: <Icon name="file-list" size={15} />, label: "Table" }, { id: "heat", icon: <Icon
+                name="grid"
+                size={15}
+              />, label: "Heatmap" }]}
+            />
+          </div>
+          <ExportBar
+            onCSV={() => downloadCSV(
               `CashFlow_Monthly_Summary_${activeYear}.csv`,
               summaries.map((m) => [m.month, centsToDollars(m.income), centsToDollars(m.expense), centsToDollars(m.surplus), centsToDollars(m.close)]),
               ["Month", "Income", "Expenses", "Surplus", "Closing Balance"]
-            ),
-            onPrint: () => printView(`CashFlow Monthly Summary ${activeYear}`)
-          }
-        ))),
-      summaryView === "heat" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary heatmap" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+            )}
+            onPrint={() => printView(`CashFlow Monthly Summary ${activeYear}`)}
+          />
+        </div>
+      </div>
+}
+        {summaryView === "heat" && <div>
+          <div className="hscroll" tabIndex={0} role="region" aria-label="Monthly summary heatmap">
+            <table className="dash-table-wide">
+              <thead>
+                <tr className="thead-row">
+                  {summaryCols.map((h, i) => <th
+                    key={h}
+                    className="dash-th-16"
+                    style={{
           textAlign: i === 0 ? "left" : "right",
           position: i === summaryCols.length - 1 ? "sticky" : "static",
           right: i === summaryCols.length - 1 ? 0 : "auto",
           background: i === summaryCols.length - 1 ? "var(--navy)" : "transparent",
           boxShadow: i === summaryCols.length - 1 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
-        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => {
+        }}
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {summaries.map((m, i) => {
           const maxInc = Math.max(...summaries.map((s) => s.income), 1);
           const maxExp = Math.max(...summaries.map((s) => s.expense), 1);
           const maxAbs = Math.max(...summaries.map((s) => Math.abs(s.surplus)), 1);
@@ -1107,53 +1731,215 @@ import { toast } from "./auth-misc.js";
           const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
           const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
           const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
-          return /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-inc-td", style: { background: heatInc } }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 heat-exp-td", style: { background: heatExp } }, fmt(m.expense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: { background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-heat-bal-td", style: { background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" } }, fmt(m.close)));
-        }))))),
-      summaryView === "table" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "hscroll", tabIndex: 0, role: "region", "aria-label": "Monthly summary table" }, /* @__PURE__ */ React.createElement("table", { className: "dash-table-wide" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, summaryCols.map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-16", style: {
+          return <tr key={m.month} className="dash-table-row">
+            <td className="dash-td-13">{m.month}</td>
+            <td className="cf-text-mono-13 dash-amt-td-16 heat-inc-td" style={{ background: heatInc }}>
+              {fmt(m.income)}
+            </td>
+            <td className="cf-text-mono-13 dash-amt-td-16 heat-exp-td" style={{ background: heatExp }}>
+              {fmt(m.expense)}
+            </td>
+            {hasTransfers && <td className="cf-text-mono-13 dash-amt-td-16 c-text">
+              {m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"}
+            </td>}
+            <td
+              className="cf-text-mono-13 dash-amt-td-16 fw-700"
+              style={{ background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+            >
+              {fmt(m.surplus, true)}
+            </td>
+            <td
+              className="cf-text-mono-13 dash-heat-bal-td"
+              style={{ background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }}
+            >
+              {fmt(m.close)}
+            </td>
+          </tr>;
+        })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+        {summaryView === "table" && <div>
+          <div className="hscroll" tabIndex={0} role="region" aria-label="Monthly summary table">
+            <table className="dash-table-wide">
+              <thead>
+                <tr className="thead-row">
+                  {summaryCols.map((h, i) => <th
+                    key={h}
+                    className="dash-th-16"
+                    style={{
           textAlign: i === 0 ? "left" : "right",
           position: i === summaryCols.length - 1 ? "sticky" : "static",
           right: i === summaryCols.length - 1 ? 0 : "auto",
           background: i === summaryCols.length - 1 ? "var(--navy)" : "transparent",
           boxShadow: i === summaryCols.length - 1 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
-        } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, summaries.map((m, i) => /* @__PURE__ */ React.createElement("tr", { key: m.month, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-13" }, m.month), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, fmt(m.expense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 c-text" }, m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-16 fw-700", style: {
+        }}
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {summaries.map((m, i) => <tr
+                  key={m.month}
+                  className="dash-table-row"
+                  style={{ background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" }}
+                >
+                  <td className="dash-td-13">{m.month}</td>
+                  <td className="cf-text-mono-13 dash-amt-td-16 c-text">{fmt(m.income)}</td>
+                  <td className="cf-text-mono-13 dash-amt-td-16 c-text">{fmt(m.expense)}</td>
+                  {hasTransfers && <td className="cf-text-mono-13 dash-amt-td-16 c-text">
+                    {m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"}
+                  </td>}
+                  <td
+                    className="cf-text-mono-13 dash-amt-td-16 fw-700"
+                    style={{
           color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)",
           background: m.surplus < 0 ? "var(--redLt)" : "transparent"
-        } }, fmt(m.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-table-bal-td", style: {
+        }}
+                  >
+                    {fmt(m.surplus, true)}
+                  </td>
+                  <td
+                    className="cf-text-mono-13 dash-table-bal-td"
+                    style={{
           color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)",
           background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
-        } }, fmt(m.close)))), /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, /* @__PURE__ */ React.createElement("td", { className: "dash-annual-total-label" }, "Annual Total"), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalIncome)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(totalExpense)), hasTransfers && /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-annual-total-amt" }, fmt(netTransfers, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-total-amt-td", style: { color: netSurplus >= 0 ? "var(--mint)" : "var(--coral)" } }, fmt(netSurplus, true)), /* @__PURE__ */ React.createElement("td", { className: "dash-total-spacer-td" }))))))),
-      yoy: () => /* @__PURE__ */ React.createElement(React.Fragment, null, showYoY ? /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement(SectionTitle, { action: /* @__PURE__ */ React.createElement(PillToggle, { options: yoyMetrics, value: yoyMetric, onChange: setYoyMetric, size: "sm" }) }, "Year-over-Year Comparison"), /* @__PURE__ */ React.createElement("div", { className: "pb-28" }, /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: DASH_CHART_H }, /* @__PURE__ */ React.createElement(LineChart, { data: yoyData, ariaLabel: `Line chart comparing ${(yoyMetrics.find((m) => m.id === yoyMetric) || {}).label} month by month across ${yearConfigs.map((y) => y.year).join(", ")}. The Annual Comparison table below carries the same figures.`, margin: { top: 4, right: 8, bottom: 34, left: 4 } }, /* @__PURE__ */ React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border)" }), /* @__PURE__ */ React.createElement(XAxis, { dataKey: "month", tick: DASH_AXIS_TICK_X, tickMargin: 4 }), /* @__PURE__ */ React.createElement(YAxis, { tickFormatter: fmtAxisK, tick: DASH_AXIS_TICK_Y, tickMargin: 6, width: 44 }), /* @__PURE__ */ React.createElement(Tooltip, { content: ChartTip }), /* @__PURE__ */ React.createElement(Legend, { wrapperStyle: { fontSize: 12 } }), /* @__PURE__ */ React.createElement(ReferenceLine, { y: 0, stroke: "var(--textLt)", strokeDasharray: "4 4" }), yearConfigs.map((yc, yi) => /* @__PURE__ */ React.createElement(
-        Line,
-        {
-          key: yc.year,
-          type: "monotone",
-          dataKey: yc.year,
-          name: String(yc.year),
-          stroke: YCOLS[yi % YCOLS.length],
-          strokeWidth: 2.5,
-          dot: { r: 3 },
-          activeDot: { r: 5 }
-        }
-      ))))), /* @__PURE__ */ React.createElement("div", { className: "hscroll mt-16", tabIndex: 0, role: "region", "aria-label": "Annual comparison table" }, /* @__PURE__ */ React.createElement("table", { className: "table-collapse" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => /* @__PURE__ */ React.createElement("th", { key: h, className: "dash-th-14", style: {
+        }}
+                  >
+                    {fmt(m.close)}
+                  </td>
+                </tr>)}
+                <tr className="thead-row">
+                  <td className="dash-annual-total-label">Annual Total</td>
+                  <td className="cf-text-mono-13 dash-annual-total-amt">{fmt(totalIncome)}</td>
+                  <td className="cf-text-mono-13 dash-annual-total-amt">{fmt(totalExpense)}</td>
+                  {hasTransfers && <td className="cf-text-mono-13 dash-annual-total-amt">
+                    {fmt(netTransfers, true)}
+                  </td>}
+                  <td
+                    className="cf-text-mono-13 dash-total-amt-td"
+                    style={{ color: netSurplus >= 0 ? "var(--mint)" : "var(--coral)" }}
+                  >
+                    {fmt(netSurplus, true)}
+                  </td>
+                  <td className="dash-total-spacer-td" />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>}
+      </Card>,
+      yoy: () => <>
+        {showYoY ? <Card className="mb-16">
+          <SectionTitle
+            action={<PillToggle options={yoyMetrics} value={yoyMetric} onChange={setYoyMetric} size="sm" />}
+          >
+            Year-over-Year Comparison
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              <LineChart
+                data={yoyData}
+                ariaLabel={`Line chart comparing ${(yoyMetrics.find((m) => m.id === yoyMetric) || {}).label} month by month across ${yearConfigs.map((y) => y.year).join(", ")}. The Annual Comparison table below carries the same figures.`}
+                margin={{ top: 4, right: 8, bottom: 34, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <ReferenceLine y={0} stroke="var(--textLt)" strokeDasharray="4 4" />
+                {yearConfigs.map((yc, yi) => <Line
+                  key={yc.year}
+                  type="monotone"
+                  dataKey={yc.year}
+                  name={String(yc.year)}
+                  stroke={YCOLS[yi % YCOLS.length]}
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />)}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="hscroll mt-16" tabIndex={0} role="region" aria-label="Annual comparison table">
+            <table className="table-collapse">
+              <thead>
+                <tr className="thead-row">
+                  {["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => <th
+                    key={h}
+                    className="dash-th-14"
+                    style={{
         textAlign: i === 0 ? "left" : "right"
-      } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, annualRows.map((row, i) => {
+      }}
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {annualRows.map((row, i) => {
         const prev = annualRows[i - 1];
         const delta = prev ? row.surplus - prev.surplus : null;
-        return /* @__PURE__ */ React.createElement("tr", { key: row.year, className: "dash-table-row", style: { background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" } }, /* @__PURE__ */ React.createElement("td", { className: "dash-td-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("div", { className: "dash-year-dot", style: { background: row.color } }), /* @__PURE__ */ React.createElement("span", { className: "dash-year-label" }, row.year))), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-greenDk" }, fmt(row.income)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 c-text" }, fmt(row.expense)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" } }, fmt(row.surplus, true)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-700", style: { color: row.close < 0 ? "var(--red)" : "var(--text)" } }, fmt(row.close)), /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 dash-amt-td-14 fw-600", style: { color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" } }, delta === null ? "\u2014" : /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            className: "yoy-drill-btn",
-            onClick: () => openYoyDetail(row.year),
-            // The visible text is a bare amount, which tells a screen reader
-            // nothing about what the button does or which two years it is
-            // about. Both are in the row, and neither reaches the button.
-            "aria-label": `What drove the ${fmt(delta, true)} change from ${prev.year} to ${row.year}`
-          },
-          fmt(delta, true),
-          /* @__PURE__ */ React.createElement("span", { className: "yoy-drill-caret", "aria-hidden": "true" }, "\u203A")
-        )));
-      })))), annualRows.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "yoy-drill-hint", "data-noprint": true }, `${isMobile ? "Tap" : "Click"} any figure in the last column to see what drove it.`)) : /* @__PURE__ */ React.createElement("div", { className: "yoy-empty-wrap" }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 14, style: { color: "var(--textLt)", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { className: "txl" }, "Add a second year to unlock the Year-over-Year comparison.")))
+        return <tr
+          key={row.year}
+          className="dash-table-row"
+          style={{ background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" }}
+        >
+          <td className="dash-td-14">
+            <div className="cf-row cf-gap-8">
+              <div className="dash-year-dot" style={{ background: row.color }} />
+              <span className="dash-year-label">{row.year}</span>
+            </div>
+          </td>
+          <td className="cf-text-mono-13 dash-amt-td-14 c-greenDk">{fmt(row.income)}</td>
+          <td className="cf-text-mono-13 dash-amt-td-14 c-text">{fmt(row.expense)}</td>
+          <td
+            className="cf-text-mono-13 dash-amt-td-14 fw-700"
+            style={{ color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+          >
+            {fmt(row.surplus, true)}
+          </td>
+          <td
+            className="cf-text-mono-13 dash-amt-td-14 fw-700"
+            style={{ color: row.close < 0 ? "var(--red)" : "var(--text)" }}
+          >
+            {fmt(row.close)}
+          </td>
+          <td
+            className="cf-text-mono-13 dash-amt-td-14 fw-600"
+            style={{ color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" }}
+          >
+            {delta === null ? "\u2014" : <button
+              type="button"
+              className="yoy-drill-btn"
+              onClick={() => openYoyDetail(row.year)}
+              // The visible text is a bare amount, which tells a screen reader
+              // nothing about what the button does or which two years it is
+              // about. Both are in the row, and neither reaches the button.
+              aria-label={`What drove the ${fmt(delta, true)} change from ${prev.year} to ${row.year}`}
+            >
+              {fmt(delta, true)}
+              <span className="yoy-drill-caret" aria-hidden="true">›</span>
+            </button>}
+          </td>
+        </tr>;
+      })}
+              </tbody>
+            </table>
+          </div>
+          {annualRows.length > 1 && <div className="yoy-drill-hint" data-noprint={true}>
+            {`${isMobile ? "Tap" : "Click"} any figure in the last column to see what drove it.`}
+          </div>}
+        </Card> : <div
+        className="yoy-empty-wrap"
+      >
+        <Icon name="calendar" size={14} style={{ color: "var(--textLt)", flexShrink: 0 }} />
+        <span className="txl">Add a second year to unlock the Year-over-Year comparison.</span>
+      </div>}
+      </>
     };
     const loadSampleData = () => {
       const y = activeYear;
@@ -1167,93 +1953,170 @@ import { toast } from "./auth-misc.js";
         mk({ desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
       ]]);
     };
-    const stepBadge = (n, done) => /* @__PURE__ */ React.createElement("span", { "aria-hidden": true, className: "step-badge", style: { background: done ? "var(--greenLt)" : "var(--stripe)", border: `1.5px solid ${done ? "var(--greenDk)" : "var(--border)"}`, color: done ? "var(--greenDk)" : "var(--textMid)" } }, done ? "✓" : n);
+    const stepBadge = (n, done) => <span
+      aria-hidden={true}
+      className="step-badge"
+      style={{ background: done ? "var(--greenLt)" : "var(--stripe)", border: `1.5px solid ${done ? "var(--greenDk)" : "var(--border)"}`, color: done ? "var(--greenDk)" : "var(--textMid)" }}
+    >
+      {done ? "✓" : n}
+    </span>;
     const quickAdd = () => window.dispatchEvent(new CustomEvent("cf:quickadd"));
-    const firstRunPanel = entries.length === 0 && /* @__PURE__ */ React.createElement(Card, { className: "firstrun-card" }, /* @__PURE__ */ React.createElement("div", { className: "firstrun-title" }, "Welcome — let's map out your cash flow"), /* @__PURE__ */ React.createElement("div", { className: "firstrun-subtitle" }, "Three quick steps and this dashboard comes to life."), /* @__PURE__ */ React.createElement("div", { className: "cf-col cf-gap-14" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(1, openBal !== 0), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Set your opening balance"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "What's in the account today?")), /* @__PURE__ */ React.createElement("span", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", placeholder: "e.g. 2500", value: obDraft, onChange: (e) => setObDraft(e.target.value), "aria-label": "Opening balance", className: "field-input field-input--mono firstrun-ob-input", onKeyDown: (e) => {
+    const firstRunPanel = entries.length === 0 && <Card className="firstrun-card">
+      <div className="firstrun-title">Welcome — let's map out your cash flow</div>
+      <div className="firstrun-subtitle">Three quick steps and this dashboard comes to life.</div>
+      <div className="cf-col cf-gap-14">
+        <div className="cf-row cf-gap-12 cf-wrap">
+          {stepBadge(1, openBal !== 0)}
+          <span className="firstrun-step-text">
+            <strong>Set your opening balance</strong>
+            <span className="firstrun-step-hint">What's in the account today?</span>
+          </span>
+          <span className="cf-row cf-gap-8">
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="e.g. 2500"
+              value={obDraft}
+              onChange={(e) => setObDraft(e.target.value)}
+              aria-label="Opening balance"
+              className="field-input field-input--mono firstrun-ob-input"
+              onKeyDown={(e) => {
       if (e.key === "Enter" && obDraft !== "") {
         setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc));
       }
-    } }), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", disabled: obDraft === "", onClick: () => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc)) }, openBal !== 0 ? "Update" : "Set"))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(2, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your income"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Paycheques and anything else that comes in, with how often")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add income")), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, stepBadge(3, false), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-text" }, /* @__PURE__ */ React.createElement("strong", null, "Add your bills"), /* @__PURE__ */ React.createElement("span", { className: "firstrun-step-hint" }, "Rent, utilities, loans — recurring entries fill the whole year")), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--primary cf-btn--md", onClick: quickAdd }, "+ Add bills"))), /* @__PURE__ */ React.createElement("div", { className: "firstrun-footer" }, /* @__PURE__ */ React.createElement("span", { className: "firstrun-footer-text" }, "Just looking around? Load clearly-marked fictional data — one tap removes it again."), /* @__PURE__ */ React.createElement("button", { className: "cf-btn cf-btn--secondary cf-btn--md", onClick: loadSampleData }, "Load sample data")));
-    return /* @__PURE__ */ React.createElement("div", { className: "cf-page dash-wrap dash-page" }, showReconcile && /* @__PURE__ */ React.createElement(ReconcileModal, {
-      projected: glance ? glance.balanceNow : openBal,
-      categories,
-      lastReconciled: lastReconciledDate(entries),
-      onCancel: () => setShowReconcile(false),
-      onConfirm: recordReconcile
-    }), firstRunPanel,
-    /* @__PURE__ */ React.createElement(CategoryDetailSheet, {
-      detail: catDetail,
-      openRows: catOpenRows,
-      onToggleRow: (key) => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [key]: !prev[key] })),
-      onClose: closeCatDetail,
-      scope: activeYear,
-      year: activeYear
-    }),
-    yoyDetail && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": `What drove the change from ${yoyDetail.prev.year} to ${yoyDetail.cur.year}`
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card yoy-detail-card" },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: closeYoyDetail }),
-        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, `What changed: ${yoyDetail.cur.year} vs ${yoyDetail.prev.year}`),
-        /* @__PURE__ */ React.createElement("div", { className: "yoyd-intro" }, "Net surplus is what the year took in less what it spent. These are the two sides of it, and then every line that moved between them."),
-        // The bridge: last year's surplus, the two effects, this year's
+    }}
+            />
+            <button
+              className="cf-btn cf-btn--secondary cf-btn--md"
+              disabled={obDraft === ""}
+              onClick={() => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc))}
+            >
+              {openBal !== 0 ? "Update" : "Set"}
+            </button>
+          </span>
+        </div>
+        <div className="cf-row cf-gap-12 cf-wrap">
+          {stepBadge(2, false)}
+          <span className="firstrun-step-text">
+            <strong>Add your income</strong>
+            <span className="firstrun-step-hint">
+              Paycheques and anything else that comes in, with how often
+            </span>
+          </span>
+          <button className="cf-btn cf-btn--primary cf-btn--md" onClick={quickAdd}>+ Add income</button>
+        </div>
+        <div className="cf-row cf-gap-12 cf-wrap">
+          {stepBadge(3, false)}
+          <span className="firstrun-step-text">
+            <strong>Add your bills</strong>
+            <span className="firstrun-step-hint">
+              Rent, utilities, loans — recurring entries fill the whole year
+            </span>
+          </span>
+          <button className="cf-btn cf-btn--primary cf-btn--md" onClick={quickAdd}>+ Add bills</button>
+        </div>
+      </div>
+      <div className="firstrun-footer">
+        <span className="firstrun-footer-text">
+          Just looking around? Load clearly-marked fictional data — one tap removes it again.
+        </span>
+        <button className="cf-btn cf-btn--secondary cf-btn--md" onClick={loadSampleData}>
+          Load sample data
+        </button>
+      </div>
+    </Card>;
+    return <div className="cf-page dash-wrap dash-page">
+      {showReconcile && <ReconcileModal
+        projected={glance ? glance.balanceNow : openBal}
+        categories={categories}
+        lastReconciled={lastReconciledDate(entries)}
+        onCancel={() => setShowReconcile(false)}
+        onConfirm={recordReconcile}
+      />}
+      {firstRunPanel}
+      <CategoryDetailSheet
+        detail={catDetail}
+        openRows={catOpenRows}
+        onToggleRow={(key) => setCatOpenRows((prev) => ({ ...prev, [key]: !prev[key] }))}
+        onClose={closeCatDetail}
+        scope={activeYear}
+        year={activeYear}
+      />
+      {yoyDetail && <div
+        className="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`What drove the change from ${yoyDetail.prev.year} to ${yoyDetail.cur.year}`}
+      >
+        <div className="modal-card yoy-detail-card">
+          <SheetHandle onDismiss={closeYoyDetail} />
+          <div className="modal-title-lg mb-6">
+            {`What changed: ${yoyDetail.cur.year} vs ${yoyDetail.prev.year}`}
+          </div>
+          <div className="yoyd-intro">
+            Net surplus is what the year took in less what it spent. These are the two sides of it, and then every line that moved between them.
+          </div>
+          {// The bridge: last year's surplus, the two effects, this year's
         // surplus. Four rows that add up in front of the reader, so the big
         // number at the bottom is arrived at rather than asserted.
-        /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge" },
-          // The opening and closing surplus, on one line. It replaces the two
+        <div className="yoyd-bridge">
+          {// The opening and closing surplus, on one line. It replaces the two
           // full rows below at narrow widths, where the bridge cost 212px
           // before the reader reached a single driver — half the height, the
           // same two numbers, and the two effect rows in between still add up
           // between them.
-          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--compact" },
-            /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" }, "Net surplus"),
-            /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt" },
-              `${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`
-            )
-          ),
-          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--wide" },
-            /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" }, `${yoyDetail.prev.year} net surplus`),
-            /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt" }, fmt(yoyDetail.prev.surplus, true))
-          ),
-          [
+          <div className="yoyd-bridge-row yoyd-bridge-row--compact">
+            <span className="yoyd-bridge-lbl">Net surplus</span>
+            <span className="cf-text-mono-13 yoyd-bridge-amt">
+              {`${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`}
+            </span>
+          </div>
+}
+          <div className="yoyd-bridge-row yoyd-bridge-row--wide">
+            <span className="yoyd-bridge-lbl">{`${yoyDetail.prev.year} net surplus`}</span>
+            <span className="cf-text-mono-13 yoyd-bridge-amt">{fmt(yoyDetail.prev.surplus, true)}</span>
+          </div>
+          {[
             { key: "income", label: "Income", was: yoyDetail.prev.income, is: yoyDetail.cur.income, effect: yoyDetail.incomeEffect },
             { key: "expense", label: "Expenses", was: yoyDetail.prev.expense, is: yoyDetail.cur.expense, effect: yoyDetail.expenseEffect }
-          ].map((r) => /* @__PURE__ */ React.createElement("div", { key: r.key, className: "yoyd-bridge-row yoyd-bridge-row--step" },
-            /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" },
-              r.is === r.was ? `${r.label} unchanged` : `${r.label} ${r.is > r.was ? "up" : "down"} ${fmt(Math.abs(r.is - r.was))}`,
-              /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-from" }, `${fmt(r.was)} → ${fmt(r.is)}`)
-            ),
-            /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt " + (r.effect > 0 ? "yoy-delta-pos" : r.effect < 0 ? "yoy-delta-neg" : "") }, fmt(r.effect, true))
-          )),
-          /* @__PURE__ */ React.createElement("div", { className: "yoyd-bridge-row yoyd-bridge-row--total yoyd-bridge-row--wide" },
-            /* @__PURE__ */ React.createElement("span", { className: "yoyd-bridge-lbl" }, `${yoyDetail.cur.year} net surplus`),
-            /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-bridge-amt" }, fmt(yoyDetail.cur.surplus, true))
-          )
-        ),
-        /* @__PURE__ */ React.createElement("div", { className: "yoyd-sub" },
-          /* @__PURE__ */ React.createElement("span", { className: "yoy-title" }, "What moved"),
-          /* @__PURE__ */ React.createElement(HelpTip, {
-            label: "What moved",
-            text: "Effect is what that line did to the net surplus, and the list is sorted by it, biggest first. Income lifts the surplus, so earning more is a gain; spending does the opposite, so a category you spent less on is a gain too — which is why an expense's Effect carries the opposite sign to the direction it moved in. Every line adds up to the change in the table you came from, with nothing left out. A ▸ opens the entries behind a category."
-          })
-        ),
-        yoyDetail.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "yoyd-none" }, `Nothing moved. Every income source and expense category came to the same total in ${yoyDetail.cur.year} as in ${yoyDetail.prev.year}.`) : /* @__PURE__ */ React.createElement("div", {
-          // Not .hscroll. That wrapper exists to give a too-wide table its own
-          // scrollport, and it brought a max-height with it — so the sheet
-          // scrolled, and the table scrolled inside it, and the sticky Done
-          // bar covered whatever the inner scroll happened to be showing. The
-          // table is fixed-layout now and never outruns its width, so there is
-          // nothing to scroll horizontally and no reason for a second
-          // scrollport: the sheet is the only thing that scrolls. Without
-          // scrolling there is nothing for tabIndex to do either.
-          className: "yoyd-table-wrap"
-        },
-          // A real table, and a fixed one. Auto layout sizes columns from
+          ].map((r) => <div key={r.key} className="yoyd-bridge-row yoyd-bridge-row--step">
+            <span className="yoyd-bridge-lbl">
+              {r.is === r.was ? `${r.label} unchanged` : `${r.label} ${r.is > r.was ? "up" : "down"} ${fmt(Math.abs(r.is - r.was))}`}
+              <span className="cf-text-mono-13 yoyd-bridge-from">{`${fmt(r.was)} → ${fmt(r.is)}`}</span>
+            </span>
+            <span
+              className={"cf-text-mono-13 yoyd-bridge-amt " + (r.effect > 0 ? "yoy-delta-pos" : r.effect < 0 ? "yoy-delta-neg" : "")}
+            >
+              {fmt(r.effect, true)}
+            </span>
+          </div>)}
+          <div className="yoyd-bridge-row yoyd-bridge-row--total yoyd-bridge-row--wide">
+            <span className="yoyd-bridge-lbl">{`${yoyDetail.cur.year} net surplus`}</span>
+            <span className="cf-text-mono-13 yoyd-bridge-amt">{fmt(yoyDetail.cur.surplus, true)}</span>
+          </div>
+        </div>
+}
+          <div className="yoyd-sub">
+            <span className="yoy-title">What moved</span>
+            <HelpTip
+              label="What moved"
+              text="Effect is what that line did to the net surplus, and the list is sorted by it, biggest first. Income lifts the surplus, so earning more is a gain; spending does the opposite, so a category you spent less on is a gain too — which is why an expense's Effect carries the opposite sign to the direction it moved in. Every line adds up to the change in the table you came from, with nothing left out. A ▸ opens the entries behind a category."
+            />
+          </div>
+          {yoyDetail.rows.length === 0 ? <div className="yoyd-none">
+            {`Nothing moved. Every income source and expense category came to the same total in ${yoyDetail.cur.year} as in ${yoyDetail.prev.year}.`}
+          </div> : <div
+            // Not .hscroll. That wrapper exists to give a too-wide table its own
+            // scrollport, and it brought a max-height with it — so the sheet
+            // scrolled, and the table scrolled inside it, and the sticky Done
+            // bar covered whatever the inner scroll happened to be showing. The
+            // table is fixed-layout now and never outruns its width, so there is
+            // nothing to scroll horizontally and no reason for a second
+            // scrollport: the sheet is the only thing that scrolls. Without
+            // scrolling there is nothing for tabIndex to do either.
+            className="yoyd-table-wrap"
+          >
+            {// A real table, and a fixed one. Auto layout sizes columns from
           // their content, so `max-width` on a cell is a suggestion it is free
           // to ignore: eleven movers with a long description wanted 581px of
           // the 552px this sheet has, and the Effect column — the one the
@@ -1266,141 +2129,179 @@ import { toast } from "./auth-misc.js";
           // narrow widths, where the CSS reflows it to a grid: changing an
           // element's display drops the implicit table semantics from the
           // accessibility tree, and these put them back.
-          /* @__PURE__ */ React.createElement("table", { className: "forecast-table yoy-table", role: "table" },
-            /* @__PURE__ */ React.createElement("colgroup", null,
-              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-name" }),
-              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-year" }),
-              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-year" }),
-              /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-effect" })
-            ),
-            /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row", role: "row" },
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-desc", role: "columnheader" }, "Line"),
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col", role: "columnheader" }, yoyDetail.prev.year),
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col", role: "columnheader" }, yoyDetail.cur.year),
-              /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num", role: "columnheader" }, "Effect")
-            )),
-            /* @__PURE__ */ React.createElement("tbody", null, (yoyShowAll ? yoyDetail.rows : yoyDetail.rolled).map((r) => {
+          <table className="forecast-table yoy-table" role="table">
+            <colgroup>
+              <col className="yoyd-col-name" />
+              <col className="yoyd-col-year" />
+              <col className="yoyd-col-year" />
+              <col className="yoyd-col-effect" />
+            </colgroup>
+            <thead>
+              <tr className="thead-row" role="row">
+                <th className="yoy-th-desc" role="columnheader">Line</th>
+                <th className="yoy-th-num yoyd-year-col" role="columnheader">{yoyDetail.prev.year}</th>
+                <th className="yoy-th-num yoyd-year-col" role="columnheader">{yoyDetail.cur.year}</th>
+                <th className="yoy-th-num" role="columnheader">Effect</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(yoyShowAll ? yoyDetail.rows : yoyDetail.rolled).map((r) => {
               const rowKey = r.kind + "|" + r.name;
               const open = !!yoyOpenRows[rowKey];
               const kids = r.kind === "other" ? [] : r.children || [];
-              return /* @__PURE__ */ React.createElement(React.Fragment, { key: rowKey },
-                /* @__PURE__ */ React.createElement(
-                  "tr",
-                  { className: "yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : ""), role: "row" },
-                  /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", role: "cell" },
-                    /* @__PURE__ */ React.createElement("div", { className: "yoyd-name-row" },
-                      // The triangle hangs in a gutter the cell reserves for
+              return <React.Fragment key={rowKey}>
+                <tr className={"yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : "")} role="row">
+                  <td className="yoy-td-desc" role="cell">
+                    <div className="yoyd-name-row">
+                      {// The triangle hangs in a gutter the cell reserves for
                       // it, rather than sitting in the flow with an empty
                       // spacer on the rows that have none. In the flow it
                       // indented only the name, leaving the kind and the two
                       // amounts under it starting 18px further left — so each
                       // row had two left edges, and the rows with a triangle
                       // made the mismatch obvious.
-                      kids.length ? /* @__PURE__ */ React.createElement("button", {
-                        type: "button",
-                        className: "yoyd-expand",
-                        "aria-expanded": open ? "true" : "false",
-                        "aria-label": `${open ? "Hide" : "Show"} the entries behind ${r.name}`,
-                        onClick: () => setYoyOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [rowKey]: !prev[rowKey] }))
-                      }, open ? "\u25BE" : "\u25B8") : null,
-                      /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: r.name }, r.name),
-                      r.kind !== "other" && r.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
-                      r.kind !== "other" && r.cur === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Gone")
-                    ),
-                    /* @__PURE__ */ React.createElement("span", { className: "yoyd-kind" }, r.kind === "other" ? `${r.restCount} smaller lines` : r.kind === "income" ? "Income" : "Expense", kids.length ? ` \u00b7 ${kids.length} moved` : ""),
-                    // The two year columns, folded into the name cell. A phone
+                      kids.length ? <button
+                        type="button"
+                        className="yoyd-expand"
+                        aria-expanded={open ? "true" : "false"}
+                        aria-label={`${open ? "Hide" : "Show"} the entries behind ${r.name}`}
+                        onClick={() => setYoyOpenRows((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }))}
+                      >
+                        {open ? "\u25BE" : "\u25B8"}
+                      </button> : null
+}
+                      <span className="yoyd-name" title={r.name}>{r.name}</span>
+                      {r.kind !== "other" && r.prev === 0 && <span className="yoy-tag yoy-tag--new">New</span>}
+                      {r.kind !== "other" && r.cur === 0 && <span className="yoy-tag yoy-tag--gone">
+                        Gone
+                      </span>}
+                    </div>
+                    <span className="yoyd-kind">
+                      {r.kind === "other" ? `${r.restCount} smaller lines` : r.kind === "income" ? "Income" : "Expense"}
+                      {kids.length ? ` \u00b7 ${kids.length} moved` : ""}
+                    </span>
+                    {// The two year columns, folded into the name cell. A phone
                     // is 361px of usable sheet and the four columns want 421 —
                     // and the one that would have gone over the edge is Effect,
                     // which is what the reader opened this for. Hidden on
                     // anything wider, where the columns themselves show.
-                    /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-inline-amts" }, `${fmt(r.prev)} \u2192 ${fmt(r.cur)}`)
-                  ),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(r.prev)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(r.cur)),
-                  /* @__PURE__ */ React.createElement("td", { role: "cell", className: "cf-text-mono-13 yoy-num yoyd-effect-td " + (r.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg") },
-                    // A bar rather than a fifth number: the figure beside it
+                    <span className="cf-text-mono-13 yoyd-inline-amts">
+                      {`${fmt(r.prev)} \u2192 ${fmt(r.cur)}`}
+                    </span>
+}
+                  </td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(r.prev)}</td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(r.cur)}</td>
+                  <td
+                    role="cell"
+                    className={"cf-text-mono-13 yoy-num yoyd-effect-td " + (r.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg")}
+                  >
+                    {// A bar rather than a fifth number: the figure beside it
                     // already says how much, and what a reader wants from a
                     // sorted list is how far its top outruns the rest. Drawn
                     // behind the figure and scaled to the largest effect in
                     // the list, not to the total — two lines that each moved
                     // the surplus by half of it should both read as big.
-                    /* @__PURE__ */ React.createElement("span", {
-                      className: "yoyd-fill" + (r.effect >= 0 ? " yoyd-fill--pos" : " yoyd-fill--neg"),
-                      "aria-hidden": "true",
-                      style: { width: `${yoyDetail.peak ? Math.max(3, Math.round(Math.abs(r.effect) / yoyDetail.peak * 100)) : 0}%` }
-                    }),
-                    /* @__PURE__ */ React.createElement("span", { className: "yoyd-effect-val" }, fmt(r.effect, true))
-                  )
-                ),
-                open && kids.map((k) => /* @__PURE__ */ React.createElement(
-                  "tr",
-                  { key: rowKey + "|" + k.name, className: "yoy-tr yoyd-child-tr", role: "row" },
-                  /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc yoyd-child-td", role: "cell" },
-                    /* @__PURE__ */ React.createElement("div", { className: "yoyd-name-row" },
-                      /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: k.name }, k.name),
-                      k.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
-                      k.cur === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone" }, "Gone")
-                    ),
-                    /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-inline-amts" }, `${fmt(k.prev)} \u2192 ${fmt(k.cur)}`)
-                  ),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(k.prev)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(k.cur)),
-                  /* @__PURE__ */ React.createElement("td", { role: "cell", className: "cf-text-mono-13 yoy-num yoyd-effect-td " + (k.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg") }, /* @__PURE__ */ React.createElement("span", { className: "yoyd-effect-val" }, fmt(k.effect, true)))
-                ))
-              );
-            })),
-            /* @__PURE__ */ React.createElement("tfoot", null, /* @__PURE__ */ React.createElement("tr", { className: "yoy-foot", role: "row" },
-              /* @__PURE__ */ React.createElement("td", { className: "yoy-td-desc", role: "cell" }, "Net surplus",
-                /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 yoyd-inline-amts" }, `${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`)
-              ),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(yoyDetail.prev.surplus, true)),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num yoyd-year-col", role: "cell" }, fmt(yoyDetail.cur.surplus, true)),
-              /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13 yoy-num " + (yoyDetail.delta > 0 ? "yoy-delta-pos" : yoyDetail.delta < 0 ? "yoy-delta-neg" : ""), "data-yoyd-total": true, role: "cell" }, /* @__PURE__ */ React.createElement("span", { className: "yoyd-effect-val" }, fmt(yoyDetail.delta, true)))
-            ))
-          )
-        ),
-        yoyDetail.restCount > 0 && /* @__PURE__ */ React.createElement("div", { className: "yoyd-showall-row" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            className: "cf-btn cf-btn--secondary cf-btn--sm",
-            "aria-expanded": yoyShowAll ? "true" : "false",
-            onClick: () => setYoyShowAll((v) => !v)
-          },
-          yoyShowAll ? `Show the ${yoyDetail.rolled.length - 1} biggest` : `Show all ${yoyDetail.rows.length} lines`
-        )),
-        yoyDetail.hasTransfers && /* @__PURE__ */ React.createElement("div", { className: "yoyd-foot-note" }, "One of these years has transfers in it. A transfer is neither income nor an expense, so it moves the balance without touching the net surplus above — which is why none appear here."),
-        /* @__PURE__ */ React.createElement("div", { className: "yoyd-done-row" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: closeYoyDetail,
-            className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
-          },
-          "Done"
-        ))
-      )
-    ),
-    // The shared-view toggle stays here: it changes *what* you are reading, so
+                    <span
+                      className={"yoyd-fill" + (r.effect >= 0 ? " yoyd-fill--pos" : " yoyd-fill--neg")}
+                      aria-hidden="true"
+                      style={{ width: `${yoyDetail.peak ? Math.max(3, Math.round(Math.abs(r.effect) / yoyDetail.peak * 100)) : 0}%` }}
+                    />
+}
+                    <span className="yoyd-effect-val">{fmt(r.effect, true)}</span>
+                  </td>
+                </tr>
+                {open && kids.map((k) => <tr
+                  key={rowKey + "|" + k.name}
+                  className="yoy-tr yoyd-child-tr"
+                  role="row"
+                >
+                  <td className="yoy-td-desc yoyd-child-td" role="cell">
+                    <div className="yoyd-name-row">
+                      <span className="yoyd-name" title={k.name}>{k.name}</span>
+                      {k.prev === 0 && <span className="yoy-tag yoy-tag--new">New</span>}
+                      {k.cur === 0 && <span className="yoy-tag yoy-tag--gone">Gone</span>}
+                    </div>
+                    <span className="cf-text-mono-13 yoyd-inline-amts">
+                      {`${fmt(k.prev)} \u2192 ${fmt(k.cur)}`}
+                    </span>
+                  </td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(k.prev)}</td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(k.cur)}</td>
+                  <td
+                    role="cell"
+                    className={"cf-text-mono-13 yoy-num yoyd-effect-td " + (k.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg")}
+                  >
+                    <span className="yoyd-effect-val">{fmt(k.effect, true)}</span>
+                  </td>
+                </tr>)}
+              </React.Fragment>;
+            })}
+            </tbody>
+            <tfoot>
+              <tr className="yoy-foot" role="row">
+                <td className="yoy-td-desc" role="cell">
+                  Net surplus
+                  <span className="cf-text-mono-13 yoyd-inline-amts">
+                    {`${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`}
+                  </span>
+                </td>
+                <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">
+                  {fmt(yoyDetail.prev.surplus, true)}
+                </td>
+                <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">
+                  {fmt(yoyDetail.cur.surplus, true)}
+                </td>
+                <td
+                  className={"cf-text-mono-13 yoy-num " + (yoyDetail.delta > 0 ? "yoy-delta-pos" : yoyDetail.delta < 0 ? "yoy-delta-neg" : "")}
+                  data-yoyd-total={true}
+                  role="cell"
+                >
+                  <span className="yoyd-effect-val">{fmt(yoyDetail.delta, true)}</span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+}
+          </div>}
+          {yoyDetail.restCount > 0 && <div className="yoyd-showall-row">
+            <button
+              type="button"
+              className="cf-btn cf-btn--secondary cf-btn--sm"
+              aria-expanded={yoyShowAll ? "true" : "false"}
+              onClick={() => setYoyShowAll((v) => !v)}
+            >
+              {yoyShowAll ? `Show the ${yoyDetail.rolled.length - 1} biggest` : `Show all ${yoyDetail.rows.length} lines`}
+            </button>
+          </div>}
+          {yoyDetail.hasTransfers && <div className="yoyd-foot-note">
+            One of these years has transfers in it. A transfer is neither income nor an expense, so it moves the balance without touching the net surplus above — which is why none appear here.
+          </div>}
+          <div className="yoyd-done-row">
+            <button onClick={closeYoyDetail} className="cf-btn cf-btn--primary fw-700 btn-pad-24">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>}
+      {// The shared-view toggle stays here: it changes *what* you are reading, so
     // it belongs above the reading. Customize changes the page itself and now
     // sits at its foot — see .dash-foot.
-    /* @__PURE__ */ React.createElement("div", { className: "dash-toolbar", "data-noprint": true }, showCustomize && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": "Customize dashboard"
-      },
-      /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "modal-card customize-modal-card",
-          onClick: (e) => e.stopPropagation()
-        },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setShowCustomize(false) }),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-title" }, "Customize Dashboard"),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-note" }, "Everything ticked here is on Today, in this order. Untick a panel to take it off the page \u2014 nothing is hidden behind a tap."),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-list" }, dashOrderEff.map((id, idx) => {
+    <div className="dash-toolbar" data-noprint={true}>
+      {showCustomize && <div
+        className="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Customize dashboard"
+      >
+        <div className="modal-card customize-modal-card" onClick={(e) => e.stopPropagation()}>
+          <SheetHandle onDismiss={() => setShowCustomize(false)} />
+          <div className="customize-title">Customize Dashboard</div>
+          <div className="customize-note">
+            Everything ticked here is on Today, in this order. Untick a panel to take it off the page — nothing is hidden behind a tap.
+          </div>
+          <div className="customize-list">
+            {dashOrderEff.map((id, idx) => {
           const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
           if (!w) return null;
           const move = (dir) => {
@@ -1411,38 +2312,70 @@ import { toast } from "./auth-misc.js";
             [next[idx], next[j]] = [next[j], next[idx]];
             setDashOrder(next);
           };
-          const item = /* @__PURE__ */ React.createElement("div", { key: id, className: "customize-item", style: {
+          const item = <div
+            key={id}
+            className="customize-item"
+            style={{
             background: dashHidden[id] ? "transparent" : "var(--stripe)"
-          } }, /* @__PURE__ */ React.createElement(
-            "input",
-            {
-              type: "checkbox",
-              checked: !dashHidden[id],
-              onChange: (e) => setDashHidden((prev) => __spreadProps(__spreadValues({}, prev), { [id]: !e.target.checked })),
-              className: "customize-checkbox"
-            }
-          ), /* @__PURE__ */ React.createElement("span", { className: "customize-label", style: { opacity: dashHidden[id] ? 0.5 : 1 } }, w.label), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move up", className: "wm-arrow", style: { opacity: idx === 0 ? 0.3 : 1 }, disabled: idx === 0, onClick: () => move(-1) }, "\u2191"), /* @__PURE__ */ React.createElement("button", { "aria-label": "Move down", className: "wm-arrow", style: { opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }, disabled: idx === dashOrderEff.length - 1, onClick: () => move(1) }, "\u2193"));
+          }}
+          >
+            <input
+              type="checkbox"
+              checked={!dashHidden[id]}
+              onChange={(e) => setDashHidden((prev) => ({ ...prev, [id]: !e.target.checked }))}
+              className="customize-checkbox"
+            />
+            <span className="customize-label" style={{ opacity: dashHidden[id] ? 0.5 : 1 }}>{w.label}</span>
+            <button
+              aria-label="Move up"
+              className="wm-arrow"
+              style={{ opacity: idx === 0 ? 0.3 : 1 }}
+              disabled={idx === 0}
+              onClick={() => move(-1)}
+            >
+              ↑
+            </button>
+            <button
+              aria-label="Move down"
+              className="wm-arrow"
+              style={{ opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }}
+              disabled={idx === dashOrderEff.length - 1}
+              onClick={() => move(1)}
+            >
+              ↓
+            </button>
+          </div>;
           return item;
-        })),
-        /* @__PURE__ */ React.createElement("div", { className: "customize-done-row" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setShowCustomize(false),
-            className: "cf-btn cf-btn--primary fw-700 btn-pad-24"
-          },
-          "Done"
-        ))
-      )
-    ), entries.length === 0 && /* @__PURE__ */ React.createElement(
-      OnboardingWizard,
-      {
-        yearConfigs,
-        setYearConfigs,
-        addEntry,
-        categories,
-        setTab
-      }
-    ), users.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "dash-customize-row", "data-noprint": true }, React.createElement(PillToggle, { options: [{ id: false, label: "My entries" }, { id: true, label: "All users" }], value: sharedView, onChange: setSharedView, size: "sm" }))), (() => {
+        })}
+          </div>
+          <div className="customize-done-row">
+            <button
+              onClick={() => setShowCustomize(false)}
+              className="cf-btn cf-btn--primary fw-700 btn-pad-24"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>}
+      {entries.length === 0 && <OnboardingWizard
+        yearConfigs={yearConfigs}
+        setYearConfigs={setYearConfigs}
+        addEntry={addEntry}
+        categories={categories}
+        setTab={setTab}
+      />}
+      {users.length > 1 && <div className="dash-customize-row" data-noprint={true}>
+        <PillToggle
+          options={[{ id: false, label: "My entries" }, { id: true, label: "All users" }]}
+          value={sharedView}
+          onChange={setSharedView}
+          size="sm"
+        />
+      </div>}
+    </div>
+}
+      {(() => {
       const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
       const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
       const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
@@ -1457,7 +2390,9 @@ import { toast } from "./auth-misc.js";
         if (sz === "third") {
           const run = [id];
           while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: run.join("_"), className: "glance-grid", "data-cols": run.length }, run.map((rid) => /* @__PURE__ */ React.createElement(React.Fragment, { key: rid }, WIDGET_RENDER[rid]()))));
+          rows.push(<div key={run.join("_")} className="glance-grid" data-cols={run.length}>
+            {run.map((rid) => <React.Fragment key={rid}>{WIDGET_RENDER[rid]()}</React.Fragment>)}
+          </div>);
           i += run.length;
         } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
           const id2 = visible[i + 1], sz2 = sizeOf(id2);
@@ -1466,13 +2401,16 @@ import { toast } from "./auth-misc.js";
           // which outranks every layer and is why the mobile override needed
           // !important — the last two in the file.
           const split = sz === "wide" && sz2 === "narrow" ? "wide-narrow" : sz === "narrow" && sz2 === "wide" ? "narrow-wide" : "even";
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: id + "_" + id2, className: "chart-grid", "data-split": split }, WIDGET_RENDER[id](), WIDGET_RENDER[id2]()));
+          rows.push(<div key={id + "_" + id2} className="chart-grid" data-split={split}>
+            {WIDGET_RENDER[id]()}
+            {WIDGET_RENDER[id2]()}
+          </div>);
           i += 2;
         } else if (sz !== "full") {
-          rows.push(/* @__PURE__ */ React.createElement("div", { key: id, className: "chart-grid", "data-split": "single" }, WIDGET_RENDER[id]()));
+          rows.push(<div key={id} className="chart-grid" data-split="single">{WIDGET_RENDER[id]()}</div>);
           i += 1;
         } else {
-          rows.push(/* @__PURE__ */ React.createElement(React.Fragment, { key: id }, WIDGET_RENDER[id]()));
+          rows.push(<React.Fragment key={id}>{WIDGET_RENDER[id]()}</React.Fragment>);
           i += 1;
         }
       }
@@ -1485,11 +2423,12 @@ import { toast } from "./auth-misc.js";
       //
       // The foot of Today is the way to change what is on it — something you
       // reach for having read the page, not before.
-      const foot = /* @__PURE__ */ React.createElement("div", { key: "dash-foot", className: "dash-foot dash-customize-row", "data-noprint": true },
-        entries.length > 0 && /* @__PURE__ */ React.createElement("button", {
-          className: "dash-foot-customize",
-          onClick: () => setShowCustomize(true)
-        }, "\u2699 Customize"));
+      const foot = <div key="dash-foot" className="dash-foot dash-customize-row" data-noprint={true}>
+        {entries.length > 0 && <button className="dash-foot-customize" onClick={() => setShowCustomize(true)}>
+          ⚙ Customize
+        </button>}
+      </div>;
       return [...rows, foot];
-    })());
+    })()}
+    </div>;
   }

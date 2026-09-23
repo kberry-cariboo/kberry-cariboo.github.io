@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId } from "./runtime.js";
+import { genId } from "./runtime.js";
 import { daysInMonth, expandEntries } from "./dates.js";
   // ── Rolling one budget year forward into the next ────────────────────────
   //
@@ -104,7 +104,7 @@ import { daysInMonth, expandEntries } from "./dates.js";
         // The user deliberately deleted a previous copy of this source entry —
         // don't resurrect it just because it's "missing" from the target year.
         if (deletedCopyIds[s.e.id]) return;
-        clones.push(__spreadProps(__spreadValues({}, s.e), { id: genId(), desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id }));
+        clones.push({ ...s.e, id: genId(), desc: s.desc, amount: s.amount, notes: s.notes, startDate: `${toYear}-${s.effMD}`, copiedFrom: s.e.id });
         return;
       }
       // The user edited this copy's occurrence in the target year — theirs wins.
@@ -152,7 +152,7 @@ import { daysInMonth, expandEntries } from "./dates.js";
         if (!existing || existing[f] !== copy[f]) changed = true;
       });
       if (!Object.keys(copy).length || !changed) return;
-      added[newKey] = existing ? __spreadValues(__spreadValues({}, existing), copy) : copy;
+      added[newKey] = existing ? { ...existing, ...copy } : copy;
     });
     return added;
   }
@@ -184,7 +184,7 @@ import { daysInMonth, expandEntries } from "./dates.js";
     Object.keys(fromOvs || {}).forEach((k) => {
       const ov = fromOvs[k];
       if (ov && ov.skipped) {
-        const rest = __spreadValues({}, ov);
+        const rest = { ...ov };
         delete rest.skipped;
         srcOvs[k] = rest;
       } else {
@@ -233,7 +233,7 @@ import { daysInMonth, expandEntries } from "./dates.js";
         // _savedAt marks a user-made override — protected. Sync-written ones
         // may be refreshed so later source-year edits still mirror forward.
         if (existing._savedAt !== void 0 || existing.amount === srcAmt) return;
-        added[ev.id] = __spreadProps(__spreadValues({}, existing), { amount: srcAmt });
+        added[ev.id] = { ...existing, amount: srcAmt };
       } else {
         if (srcAmt === ev.amount) return;
         added[ev.id] = { amount: srcAmt };
@@ -255,7 +255,7 @@ import { daysInMonth, expandEntries } from "./dates.js";
       const src = budgetTargets[`${fromYear}:${m}`];
       if (!src || !Object.keys(src).length) continue;
       const existing = budgetTargets[`${toYear}:${m}`] || {};
-      const merged = __spreadValues({}, existing);
+      const merged = { ...existing };
       let changed = false;
       Object.keys(src).forEach((cat) => {
         if (merged[cat] === void 0) {
@@ -300,19 +300,20 @@ import { daysInMonth, expandEntries } from "./dates.js";
       setEntries((prev) => [
         ...prev.map((e) => {
           const u = plan.updates.find((x) => x.id === e.id);
-          return u ? __spreadValues(__spreadValues({}, e), u.patch) : e;
+          return u ? { ...e, ...u.patch } : e;
         }),
         ...plan.clones
       ]);
     }
-    const ovAdds = __spreadValues(__spreadValues({}, plan.overrideAdds), plan.amountAdds);
+    const ovAdds = { ...plan.overrideAdds, ...plan.amountAdds };
     if (Object.keys(ovAdds).length) {
-      setOverridesByYr((prev) => __spreadProps(__spreadValues({}, prev), {
-        [toYear]: __spreadValues(__spreadValues({}, prev[toYear] || {}), ovAdds)
+      setOverridesByYr((prev) => ({
+        ...prev,
+        [toYear]: { ...prev[toYear] || {}, ...ovAdds }
       }));
     }
     if (Object.keys(plan.targetAdds).length) {
-      setBudgetTargets((prev) => __spreadValues(__spreadValues({}, prev), plan.targetAdds));
+      setBudgetTargets((prev) => ({ ...prev, ...plan.targetAdds }));
     }
   }
   // The shared sentence fragments, so all three doors describe the same work the

@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId } from "./runtime.js";
+import { genId } from "./runtime.js";
 import { DEFAULT_ACCOUNT_ID } from "./migrate.js";
 import { holidayOn } from "./holidays.js";
 import { fmtDate, roundMoney } from "./format.js";
@@ -15,14 +15,14 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
   // lives in one place (fmtDate in format.js) so every date in the app reads
   // the same way and follows the household's locale.
   export function humanShortDate(str, contextYear) {
-    return fmtDate(str, contextYear === void 0 ? (/* @__PURE__ */ new Date()).getFullYear() : contextYear);
+    return fmtDate(str, contextYear === void 0 ? (new Date()).getFullYear() : contextYear);
   }
   export function todayStr() {
-    const t = /* @__PURE__ */ new Date();
+    const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
   }
   export function startOfToday() {
-    const d = /* @__PURE__ */ new Date();
+    const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }
@@ -30,7 +30,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
   export function isArchived(e, year) {
-    const yr = year || (/* @__PURE__ */ new Date()).getFullYear();
+    const yr = year || (new Date()).getFullYear();
     const yearStart = `${yr}-01-01`;
     const yearEnd = `${yr}-12-31`;
     if (!e.repeats) {
@@ -154,8 +154,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
       const wdays = e.recurDays || [];
       if (startD > yearEnd || endD < yearStart) return;
       const amtForMonth = (m) => {
-        var _a;
-        return ((_a = e.monthlyAmounts) == null ? void 0 : _a[m]) !== void 0 ? e.monthlyAmounts[m] : e.amount;
+        return e.monthlyAmounts?.[m] !== void 0 ? e.monthlyAmounts[m] : e.amount;
       };
       const addEv = (date) => {
         if (date.getFullYear() !== year) return;
@@ -245,7 +244,8 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
         // right.
         if (isInterAccountTransfer(e)) {
           const first = events[events.length - 1];
-          events.push(__spreadProps(__spreadValues({}, first), {
+          events.push({
+            ...first,
             // Distinct id: an occurrence id keys overrides, completion ticks
             // and React lists, and two rows sharing one would collide in all
             // three.
@@ -255,7 +255,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
             // The leg is a consequence of the entry, not an occurrence anyone
             // edits: the editable one is the first leg.
             _leg: true
-          }));
+          });
         }
       };
       if (!e.repeats) {
@@ -367,7 +367,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
   // changed).
   export function splitEntryEditFromCurrentMonth(entries, editedId, data, now = new Date()) {
     const old = entries.find((e) => e.id === editedId);
-    const inPlace = () => ({ entries: entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, data), { id: editedId }) : e), newId: null, splitDate: null });
+    const inPlace = () => ({ entries: entries.map((e) => e.id === editedId ? { ...data, id: editedId } : e), newId: null, splitDate: null });
     if (!old) return { entries, newId: null, splitDate: null };
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthStartStr = localDateStr(monthStart);
@@ -403,7 +403,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
     if (shape(old) === shape(data)) return inPlace();
     let newStartD = null;
     if (data.repeats) {
-      const probe = __spreadProps(__spreadValues({}, data), { id: 0 });
+      const probe = { ...data, id: 0 };
       const anchorD = parseDate(data.startDate);
       const anchorDay = anchorD ? anchorD.getDate() : 1;
       const unit = data.recurUnit || "month";
@@ -421,8 +421,8 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
     const endD = new Date(boundary);
     endD.setDate(endD.getDate() - 1);
     const newId = genId();
-    const next = entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, old), { recurEnd: localDateStr(endD) }) : e);
-    next.push(__spreadProps(__spreadValues({}, data), { id: newId, startDate: data.repeats ? localDateStr(newStartD) : data.startDate }));
+    const next = entries.map((e) => e.id === editedId ? { ...old, recurEnd: localDateStr(endD) } : e);
+    next.push({ ...data, id: newId, startDate: data.repeats ? localDateStr(newStartD) : data.startDate });
     return { entries: next, newId, splitDate: localDateStr(boundary) };
   }
   // After a split, occurrence-keyed data (overrides, mark-paid flags) dated
@@ -473,7 +473,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
     const flows = {};
     let carry = null;
     [...yearConfigs].sort((a, b) => a.year - b.year).forEach((yc, i) => {
-      const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
+      const openBal = i === 0 ? yc.openingBalance : carry ?? yc.openingBalance;
       const flow = computeFlow(expandEntries(entryList, yc.year, overridesByYr[yc.year] || {}), openBal, { owned: true });
       flows[yc.year] = flow;
       carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
@@ -497,7 +497,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
     }
     return events.map((ev) => {
       bal += signedAmount(ev);
-      return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
+      return { ...ev, balance: roundMoney(bal) };
     });
   }
   // Per-month totals. `income` and `expense` are the two *activity* totals and
@@ -533,7 +533,7 @@ import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
     });
   }
   export function getCurrentBalance(flow, openBal, year) {
-    const today = /* @__PURE__ */ new Date();
+    const today = new Date();
     if (today.getFullYear() < year) return openBal;
     if (today.getFullYear() > year) {
       return flow.length > 0 ? flow[flow.length - 1].balance : openBal;

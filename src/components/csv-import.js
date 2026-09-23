@@ -130,13 +130,13 @@ import { toast } from "./auth-misc.js";
       return sorted[0] || "";
     });
     const [skipDuplicates, setSkipDuplicates] = useState(true);
-    const [excludedRows, setExcludedRows] = useState(() => /* @__PURE__ */ new Set());
+    const [excludedRows, setExcludedRows] = useState(() => new Set());
     // Rows flagged as duplicates that the user has ticked back on. "Skip
     // likely duplicates" is a bulk default, not a verdict — the match is
     // best-effort (and now matches scheduled occurrences within a few days,
     // which is looser still), so a wrong flag has to cost one click rather
     // than forcing the whole option off to rescue one row.
-    const [keptDuplicates, setKeptDuplicates] = useState(() => /* @__PURE__ */ new Set());
+    const [keptDuplicates, setKeptDuplicates] = useState(() => new Set());
     // Per-row category overrides, keyed by row index. Empty means "use the
     // bulk category chosen on the mapping step", so the import works exactly
     // as before if nothing here is ever touched.
@@ -158,7 +158,7 @@ import { toast } from "./auth-misc.js";
       setDebitCol(-1);
       setCreditCol(-1);
       setFlipSign(false);
-      setExcludedRows(/* @__PURE__ */ new Set());
+      setExcludedRows(new Set());
       setRowCats({});
       setCatErr("");
       setCatCount(0);
@@ -224,7 +224,7 @@ import { toast } from "./auth-misc.js";
     // it keeps the exact-date rule it always had.
     const parsedRows = useMemo(() => {
       if (step !== "preview" && step !== "map") return [];
-      const existingKeys = /* @__PURE__ */ new Set(
+      const existingKeys = new Set(
         existingEntries.filter((e) => !e.repeats).map((e) => `${e.startDate}|${Math.abs(e.amount)}`)
       );
       const OCCURRENCE_DAY_WINDOW = 3;
@@ -379,120 +379,210 @@ import { toast } from "./auth-misc.js";
       toast(`Imported ${newEntries.length} entr${newEntries.length === 1 ? "y" : "ies"} from ${fileName}`);
       close();
     };
-    const colOptions = (value, onChange, placeholder) => /* @__PURE__ */ React.createElement(
-      "select",
-      { className: "field-input", value, onChange: (e) => onChange(parseInt(e.target.value, 10)) },
-      /* @__PURE__ */ React.createElement("option", { value: -1 }, placeholder),
-      headers.map((h, i) => /* @__PURE__ */ React.createElement("option", { key: i, value: i }, h || `Column ${i + 1}`))
-    );
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": "Import CSV"
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card csvimport-modal-card", onClick: (e) => e.stopPropagation() },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: close }),
-        /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg", style: { marginBottom: 0 } }, "Import CSV"), /* @__PURE__ */ React.createElement("button", { onClick: close, "aria-label": "Close", className: "cf-close-x" }, "✕")),
-        step === "upload" && /* @__PURE__ */ React.createElement(React.Fragment, null,
-          /* @__PURE__ */ React.createElement("label", { className: "csvimport-drop-zone" },
-            /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 22 }),
-            /* @__PURE__ */ React.createElement("span", null, "Choose a CSV file"),
-            /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".csv,text/csv", className: "hidden", onChange: (e) => handleFile(e.target.files[0]) })
-          ),
-          parseErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mt-8" }, parseErr)
-        ),
-        step === "map" && /* @__PURE__ */ React.createElement(React.Fragment, null,
-          /* @__PURE__ */ React.createElement("div", { className: "txl mb-14" }, fileName, " — ", dataRows.length, " row", dataRows.length !== 1 ? "s" : "", ". Confirm which columns to use:"),
-          /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Date column"), colOptions(dateCol, setDateCol, "— Select —")),
-          /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Description column"), colOptions(descCol, setDescCol, "— Select —")),
-          /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement(PillToggle, {
-            options: [{ id: "single", label: "One amount column" }, { id: "split", label: "Separate debit / credit" }],
-            value: amountMode,
-            onChange: setAmountMode
-          })),
-          amountMode === "single" ? /* @__PURE__ */ React.createElement(React.Fragment, null,
-            /* @__PURE__ */ React.createElement("div", { className: "mb-12" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Amount column"), colOptions(amountCol, setAmountCol, "— Select —")),
-            /* @__PURE__ */ React.createElement(Toggle, { value: flipSign, onChange: setFlipSign, label: "Flip sign (negative = income)" })
-          ) : /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" },
-            /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Debit (money out) column"), colOptions(debitCol, setDebitCol, "— Select —")),
-            /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Credit (money in) column"), colOptions(creditCol, setCreditCol, "— Select —"))
-          ),
-          /* @__PURE__ */ React.createElement("div", { className: "mt-12" }, /* @__PURE__ */ React.createElement(FieldLabel, { helpLabel: "Default category", help: "A starting point for every row. On the next step you can set categories row by row, or have Claude suggest them from the descriptions." }, "Default category"),
-            /* @__PURE__ */ React.createElement("select", { className: "field-input", value: category, onChange: (e) => setCategory(e.target.value) },
-              sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-            ),
-          ),
-          /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
-            /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("upload"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
-            /* @__PURE__ */ React.createElement("button", { onClick: close, className: "cf-btn cf-btn--secondary" }, "Cancel"),
-            /* @__PURE__ */ React.createElement(
-              "button",
-              {
-                onClick: () => setStep("preview"),
-                disabled: dateCol < 0 || descCol < 0 || (amountMode === "single" ? amountCol < 0 : debitCol < 0 && creditCol < 0) || !category,
-                className: "cf-btn cf-btn--primary btn-pad-24"
-              },
-              "Preview →"
-            )
-          )
-        ),
-        step === "preview" && /* @__PURE__ */ React.createElement(React.Fragment, null,
-          /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" },
-            /* @__PURE__ */ React.createElement("span", { className: "txl" }, rowsToImport.length, " of ", parsedRows.length, " row", parsedRows.length !== 1 ? "s" : "", " will be imported"),
-            /* @__PURE__ */ React.createElement("label", { className: "cf-row cf-gap-6", style: { fontSize: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: skipDuplicates, onChange: (e) => setSkipDuplicates(e.target.checked) }), "Skip likely duplicates")
-          ),
-          /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap mb-12" },
-            /* @__PURE__ */ React.createElement(
-              "button",
-              {
-                onClick: autoCategorize,
-                disabled: catBusy || isOffline || !aiCanRun(apiKey) || !parsedRows.some((r) => r.valid),
-                title: isOffline ? "You're offline — categorising needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0,
-                className: "cf-btn cf-btn--secondary"
-              },
-              catBusy ? "Categorising…" : "✦ Suggest categories"
-            ),
-            catCount > 0 && !catBusy && /* @__PURE__ */ React.createElement("span", { className: "field-hint-text" }, "Claude set ", catCount, " categor", catCount === 1 ? "y" : "ies", " — review them below before importing.")
-          ),
-          catErr && /* @__PURE__ */ React.createElement("div", { className: "field-error-text mb-12" }, catErr),
-          /* @__PURE__ */ React.createElement("div", { className: "hscroll csvimport-preview-wrap", role: "region", "aria-label": "Import preview" },
-            /* @__PURE__ */ React.createElement("table", { className: "forecast-table" },
-              /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row" }, ["", "Date", "Description", "Amount", "Type", "Category"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "forecast-th" }, h)))),
-              /* @__PURE__ */ React.createElement("tbody", null, parsedRows.map((r) => {
+    const colOptions = (value, onChange, placeholder) => <select
+      className="field-input"
+      value={value}
+      onChange={(e) => onChange(parseInt(e.target.value, 10))}
+    >
+      <option value={-1}>{placeholder}</option>
+      {headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+    </select>;
+    return <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Import CSV">
+      <div className="modal-card csvimport-modal-card" onClick={(e) => e.stopPropagation()}>
+        <SheetHandle onDismiss={close} />
+        <div className="cf-row-between mb-16">
+          <div className="modal-title-lg" style={{ marginBottom: 0 }}>Import CSV</div>
+          <button onClick={close} aria-label="Close" className="cf-close-x">✕</button>
+        </div>
+        {step === "upload" && <>
+          <label className="csvimport-drop-zone">
+            <Icon name="upload" size={22} />
+            <span>Choose a CSV file</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files[0])}
+            />
+          </label>
+          {parseErr && <div className="field-error-text mt-8">{parseErr}</div>}
+        </>}
+        {step === "map" && <>
+          <div className="txl mb-14">
+            {fileName}
+            {" — "}
+            {dataRows.length}
+            {" row"}
+            {dataRows.length !== 1 ? "s" : ""}
+            . Confirm which columns to use:
+          </div>
+          <div className="mb-12">
+            <label className="field-label">Date column</label>
+            {colOptions(dateCol, setDateCol, "— Select —")}
+          </div>
+          <div className="mb-12">
+            <label className="field-label">Description column</label>
+            {colOptions(descCol, setDescCol, "— Select —")}
+          </div>
+          <div className="mb-12">
+            <PillToggle
+              options={[{ id: "single", label: "One amount column" }, { id: "split", label: "Separate debit / credit" }]}
+              value={amountMode}
+              onChange={setAmountMode}
+            />
+          </div>
+          {amountMode === "single" ? <>
+            <div className="mb-12">
+              <label className="field-label">Amount column</label>
+              {colOptions(amountCol, setAmountCol, "— Select —")}
+            </div>
+            <Toggle value={flipSign} onChange={setFlipSign} label="Flip sign (negative = income)" />
+          </> : <div className="entry-form-row2">
+            <div>
+              <label className="field-label">Debit (money out) column</label>
+              {colOptions(debitCol, setDebitCol, "— Select —")}
+            </div>
+            <div>
+              <label className="field-label">Credit (money in) column</label>
+              {colOptions(creditCol, setCreditCol, "— Select —")}
+            </div>
+          </div>}
+          <div className="mt-12">
+            <FieldLabel
+              helpLabel="Default category"
+              help="A starting point for every row. On the next step you can set categories row by row, or have Claude suggest them from the descriptions."
+            >
+              Default category
+            </FieldLabel>
+            <select className="field-input" value={category} onChange={(e) => setCategory(e.target.value)}>
+              {sortedCats.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="oem-footer-row">
+            <button
+              onClick={() => setStep("upload")}
+              className="cf-btn cf-btn--secondary"
+              style={{ marginRight: "auto" }}
+            >
+              ← Back
+            </button>
+            <button onClick={close} className="cf-btn cf-btn--secondary">Cancel</button>
+            <button
+              onClick={() => setStep("preview")}
+              disabled={dateCol < 0 || descCol < 0 || (amountMode === "single" ? amountCol < 0 : debitCol < 0 && creditCol < 0) || !category}
+              className="cf-btn cf-btn--primary btn-pad-24"
+            >
+              Preview →
+            </button>
+          </div>
+        </>}
+        {step === "preview" && <>
+          <div className="cf-row-between mb-12">
+            <span className="txl">
+              {rowsToImport.length}
+              {" of "}
+              {parsedRows.length}
+              {" row"}
+              {parsedRows.length !== 1 ? "s" : ""}
+              {" will be imported"}
+            </span>
+            <label className="cf-row cf-gap-6" style={{ fontSize: 12 }}>
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+              />
+              Skip likely duplicates
+            </label>
+          </div>
+          <div className="cf-row cf-gap-10 cf-wrap mb-12">
+            <button
+              onClick={autoCategorize}
+              disabled={catBusy || isOffline || !aiCanRun(apiKey) || !parsedRows.some((r) => r.valid)}
+              title={isOffline ? "You're offline — categorising needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0}
+              className="cf-btn cf-btn--secondary"
+            >
+              {catBusy ? "Categorising…" : "✦ Suggest categories"}
+            </button>
+            {catCount > 0 && !catBusy && <span className="field-hint-text">
+              {"Claude set "}
+              {catCount}
+              {" categor"}
+              {catCount === 1 ? "y" : "ies"}
+              {" — review them below before importing."}
+            </span>}
+          </div>
+          {catErr && <div className="field-error-text mb-12">{catErr}</div>}
+          <div className="hscroll csvimport-preview-wrap" role="region" aria-label="Import preview">
+            <table className="forecast-table">
+              <thead>
+                <tr className="thead-row">
+                  {["", "Date", "Description", "Amount", "Type", "Category"].map((h) => <th
+                    key={h}
+                    className="forecast-th"
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {parsedRows.map((r) => {
                 const excluded = !willImport(r);
-                return /* @__PURE__ */ React.createElement("tr", { key: r.i, className: "forecast-tr", style: { opacity: excluded ? 0.45 : 1 } },
-                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement("input", { type: "checkbox", "aria-label": `Import row ${r.i + 1}: ${r.desc || "untitled"}`, checked: willImport(r), onChange: () => toggleRow(r) })),
-                  /* @__PURE__ */ React.createElement("td", { className: "forecast-td-date" }, r.date || "—"),
-                  /* @__PURE__ */ React.createElement("td", { className: "forecast-desc-cell" }, r.desc || "—", !r.valid && /* @__PURE__ */ React.createElement("span", { className: "field-error-text" }, " Couldn't parse this row"), r.isDuplicate && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--gone", title: r.duplicateReason }, "Possible duplicate"), r.isDuplicate && r.duplicateReason && /* @__PURE__ */ React.createElement("div", { className: "csvimport-dup-reason" }, r.duplicateReason)),
-                  /* @__PURE__ */ React.createElement("td", { className: "cf-text-mono-13" }, r.amountCents != null ? fmt(r.amountCents) : "—"),
-                  /* @__PURE__ */ React.createElement("td", null, r.type),
-                  /* @__PURE__ */ React.createElement("td", null, r.valid && /* @__PURE__ */ React.createElement(
-                    "select",
-                    {
-                      className: "field-input csvimport-cat-select",
-                      "aria-label": `Category for ${r.desc || "row " + (r.i + 1)}`,
-                      value: rowCats[r.i] || category,
-                      onChange: (e) => setRowCats((prev) => ({ ...prev, [r.i]: e.target.value }))
-                    },
-                    sortedCats.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, c))
-                  ))
-                );
-              }))
-            )
-          ),
-          /* @__PURE__ */ React.createElement("div", { className: "oem-footer-row" },
-            /* @__PURE__ */ React.createElement("button", { onClick: () => setStep("map"), className: "cf-btn cf-btn--secondary", style: { marginRight: "auto" } }, "← Back"),
-            /* @__PURE__ */ React.createElement("button", { onClick: close, className: "cf-btn cf-btn--secondary" }, "Cancel"),
-            /* @__PURE__ */ React.createElement(
-              "button",
-              { onClick: doImport, disabled: rowsToImport.length === 0, className: "cf-btn cf-btn--primary btn-pad-24" },
-              `Import ${rowsToImport.length} entr${rowsToImport.length === 1 ? "y" : "ies"}`
-            )
-          )
-        )
-      )
-    );
+                return <tr key={r.i} className="forecast-tr" style={{ opacity: excluded ? 0.45 : 1 }}>
+                  <td>
+                    {r.valid && <input
+                      type="checkbox"
+                      aria-label={`Import row ${r.i + 1}: ${r.desc || "untitled"}`}
+                      checked={willImport(r)}
+                      onChange={() => toggleRow(r)}
+                    />}
+                  </td>
+                  <td className="forecast-td-date">{r.date || "—"}</td>
+                  <td className="forecast-desc-cell">
+                    {r.desc || "—"}
+                    {!r.valid && <span className="field-error-text">{" Couldn't parse this row"}</span>}
+                    {r.isDuplicate && <span className="yoy-tag yoy-tag--gone" title={r.duplicateReason}>
+                      Possible duplicate
+                    </span>}
+                    {r.isDuplicate && r.duplicateReason && <div className="csvimport-dup-reason">
+                      {r.duplicateReason}
+                    </div>}
+                  </td>
+                  <td className="cf-text-mono-13">{r.amountCents != null ? fmt(r.amountCents) : "—"}</td>
+                  <td>{r.type}</td>
+                  <td>
+                    {r.valid && <select
+                      className="field-input csvimport-cat-select"
+                      aria-label={`Category for ${r.desc || "row " + (r.i + 1)}`}
+                      value={rowCats[r.i] || category}
+                      onChange={(e) => setRowCats((prev) => ({ ...prev, [r.i]: e.target.value }))}
+                    >
+                      {sortedCats.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>}
+                  </td>
+                </tr>;
+              })}
+              </tbody>
+            </table>
+          </div>
+          <div className="oem-footer-row">
+            <button
+              onClick={() => setStep("map")}
+              className="cf-btn cf-btn--secondary"
+              style={{ marginRight: "auto" }}
+            >
+              ← Back
+            </button>
+            <button onClick={close} className="cf-btn cf-btn--secondary">Cancel</button>
+            <button
+              onClick={doImport}
+              disabled={rowsToImport.length === 0}
+              className="cf-btn cf-btn--primary btn-pad-24"
+            >
+              {`Import ${rowsToImport.length} entr${rowsToImport.length === 1 ? "y" : "ies"}`}
+            </button>
+          </div>
+        </>}
+      </div>
+    </div>;
   }

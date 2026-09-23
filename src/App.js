@@ -1,4 +1,4 @@
-import { __spreadProps, __spreadValues, genId, safeStorage, useCallback, useEffect, useMemo, useRef, useState } from "./lib/runtime.js";
+import { genId, safeStorage, useCallback, useEffect, useMemo, useRef, useState } from "./lib/runtime.js";
 import { todayStr } from "./lib/dates.js";
 import { getBiometricCredId } from "./lib/biometric.js";
 import { ACTIVITY_LIMIT, sbChangePassword, useHousehold, useHouseholdData, useHouseholdState, useMemberPrefs } from "./lib/household-sync.js";
@@ -33,8 +33,7 @@ import { useBudgetActions } from "./app/use-budget-actions.js";
 import { useGoalRollovers } from "./app/use-goal-rollovers.js";
 import { useAppNotices } from "./app/use-app-notices.js";
   export function App() {
-    var _a;
-    if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SelfTestView, null));
+    if (typeof location !== "undefined" && location.search.includes("selftest")) return <><SelfTestView /></>;
     const {
       configured: sbConfigured,
       session,
@@ -186,7 +185,7 @@ import { useAppNotices } from "./app/use-app-notices.js";
     const { showBackupNudge, dismissBackup } = useBackupNudge(houseValues);
     // Not household fields: which month the Budget tab is showing and how its
     // columns are ordered are per-device view preferences.
-    const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (/* @__PURE__ */ new Date()).getMonth());
+    const [budgetMonth, setBudgetMonth] = useLS("cf_budgetMonth", (new Date()).getMonth());
     const { globalSearch, setGlobalSearch, searchScopeLabel } = useGlobalSearch({ tab, flowSub, activeYear, setTab, setFlowSub });
     const [menuOpen, setMenuOpen] = useState(false);
     const [profileForm, setProfileForm] = useState(null);
@@ -223,8 +222,8 @@ import { useAppNotices } from "./app/use-app-notices.js";
       if (!what) return;
       setActivity((prev) => [{
         id: genId(),
-        at: (/* @__PURE__ */ new Date()).toISOString(),
-        by: (sessionUser == null ? void 0 : sessionUser.id) || void 0,
+        at: (new Date()).toISOString(),
+        by: (sessionUser?.id) || void 0,
         kind,
         what
       }, ...Array.isArray(prev) ? prev : []].slice(0, ACTIVITY_LIMIT));
@@ -236,7 +235,7 @@ import { useAppNotices } from "./app/use-app-notices.js";
     // view-only interface at every owner on every cold start, and a wrong
     // guess here costs nothing because the server still decides.
     const myRole = useMemo(() => {
-      const me = (members || []).find((m) => m.user_id === (sessionUser == null ? void 0 : sessionUser.id));
+      const me = (members || []).find((m) => m.user_id === sessionUser?.id);
       return me ? me.role || "member" : null;
     }, [members, sessionUser]);
     const canWrite = myRole !== "viewer";
@@ -285,8 +284,7 @@ import { useAppNotices } from "./app/use-app-notices.js";
     const { pullProgress, pullActive } = usePullToRefresh(houseLoadRef);
     const { installPrompt, showInstall, doInstall } = useInstallPrompt();
     useEffect(() => {
-      var _a2;
-      const mq = (_a2 = window.matchMedia) == null ? void 0 : _a2.call(window, "(prefers-color-scheme: dark)");
+      const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
       if (!mq) return;
       const handler = (e) => {
         const stored = localStorage.getItem("cf_darkMode");
@@ -329,55 +327,120 @@ import { useAppNotices } from "./app/use-app-notices.js";
       return null;
     }
     if (!session) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LoginView, null));
+      return <><LoginView /></>;
     }
     if (membershipLoading) {
       return null;
     }
     if (!household) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HouseholdOnboardingView, { email: session.user.email, createHousehold, joinHousehold, signOut }));
+      return <>
+        <HouseholdOnboardingView
+          email={session.user.email}
+          createHousehold={createHousehold}
+          joinHousehold={joinHousehold}
+          signOut={signOut}
+        />
+      </>;
     }
     if (locked) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => {
+      return <>
+        <LockScreen
+          sessionUser={sessionUser}
+          onUnlock={() => {
         safeStorage.set(LOCK_KEY, String(Date.now()), "session");
         setLocked(false);
-      }, onSignOut: logout }));
+      }}
+          onSignOut={logout}
+        />
+      </>;
     }
-    return /* @__PURE__ */ React.createElement(HouseholdContext.Provider, { value: householdCtx }, React.createElement(CategoriesContext.Provider, { value: { categories, categoryColors, chipSurface: (sessionUser && darkMode ? DARK : LIGHT).bgCard } }, React.createElement("div", { className: "app-scroll" }, /* @__PURE__ */ React.createElement(SyncDivergenceModal, { divergence: houseDivergence, onKeepLocal: keepLocalChanges, onUseCloud: discardLocalChanges }), /* @__PURE__ */ React.createElement(AddEntryModal, {
-      show: showQuickAdd,
-      onClose: () => setShowQuickAdd(false),
-      onSave: addEntry,
-      categories,
-      apiKey: aiApiKey,
-      isOffline,
-      templates,
-      setTemplates
-    }), /* @__PURE__ */ React.createElement("a", { href: "#main-content", className: "skip-link", "data-noprint": true }, "Skip to content"), /* @__PURE__ */ React.createElement("header", { className: "tab-bar-outer", "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "header-inner" }, /* @__PURE__ */ React.createElement("div", { className: "logo-area" }, /* @__PURE__ */ React.createElement("img", { src: LOGO_SRC, alt: "CashFlow", className: "header-logo-img" }), (tab === "flow" || tab === "envelopes" || tab === "plan") && /* @__PURE__ */ React.createElement(MobileYearBadge, { year: activeYear, years: sortedConfigs.map((yc) => yc.year), onSelect: setActiveYear, inHeader: true }), /* @__PURE__ */ React.createElement("div", { className: "year-pills", role: "group", "aria-label": "Budget year", onKeyDown: yearRoving.onKeyDown }, sortedConfigs.map((yc, i) => /* @__PURE__ */ React.createElement("div", { key: yc.year, className: "cf-row" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveYear(yc.year), "aria-pressed": activeYear === yc.year, tabIndex: activeYear === yc.year ? 0 : -1, "aria-label": `Budget year ${yc.year}`, className: "cf-text-mono-13 year-pill-btn", style: {
+    return <HouseholdContext.Provider value={householdCtx}>
+      <CategoriesContext.Provider
+        value={{ categories, categoryColors, chipSurface: (sessionUser && darkMode ? DARK : LIGHT).bgCard }}
+      >
+        <div className="app-scroll">
+          <SyncDivergenceModal
+            divergence={houseDivergence}
+            onKeepLocal={keepLocalChanges}
+            onUseCloud={discardLocalChanges}
+          />
+          <AddEntryModal
+            show={showQuickAdd}
+            onClose={() => setShowQuickAdd(false)}
+            onSave={addEntry}
+            categories={categories}
+            apiKey={aiApiKey}
+            isOffline={isOffline}
+            templates={templates}
+            setTemplates={setTemplates}
+          />
+          <a href="#main-content" className="skip-link" data-noprint={true}>Skip to content</a>
+          <header className="tab-bar-outer" data-noprint={true}>
+            <div className="header-inner">
+              <div className="logo-area">
+                <img src={LOGO_SRC} alt="CashFlow" className="header-logo-img" />
+                {(tab === "flow" || tab === "envelopes" || tab === "plan") && <MobileYearBadge
+                  year={activeYear}
+                  years={sortedConfigs.map((yc) => yc.year)}
+                  onSelect={setActiveYear}
+                  inHeader={true}
+                />}
+                <div
+                  className="year-pills"
+                  role="group"
+                  aria-label="Budget year"
+                  onKeyDown={yearRoving.onKeyDown}
+                >
+                  {sortedConfigs.map((yc, i) => <div key={yc.year} className="cf-row">
+                    <button
+                      onClick={() => setActiveYear(yc.year)}
+                      aria-pressed={activeYear === yc.year}
+                      tabIndex={activeYear === yc.year ? 0 : -1}
+                      aria-label={`Budget year ${yc.year}`}
+                      className="cf-text-mono-13 year-pill-btn"
+                      style={{
       background: activeYear === yc.year ? YEAR_COLORS[i % YEAR_COLORS.length] : "rgba(255,255,255,0.1)"
-    } }, yc.year))))), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8 shrink-0" }, isOffline && /* @__PURE__ */ React.createElement("div", { className: "offline-chip", role: "status", title: houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device." }, /* @__PURE__ */ React.createElement("span", { className: "offline-chip-dot", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "offline-chip-text" }, "Offline"), houseUnsaved && /* @__PURE__ */ React.createElement("span", { className: "offline-chip-more" }, "— changes pending")), /* @__PURE__ */ React.createElement("div", { className: "header-search" }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 14, className: "header-search-icon" }), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "global-search",
-        // Names its scope rather than leaving the magnifier to imply one. What
-        // it searches depends on where you are: Plan and Entries filter in
-        // place, everything else lands on the Budget month that matches.
-        "aria-label": searchScopeLabel,
-        placeholder: searchScopeLabel,
-        title: searchScopeLabel,
-        autoComplete: "off",
-        value: globalSearch,
-        onChange: (e) => setGlobalSearch(e.target.value),
-        className: "header-search-input"
-      }
-    ), globalSearch && /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        "aria-label": "Clear search",
-        onClick: () => setGlobalSearch(""),
-        className: "header-search-clear"
-      },
-      "\u2715"
-    )), (() => {
+    }}
+                    >
+                      {yc.year}
+                    </button>
+                  </div>)}
+                </div>
+              </div>
+              <div className="cf-row cf-gap-8 shrink-0">
+                {isOffline && <div
+                  className="offline-chip"
+                  role="status"
+                  title={houseUnsaved ? "You're offline. Changes are saved on this device and will sync when you reconnect." : "You're offline. Changes are saved on this device."}
+                >
+                  <span className="offline-chip-dot" aria-hidden="true" />
+                  <span className="offline-chip-text">Offline</span>
+                  {houseUnsaved && <span className="offline-chip-more">— changes pending</span>}
+                </div>}
+                <div className="header-search">
+                  <Icon name="search" size={14} className="header-search-icon" />
+                  <input
+                    id="global-search"
+                    // Names its scope rather than leaving the magnifier to imply one. What
+                    // it searches depends on where you are: Plan and Entries filter in
+                    // place, everything else lands on the Budget month that matches.
+                    aria-label={searchScopeLabel}
+                    placeholder={searchScopeLabel}
+                    title={searchScopeLabel}
+                    autoComplete="off"
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                    className="header-search-input"
+                  />
+                  {globalSearch && <button
+                    aria-label="Clear search"
+                    onClick={() => setGlobalSearch("")}
+                    className="header-search-clear"
+                  >
+                    ✕
+                  </button>}
+                </div>
+                {(() => {
       // Episodes, not events — the same count the alerts page shows. Counting
       // events made the badge read "9+" for a single dip, because a household
       // that goes under stays under and every entry after the crossing was
@@ -394,53 +457,57 @@ import { useAppNotices } from "./app/use-app-notices.js";
           ? `${critical.length} critical, ${warning.length} warning alert${count > 1 ? "s" : ""}`
           : `${critical.length} critical alert${critical.length > 1 ? "s" : ""}`
         : `${warning.length} warning alert${warning.length > 1 ? "s" : ""}`;
-      return /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          "aria-label": label,
-          onClick: () => setTab((prev) => prev === "alerts" ? "today" : "alerts"),
-          title: label,
-          className: "alert-bell-btn",
-          style: {
+      return <button
+        aria-label={label}
+        onClick={() => setTab((prev) => prev === "alerts" ? "today" : "alerts")}
+        title={label}
+        className="alert-bell-btn"
+        style={{
             background: tab === "alerts" ? "rgba(255,255,255,0.15)" : "transparent",
             borderColor: color,
             color
-          }
-        },
-        /* @__PURE__ */ React.createElement(Icon, { name: "bell", size: 17 }),
-        /* @__PURE__ */ React.createElement("span", { className: "alert-bell-badge", style: { background: color } }, count > 9 ? "9+" : count)
-      );
-    })(), (() => {
-      const initials = ((sessionUser == null ? void 0 : sessionUser.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-      return /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setMenuOpen((v) => !v),
-          "aria-label": "User menu",
-          "aria-expanded": menuOpen,
-          title: `Signed in as ${(sessionUser == null ? void 0 : sessionUser.fullName) || ""}`,
-          className: "user-avatar-btn",
+          }}
+      >
+        <Icon name="bell" size={17} />
+        <span className="alert-bell-badge" style={{ background: color }}>{count > 9 ? "9+" : count}</span>
+      </button>;
+    })()}
+                {(() => {
+      const initials = ((sessionUser?.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+      return <div className="relative">
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="User menu"
+          aria-expanded={menuOpen}
+          title={`Signed in as ${(sessionUser?.fullName) || ""}`}
+          className="user-avatar-btn"
           // Settings, Alerts and Help are reached from this menu rather than
           // from the tab bar, so while you are in one of them the bar shows
           // nothing selected. The avatar is where they live; it is what
           // should look current.
-          "data-here": tab === "you" || tab === "alerts" || tab === "help" ? "1" : void 0,
-          style: { background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }
-        },
-        initials
-      ), menuOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          onClick: () => setMenuOpen(false),
-          className: "user-menu-backdrop"
-        }
-      ), /* @__PURE__ */ React.createElement("div", { className: "user-menu-panel" }, /* @__PURE__ */ React.createElement("div", { className: "user-menu-header" }, /* @__PURE__ */ React.createElement("div", { className: "user-menu-name" }, (sessionUser == null ? void 0 : sessionUser.fullName) || ""), /* @__PURE__ */ React.createElement("div", { className: "user-menu-email" }, (sessionUser == null ? void 0 : sessionUser.email) || "")), [
+          data-here={tab === "you" || tab === "alerts" || tab === "help" ? "1" : void 0}
+          style={{ background: menuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
+        >
+          {initials}
+        </button>
+        {menuOpen && <>
+          <div onClick={() => setMenuOpen(false)} className="user-menu-backdrop" />
+          <div className="user-menu-panel">
+            <div className="user-menu-header">
+              <div className="user-menu-name">
+                {(sessionUser?.fullName) || ""}
+              </div>
+              <div className="user-menu-email">
+                {(sessionUser?.email) || ""}
+              </div>
+            </div>
+            {[
         { label: "Settings", icon: "settings", action: () => {
           setMenuOpen(false);
           setTab("you");
         } },
         { label: "Edit Profile", icon: "user", action: () => {
-          setPf({ fullName: (sessionUser == null ? void 0 : sessionUser.fullName) || "", email: (sessionUser == null ? void 0 : sessionUser.email) || "" });
+          setPf({ fullName: (sessionUser?.fullName) || "", email: (sessionUser?.email) || "" });
           setPfErr("");
           setPfOk("");
           setProfileForm("profile");
@@ -467,44 +534,61 @@ import { useAppNotices } from "./app/use-app-notices.js";
           setMenuOpen(false);
           doInstall();
         } }] : []
-      ].map((item) => /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          key: item.label,
-          onClick: item.action,
-          className: "cf-menu-item cf-menu-item--bordered"
-        },
-        /* @__PURE__ */ React.createElement(Icon, { name: item.icon, size: 16 }),
-        item.label
-      )), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => {
+      ].map((item) => <button
+        key={item.label}
+        onClick={item.action}
+        className="cf-menu-item cf-menu-item--bordered"
+      >
+        <Icon name={item.icon} size={16} />
+        {item.label}
+      </button>)}
+            <button
+              onClick={() => {
             setMenuOpen(false);
             logout();
-          },
-          "aria-label": "Sign out",
-          className: "cf-menu-item cf-menu-item--danger"
-        },
-        /* @__PURE__ */ React.createElement(Icon, { name: "log-out", size: 16 }),
-        "Sign out"
-      ))), profileForm === "profile" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Edit profile" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Edit Profile"), [{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => /* @__PURE__ */ React.createElement("div", { key, className: "mb-14" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pf-" + key }, label), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          id: "pf-" + key,
-          type,
-          className: "field-input",
-          value: pf[key],
-          onChange: (e) => setPf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
-        }
-      ))),/* @__PURE__ */ React.createElement("div", { className: "form-note-text" }, "Email: ", sessionUser == null ? void 0 : sessionUser.email, " (sign-in email can't be changed here)"), pfErr && React.createElement("div", { role: "alert", className: "form-err-text" }, pfErr), pfOk && React.createElement("div", { role: "status", className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setProfileForm(null),
-          className: "cf-btn cf-btn--secondary"
-        },
-        "Cancel"
-      ), /* @__PURE__ */ React.createElement("button", { onClick: async () => {
+          }}
+              aria-label="Sign out"
+              className="cf-menu-item cf-menu-item--danger"
+            >
+              <Icon name="log-out" size={16} />
+              Sign out
+            </button>
+          </div>
+        </>}
+        {profileForm === "profile" && <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit profile"
+        >
+          <div className="modal-card profile-modal-card">
+            <div className="cf-modal-title">Edit Profile</div>
+            {[{ label: "Full Name", key: "fullName", type: "text" }].map(({ label, key, type }) => <div
+              key={key}
+              className="mb-14"
+            >
+              <label className="field-label" htmlFor={"pf-" + key}>{label}</label>
+              <input
+                id={"pf-" + key}
+                type={type}
+                className="field-input"
+                value={pf[key]}
+                onChange={(e) => setPf((p) => ({ ...p, [key]: e.target.value }))}
+              />
+            </div>)}
+            <div className="form-note-text">
+              {"Email: "}
+              {sessionUser?.email}
+              {" (sign-in email can't be changed here)"}
+            </div>
+            {pfErr && <div role="alert" className="form-err-text">{pfErr}</div>}
+            {pfOk && <div role="status" className="form-ok-text">{pfOk}</div>}
+            <div className="cf-row cf-gap-10 justify-end mt-6">
+              <button onClick={() => setProfileForm(null)} className="cf-btn cf-btn--secondary">
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
         const nm = pf.fullName.trim();
         if (!nm) {
           setPfErr("Name is required.");
@@ -517,28 +601,45 @@ import { useAppNotices } from "./app/use-app-notices.js";
         } catch (err) {
           setPfErr(err.message || "Couldn't update your profile.");
         }
-      }, className: "cf-btn cf-btn--primary fw-700" }, "Save")))), profileForm === "password" && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Change password" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" }, /* @__PURE__ */ React.createElement("div", { className: "cf-modal-title" }, "Change Password"), [
+      }}
+                className="cf-btn cf-btn--primary fw-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>}
+        {profileForm === "password" && <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Change password"
+        >
+          <div className="modal-card profile-modal-card">
+            <div className="cf-modal-title">Change Password</div>
+            {[
         { label: "Current password", key: "current", val: pwf.current },
         { label: "New password (min 8 chars)", key: "next", val: pwf.next },
         { label: "Confirm new password", key: "confirm", val: pwf.confirm }
-      ].map(({ label, key, val }) => /* @__PURE__ */ React.createElement("div", { key, className: "mb-14" }, /* @__PURE__ */ React.createElement("label", { className: "field-label", htmlFor: "pwf-" + key }, label), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          id: "pwf-" + key,
-          type: "password",
-          autoComplete: key === "current" ? "current-password" : "new-password",
-          className: "field-input",
-          value: val,
-          onChange: (e) => setPwf((p) => __spreadProps(__spreadValues({}, p), { [key]: e.target.value }))
-        }
-      ))),pfErr && React.createElement("div", { role: "alert", className: "form-err-text" }, pfErr), pfOk && React.createElement("div", { role: "status", className: "form-ok-text" }, pfOk), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 justify-end mt-6" }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: () => setProfileForm(null),
-          className: "cf-btn cf-btn--secondary"
-        },
-        "Cancel"
-      ), /* @__PURE__ */ React.createElement("button", { onClick: async () => {
+      ].map(({ label, key, val }) => <div key={key} className="mb-14">
+        <label className="field-label" htmlFor={"pwf-" + key}>{label}</label>
+        <input
+          id={"pwf-" + key}
+          type="password"
+          autoComplete={key === "current" ? "current-password" : "new-password"}
+          className="field-input"
+          value={val}
+          onChange={(e) => setPwf((p) => ({ ...p, [key]: e.target.value }))}
+        />
+      </div>)}
+            {pfErr && <div role="alert" className="form-err-text">{pfErr}</div>}
+            {pfOk && <div role="status" className="form-ok-text">{pfOk}</div>}
+            <div className="cf-row cf-gap-10 justify-end mt-6">
+              <button onClick={() => setProfileForm(null)} className="cf-btn cf-btn--secondary">
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
         if (!pwf.current || !pwf.next || !pwf.confirm) {
           setPfErr("All fields required.");
           return;
@@ -559,245 +660,337 @@ import { useAppNotices } from "./app/use-app-notices.js";
         } catch (err) {
           setPfErr(err.message || "Couldn't change your password.");
         }
-      }, className: "cf-btn cf-btn--primary fw-700" }, "Change Password")))));
-    })())), /* @__PURE__ */ React.createElement("nav", { className: "cf-page tab-bar", "aria-label": "Primary", "data-noprint": true }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.id, onClick: () => setTab(t.id), "aria-current": tab === t.id ? "page" : void 0, className: "tab-bar-btn", style: {
+      }}
+                className="cf-btn cf-btn--primary fw-700"
+              >
+                Change Password
+              </button>
+            </div>
+          </div>
+        </div>}
+      </div>;
+    })()}
+              </div>
+            </div>
+            <nav className="cf-page tab-bar" aria-label="Primary" data-noprint={true}>
+              {tabs.map((t) => <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                aria-current={tab === t.id ? "page" : void 0}
+                className="tab-bar-btn"
+                style={{
       borderBottom: tab === t.id ? "3px solid var(--amber)" : "3px solid transparent",
       color: tab === t.id ? "#fff" : "rgba(255,255,255,0.55)"
-    } }, t.label, t.id === "today" && activeFlow.filter((ev) => {
-      const today = /* @__PURE__ */ new Date();
+    }}
+              >
+                {t.label}
+                {t.id === "today" && activeFlow.filter((ev) => {
+      const today = new Date();
       const n = new Date(today);
       n.setDate(today.getDate() + 30);
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
-    }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: "var(--red)" } }, "!"), t.id === "flow" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: "var(--amber)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
+    }).length > 0 && <span className="tab-alert-dot" style={{ background: "var(--red)" }}>!</span>}
+                {t.id === "flow" && globalSearch && <span
+                  aria-label="Search active"
+                  className="tab-search-dot"
+                  style={{ color: "var(--amber)" }}
+                >
+                  <Icon name="search" size={11} />
+                </span>}
+              </button>)}
+            </nav>
+          </header>
+          {(pullProgress > 0 || pullActive) && <div
+            className="ptr-indicator"
+            style={{
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
-    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner" + (pullActive ? " ptr-spinner--on" : "") }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), /* @__PURE__ */ React.createElement(NoticeStack, { notices: appNotices }), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
-      DashboardView,
-      {
-        flow: activeFlow,
-        openBal: activeOpenBal,
-        yearFlows,
-        // Every budget year, in whatever account view the page is in. Today's
-        // "next 7 days" needs it: a week that starts in December ends in
-        // January, and activeFlow is one year, so the January half was simply
-        // not in the array to be found.
-        viewFlows,
-        yearConfigs: sortedConfigs,
-        alertThreshold: alertThresh,
-        activeYear,
-        budgetTargets,
-        categories,
-        categoryColors,
-        users: members,
-        sessionUser,
-        entries,
-        // The drifted-bills panel compares each entry's amount against the
-        // actuals recorded on its occurrences, which live here.
-        overridesByYr,
-        assets,
-        applyDriftFix,
-        setYearConfigs,
-        addEntry,
-        setTab,
-        setEntries,
-        completed,
-        toggleComplete,
-        dashHidden,
-        setDashHidden,
-        dashOrder,
-        setDashOrder,
-        debtData,
-        apiKey: aiApiKey,
-        isOffline
-      }
-    ), (tab === "flow" || tab === "envelopes") && /* @__PURE__ */ React.createElement(React.Fragment, null, tab === "flow" && /* @__PURE__ */ React.createElement(BudgetSubTabs, { value: flowSub, onChange: setFlowSub }), /* @__PURE__ */ React.createElement(AccountFilter, { accounts, value: activeAccount, onChange: setAccountFilter }), (tab === "envelopes" || flowSub === "list" || flowSub === "calendar") && /* @__PURE__ */ React.createElement(
-      BudgetView,
-      {
-        flow: activeFlow,
-        prevYearFlow,
-        prevYearConfigured,
-        openBal: activeOpenBal,
-        entries,
-        setOverride,
-        clearOverride,
-        categories,
-        categoryColors,
-        setEntries,
-        saveEntryEdit,
-        addEntry,
-        pushUndo,
-        apiKey: aiApiKey,
-        isOffline,
-        flowSub,
-        setFlowSub,
-        showEnvelopes: tab === "envelopes",
-        monthIdx: budgetMonth,
-        setMonthIdx: setBudgetMonth,
-        alertThreshold: alertThresh,
-        globalSearch,
-        templates,
-        setTemplates,
-        budgetTargets,
-        setBudgetTargets,
-        completed,
-        toggleComplete,
-        markOccurrencesPaid,
-        activeYear,
-        budgetColOrder,
-        setBudgetColOrder,
-        onDeleted: (e) => pushUndoEntryDelete(e),
-        onAddNextYear: activeYear === latestYear ? addNextYearInline : null,
-        skippedOccurrences
-      }
-    ), tab === "flow" && flowSub === "curve" && /* @__PURE__ */ React.createElement(ForecastView, { apiKey: aiApiKey, isOffline, yearFlows, yearConfigs: sortedConfigs, openBalByYear: activeOpenBal, alertThreshold: alertThresh, globalSearch, budgetTargets, horizon: forecastHorizon, setHorizon: setForecastHorizon, categories, categoryColors, addEntry, templates, setTemplates, completed, toggleComplete, entries, scenarioOn, setScenarioOn, scenarioAdj, setScenarioAdj, scenarioFlows }), tab === "flow" && flowSub === "entries" && /* @__PURE__ */ React.createElement(
-      EntriesView,
-      {
-        entries,
-        setEntries,
-        saveEntryEdit,
-        addEntry,
-        categories,
-        categoryColors,
-        activeYear,
-        apiKey: aiApiKey,
-        isOffline,
-        onDeleted: (e) => pushUndoEntryDelete(e),
-        templates,
-        setTemplates,
-        globalSearch,
-        setGlobalSearch,
-        pushUndo,
-        // Declared as a prop here since the view was written, but never
-        // actually passed — which is why CSV import could only compare a
-        // statement row against one-time entries.
-        allYearFlows: yearFlows,
-        colOrder,
-        setColOrder,
-        filter: entriesFilter,
-        setFilter: setEntriesFilter,
-        filterCats: entriesFilterCats,
-        setFilterCats: setEntriesFilterCats,
-        filterScheds: entriesFilterScheds,
-        setFilterScheds: setEntriesFilterScheds,
-        filterStatus: entriesFilterStatus,
-        setFilterStatus: setEntriesFilterStatus
-      }
-    )), tab === "alerts" && /* @__PURE__ */ React.createElement(AlertsPanel, { flow: activeFlow, alertThreshold: alertThresh, setTab, findings: appFindings, gotoForecast: () => {
+    }}
+          >
+            <span className={"ptr-spinner" + (pullActive ? " ptr-spinner--on" : "")}>↻</span>
+            {pullActive ? "Syncing\u2026" : "Pull down to sync"}
+          </div>}
+          <BottomNav
+            tab={tab}
+            setTab={setTab}
+            lowAlert={navLowAlert}
+            onCompose={() => window.dispatchEvent(new CustomEvent("cf:quickadd"))}
+          />
+          <FeedbackToast />
+          <main id="main-content" tabIndex={-1} className="cf-page content-area">
+            <h1 className="cf-visually-hidden">{viewName(tab, flowSub, planSub)}</h1>
+            <NoticeStack notices={appNotices} />
+            <ErrorBoundary>
+              {tab === "today" &&<DashboardView
+                flow={activeFlow}
+                openBal={activeOpenBal}
+                yearFlows={yearFlows}
+                // Every budget year, in whatever account view the page is in. Today's
+                // "next 7 days" needs it: a week that starts in December ends in
+                // January, and activeFlow is one year, so the January half was simply
+                // not in the array to be found.
+                viewFlows={viewFlows}
+                yearConfigs={sortedConfigs}
+                alertThreshold={alertThresh}
+                activeYear={activeYear}
+                budgetTargets={budgetTargets}
+                categories={categories}
+                categoryColors={categoryColors}
+                users={members}
+                sessionUser={sessionUser}
+                entries={entries}
+                // The drifted-bills panel compares each entry's amount against the
+                // actuals recorded on its occurrences, which live here.
+                overridesByYr={overridesByYr}
+                assets={assets}
+                applyDriftFix={applyDriftFix}
+                setYearConfigs={setYearConfigs}
+                addEntry={addEntry}
+                setTab={setTab}
+                setEntries={setEntries}
+                completed={completed}
+                toggleComplete={toggleComplete}
+                dashHidden={dashHidden}
+                setDashHidden={setDashHidden}
+                dashOrder={dashOrder}
+                setDashOrder={setDashOrder}
+                debtData={debtData}
+                apiKey={aiApiKey}
+                isOffline={isOffline}
+              />}
+              {(tab === "flow" || tab === "envelopes") && <>
+                {tab === "flow" && <BudgetSubTabs value={flowSub} onChange={setFlowSub} />}
+                <AccountFilter accounts={accounts} value={activeAccount} onChange={setAccountFilter} />
+                {(tab === "envelopes" || flowSub === "list" || flowSub === "calendar") && <BudgetView
+                  flow={activeFlow}
+                  prevYearFlow={prevYearFlow}
+                  prevYearConfigured={prevYearConfigured}
+                  openBal={activeOpenBal}
+                  entries={entries}
+                  setOverride={setOverride}
+                  clearOverride={clearOverride}
+                  categories={categories}
+                  categoryColors={categoryColors}
+                  setEntries={setEntries}
+                  saveEntryEdit={saveEntryEdit}
+                  addEntry={addEntry}
+                  pushUndo={pushUndo}
+                  apiKey={aiApiKey}
+                  isOffline={isOffline}
+                  flowSub={flowSub}
+                  setFlowSub={setFlowSub}
+                  showEnvelopes={tab === "envelopes"}
+                  monthIdx={budgetMonth}
+                  setMonthIdx={setBudgetMonth}
+                  alertThreshold={alertThresh}
+                  globalSearch={globalSearch}
+                  templates={templates}
+                  setTemplates={setTemplates}
+                  budgetTargets={budgetTargets}
+                  setBudgetTargets={setBudgetTargets}
+                  completed={completed}
+                  toggleComplete={toggleComplete}
+                  markOccurrencesPaid={markOccurrencesPaid}
+                  activeYear={activeYear}
+                  budgetColOrder={budgetColOrder}
+                  setBudgetColOrder={setBudgetColOrder}
+                  onDeleted={(e) => pushUndoEntryDelete(e)}
+                  onAddNextYear={activeYear === latestYear ? addNextYearInline : null}
+                  skippedOccurrences={skippedOccurrences}
+                />}
+                {tab === "flow" && flowSub === "curve" && <ForecastView
+                  apiKey={aiApiKey}
+                  isOffline={isOffline}
+                  yearFlows={yearFlows}
+                  yearConfigs={sortedConfigs}
+                  openBalByYear={activeOpenBal}
+                  alertThreshold={alertThresh}
+                  globalSearch={globalSearch}
+                  budgetTargets={budgetTargets}
+                  horizon={forecastHorizon}
+                  setHorizon={setForecastHorizon}
+                  categories={categories}
+                  categoryColors={categoryColors}
+                  addEntry={addEntry}
+                  templates={templates}
+                  setTemplates={setTemplates}
+                  completed={completed}
+                  toggleComplete={toggleComplete}
+                  entries={entries}
+                  scenarioOn={scenarioOn}
+                  setScenarioOn={setScenarioOn}
+                  scenarioAdj={scenarioAdj}
+                  setScenarioAdj={setScenarioAdj}
+                  scenarioFlows={scenarioFlows}
+                />}
+                {tab === "flow" && flowSub === "entries" && <EntriesView
+                  entries={entries}
+                  setEntries={setEntries}
+                  saveEntryEdit={saveEntryEdit}
+                  addEntry={addEntry}
+                  categories={categories}
+                  categoryColors={categoryColors}
+                  activeYear={activeYear}
+                  apiKey={aiApiKey}
+                  isOffline={isOffline}
+                  onDeleted={(e) => pushUndoEntryDelete(e)}
+                  templates={templates}
+                  setTemplates={setTemplates}
+                  globalSearch={globalSearch}
+                  setGlobalSearch={setGlobalSearch}
+                  pushUndo={pushUndo}
+                  // Declared as a prop here since the view was written, but never
+                  // actually passed — which is why CSV import could only compare a
+                  // statement row against one-time entries.
+                  allYearFlows={yearFlows}
+                  colOrder={colOrder}
+                  setColOrder={setColOrder}
+                  filter={entriesFilter}
+                  setFilter={setEntriesFilter}
+                  filterCats={entriesFilterCats}
+                  setFilterCats={setEntriesFilterCats}
+                  filterScheds={entriesFilterScheds}
+                  setFilterScheds={setEntriesFilterScheds}
+                  filterStatus={entriesFilterStatus}
+                  setFilterStatus={setEntriesFilterStatus}
+                />}
+              </>}
+              {tab === "alerts" && <AlertsPanel
+                flow={activeFlow}
+                alertThreshold={alertThresh}
+                setTab={setTab}
+                findings={appFindings}
+                gotoForecast={() => {
       setTab("flow");
       setFlowSub("curve");
-    } }), tab === "plan" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PlanSubTabs, { value: planSub, onChange: setPlanSub }), /* @__PURE__ */ React.createElement(
-      PlanView,
-      {
-        flow: activeFlow,
-        openBal: activeOpenBal,
-        entries,
-        setEntries,
-        assets,
-        setAssets,
-        goals,
-        setGoals,
-        categories,
-        alertThreshold: alertThresh,
-        activeYear,
-        debtData,
-        setDebtData,
-        globalSearch,
-        yearConfigs: sortedConfigs,
-        setActiveYear,
-        setDeletedCopyIds,
-        planSub,
-        setPlanSub,
-        debtExtra,
-        setDebtExtra,
-        debtSimExcluded,
-        setDebtSimExcluded
-      }
-    )), tab === "plan" && planSub === "insights" && /* @__PURE__ */ React.createElement(AIInsightsView, { flow: activeFlow, openBal: activeOpenBal, yearConfigs: sortedConfigs, budgetTargets, activeYear, categories, apiKey: aiApiKey, goals, debtData, isOffline, setTab }), tab === "help" && /* @__PURE__ */ React.createElement(HelpView, null), tab === "you" && /* @__PURE__ */ React.createElement(
-      SettingsView,
-      {
-        youSub,
-        setYouSub,
-        categories,
-        activity,
-        accounts,
-        setAccounts,
-        holidays,
-        setHolidays,
-        isOffline,
-        houseValues,
-        houseSetters,
-        pushUndo,
-        currency,
-        setCurrency,
-        locale,
-        setLocale,
-        holidayRegionCode,
-        setHolidayRegionCode,
-        setCategories,
-        categoryColors,
-        setCategoryColors,
-        alertThreshold: alertThresh,
-        setAlertThreshold: setAlertThresh,
-        darkMode,
-        setDarkMode,
-        notifyEnabled,
-        setNotifyEnabled,
-        enableNotifications,
-        disableNotifications,
-        notifPerm,
-        notifyHour,
-        setNotifyHour,
-        pushState,
-        yearConfigs,
-        setYearConfigs,
-        activeYear,
-        setActiveYear,
-        overridesByYr,
-        setOverridesByYr,
-        entries,
-        setEntries,
-        completed,
-        setCompleted,
-        goals,
-        setGoals,
-        debtData,
-        setDebtData,
-        deletedCopyIds,
-        setDeletedCopyIds,
-        installPrompt,
-        triggerInstall: doInstall,
-        lockTimeout,
-        setLockTimeout,
-        templates,
-        setTemplates,
-        activeFlow,
-        budgetTargets,
-        setBudgetTargets,
-        sessionUser,
-        logout,
-        aiApiKey,
-        setAiApiKey,
-        sbConfigured,
-        houseStatus,
-        houseMsg,
-        houseUnsaved,
-        houseSave,
-        houseLoad,
-        household,
-        members,
-        createInvite,
-        setMemberDisabled,
-        setMemberRole,
-        updateMemberName,
-        leaveHousehold,
-        removeMember,
-        deleteMyAccount
-      }
-    ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
-      UndoToast,
-      {
-        label: undoStack[undoStack.length - 1].label,
-        count: undoStack.length,
-        onUndo: () => {
+    }}
+              />}
+              {tab === "plan" && <>
+                <PlanSubTabs value={planSub} onChange={setPlanSub} />
+                <PlanView
+                  flow={activeFlow}
+                  openBal={activeOpenBal}
+                  entries={entries}
+                  setEntries={setEntries}
+                  assets={assets}
+                  setAssets={setAssets}
+                  goals={goals}
+                  setGoals={setGoals}
+                  categories={categories}
+                  alertThreshold={alertThresh}
+                  activeYear={activeYear}
+                  debtData={debtData}
+                  setDebtData={setDebtData}
+                  globalSearch={globalSearch}
+                  yearConfigs={sortedConfigs}
+                  setActiveYear={setActiveYear}
+                  setDeletedCopyIds={setDeletedCopyIds}
+                  planSub={planSub}
+                  setPlanSub={setPlanSub}
+                  debtExtra={debtExtra}
+                  setDebtExtra={setDebtExtra}
+                  debtSimExcluded={debtSimExcluded}
+                  setDebtSimExcluded={setDebtSimExcluded}
+                />
+              </>}
+              {tab === "plan" && planSub === "insights" && <AIInsightsView
+                flow={activeFlow}
+                openBal={activeOpenBal}
+                yearConfigs={sortedConfigs}
+                budgetTargets={budgetTargets}
+                activeYear={activeYear}
+                categories={categories}
+                apiKey={aiApiKey}
+                goals={goals}
+                debtData={debtData}
+                isOffline={isOffline}
+                setTab={setTab}
+              />}
+              {tab === "help" && <HelpView />}
+              {tab === "you" && <SettingsView
+                youSub={youSub}
+                setYouSub={setYouSub}
+                categories={categories}
+                activity={activity}
+                accounts={accounts}
+                setAccounts={setAccounts}
+                holidays={holidays}
+                setHolidays={setHolidays}
+                isOffline={isOffline}
+                houseValues={houseValues}
+                houseSetters={houseSetters}
+                pushUndo={pushUndo}
+                currency={currency}
+                setCurrency={setCurrency}
+                locale={locale}
+                setLocale={setLocale}
+                holidayRegionCode={holidayRegionCode}
+                setHolidayRegionCode={setHolidayRegionCode}
+                setCategories={setCategories}
+                categoryColors={categoryColors}
+                setCategoryColors={setCategoryColors}
+                alertThreshold={alertThresh}
+                setAlertThreshold={setAlertThresh}
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                notifyEnabled={notifyEnabled}
+                setNotifyEnabled={setNotifyEnabled}
+                enableNotifications={enableNotifications}
+                disableNotifications={disableNotifications}
+                notifPerm={notifPerm}
+                notifyHour={notifyHour}
+                setNotifyHour={setNotifyHour}
+                pushState={pushState}
+                yearConfigs={yearConfigs}
+                setYearConfigs={setYearConfigs}
+                activeYear={activeYear}
+                setActiveYear={setActiveYear}
+                overridesByYr={overridesByYr}
+                setOverridesByYr={setOverridesByYr}
+                entries={entries}
+                setEntries={setEntries}
+                completed={completed}
+                setCompleted={setCompleted}
+                goals={goals}
+                setGoals={setGoals}
+                debtData={debtData}
+                setDebtData={setDebtData}
+                deletedCopyIds={deletedCopyIds}
+                setDeletedCopyIds={setDeletedCopyIds}
+                installPrompt={installPrompt}
+                triggerInstall={doInstall}
+                lockTimeout={lockTimeout}
+                setLockTimeout={setLockTimeout}
+                templates={templates}
+                setTemplates={setTemplates}
+                activeFlow={activeFlow}
+                budgetTargets={budgetTargets}
+                setBudgetTargets={setBudgetTargets}
+                sessionUser={sessionUser}
+                logout={logout}
+                aiApiKey={aiApiKey}
+                setAiApiKey={setAiApiKey}
+                sbConfigured={sbConfigured}
+                houseStatus={houseStatus}
+                houseMsg={houseMsg}
+                houseUnsaved={houseUnsaved}
+                houseSave={houseSave}
+                houseLoad={houseLoad}
+                household={household}
+                members={members}
+                createInvite={createInvite}
+                setMemberDisabled={setMemberDisabled}
+                setMemberRole={setMemberRole}
+                updateMemberName={updateMemberName}
+                leaveHousehold={leaveHousehold}
+                removeMember={removeMember}
+                deleteMyAccount={deleteMyAccount}
+              />}
+            </ErrorBoundary>
+          </main>
+          {undoStack.length > 0 && <UndoToast
+            label={undoStack[undoStack.length - 1].label}
+            count={undoStack.length}
+            onUndo={() => {
           haptic();
           const top = undoStack[undoStack.length - 1];
           try {
@@ -808,29 +1001,24 @@ import { useAppNotices } from "./app/use-app-notices.js";
             toast("Couldn't undo that.", "error");
           }
           undoLast();
-        },
-        onDismiss: clearUndo
-      }
-    ), /* @__PURE__ */ React.createElement("footer", { className: "app-footer", "data-noprint": true }, /* @__PURE__ */ React.createElement(
-      "a",
-      {
-        href: "privacy.html",
-        className: "cf-footer-link"
-      },
-      "Privacy"
-    ), /* @__PURE__ */ React.createElement("span", { className: "footer-sep", "aria-hidden": "true" }, "|"), /* @__PURE__ */ React.createElement(
-      "a",
-      {
-        href: "terms.html",
-        className: "cf-footer-link"
-      },
-      "Terms of Use"
-    ), /* @__PURE__ */ React.createElement("span", { className: "footer-sep", "aria-hidden": "true" }, "|"),
-    // The build number was in the Settings header and again at the foot of
+        }}
+            onDismiss={clearUndo}
+          />}
+          <footer className="app-footer" data-noprint={true}>
+            <a href="privacy.html" className="cf-footer-link">Privacy</a>
+            <span className="footer-sep" aria-hidden="true">|</span>
+            <a href="terms.html" className="cf-footer-link">Terms of Use</a>
+            <span className="footer-sep" aria-hidden="true">|</span>
+            {// The build number was in the Settings header and again at the foot of
     // Help. It is not a setting — it is the thing you read out when something
     // is wrong — so it belongs where the other every-page small print already
     // is, reachable from any view rather than from two particular ones.
-    /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)))));
+    <span className="build-version-tag">{"Build "}{APP_VERSION}</span>
+}
+          </footer>
+        </div>
+      </CategoriesContext.Provider>
+    </HouseholdContext.Provider>;
   }
   export const root = ReactDOM.createRoot(document.getElementById("root"));
-  root.render(React.createElement(App, null));
+  root.render(<App />);

@@ -216,7 +216,7 @@ import { fmt } from "./format.js";
   // three months. The one thing that genuinely can't be precomputed is whether
   // a bill has since been marked paid — the Edge Function re-checks that
   // against completed_occurrences at send time.
-  export function buildNotificationSchedule({ yearFlows = {}, completed = {}, alertThreshold = 0, horizonDays = NOTIFY_HORIZON_DAYS, now = /* @__PURE__ */ new Date() }) {
+  export function buildNotificationSchedule({ yearFlows = {}, completed = {}, alertThreshold = 0, horizonDays = NOTIFY_HORIZON_DAYS, now = new Date() }) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const end = new Date(today);
     end.setDate(end.getDate() + horizonDays);

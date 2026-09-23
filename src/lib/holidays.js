@@ -117,7 +117,7 @@ import { localDateStr } from "./dates.js";
     if (r.remembrance) fixed.push([new Date(year, 10, 11), "Remembrance Day", false]);
     if (r.boxing || r.boxingOptional) fixed.push([new Date(year, 11, 26), "Boxing Day", !!r.boxingOptional]);
     const out = {};
-    const taken = /* @__PURE__ */ new Set();
+    const taken = new Set();
     // In date order, so an earlier holiday claims its observed day before a
     // later one looks for its own.
     fixed.sort((a, b) => a[0] - b[0]).forEach(([date, name, optional]) => {
@@ -137,8 +137,7 @@ import { localDateStr } from "./dates.js";
   // surprise in it must degrade to the computed list rather than throw inside
   // a render.
   export function parseHolidayPayload(payload, year) {
-    var _a;
-    const list = Array.isArray(payload == null ? void 0 : payload.holidays) ? payload.holidays : Array.isArray((_a = payload == null ? void 0 : payload.province) == null ? void 0 : _a.holidays) ? payload.province.holidays : null;
+    const list = Array.isArray(payload?.holidays) ? payload.holidays : Array.isArray(payload?.province?.holidays) ? payload.province.holidays : null;
     if (!list || !list.length) return null;
     const out = {};
     list.forEach((h) => {

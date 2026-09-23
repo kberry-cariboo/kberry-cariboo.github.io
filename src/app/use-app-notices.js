@@ -24,7 +24,7 @@ import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFin
       // themselves — a month can be unremarkable overall while two categories
       // have both moved, and that is the case the one-driver line cannot
       // report.
-      const now = /* @__PURE__ */ new Date();
+      const now = new Date();
       const anomalies = now.getFullYear() === activeYear
         ? categoryAnomalies(activeFlow, now.getMonth())
         : [];
@@ -60,11 +60,16 @@ import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFin
         out.push({
           id: "lowbal", tone: navLowInfo.min < 0 ? "critical" : "warn", icon: "alert-triangle",
           plain: `Balance dips to ${fmt(navLowInfo.min)} on ${MONTHS[navLowInfo.month]} ${navLowInfo.day}`,
-          msg: React.createElement(React.Fragment, null,
-            "Heads-up: your balance is forecast to dip to ",
-            React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)),
-            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day,
-            navLowInfo.year !== activeYear ? ", " + navLowInfo.year : "", under),
+          msg: <>
+            {"Heads-up: your balance is forecast to dip to "}
+            <strong className="cf-text-mono-13">{fmt(navLowInfo.min)}</strong>
+            {" around "}
+            {MONTHS[navLowInfo.month]}
+            {" "}
+            {navLowInfo.day}
+            {navLowInfo.year !== activeYear ? ", " + navLowInfo.year : ""}
+            {under}
+          </>,
           actions: [
             { label: "View alerts", onClick: () => setTab("alerts") },
             { label: "Dismiss", ariaLabel: "Dismiss this alert", onClick: () => setLowBannerDismissed(lowBannerKey) }
@@ -75,9 +80,7 @@ import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFin
         out.push({
           id: "backup", tone: "warn", icon: "save",
           plain: "A backup is 30+ days overdue",
-          msg: React.createElement(React.Fragment, null,
-            React.createElement("strong", null, "Time for a backup."),
-            " It's been 30+ days since your last data export."),
+          msg: <><strong>Time for a backup.</strong>{" It's been 30+ days since your last data export."}</>,
           actions: [
             { label: "Remind me later", onClick: () => dismissBackup(false) },
             { label: "\u2193 Export backup", onClick: () => dismissBackup(true), primary: true }
@@ -88,9 +91,11 @@ import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFin
         out.push({
           id: "sample", tone: "info", icon: "info",
           plain: "You're exploring sample data",
-          msg: React.createElement(React.Fragment, null,
-            "You're exploring ", React.createElement("strong", { className: "c-text" }, "sample data"),
-            " \u2014 every entry is fictional and marked \u201C(Sample)\u201D."),
+          msg: <>
+            {"You're exploring "}
+            <strong className="c-text">sample data</strong>
+            {" \u2014 every entry is fictional and marked \u201C(Sample)\u201D."}
+          </>,
           actions: [{ label: "Remove sample data", onClick: () => setEntries((prev) => prev.filter((e) => !e.sample)) }]
         });
       }
@@ -101,18 +106,21 @@ import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFin
       // suspect. The screens are not wrong — there really is nothing scheduled
       // — they just never say why, so this does, and hands over the one action
       // that fixes it.
-      const nowYear = (/* @__PURE__ */ new Date()).getFullYear();
+      const nowYear = (new Date()).getFullYear();
       if (activeYear !== nowYear) {
         const haveIt = yearConfigs.some((y) => y.year === nowYear);
         out.push({
           id: "staleyear", tone: "info", icon: "calendar",
           plain: `You are looking at ${activeYear}, and today is in ${nowYear}`,
-          msg: React.createElement(React.Fragment, null,
-            "You're looking at ", React.createElement("strong", null, String(activeYear)),
-            " \u2014 today is in ", React.createElement("strong", null, String(nowYear)),
-            haveIt
+          msg: <>
+            {"You're looking at "}
+            <strong>{String(activeYear)}</strong>
+            {" \u2014 today is in "}
+            <strong>{String(nowYear)}</strong>
+            {haveIt
               ? ", so the forecast and the ledger are showing a year that has passed."
-              : `, and ${nowYear} has not been set up yet.`),
+              : `, and ${nowYear} has not been set up yet.`}
+          </>,
           actions: [haveIt
             ? { label: `Switch to ${nowYear}`, primary: true, onClick: () => setActiveYear(nowYear) }
             : { label: `Set up ${nowYear}`, primary: true,

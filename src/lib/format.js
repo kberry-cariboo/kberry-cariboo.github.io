@@ -248,33 +248,35 @@ import { toast } from "../components/auth-misc.js";
   // buttons share a single size (cf-btn--md) and differ only in variant —
   // CSV and PDF used to carry their own inline 11px/4px-12px, which put two
   // type scales side by side in the same row on every screen.
-  export const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, className: "export-bar", style }, onCSV && /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onCSV,
-      title: "Export to CSV",
-      className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
-    },
-    /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
-    "CSV"
-  ), onPrint && /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onPrint,
-      title: "Print / Save as PDF",
-      className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
-    },
-    /* @__PURE__ */ React.createElement(Icon, { name: "printer", size: 12 }),
-    "PDF"
-  ), onAdd && /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onAdd,
-      title: "Add Entry",
-      className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
-    },
-    "+ Add"
-  ));
+  export const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => <div
+    data-noprint={true}
+    className="export-bar"
+    style={style}
+  >
+    {onCSV && <button
+      onClick={onCSV}
+      title="Export to CSV"
+      className="cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
+    >
+      <Icon name="download" size={12} />
+      CSV
+    </button>}
+    {onPrint && <button
+      onClick={onPrint}
+      title="Print / Save as PDF"
+      className="cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow-sm cf-btn--nowrap"
+    >
+      <Icon name="printer" size={12} />
+      PDF
+    </button>}
+    {onAdd && <button
+      onClick={onAdd}
+      title="Add Entry"
+      className="cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
+    >
+      + Add
+    </button>}
+  </div>;
   export function fmtVarRange(monthlyAmounts) {
     try {
       const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);

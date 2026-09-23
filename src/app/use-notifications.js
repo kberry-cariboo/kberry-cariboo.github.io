@@ -86,7 +86,7 @@ import { MONTHS, useLS } from "../lib/app-data.js";
     useEffect(() => {
       if (!notifyEnabled) return;
       if (typeof Notification === "undefined" || notifPerm !== "granted") return;
-      if ((/* @__PURE__ */ new Date()).getFullYear() !== activeYear) return;
+      if ((new Date()).getFullYear() !== activeYear) return;
       // Once per day per alert, and it has to be localStorage: sessionStorage
       // is scoped to the tab session, which an installed PWA tears down every
       // time it's closed. On mobile that made "once per day" mean "once per
