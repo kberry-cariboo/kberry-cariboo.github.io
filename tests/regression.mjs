@@ -2853,6 +2853,99 @@ await test('every notice bar in the app resolves to one of two shapes', async ()
 // figure and the same date in two differently sized red boxes, 238px of banner
 // before the first real content — and they only rarely appeared together
 // because each had its own dismiss.
+// Dismissing the low-balance banner used to mean "for today" — the stored
+// value was a date, so the same warning about the same dip came back every
+// morning. What is stored now is which warning was dismissed: the day the
+// balance bottoms out, and whether that bottom is below zero or merely under
+// the alert threshold.
+//
+// Both halves have to be tested against a reload. A banner that stays gone
+// for the rest of the session and returns on the next visit is exactly the
+// bug, and it looks fixed right up until you reload.
+await test('notices: a dismissed low-balance warning stays dismissed, and a different one does not', async () => {
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000')
+    .replace(/alertThreshold: 50000/g, 'alertThreshold: 150000') });
+  try {
+    await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
+    const banner = () => page.getByText('forecast to dip to', { exact: false });
+    const open = async () => {
+      // goto() to a URL that differs only in its hash is a same-document
+      // navigation: React never remounts and useLS never re-reads storage.
+      // An earlier version of this test used it and proved nothing — the
+      // banner stayed gone because the component had not been rebuilt, which
+      // is precisely the state the bug hides in. reload() is the only thing
+      // here that asks the question.
+      await page.goto(BASE + '#/today', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForTimeout(1200);
+      // The stack collapses to a summary line when more than one notice is
+      // up, and the banner's own words are only in the open state. Expand it
+      // when it is closed so this test is about dismissal and not about which
+      // other notices happened to be raised alongside it.
+      const sum = page.locator('.notice-summary');
+      if (await sum.count() > 0) await sum.first().click().catch(() => {});
+      await page.waitForTimeout(300);
+    };
+
+    await open();
+    if (await banner().count() === 0) throw new Error('the low-balance banner never appeared to be dismissed');
+    await page.getByRole('button', { name: 'Dismiss this alert' }).first().click();
+    await page.waitForTimeout(300);
+    if (await banner().count() !== 0) throw new Error('Dismiss did not take the banner off the page');
+
+    const stored = await page.evaluate(() => {
+      try { return localStorage.getItem('cf_lowbal_dismissed'); } catch (e) { return null; }
+    });
+    // useLS stores JSON, so this is a quoted string. What is inside it has to
+    // name the dip: the day it lands on and how bad it is. A date is the old
+    // snooze; a bare number is the forecast figure, which moves by a few cents
+    // on any edit and would resurface the same warning for no reason.
+    if (!stored || /^"?\d{4}-\d{2}-\d{2}"?$/.test(stored)) {
+      throw new Error(`what was remembered is ${stored} — a date is a snooze, not a dismissal`);
+    }
+    if (!/^"\d+-\d+:(below-zero|under-threshold)"$/.test(stored)) {
+      throw new Error(`what was remembered is ${stored}, which does not identify which dip was dismissed`);
+    }
+
+    // The part that matters: it is still gone after a reload.
+    await open();
+    if (await banner().count() !== 0) {
+      throw new Error('the dismissed warning came back on the next visit');
+    }
+    // And on the day after, which is what the old behaviour turned on. Moving
+    // the clock a day forward also makes the app think it has been idle for a
+    // day, so the idle lock takes the screen and every notice with it — the
+    // last-active marker is in sessionStorage, and it moves with the clock.
+    await page.clock.setFixedTime(new Date('2026-09-02T12:00:00'));
+    await page.evaluate(() => {
+      try { sessionStorage.setItem('cf_last_active_at', String(Date.now())); } catch (e) {}
+    });
+    await open();
+    if (await banner().count() === 0 && await page.locator('.lockscreen-wrap').count() > 0) {
+      throw new Error('the idle lock took the screen, so nothing about notices was tested');
+    }
+    if (await banner().count() !== 0) throw new Error('the dismissed warning came back the next day');
+
+    // A different warning is news again. Pushing the threshold up moves the
+    // dip from "below zero" to a shallower one the household still wants to
+    // hear about — a different identity, so it speaks.
+    await page.evaluate(() => {
+      try {
+        // Written the way useLS writes it. An unquoted string fails
+        // JSON.parse, useLS falls back to its default, and the assertion below
+        // then passes for the wrong reason — it did, until this line was JSON.
+        localStorage.setItem('cf_lowbal_dismissed', JSON.stringify('99-99:below-zero'));
+        sessionStorage.setItem('cf_last_active_at', String(Date.now()));
+      } catch (e) {}
+    });
+    await open();
+    if (await banner().count() === 0) {
+      throw new Error('a warning about a different dip stayed hidden behind an old dismissal');
+    }
+  } finally { await ctx.close(); }
+});
+
 await test('every notice comes through one stack, collapsed when there is more than one', async () => {
   // Overdrawn, a backup overdue, and sample data: all three at once.
   const { ctx, page } = await ctxPage({ touch: true, stub: (t) => t

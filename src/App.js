@@ -1164,16 +1164,38 @@
       }
     }, [activeFlow, activeYear, alertThresh]);
     const navLowAlert = !!navLowInfo;
-    const [lowBannerSnooze, setLowBannerSnooze] = useLS("cf_lowbal_snooze", "");
+    // Dismissing the low-balance banner used to mean "for today": the stored
+    // value was a date, so the same warning about the same dip announced
+    // itself again every morning. A warning you have read and decided about
+    // should stay read.
+    //
+    // What is stored is which warning was dismissed, not when. It cannot be a
+    // bare flag — the next dip is a different dip and has to be able to speak
+    // — and it cannot be the forecast figure either, because that moves by a
+    // few cents on any edit and would resurface the same warning for no
+    // reason. It is the day the balance bottoms out and whether that bottom
+    // is below zero or merely below the alert threshold, which are the two
+    // things that change what the banner is telling you. A dip that moves to
+    // another day, or crosses from "under your threshold" to "below zero",
+    // is news again and says so.
+    //
+    // Anything left over from the old key is a date string, which matches no
+    // identity, so a reader who had it snoozed sees the banner once more and
+    // then dismisses it for good.
+    const [lowBannerDismissed, setLowBannerDismissed] = useLS("cf_lowbal_dismissed", "");
+    const lowBannerKey = navLowInfo
+      ? `${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
+      : "";
+    const showLowBanner = navLowInfo && lowBannerDismissed !== lowBannerKey;
     // The calendar day *here*, not in UTC. toISOString() was returning the UTC
     // date, which west of Greenwich rolls over in the afternoon — from 5pm
     // local (4pm in winter) every key gated on this already pointed at
-    // tomorrow. That silently un-snoozed the low-balance banner and reset the
-    // once-a-day notification guards, so the same bills could announce
-    // themselves twice in one evening. todayStr() is the local-date helper the
-    // rest of the date code already uses.
+    // tomorrow. That reset the once-a-day notification guards below, so the
+    // same bills could announce themselves twice in one evening. (It un-
+    // snoozed the low-balance banner too, back when that was a date; it is an
+    // identity now and no longer cares what day it is.) todayStr() is the
+    // local-date helper the rest of the date code already uses.
     const todayKey = todayStr();
-    const showLowBanner = navLowInfo && lowBannerSnooze !== todayKey;
     // Every transient notice the app can raise, gathered in one list so they
     // share a shape, a scale and a collapse rule. Order here is irrelevant —
     // NoticeStack sorts by severity — but each entry carries a `plain` string
@@ -1251,7 +1273,7 @@
             " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, under),
           actions: [
             { label: "View alerts", onClick: () => setTab("alerts") },
-            { label: "Dismiss", ariaLabel: "Dismiss for today", onClick: () => setLowBannerSnooze(todayKey) }
+            { label: "Dismiss", ariaLabel: "Dismiss this alert", onClick: () => setLowBannerDismissed(lowBannerKey) }
           ]
         });
       }
@@ -1304,7 +1326,7 @@
         });
       }
       return out;
-    }, [showLowBanner, navLowInfo, alertThresh, todayKey, showBackupNudge, entries, tab,
+    }, [showLowBanner, navLowInfo, alertThresh, lowBannerKey, showBackupNudge, entries, tab,
         activeYear, yearConfigs, canWrite]);
     // Notifications come from two places, and both go through the service
     // worker registration (see src/lib/push.js for why the `new Notification()`
