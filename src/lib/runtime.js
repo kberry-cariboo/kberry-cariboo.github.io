@@ -5,7 +5,19 @@
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __propIsEnum = Object.prototype.propertyIsEnumerable;
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-  var __spreadValues = (a, b) => {
+  // Object spread, as the transpiled source spells it. These were esbuild's
+  // down-levelling helpers, which copy property by property through an `in`
+  // check and, for some keys, Object.defineProperty — and they sit in the
+  // hottest loop in the app: every occurrence of every entry, every year, on
+  // every edit. Profiled at 300 entries over three years, they (and the
+  // garbage they made) were most of a 190 ms recompute. For the plain data
+  // objects this app spreads, Object.assign is the same result natively.
+  //
+  // The one difference that matters is an own "__proto__" key, which a
+  // hand-edited backup file could carry: assigning it would set the target's
+  // prototype, where the old helper defined an ordinary property. That case
+  // alone keeps the old path.
+  var __spreadSlow = (a, b) => {
     for (var prop in b || (b = {}))
       if (__hasOwnProp.call(b, prop))
         __defNormalProp(a, prop, b[prop]);
@@ -16,7 +28,8 @@
       }
     return a;
   };
-  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __spreadValues = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __spreadSlow(a, b) : Object.assign(a, b);
+  var __spreadProps = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __defProps(a, __getOwnPropDescs(b)) : Object.assign(a, b);
   var __objRest = (source, exclude) => {
     var target = {};
     for (var prop in source)

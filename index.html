@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-4JClVGOMuy9bewCLHT8TFA3qamCj9GWJ/+ufWXtECoA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-ar8AhXcg3Ekr+VqNzcThpSBvNGY6Nn2fBrgIaKDO/OU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>CashFlow Budget</title>
 <meta name="theme-color" content="#14413A"/>
@@ -4479,7 +4479,19 @@ document.addEventListener('DOMContentLoaded',function(){
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __propIsEnum = Object.prototype.propertyIsEnumerable;
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-  var __spreadValues = (a, b) => {
+  // Object spread, as the transpiled source spells it. These were esbuild's
+  // down-levelling helpers, which copy property by property through an `in`
+  // check and, for some keys, Object.defineProperty — and they sit in the
+  // hottest loop in the app: every occurrence of every entry, every year, on
+  // every edit. Profiled at 300 entries over three years, they (and the
+  // garbage they made) were most of a 190 ms recompute. For the plain data
+  // objects this app spreads, Object.assign is the same result natively.
+  //
+  // The one difference that matters is an own "__proto__" key, which a
+  // hand-edited backup file could carry: assigning it would set the target's
+  // prototype, where the old helper defined an ordinary property. That case
+  // alone keeps the old path.
+  var __spreadSlow = (a, b) => {
     for (var prop in b || (b = {}))
       if (__hasOwnProp.call(b, prop))
         __defNormalProp(a, prop, b[prop]);
@@ -4490,7 +4502,8 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     return a;
   };
-  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __spreadValues = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __spreadSlow(a, b) : Object.assign(a, b);
+  var __spreadProps = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __defProps(a, __getOwnPropDescs(b)) : Object.assign(a, b);
   var __objRest = (source, exclude) => {
     var target = {};
     for (var prop in source)
@@ -5721,8 +5734,36 @@ document.addEventListener('DOMContentLoaded',function(){
   function signedAmount(ev) {
     return isInflowEvent(ev) ? ev.amount : -ev.amount;
   }
-  function computeFlow(events, openBal) {
+  // Every configured year's flow, each opening on the previous year's close
+  // (the first on its own opening balance). The real budget and the what-if
+  // scenario both go through this, so they cannot disagree about how a year
+  // carries into the next; they used to be two copies of the same loop.
+  function buildYearFlows(entryList, yearConfigs, overridesByYr) {
+    const flows = {};
+    let carry = null;
+    [...yearConfigs].sort((a, b) => a.year - b.year).forEach((yc, i) => {
+      const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
+      const flow = computeFlow(expandEntries(entryList, yc.year, overridesByYr[yc.year] || {}), openBal, { owned: true });
+      flows[yc.year] = flow;
+      carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
+    });
+    return flows;
+  }
+  // `owned`: the caller hands over events nobody else holds — straight out of
+  // expandEntries — so the running balance is written onto them rather than
+  // onto a copy of each. Copying ~35 fields per occurrence was most of what a
+  // recompute cost (a 300-entry household, three years: ~25k copies per
+  // edit). Anything passing a view of events that live elsewhere — a filtered
+  // flow — must leave it false, or it would rewrite balances under their owner.
+  function computeFlow(events, openBal, { owned = false } = {}) {
     let bal = openBal;
+    if (owned) {
+      for (const ev of events) {
+        bal += signedAmount(ev);
+        ev.balance = roundMoney(bal);
+      }
+      return events;
+    }
     return events.map((ev) => {
       bal += signedAmount(ev);
       return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });
@@ -21931,18 +21972,7 @@ Fill every field of the response schema. Rules:
       // memo that consumes it, so the flows can never be built against the
       // previous region's computed dates for one paint.
       setHolidayRegion(holidayRegionCode);
-      const flows = {};
-      let carry = null;
-      const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
-      sorted.forEach((yc, i) => {
-        const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
-        const ovs = overridesByYr[yc.year] || {};
-        const events = expandEntries(entries, yc.year, ovs);
-        const flow = computeFlow(events, openBal);
-        flows[yc.year] = flow;
-        carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
-      });
-      return flows;
+      return buildYearFlows(entries, yearConfigs, overridesByYr);
     }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
     // ── What-if ──────────────────────────────────────────────────────────
     // A scenario is a set of adjustments over the entries you already have —
@@ -21969,17 +21999,7 @@ Fill every field of the response schema. Rules:
     }, [entries, scenarioAdj, scenarioActive]);
     const scenarioFlows = useMemo(() => {
       if (!scenarioActive) return null;
-      const flows = {};
-      let carry = null;
-      const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
-      sorted.forEach((yc, i) => {
-        const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
-        const events = expandEntries(scenarioEntries, yc.year, overridesByYr[yc.year] || {});
-        const flow = computeFlow(events, openBal);
-        flows[yc.year] = flow;
-        carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
-      });
-      return flows;
+      return buildYearFlows(scenarioEntries, yearConfigs, overridesByYr);
     }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");

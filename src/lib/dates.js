@@ -460,8 +460,36 @@
   function signedAmount(ev) {
     return isInflowEvent(ev) ? ev.amount : -ev.amount;
   }
-  function computeFlow(events, openBal) {
+  // Every configured year's flow, each opening on the previous year's close
+  // (the first on its own opening balance). The real budget and the what-if
+  // scenario both go through this, so they cannot disagree about how a year
+  // carries into the next; they used to be two copies of the same loop.
+  function buildYearFlows(entryList, yearConfigs, overridesByYr) {
+    const flows = {};
+    let carry = null;
+    [...yearConfigs].sort((a, b) => a.year - b.year).forEach((yc, i) => {
+      const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
+      const flow = computeFlow(expandEntries(entryList, yc.year, overridesByYr[yc.year] || {}), openBal, { owned: true });
+      flows[yc.year] = flow;
+      carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
+    });
+    return flows;
+  }
+  // `owned`: the caller hands over events nobody else holds — straight out of
+  // expandEntries — so the running balance is written onto them rather than
+  // onto a copy of each. Copying ~35 fields per occurrence was most of what a
+  // recompute cost (a 300-entry household, three years: ~25k copies per
+  // edit). Anything passing a view of events that live elsewhere — a filtered
+  // flow — must leave it false, or it would rewrite balances under their owner.
+  function computeFlow(events, openBal, { owned = false } = {}) {
     let bal = openBal;
+    if (owned) {
+      for (const ev of events) {
+        bal += signedAmount(ev);
+        ev.balance = roundMoney(bal);
+      }
+      return events;
+    }
     return events.map((ev) => {
       bal += signedAmount(ev);
       return __spreadProps(__spreadValues({}, ev), { balance: roundMoney(bal) });

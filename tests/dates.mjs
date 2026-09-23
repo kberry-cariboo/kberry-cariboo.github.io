@@ -37,7 +37,7 @@ const load = new Function('React', 'localStorage', 'window', `
   ${read('src/lib/format.js')}
   ${read('src/lib/dates.js')}
   return { expandEntries, nthWeekdayInMonth, priorBankingDay, isPayrollDeposit,
-           isLeapYear, daysInMonth, localDateStr, computeFlow, getMonthSummaries, monthlyEquivalent };
+           isLeapYear, daysInMonth, localDateStr, computeFlow, getMonthSummaries, monthlyEquivalent, buildYearFlows };
 `);
 const store = new Map();
 const localStorage = {
@@ -47,7 +47,7 @@ const localStorage = {
 };
 const {
   expandEntries, nthWeekdayInMonth, priorBankingDay, isPayrollDeposit,
-  isLeapYear, daysInMonth, localDateStr, computeFlow, monthlyEquivalent,
+  isLeapYear, daysInMonth, localDateStr, computeFlow, monthlyEquivalent, buildYearFlows,
 } = load(new Proxy({}, { get: () => noHook }), localStorage, { matchMedia: () => ({ matches: false }) });
 
 const results = [];
@@ -266,6 +266,36 @@ const dates = (e, year = 2026, overrides = {}) =>
   const evs = expandEntries([e], 2026, {});
   check('expandEntries: every occurrence carries the entry\'s userId',
     evs.length === 12 && evs.every((ev) => ev.userId === 'member-a'), J(evs.map((ev) => ev.userId)));
+}
+
+// computeFlow's two modes. `owned` writes balances onto events the caller
+// hands over (the year and scenario flows, straight from expandEntries);
+// without it, events are copied — which the account view relies on, since it
+// passes a filtered view of events the year flow still holds.
+{
+  const es = [
+    { id: 'a', desc: 'pay', type: 'income', category: 'c', amount: 300000, repeats: true, recurUnit: 'week', recurEvery: 2, startDate: '2026-01-02' },
+    { id: 'b', desc: 'rent', type: 'expense', category: 'c', amount: 165000, repeats: true, recurUnit: 'month', recurEvery: 1, startDate: '2026-01-01' },
+  ];
+  const copied = computeFlow(expandEntries(es, 2026, {}), 50000);
+  const owned = computeFlow(expandEntries(es, 2026, {}), 50000, { owned: true });
+  check('computeFlow: owned and copying modes give identical balances',
+    copied.length === owned.length && copied.every((ev, i) => ev.balance === owned[i].balance && ev.id === owned[i].id),
+    J(owned.slice(0, 3).map((e) => e.balance)) + ' vs ' + J(copied.slice(0, 3).map((e) => e.balance)));
+  const shared = expandEntries(es, 2026, {});
+  const before = J(shared);
+  computeFlow(shared.filter((ev) => ev.type === 'expense'), 0);
+  check('computeFlow: the copying mode never writes onto the events it is given', J(shared) === before);
+}
+
+// buildYearFlows: each year opens on the previous year's close; only the
+// first uses its own configured opening balance.
+{
+  const e = { id: 'r', desc: 'rent', type: 'expense', category: 'c', amount: 10000, repeats: true, recurUnit: 'month', recurEvery: 1, startDate: '2026-01-01' };
+  const f = buildYearFlows([e], [{ year: 2027, openingBalance: 999 }, { year: 2026, openingBalance: 500000 }], {});
+  const close26 = f[2026][f[2026].length - 1].balance;
+  check('buildYearFlows: the second year opens on the first year\'s close, not its own opening balance',
+    close26 === 500000 - 12 * 10000 && f[2027][0].balance === close26 - 10000, `${close26} → ${f[2027][0].balance}`);
 }
 
 // ── monthlyEquivalent ────────────────────────────────────────────────────────

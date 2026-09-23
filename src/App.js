@@ -720,18 +720,7 @@
       // memo that consumes it, so the flows can never be built against the
       // previous region's computed dates for one paint.
       setHolidayRegion(holidayRegionCode);
-      const flows = {};
-      let carry = null;
-      const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
-      sorted.forEach((yc, i) => {
-        const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
-        const ovs = overridesByYr[yc.year] || {};
-        const events = expandEntries(entries, yc.year, ovs);
-        const flow = computeFlow(events, openBal);
-        flows[yc.year] = flow;
-        carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
-      });
-      return flows;
+      return buildYearFlows(entries, yearConfigs, overridesByYr);
     }, [entries, yearConfigs, overridesByYr, holidays, holidayRegionCode]);
     // ── What-if ──────────────────────────────────────────────────────────
     // A scenario is a set of adjustments over the entries you already have —
@@ -758,17 +747,7 @@
     }, [entries, scenarioAdj, scenarioActive]);
     const scenarioFlows = useMemo(() => {
       if (!scenarioActive) return null;
-      const flows = {};
-      let carry = null;
-      const sorted = [...yearConfigs].sort((a, b) => a.year - b.year);
-      sorted.forEach((yc, i) => {
-        const openBal = i === 0 ? yc.openingBalance : carry != null ? carry : yc.openingBalance;
-        const events = expandEntries(scenarioEntries, yc.year, overridesByYr[yc.year] || {});
-        const flow = computeFlow(events, openBal);
-        flows[yc.year] = flow;
-        carry = flow.length > 0 ? flow[flow.length - 1].balance : openBal;
-      });
-      return flows;
+      return buildYearFlows(scenarioEntries, yearConfigs, overridesByYr);
     }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
     const yearRoving = useRovingTabs(".year-pill-btn");
