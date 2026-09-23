@@ -1728,8 +1728,22 @@
         .bva-body>.context-menu-cursor{position:relative;}
         .bva-row-open{position:absolute;inset:0;z-index:0;width:100%;padding:0;margin:0;
           border:none;background:transparent;cursor:pointer;font:inherit;color:inherit;}
-        .bva-row-open:focus-visible{outline-offset:-2px;border-radius:var(--radius-6);}
+        /* Offset only. A border-radius in a :focus rule rounds the element,
+           not the ring — the same mistake the global focus rule carried, and
+           this line reintroduced it two commits after it was removed.
+           tests/focus-ring.mjs failed on it, which is what it is for. */
+        .bva-row-open:focus-visible{outline-offset:-2px;}
         .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);gap:var(--space-6);flex-wrap:nowrap;min-width:0;}
+        .bva-row>.cat-chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        /* Wraps at every width, where it used to wrap only on a phone. The
+           group carried a third item — the overage — on the rows that were
+           over, and a 768px query was enough for that. Every row with a
+           target now says what is left in it, so at 200% text "Fully spent"
+           and the kebab were being pushed off the end of the row on a
+           desktop. Wrapping costs nothing at ordinary sizes, where these rows
+           are one 24px line that never reaches it; it engages only under the
+           pressure that was dropping content on the floor. */
+        .bva-amounts{display:flex;align-items:center;gap:var(--space-6);flex-wrap:wrap;row-gap:0;flex:1;justify-content:flex-end;min-width:0;}
         .bva-target{color:var(--textMid);white-space:nowrap;flex-shrink:0;}
         /* ── plan-dashboard.js ── */
         .goal-header-row{display:flex;justify-content:space-between;align-items:center;}
@@ -3321,9 +3335,10 @@
              Actual" simply vanished on phones: a category with no target read
              the same as one comfortably under it. It's back, and the row
              wraps instead of being pinned to one line, because chip + actual
-             + target + overage genuinely doesn't fit at 320px. */
+             + target + overage genuinely doesn't fit at 320px. (The wrap
+             itself is on .bva-amounts' base rule now — a desktop at 200% text
+             needs it too — so only the alignment is left here.) */
           .bva-row{flex-wrap:nowrap;align-items:flex-start;}
-          .bva-amounts{flex-wrap:wrap;justify-content:flex-end;row-gap:0;}
           /* A 140px term column leaves ~190px for a sentence at 393px, which
              turns every definition into a tall two-column sliver. Stack them:
              the term reads as a heading for the paragraph under it. */
